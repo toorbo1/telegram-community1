@@ -1,3 +1,18 @@
+// Конфигурация Firebase - ЗАМЕНИТЕ на свою!
+const firebaseConfig = {
+    apiKey: "your-api-key",
+    authDomain: "your-project.firebaseapp.com",
+    databaseURL: "https://your-project-default-rtdb.firebaseio.com",
+    projectId: "your-project-id",
+    storageBucket: "your-project.appspot.com",
+    messagingSenderId: "123456789",
+    appId: "your-app-id"
+};
+
+// Инициализация Firebase
+const app = firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
 // Инициализация Telegram Web App
 const tg = window.Telegram.WebApp;
 tg.expand();
@@ -10,12 +25,11 @@ const ADMIN_ID = 8036875641;
 // Инициализация приложения
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
-    loadPosts();
+    setupRealtimePosts();
 });
 
 // Инициализация Telegram Web App и данных пользователя
 function initializeApp() {
-    // Получаем данные пользователя из Telegram
     if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
         const tgUser = tg.initDataUnsafe.user;
         currentUser = {
@@ -28,7 +42,7 @@ function initializeApp() {
         displayUserProfile();
         checkAdminRights();
     } else {
-        // Заглушка для тестирования вне Telegram
+        // Заглушка для тестирования
         currentUser = {
             id: 123456789,
             firstName: 'Тестовый',
@@ -76,7 +90,7 @@ function setupAdminFeatures() {
     });
 }
 
-// Добавление нового поста
+// Добавление нового поста в Firebase
 function addNewPost() {
     const contentInput = document.getElementById('post-content');
     const content = contentInput.value.trim();
@@ -84,59 +98,56 @@ function addNewPost() {
     if (!content) return;
     
     const newPost = {
-        id: Date.now(),
         content: content,
         author: currentUser.firstName,
         authorId: currentUser.id,
-        timestamp: new Date().toLocaleString('ru-RU'),
+        timestamp: new Date().toISOString(),
         isAdmin: true
     };
     
-    savePost(newPost);
-    contentInput.value = '';
-    loadPosts();
-    
-    // Уведомление об успешной публикации
-    if (tg.showPopup) {
-        tg.showPopup({
-            title: 'Успех!',
-            message: 'Пост опубликован для всех пользователей',
-            buttons: [{ type: 'ok' }]
+    // Сохраняем пост в Firebase
+    const postsRef = database.ref('posts');
+    postsRef.push(newPost)
+        .then(() => {
+            contentInput.value = '';
+            showNotification('Пост опубликован для всех пользователей!');
+        })
+        .catch((error) => {
+            console.error('Ошибка:', error);
+            showNotification('Ошибка публикации поста');
         });
-    } else {
-        alert('Пост опубликован для всех пользователей!');
-    }
 }
 
-// Сохранение поста в локальное хранилище
-function savePost(post) {
-    const posts = getStoredPosts();
-    posts.unshift(post); // Добавляем в начало
-    localStorage.setItem('website-posts', JSON.stringify(posts));
+// Настройка реального времени для постов
+function setupRealtimePosts() {
+    const postsRef = database.ref('posts');
+    
+    postsRef.on('value', (snapshot) => {
+        const postsData = snapshot.val();
+        displayPosts(postsData);
+    });
 }
 
-// Получение постов из локального хранилища
-function getStoredPosts() {
-    const stored = localStorage.getItem('website-posts');
-    return stored ? JSON.parse(stored) : [];
-}
-
-// Загрузка и отображение постов
-function loadPosts() {
-    const posts = getStoredPosts();
+// Отображение постов
+function displayPosts(postsData) {
     const container = document.getElementById('posts-container');
     
-    if (posts.length === 0) {
+    if (!postsData) {
         container.innerHTML = '<p>Пока нет постов. Будьте первым!</p>';
         return;
     }
+    
+    // Преобразуем объект в массив и сортируем по времени
+    const posts = Object.entries(postsData)
+        .map(([id, post]) => ({ id, ...post }))
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     
     container.innerHTML = posts.map(post => `
         <div class="post">
             <div class="post-content">${escapeHtml(post.content)}</div>
             <div class="post-meta">
                 ${post.isAdmin ? '<span class="admin-badge">Админ</span>' : ''}
-                Автор: ${escapeHtml(post.author)} | ${post.timestamp}
+                Автор: ${escapeHtml(post.author)} | ${new Date(post.timestamp).toLocaleString('ru-RU')}
             </div>
         </div>
     `).join('');
@@ -146,32 +157,26 @@ function loadPosts() {
 function copyReferralLink() {
     const referralInput = document.getElementById('referral-link');
     referralInput.select();
-    referralInput.setSelectionRange(0, 99999);
     
-    try {
-        navigator.clipboard.writeText(referralInput.value).then(() => {
-            if (tg.showPopup) {
-                tg.showPopup({
-                    title: 'Скопировано!',
-                    message: 'Реферальная ссылка скопирована в буфер',
-                    buttons: [{ type: 'ok' }]
-                });
-            } else {
-                alert('Реферальная ссылка скопирована!');
-            }
-        });
-    } catch (err) {
-        // Fallback для старых браузеров
+    navigator.clipboard.writeText(referralInput.value).then(() => {
+        showNotification('Реферальная ссылка скопирована!');
+    }).catch(() => {
+        // Fallback
         document.execCommand('copy');
-        if (tg.showPopup) {
-            tg.showPopup({
-                title: 'Скопировано!',
-                message: 'Реферальная ссылка скопирована в буфер',
-                buttons: [{ type: 'ok' }]
-            });
-        } else {
-            alert('Реферальная ссылка скопирована!');
-        }
+        showNotification('Реферальная ссылка скопирована!');
+    });
+}
+
+// Показать уведомление
+function showNotification(message) {
+    if (tg.showPopup) {
+        tg.showPopup({
+            title: 'Успех!',
+            message: message,
+            buttons: [{ type: 'ok' }]
+        });
+    } else {
+        alert(message);
     }
 }
 
@@ -184,11 +189,3 @@ function escapeHtml(unsafe) {
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
 }
-
-// Обработка изменений темы Telegram
-tg.onEvent('themeChanged', function() {
-    document.documentElement.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#ffffff');
-    document.documentElement.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color || '#000000');
-    document.documentElement.style.setProperty('--tg-theme-button-color', tg.themeParams.button_color || '#40a7e3');
-    document.documentElement.style.setProperty('--tg-theme-button-text-color', tg.themeParams.button_text_color || '#ffffff');
-});

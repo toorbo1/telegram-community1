@@ -3,9 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Web App</title>
+    <title>Telegram Community</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
 </head>
 <body>
     <div class="container">
@@ -33,14 +36,16 @@
             <h2>Добавить новый пост</h2>
             <form id="post-form">
                 <textarea id="post-content" placeholder="Введите текст поста..." required></textarea>
-                <button type="submit">Опубликовать</button>
+                <button type="submit">Опубликовать для всех</button>
             </form>
         </section>
 
         <!-- Лента постов -->
         <section class="posts-section">
             <h2>Последние посты</h2>
-            <div id="posts-container"></div>
+            <div id="posts-container">
+                <div class="loading">Загрузка постов...</div>
+            </div>
         </section>
     </div>
 
