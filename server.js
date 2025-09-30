@@ -18,6 +18,8 @@ app.use((req, res, next) => {
 
 // Инициализация SQLite базы
 const dbPath = process.env.DB_PATH || path.join(__dirname, 'database.sqlite');
+// остальной код без изменений
+// остальной код без изменений
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error('Error opening database:', err);
