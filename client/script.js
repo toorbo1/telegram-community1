@@ -1,17 +1,5 @@
-// Конфигурация Firebase - ЗАМЕНИТЕ на свою!
-const firebaseConfig = {
-    apiKey: "your-api-key",
-    authDomain: "your-project.firebaseapp.com",
-    databaseURL: "https://your-project-default-rtdb.firebaseio.com",
-    projectId: "your-project-id",
-    storageBucket: "your-project.appspot.com",
-    messagingSenderId: "123456789",
-    appId: "your-app-id"
-};
-
-// Инициализация Firebase
-const app = firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
+// 🔧 КОНФИГУРАЦИЯ - ЗАМЕНИ НА СВОЙ URL!
+const API_URL = 'https://your-app-name.railway.app/api'; // ЗАМЕНИ!
 
 // Инициализация Telegram Web App
 const tg = window.Telegram.WebApp;
@@ -24,8 +12,10 @@ const ADMIN_ID = 8036875641;
 
 // Инициализация приложения
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Initializing app...');
+    console.log('API URL:', API_URL);
     initializeApp();
-    setupRealtimePosts();
+    loadPosts();
 });
 
 // Инициализация Telegram Web App и данных пользователя
@@ -39,16 +29,18 @@ function initializeApp() {
             photoUrl: tgUser.photo_url || ''
         };
         
+        console.log('Telegram user:', currentUser);
         displayUserProfile();
         checkAdminRights();
     } else {
-        // Заглушка для тестирования
+        // Заглушка для тестирования вне Telegram
         currentUser = {
             id: 123456789,
             firstName: 'Тестовый',
             username: 'test_user',
             photoUrl: ''
         };
+        console.log('Test user:', currentUser);
         displayUserProfile();
         checkAdminRights();
     }
@@ -60,6 +52,7 @@ function displayUserProfile() {
 
     document.getElementById('user-first-name').textContent = currentUser.firstName;
     document.getElementById('user-username').textContent = currentUser.username;
+    document.getElementById('user-id').textContent = currentUser.id;
     
     const userPhoto = document.getElementById('user-photo');
     if (currentUser.photoUrl) {
@@ -69,15 +62,18 @@ function displayUserProfile() {
     }
     
     // Генерация реферальной ссылки
-    const referralLink = `https://t.me/share/url?url=https://yourdomain.com/ref/${currentUser.id}`;
+    const referralLink = `https://t.me/share/url?url=https://your-app.railway.app/ref/${currentUser.id}`;
     document.getElementById('referral-link').value = referralLink;
 }
 
 // Проверка прав администратора
 function checkAdminRights() {
     if (currentUser && currentUser.id === ADMIN_ID) {
+        console.log('User is ADMIN');
         document.getElementById('admin-section').style.display = 'block';
         setupAdminFeatures();
+    } else {
+        console.log('User is not admin');
     }
 }
 
@@ -90,57 +86,118 @@ function setupAdminFeatures() {
     });
 }
 
-// Добавление нового поста в Firebase
-function addNewPost() {
+// Загрузка постов с сервера
+async function loadPosts() {
+    console.log('Loading posts from:', `${API_URL}/posts`);
+    
+    const container = document.getElementById('posts-container');
+    container.innerHTML = '<div class="loading">Загрузка постов...</div>';
+    
+    try {
+        const response = await fetch(`${API_URL}/posts`);
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const posts = await response.json();
+        console.log('Loaded posts:', posts);
+        displayPosts(posts);
+        
+    } catch (error) {
+        console.error('Error loading posts:', error);
+        container.innerHTML = `
+            <div class="error">
+                Ошибка загрузки постов: ${error.message}
+                <br><button onclick="loadPosts()">Попробовать снова</button>
+            </div>
+        `;
+    }
+}
+
+// Добавление нового поста
+async function addNewPost() {
     const contentInput = document.getElementById('post-content');
     const content = contentInput.value.trim();
+    const formStatus = document.getElementById('form-status');
+    const submitButton = document.querySelector('#post-form button[type="submit"]');
     
-    if (!content) return;
+    if (!content) {
+        showFormStatus('Введите текст поста!', 'error');
+        return;
+    }
     
     const newPost = {
         content: content,
         author: currentUser.firstName,
         authorId: currentUser.id,
-        timestamp: new Date().toISOString(),
         isAdmin: true
     };
     
-    // Сохраняем пост в Firebase
-    const postsRef = database.ref('posts');
-    postsRef.push(newPost)
-        .then(() => {
-            contentInput.value = '';
-            showNotification('Пост опубликован для всех пользователей!');
-        })
-        .catch((error) => {
-            console.error('Ошибка:', error);
-            showNotification('Ошибка публикации поста');
+    console.log('Sending post:', newPost);
+    console.log('To URL:', `${API_URL}/posts`);
+    
+    // Блокируем кнопку
+    submitButton.disabled = true;
+    submitButton.textContent = 'Публикация...';
+    showFormStatus('Публикация поста...', 'loading');
+    
+    try {
+        const response = await fetch(`${API_URL}/posts`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(newPost)
         });
+
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Server error:', errorText);
+            throw new Error(`Ошибка сервера: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('Post created:', result);
+
+        // Очищаем форму
+        contentInput.value = '';
+        showFormStatus('Пост успешно опубликован для всех пользователей!', 'success');
+        showNotification('Пост опубликован для всех пользователей!');
+        
+        // Перезагружаем посты
+        setTimeout(() => {
+            loadPosts();
+            formStatus.innerHTML = '';
+        }, 2000);
+        
+    } catch (error) {
+        console.error('Error adding post:', error);
+        showFormStatus(`Ошибка: ${error.message}`, 'error');
+    } finally {
+        // Разблокируем кнопку
+        submitButton.disabled = false;
+        submitButton.textContent = 'Опубликовать для всех';
+    }
 }
 
-// Настройка реального времени для постов
-function setupRealtimePosts() {
-    const postsRef = database.ref('posts');
-    
-    postsRef.on('value', (snapshot) => {
-        const postsData = snapshot.val();
-        displayPosts(postsData);
-    });
+// Показать статус формы
+function showFormStatus(message, type) {
+    const formStatus = document.getElementById('form-status');
+    formStatus.innerHTML = `<div class="status-${type}">${message}</div>`;
 }
 
 // Отображение постов
-function displayPosts(postsData) {
+function displayPosts(posts) {
     const container = document.getElementById('posts-container');
     
-    if (!postsData) {
+    if (!posts || posts.length === 0) {
         container.innerHTML = '<p>Пока нет постов. Будьте первым!</p>';
         return;
     }
-    
-    // Преобразуем объект в массив и сортируем по времени
-    const posts = Object.entries(postsData)
-        .map(([id, post]) => ({ id, ...post }))
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     
     container.innerHTML = posts.map(post => `
         <div class="post">
@@ -182,6 +239,7 @@ function showNotification(message) {
 
 // Экранирование HTML для безопасности
 function escapeHtml(unsafe) {
+    if (!unsafe) return '';
     return unsafe
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")

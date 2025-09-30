@@ -6,9 +6,6 @@
     <title>Telegram Community</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
 </head>
 <body>
     <div class="container">
@@ -21,6 +18,7 @@
                     <div class="profile-details">
                         <p><strong>Имя:</strong> <span id="user-first-name"></span></p>
                         <p><strong>Username:</strong> @<span id="user-username"></span></p>
+                        <p><strong>ID:</strong> <span id="user-id"></span></p>
                         <p><strong>Реферальная ссылка:</strong></p>
                         <div class="referral-link">
                             <input type="text" id="referral-link" readonly>
@@ -38,11 +36,15 @@
                 <textarea id="post-content" placeholder="Введите текст поста..." required></textarea>
                 <button type="submit">Опубликовать для всех</button>
             </form>
+            <div id="form-status"></div>
         </section>
 
         <!-- Лента постов -->
         <section class="posts-section">
-            <h2>Последние посты</h2>
+            <div class="posts-header">
+                <h2>Последние посты</h2>
+                <button onclick="loadPosts()" class="refresh-btn">Обновить</button>
+            </div>
             <div id="posts-container">
                 <div class="loading">Загрузка постов...</div>
             </div>
