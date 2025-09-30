@@ -3,339 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Community</title>
+    <title>Telegram Web App</title>
+    <link rel="stylesheet" href="style.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .container { max-width: 600px; margin: 0 auto; }
-        .card { 
-            background: rgba(255, 255, 255, 0.95);
-            padding: 25px; 
-            margin: 15px 0; 
-            border-radius: 20px; 
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            backdrop-filter: blur(10px);
-        }
-        button { 
-            background: linear-gradient(135deg, #0088cc 0%, #006699 100%);
-            color: white; 
-            border: none; 
-            padding: 15px 25px; 
-            margin: 10px 5px; 
-            border-radius: 12px; 
-            cursor: pointer; 
-            font-size: 16px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-        button:hover { 
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-        button.delete { 
-            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-        }
-        .hidden { display: none; }
-        .post { 
-            border: 2px solid #f1f3f4; 
-            padding: 20px; 
-            margin: 15px 0; 
-            border-radius: 15px; 
-            background: white;
-            transition: all 0.3s ease;
-        }
-        .post:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-        }
-        .user-info { 
-            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-            padding: 20px; 
-            border-radius: 15px; 
-            margin: 15px 0; 
-        }
-        .user-avatar { 
-            width: 60px; 
-            height: 60px; 
-            border-radius: 50%; 
-            margin-right: 15px;
-            border: 3px solid #0088cc;
-        }
-        .user-details { display: flex; align-items: center; }
-        h1 { 
-            color: #333; 
-            text-align: center; 
-            margin-bottom: 20px;
-            font-size: 2.2em;
-        }
-        h2 { color: #0088cc; margin-bottom: 15px; }
-        input, textarea { 
-            width: 100%; 
-            padding: 15px; 
-            margin: 10px 0; 
-            border: 2px solid #e9ecef; 
-            border-radius: 10px; 
-            font-size: 16px;
-        }
-        input:focus, textarea:focus { 
-            border-color: #0088cc;
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(0, 136, 204, 0.1);
-        }
-        .admin-badge {
-            background: #dc3545;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            margin-left: 10px;
-        }
-    </style>
 </head>
 <body>
     <div class="container">
-        <div class="card">
-            <h1>🤖 Telegram Community</h1>
-            <div id="userInfo"></div>
-        </div>
-
-        <div id="adminPanel" class="card hidden">
-            <h2>⚙️ Панель администратора</h2>
-            <input type="text" id="postTitle" placeholder="📝 Заголовок поста">
-            <textarea id="postContent" placeholder="📄 Текст поста" rows="4"></textarea>
-            <button onclick="createPost()">📤 Опубликовать</button>
-        </div>
-
-        <div class="card">
-            <h2>📰 Последние новости</h2>
-            <div id="postsContainer">⏳ Загрузка...</div>
-        </div>
-    </div>
-
-    <script>
-        // === КОНФИГУРАЦИЯ FIREBASE ===
-        // ЗАМЕНИТЕ ЭТИ ДАННЫЕ НА ВАШИ С FIREBASE CONSOLE
-        const firebaseConfig = {
-            apiKey: "your-api-key-here",
-            authDomain: "your-project.firebaseapp.com",
-            projectId: "your-project-id",
-            storageBucket: "your-project.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "your-app-id"
-        };
-
-        // Инициализация Firebase
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
-        const db = firebase.firestore();
-
-        const ADMIN_ID = 8036875641;
-        let currentUser = null;
-
-        // === ОСНОВНАЯ ЛОГИКА ===
-
-        // Инициализация Telegram Web App
-        function initTelegram() {
-            if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
-                const tg = window.Telegram.WebApp;
-                tg.expand();
-                tg.ready();
-                
-                console.log('✅ Telegram Web App подключен');
-                
-                // Получаем реальные данные пользователя из Telegram
-                if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                    const tgUser = tg.initDataUnsafe.user;
-                    currentUser = {
-                        id: tgUser.id,
-                        first_name: tgUser.first_name,
-                        last_name: tgUser.last_name || '',
-                        username: tgUser.username || '',
-                        photo_url: tgUser.photo_url || '',
-                        language_code: tgUser.language_code || 'ru'
-                    };
-                    
-                    console.log('👤 Пользователь Telegram:', currentUser);
-                    showUserInfo();
-                    loadPostsRealtime();
-                    
-                    // Если это админ - показываем панель
-                    if (currentUser.id === ADMIN_ID) {
-                        document.getElementById('adminPanel').classList.remove('hidden');
-                        console.log('👑 Обнаружен администратор');
-                    }
-                } else {
-                    showDemoMode();
-                }
-            } else {
-                showDemoMode();
-            }
-        }
-
-        // Демо-режим для браузера
-        function showDemoMode() {
-            console.log('🌐 Режим демонстрации (не в Telegram)');
-            currentUser = {
-                id: Math.floor(Math.random() * 1000000000),
-                first_name: 'Демо',
-                last_name: 'Пользователь',
-                username: 'demo_user'
-            };
-            showUserInfo();
-            loadPostsRealtime();
-            
-            // Кнопка для демо-админа
-            const demoBtn = document.createElement('button');
-            demoBtn.textContent = '👑 Демо: Войти как админ';
-            demoBtn.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
-            demoBtn.onclick = function() {
-                currentUser = {
-                    id: ADMIN_ID,
-                    first_name: 'Администратор',
-                    last_name: 'Системы',
-                    username: 'admin'
-                };
-                showUserInfo();
-                document.getElementById('adminPanel').classList.remove('hidden');
-                alert('✅ Режим администратора активирован!');
-            };
-            document.querySelector('.card').appendChild(demoBtn);
-        }
-
-        // Показать информацию пользователя
-        function showUserInfo() {
-            const userInfo = document.getElementById('userInfo');
-            userInfo.innerHTML = `
-                <div class="user-info">
-                    <div class="user-details">
-                        ${currentUser.photo_url ? 
-                            `<img src="${currentUser.photo_url}" class="user-avatar" alt="Avatar">` : 
-                            '<div class="user-avatar" style="background:#0088cc; color:white; display:flex; align-items:center; justify-content:center; font-size:24px;">👤</div>'
-                        }
-                        <div>
-                            <h3 style="margin:0;">
-                                ${currentUser.first_name} ${currentUser.last_name}
-                                ${currentUser.id === ADMIN_ID ? '<span class="admin-badge">АДМИН</span>' : ''}
-                            </h3>
-                            <p style="margin:5px 0; color:#666;">ID: ${currentUser.id}</p>
-                            ${currentUser.username ? `<p style="margin:0; color:#666;">@${currentUser.username}</p>` : ''}
+        <!-- Профиль пользователя -->
+        <section class="profile-section">
+            <h1>Ваш профиль</h1>
+            <div id="user-profile">
+                <div class="profile-info">
+                    <img id="user-photo" src="" alt="Фото профиля" class="profile-photo">
+                    <div class="profile-details">
+                        <p><strong>Имя:</strong> <span id="user-first-name"></span></p>
+                        <p><strong>Username:</strong> @<span id="user-username"></span></p>
+                        <p><strong>Реферальная ссылка:</strong></p>
+                        <div class="referral-link">
+                            <input type="text" id="referral-link" readonly>
+                            <button onclick="copyReferralLink()">Копировать</button>
                         </div>
                     </div>
                 </div>
-            `;
-        }
+            </div>
+        </section>
 
-        // Загрузка постов в реальном времени
-        function loadPostsRealtime() {
-            db.collection("posts")
-                .orderBy("createdAt", "desc")
-                .limit(20)
-                .onSnapshot((snapshot) => {
-                    const postsContainer = document.getElementById('postsContainer');
-                    const posts = [];
-                    
-                    snapshot.forEach((doc) => {
-                        const post = doc.data();
-                        posts.push({
-                            id: doc.id,
-                            ...post,
-                            // Если createdAt - это timestamp, конвертируем в Date
-                            date: post.createdAt ? post.createdAt.toDate() : new Date()
-                        });
-                    });
+        <!-- Форма добавления поста (только для админа) -->
+        <section class="admin-section" id="admin-section" style="display: none;">
+            <h2>Добавить новый пост</h2>
+            <form id="post-form">
+                <textarea id="post-content" placeholder="Введите текст поста..." required></textarea>
+                <button type="submit">Опубликовать</button>
+            </form>
+        </section>
 
-                    if (posts.length === 0) {
-                        postsContainer.innerHTML = '<div class="post">📝 Пока нет новостей. Будьте первым!</div>';
-                        return;
-                    }
+        <!-- Лента постов -->
+        <section class="posts-section">
+            <h2>Последние посты</h2>
+            <div id="posts-container"></div>
+        </section>
+    </div>
 
-                    postsContainer.innerHTML = posts.map(post => `
-                        <div class="post">
-                            <h3 style="color: #0088cc; margin-bottom: 10px;">${post.title}</h3>
-                            <p style="line-height: 1.6; margin-bottom: 10px;">${post.content}</p>
-                            <small style="color: #666;">
-                                📅 ${post.date.toLocaleDateString('ru-RU')} 
-                                🕒 ${post.date.toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}
-                                ${post.authorName ? `<br>👤 Автор: ${post.authorName}` : ''}
-                            </small>
-                            ${currentUser && currentUser.id === ADMIN_ID ? 
-                                `<br><button onclick="deletePost('${post.id}')" class="delete">🗑️ Удалить</button>` : ''}
-                        </div>
-                    `).join('');
-                }, (error) => {
-                    console.error("❌ Ошибка загрузки постов:", error);
-                    document.getElementById('postsContainer').innerHTML = 
-                        '<div class="post" style="color: #dc3545;">❌ Ошибка загрузки новостей. Проверьте подключение.</div>';
-                });
-        }
-
-        // Создать пост
-        async function createPost() {
-            if (!currentUser || currentUser.id !== ADMIN_ID) {
-                alert('❌ Только администратор может публиковать посты');
-                return;
-            }
-
-            const title = document.getElementById('postTitle').value.trim();
-            const content = document.getElementById('postContent').value.trim();
-
-            if (!title || !content) {
-                alert('❌ Заполните все поля');
-                return;
-            }
-
-            try {
-                await db.collection("posts").add({
-                    title: title,
-                    content: content,
-                    authorId: currentUser.id,
-                    authorName: currentUser.first_name + ' ' + currentUser.last_name,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                
-                // Очистить форму
-                document.getElementById('postTitle').value = '';
-                document.getElementById('postContent').value = '';
-                
-                alert('✅ Пост опубликован! Все пользователи увидят его в реальном времени.');
-                
-            } catch (error) {
-                console.error("❌ Ошибка создания поста:", error);
-                alert('❌ Ошибка публикации поста: ' + error.message);
-            }
-        }
-
-        // Удалить пост
-        async function deletePost(postId) {
-            if (!currentUser || currentUser.id !== ADMIN_ID) return;
-            
-            if (!confirm('❓ Вы уверены, что хотите удалить этот пост?')) return;
-            
-            try {
-                await db.collection("posts").doc(postId).delete();
-                alert('✅ Пост удален!');
-            } catch (error) {
-                console.error("❌ Ошибка удаления поста: ", error);
-                alert('❌ Ошибка удаления поста');
-            }
-        }
-
-        // Запуск при загрузке
-        document.addEventListener('DOMContentLoaded', initTelegram);
-
-        // Глобальные функции
-        window.createPost = createPost;
-        window.deletePost = deletePost;
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
