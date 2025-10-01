@@ -129,7 +129,16 @@ app.get('/', (req, res) => {
         }
     });
 });
+// После подключения к базе данных добавь:
+// Раздаем статические файлы (фронтенд)
+app.use(express.static('.'));
 
+// Твои API роуты остаются как есть
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'OK', message: 'API работает!' });
+});
+
+// ... остальные API роуты
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
