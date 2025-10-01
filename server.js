@@ -16,7 +16,7 @@ app.use((req, res, next) => {
     next();
 });
 
-// Раздаем статические файлы (фронтенд) - ДОЛЖНО БЫТЬ ПЕРВЫМ!
+// Раздаем статические файлы (фронтенд)
 app.use(express.static('.'));
 
 // Инициализация SQLite базы
@@ -29,8 +29,9 @@ const db = new sqlite3.Database(dbPath, (err) => {
     }
 });
 
-// Создаем таблицу постов
+// Создаем таблицы
 db.serialize(() => {
+    // Таблица постов
     db.run(`CREATE TABLE IF NOT EXISTS posts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         content TEXT NOT NULL,
@@ -40,19 +41,54 @@ db.serialize(() => {
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
     )`, (err) => {
         if (err) {
-            console.error('Error creating table:', err);
+            console.error('Error creating posts table:', err);
         } else {
             console.log('Posts table ready');
         }
     });
+
+    // Таблица чатов
+    db.run(`CREATE TABLE IF NOT EXISTS chats (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        user_name TEXT NOT NULL,
+        last_message TEXT,
+        unread BOOLEAN DEFAULT 1,
+        last_activity DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`, (err) => {
+        if (err) {
+            console.error('Error creating chats table:', err);
+        } else {
+            console.log('Chats table ready');
+        }
+    });
+
+    // Таблица сообщений
+    db.run(`CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        chat_id INTEGER NOT NULL,
+        sender_id INTEGER NOT NULL,
+        message TEXT NOT NULL,
+        is_admin BOOLEAN DEFAULT 0,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(chat_id) REFERENCES chats(id)
+    )`, (err) => {
+        if (err) {
+            console.error('Error creating messages table:', err);
+        } else {
+            console.log('Messages table ready');
+        }
+    });
 });
+
+const ADMIN_ID = 8036875641;
 
 // API Роуты
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({ 
         status: 'OK', 
-        message: 'Telegram Community API is running!',
+        message: 'LinkGold API is running!',
         timestamp: new Date().toISOString()
     });
 });
@@ -107,7 +143,7 @@ app.post('/api/posts', (req, res) => {
 app.delete('/api/posts/:id', (req, res) => {
     const { authorId } = req.body;
     
-    if (authorId !== 8036875641) {
+    if (authorId !== ADMIN_ID) {
         return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -119,7 +155,18 @@ app.delete('/api/posts/:id', (req, res) => {
     });
 });
 
-// Для корневого пути - отдаем index.html (должно быть ПОСЛЕДНИМ!)
+// Получить все чаты (для админа)
+app.get('/api/chats', (req, res) => {
+    db.all("SELECT * FROM chats ORDER BY last_activity DESC", (err, rows) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json(rows);
+    });
+});
+
+// Для корневого пути - отдаем index.html
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
