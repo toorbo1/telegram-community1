@@ -16,10 +16,11 @@ app.use((req, res, next) => {
     next();
 });
 
+// Раздаем статические файлы (фронтенд) - ДОЛЖНО БЫТЬ ПЕРВЫМ!
+app.use(express.static('.'));
+
 // Инициализация SQLite базы
 const dbPath = process.env.DB_PATH || path.join(__dirname, 'database.sqlite');
-// остальной код без изменений
-// остальной код без изменений
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error('Error opening database:', err);
@@ -46,7 +47,16 @@ db.serialize(() => {
     });
 });
 
-// Роуты
+// API Роуты
+// Health check
+app.get('/api/health', (req, res) => {
+    res.json({ 
+        status: 'OK', 
+        message: 'Telegram Community API is running!',
+        timestamp: new Date().toISOString()
+    });
+});
+
 // Получить все посты
 app.get('/api/posts', (req, res) => {
     console.log('GET /api/posts request');
@@ -109,36 +119,11 @@ app.delete('/api/posts/:id', (req, res) => {
     });
 });
 
-// Health check
-app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'OK', 
-        message: 'Telegram Community API is running!',
-        timestamp: new Date().toISOString()
-    });
-});
-
+// Для корневого пути - отдаем index.html (должно быть ПОСЛЕДНИМ!)
 app.get('/', (req, res) => {
-    res.json({ 
-        message: 'Telegram Community API',
-        endpoints: {
-            health: '/api/health',
-            getPosts: 'GET /api/posts',
-            createPost: 'POST /api/posts',
-            deletePost: 'DELETE /api/posts/:id'
-        }
-    });
-});
-// После подключения к базе данных добавь:
-// Раздаем статические файлы (фронтенд)
-app.use(express.static('.'));
-
-// Твои API роуты остаются как есть
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'OK', message: 'API работает!' });
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// ... остальные API роуты
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
