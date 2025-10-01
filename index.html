@@ -1640,6 +1640,74 @@
             border-radius: 50%;
         }
 
+        /* Стили для страниц (вместо модальных окон) */
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .page-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .back-button {
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 24px;
+            margin-right: 12px;
+            cursor: pointer;
+        }
+
+        .page-title {
+            font-size: 24px;
+            font-weight: 700;
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        /* Стили для проверки заданий */
+        .verification-item {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .verification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .verification-user {
+            font-weight: 600;
+        }
+
+        .verification-task {
+            color: var(--text-secondary);
+        }
+
+        .verification-image {
+            width: 100%;
+            border-radius: 12px;
+            margin-bottom: 12px;
+        }
+
+        .verification-actions {
+            display: flex;
+            gap: 12px;
+        }
+
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -1722,7 +1790,7 @@
                 </div>
 
                 <!-- Как работает -->
-                <div class="exchange-card fade-in" onclick="showHowItWorksModal()">
+                <div class="exchange-card fade-in" onclick="showHowItWorksPage()">
                     <div class="exchange-icon">
                         <div class="video-container">
                             <video class="video-icon" autoplay muted loop playsinline>
@@ -1762,6 +1830,7 @@
                         <button class="admin-btn" onclick="showAdminChats()">Чаты с пользователями</button>
                         <button class="admin-btn" onclick="showPostManagement()">Управление постами</button>
                         <button class="admin-btn" onclick="showTaskManagement()">Управление заданиями</button>
+                        <button class="admin-btn" onclick="showTaskVerification()">Проверка заданий</button>
                     </div>
                     
                     <!-- Чаты с пользователями -->
@@ -1772,7 +1841,9 @@
                     <!-- Управление постами -->
                     <div id="post-management" class="admin-form" style="display: none;">
                         <h3>Добавить пост для всех пользователей</h3>
+                        <input type="text" class="admin-input" id="post-title" placeholder="Заголовок поста">
                         <textarea class="admin-textarea" id="post-content" placeholder="Введите текст поста..."></textarea>
+                        <input type="file" class="admin-input" id="post-image" accept="image/*">
                         <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
                         
                         <h3 style="margin-top: 20px;">Существующие посты</h3>
@@ -1785,18 +1856,23 @@
                     <div id="task-management" class="admin-form" style="display: none;">
                         <h3>Добавить задание</h3>
                         <input type="text" class="admin-input" id="task-title" placeholder="Название задания">
-                        <select class="admin-input" id="task-category">
-                            <option value="social">Соцсети</option>
-                            <option value="subscribe">Подписки</option>
-                            <option value="view">Просмотры</option>
-                            <option value="comment">Комментарии</option>
-                            <option value="repost">Репосты</option>
-                        </select>
+                        <textarea class="admin-textarea" id="task-description" placeholder="Описание задания"></textarea>
                         <input type="text" class="admin-input" id="task-price" placeholder="Цена (в рублях)">
                         <input type="text" class="admin-input" id="task-time" placeholder="Время выполнения">
-                        <input type="text" class="admin-input" id="task-link" placeholder="Ссылка для выполнения">
-                        <textarea class="admin-textarea" id="task-description" placeholder="Описание задания"></textarea>
+                        <input type="text" class="admin-input" id="task-difficulty" placeholder="Сложность">
+                        <input type="number" class="admin-input" id="task-people" placeholder="Сколько человек должно выполнить">
+                        <input type="text" class="admin-input" id="task-repost" placeholder="Время повторной публикации">
+                        <input type="url" class="admin-input" id="task-url" placeholder="URL задания">
+                        <input type="file" class="admin-input" id="task-image" accept="image/*">
                         <button class="admin-submit" onclick="addTask()">Добавить задание</button>
+                    </div>
+
+                    <!-- Проверка заданий -->
+                    <div id="task-verification" class="admin-form" style="display: none;">
+                        <h3>Задания на проверке</h3>
+                        <div id="verification-list">
+                            <!-- Задания на проверке будут загружаться динамически -->
+                        </div>
                     </div>
                 </div>
 
@@ -1815,9 +1891,10 @@
             <!-- Вкладка заданий -->
             <div id="tasks-tab" class="tab-content tasks-tab">
                 <div class="tasks-tabs">
-                    <div class="task-tab active" onclick="showTaskTab('new')">Новые задания</div>
-                    <div class="task-tab" id="confirmation-tab" onclick="showTaskTab('confirmation')">Подтверждение задания</div>
-                    <div class="task-tab" onclick="showTaskTab('completed')">Выполненные задания</div>
+                    <div class="task-tab active" onclick="showTaskCategory('new')">Новые</div>
+                    <div class="task-tab" id="confirmation-tab" onclick="showTaskCategory('confirmation')">Подтверждение</div>
+                    <div class="task-tab" onclick="showTaskCategory('completed')">Выполненные</div>
+                    <div class="task-tab" onclick="showTaskCategory('rejected')">Отклоненные</div>
                 </div>
                 
                 <div class="search-container fade-in">
@@ -1848,6 +1925,11 @@
                 <div id="completed-tasks" class="tasks-grid" style="display: none;">
                     <!-- Задания будут добавлены через JavaScript -->
                 </div>
+
+                <!-- Отклоненные задания -->
+                <div id="rejected-tasks" class="tasks-grid" style="display: none;">
+                    <!-- Задания будут добавлены через JavaScript -->
+                </div>
             </div>
             
             <!-- Вкладка профиля -->
@@ -1860,7 +1942,7 @@
                     <div class="profile-info">
                         <div class="profile-name" id="user-first-name">Имя</div>
                         <div class="profile-id">TG: @<span id="user-username">username</span></div>
-                        <div class="profile-level">Уровень <span id="user-level">1</span></div>
+                        <div class="profile-level">Уровень <span id="user-level">0</span></div>
                     </div>
                 </div>
                 
@@ -1928,9 +2010,19 @@
                 <div class="profile-section fade-in">
                     <div class="section-title">Действия</div>
                     <div class="profile-actions">
-                        <div class="profile-action" onclick="showWithdrawModal()">
+                        <div class="profile-action" onclick="showWithdrawPage()">
                             <div class="action-icon">💳</div>
                             <div class="action-text">Вывод средств</div>
+                            <div class="action-arrow">›</div>
+                        </div>
+                        <div class="profile-action" onclick="showHowItWorksPage()">
+                            <div class="action-icon">❓</div>
+                            <div class="action-text">Как это работает</div>
+                            <div class="action-arrow">›</div>
+                        </div>
+                        <div class="profile-action" onclick="showAboutPage()">
+                            <div class="action-icon">ℹ️</div>
+                            <div class="action-text">О приложении</div>
                             <div class="action-arrow">›</div>
                         </div>
                     </div>
@@ -1945,11 +2037,166 @@
                             <div class="action-text">Поддержка</div>
                             <div class="action-arrow">›</div>
                         </div>
-                        <div class="profile-action" onclick="showAboutPage()">
-                            <div class="action-icon">ℹ️</div>
-                            <div class="action-text">О приложении</div>
-                            <div class="action-arrow">›</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Вкладка админа (отдельная) -->
+            <div id="admin-tab" class="tab-content">
+                <div class="page-header">
+                    <button class="back-button" onclick="showMainTab()">←</button>
+                    <div class="page-title">Панель администратора</div>
+                </div>
+
+                <div class="admin-panel">
+                    <div class="admin-buttons">
+                        <button class="admin-btn" onclick="showAdminSection('posts')">Управление постами</button>
+                        <button class="admin-btn" onclick="showAdminSection('tasks')">Управление заданиями</button>
+                        <button class="admin-btn" onclick="showAdminSection('verification')">Проверка заданий</button>
+                        <button class="admin-btn" onclick="showAdminSection('support')">Поддержка</button>
+                    </div>
+                    
+                    <!-- Управление постами -->
+                    <div id="admin-posts-section" class="admin-section">
+                        <h3>Добавить пост для всех пользователей</h3>
+                        <div class="admin-form">
+                            <input type="text" class="admin-input" id="admin-post-title" placeholder="Заголовок поста">
+                            <textarea class="admin-textarea" id="admin-post-content" placeholder="Введите текст поста..."></textarea>
+                            <input type="file" class="admin-input" id="admin-post-image" accept="image/*">
+                            <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
                         </div>
+                        
+                        <h3 style="margin-top: 20px;">Существующие посты</h3>
+                        <div id="admin-posts-list">
+                            <!-- Посты будут загружаться динамически -->
+                        </div>
+                    </div>
+
+                    <!-- Управление заданиями -->
+                    <div id="admin-tasks-section" class="admin-section" style="display: none;">
+                        <h3>Добавить задание</h3>
+                        <div class="admin-form">
+                            <input type="text" class="admin-input" id="admin-task-title" placeholder="Название задания">
+                            <textarea class="admin-textarea" id="admin-task-description" placeholder="Описание задания"></textarea>
+                            <input type="text" class="admin-input" id="admin-task-price" placeholder="Цена (в рублях)">
+                            <input type="text" class="admin-input" id="admin-task-time" placeholder="Время выполнения">
+                            <input type="text" class="admin-input" id="admin-task-difficulty" placeholder="Сложность">
+                            <input type="number" class="admin-input" id="admin-task-people" placeholder="Сколько человек должно выполнить">
+                            <input type="text" class="admin-input" id="admin-task-repost" placeholder="Время повторной публикации">
+                            <input type="url" class="admin-input" id="admin-task-url" placeholder="URL задания">
+                            <input type="file" class="admin-input" id="admin-task-image" accept="image/*">
+                            <button class="admin-submit" onclick="addTask()">Добавить задание</button>
+                        </div>
+                    </div>
+
+                    <!-- Проверка заданий -->
+                    <div id="admin-verification-section" class="admin-section" style="display: none;">
+                        <h3>Задания на проверке</h3>
+                        <div id="admin-verification-list">
+                            <!-- Задания на проверке будут загружаться динамически -->
+                        </div>
+                    </div>
+
+                    <!-- Поддержка -->
+                    <div id="admin-support-section" class="admin-section" style="display: none;">
+                        <h3>Чаты с пользователями</h3>
+                        <div id="admin-chats-list">
+                            <!-- Чаты будут загружаться динамически -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Страница "Как работает" -->
+            <div id="how-it-works-page" class="page">
+                <div class="page-header">
+                    <button class="back-button" onclick="showProfileTab()">←</button>
+                    <div class="page-title">Как работает LinkGold</div>
+                </div>
+
+                <div class="card">
+                    <p class="about-text">LinkGold — это платформа для заработка на выполнении простых заданий и активности в социальных сетях.</p>
+                    
+                    <p class="about-text">Основные принципы работы:</p>
+                    <ul class="about-text" style="padding-left: 20px; margin-bottom: 16px;">
+                        <li><strong>Выбирайте задания</strong> из доступных в вашем профиле</li>
+                        <li><strong>Выполняйте</strong> их согласно инструкции</li>
+                        <li><strong>Получайте оплату</strong> сразу после проверки</li>
+                        <li><strong>Выводите средства</strong> удобным способом</li>
+                    </ul>
+                    
+                    <p class="about-text">Виды заданий:</p>
+                    <ul class="about-text" style="padding-left: 20px; margin-bottom: 16px;">
+                        <li>Подписки на каналы и аккаунты</li>
+                        <li>Просмотры и лайки</li>
+                        <li>Репосты и комментарии</li>
+                        <li>Участие в опросах</li>
+                    </ul>
+
+                    <div class="about-features">
+                        <div class="about-feature">
+                            <div class="feature-icon">🚀</div>
+                            <div class="feature-text">Быстрый старт</div>
+                        </div>
+                        <div class="about-feature">
+                            <div class="feature-icon">💎</div>
+                            <div class="feature-text">Честные условия</div>
+                        </div>
+                        <div class="about-feature">
+                            <div class="feature-icon">🛡️</div>
+                            <div class="feature-text">Надежная защита</div>
+                        </div>
+                        <div class="about-feature">
+                            <div class="feature-icon">📈</div>
+                            <div class="feature-text">Постоянный рост</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Страница "О приложении" -->
+            <div id="about-page" class="page">
+                <div class="page-header">
+                    <button class="back-button" onclick="showProfileTab()">←</button>
+                    <div class="page-title">О LinkGold</div>
+                </div>
+
+                <div class="card">
+                    <p class="about-text">LinkGold — это инновационная платформа для заработка, которая позволяет каждому пользователю монетизировать свою активность в интернете. Мы создали удобный и прозрачный сервис, где вы можете выполнять интересные задания и получать за это достойное вознаграждение.</p>
+                    
+                    <p class="about-text">Наша миссия — предоставить возможность дополнительного заработка для всех, кто готов проявить активность и выполнять простые задачи. Мы верим, что каждый должен иметь возможность монетизировать свое время и усилия, проведенные в интернете.</p>
+                    
+                    <p class="about-text">Мы постоянно работаем над улучшением сервиса, добавляем новые задания и возможности для заработка. Наша команда заботится о каждом пользователе и стремится создать лучшие условия для взаимовыгодного сотрудничества.</p>
+                    
+                    <div class="about-footer">
+                        LinkGold © 2023. Все права защищены.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Страница вывода средств -->
+            <div id="withdraw-page" class="page">
+                <div class="page-header">
+                    <button class="back-button" onclick="showProfileTab()">←</button>
+                    <div class="page-title">Вывод средств</div>
+                </div>
+
+                <div class="card">
+                    <div class="balance-amount" id="withdraw-balance">0 ₽</div>
+                    <p class="about-text" style="text-align: center; margin-bottom: 20px;">Доступно для вывода</p>
+
+                    <div class="admin-form">
+                        <h3>Запрос на вывод</h3>
+                        <input type="number" class="admin-input" id="withdraw-amount" placeholder="Сумма вывода">
+                        <select class="admin-input" id="withdraw-method">
+                            <option value="">Выберите способ вывода</option>
+                            <option value="card">Банковская карта</option>
+                            <option value="qiwi">QIWI Кошелек</option>
+                            <option value="yoomoney">ЮMoney</option>
+                            <option value="crypto">Криптовалюта</option>
+                        </select>
+                        <input type="text" class="admin-input" id="withdraw-details" placeholder="Реквизиты для вывода">
+                        <button class="admin-submit" onclick="submitWithdraw()">Заказать выплату</button>
                     </div>
                 </div>
             </div>
@@ -1969,6 +2216,10 @@
                 <div class="nav-icon">👤</div>
                 <div class="nav-label">Профиль</div>
             </div>
+            <div class="nav-item" id="admin-nav-item" onclick="showAdminTab()" style="display: none;">
+                <div class="nav-icon">⚙️</div>
+                <div class="nav-label">Админ</div>
+            </div>
         </nav>
     </div>
 
@@ -1986,144 +2237,30 @@
         </div>
     </div>
 
-    <div class="modal" id="how-it-works-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-title">⚡ Как работает LinkGold</div>
-                <button class="modal-close" onclick="closeModal('how-it-works-modal')">×</button>
-            </div>
-            <div class="modal-body">
-                <p class="info-text">LinkGold — это платформа для заработка на выполнении простых заданий и активности в социальных сетях.</p>
-                
-                <p class="info-text">Основные принципы работы:</p>
-                <ul class="info-list">
-                    <li><span class="highlight">Выбирайте задания</span> из доступных в вашем профиле</li>
-                    <li><span class="highlight">Выполняйте</span> их согласно инструкции</li>
-                    <li><span class="highlight">Получайте оплату</span> сразу после проверки</li>
-                    <li><span class="highlight">Выводите средства</span> удобным способом</li>
-                </ul>
-                
-                <p class="info-text">Виды заданий:</p>
-                <ul class="info-list">
-                    <li>Подписки на каналы и аккаунты</li>
-                    <li>Просмотры и лайки</li>
-                    <li>Репосты и комментарии</li>
-                    <li>Участие в опросах</li>
-                </ul>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal" id="level-info-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-title">📊 Система уровней</div>
-                <button class="modal-close" onclick="closeModal('level-info-modal')">×</button>
-            </div>
-            <div class="modal-body">
-                <p class="info-text">Уровень повышается за каждые 10 выполненных заданий:</p>
-                
-                <div class="level-list">
-                    <div class="level-item">
-                        <span class="level-number">1 уровень</span>
-                        <span class="level-requirement">0-10 заданий</span>
-                    </div>
-                    <div class="level-item">
-                        <span class="level-number">2 уровень</span>
-                        <span class="level-requirement">11-20 заданий</span>
-                    </div>
-                    <div class="level-item">
-                        <span class="level-number">3 уровень</span>
-                        <span class="level-requirement">21-30 заданий</span>
-                    </div>
-                    <div class="level-item">
-                        <span class="level-number">4 уровень</span>
-                        <span class="level-requirement">31-40 заданий</span>
-                    </div>
-                    <div class="level-item">
-                        <span class="level-number">5 уровень</span>
-                        <span class="level-requirement">41-50 заданий</span>
-                    </div>
+    <div class="modal" id="prices-modal">
+        <div class="prices-content">
+            <div class="prices-title">💰 Стоимость размещения</div>
+            <div class="price-grid">
+                <div class="price-item">
+                    <span class="price-time">1 час</span>
+                    <span class="price-amount">200 ₽</span>
                 </div>
-                
-                <p class="info-text">Чем выше ваш уровень, тем больше заданий и выше оплата!</p>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal" id="referral-info-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-title">👥 Реферальная программа</div>
-                <button class="modal-close" onclick="closeModal('referral-info-modal')">×</button>
-            </div>
-            <div class="modal-body">
-                <p class="info-text">Приглашайте друзей и получайте бонусы!</p>
-                
-                <div class="info-text">
-                    <strong>Как это работает:</strong>
-                    <ul>
-                        <li>Делитесь своим реферальным кодом с друзьями</li>
-                        <li>Они регистрируются по вашему коду</li>
-                        <li>Вы получаете 10% от их заработка</li>
-                        <li>Бонусы начисляются мгновенно</li>
-                    </ul>
+                <div class="price-item">
+                    <span class="price-time">3 часа</span>
+                    <span class="price-amount">600 ₽</span>
                 </div>
-                
-                <div class="info-text">
-                    <strong>Ваши преимущества:</strong>
-                    <ul>
-                        <li>Пассивный заработок без усилий</li>
-                        <li>Нет ограничений на количество приглашенных</li>
-                        <li>Вывод реферальных бонусов доступен сразу</li>
-                    </ul>
+                <div class="price-item">
+                    <span class="price-time">1 день</span>
+                    <span class="price-amount">4 500 ₽</span>
                 </div>
-                
-                <div class="referral-code">
-                    <div class="referral-label">Ваш реферальный код</div>
-                    <div class="code-value" id="modal-referral-code">GOLD123456</div>
-                    <button class="copy-btn" onclick="copyReferralCode()">Скопировать код</button>
+                <div class="price-item">
+                    <span class="price-time">7 дней</span>
+                    <span class="price-amount">20 000 ₽</span>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <div class="modal" id="about-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-title">ℹ️ О LinkGold</div>
-                <button class="modal-close" onclick="closeModal('about-modal')">×</button>
-            </div>
-            <div class="modal-body">
-                <p class="info-text">LinkGold — это инновационная платформа для заработка, которая позволяет каждому пользователю монетизировать свою активность в интернете. Мы создали удобный и прозрачный сервис, где вы можете выполнять интересные задания и получать за это достойное вознаграждение.</p>
-                
-                <p class="info-text">Наша миссия — предоставить возможность дополнительного заработка для всех, кто готов проявить активность и выполнять простые задачи. Мы верим, что каждый должен иметь возможность монетизировать свое время и усилия, проведенные в интернете.</p>
-                
-                <div class="about-features">
-                    <div class="about-feature">
-                        <div class="feature-icon">🚀</div>
-                        <div class="feature-text">Быстрый старт</div>
-                    </div>
-                    <div class="about-feature">
-                        <div class="feature-icon">💎</div>
-                        <div class="feature-text">Честные условия</div>
-                    </div>
-                    <div class="about-feature">
-                        <div class="feature-icon">🛡️</div>
-                        <div class="feature-text">Надежная защита</div>
-                    </div>
-                    <div class="about-feature">
-                        <div class="feature-icon">📈</div>
-                        <div class="feature-text">Постоянный рост</div>
-                    </div>
-                </div>
-                
-                <p class="info-text">Мы постоянно работаем над улучшением сервиса, добавляем новые задания и возможности для заработка. Наша команда заботится о каждом пользователе и стремится создать лучшие условия для взаимовыгодного сотрудничества.</p>
-                
-                <div class="about-footer">
-                    LinkGold © 2023. Все права защищены.
-                </div>
-            </div>
+            <button class="prices-btn" onclick="openAdminChatFromPrices()">
+                💬 Написать о рекламе
+            </button>
         </div>
     </div>
 
@@ -2144,8 +2281,8 @@
                         <span class="task-detail-value" id="task-modal-time">5 мин</span>
                     </div>
                     <div class="task-detail">
-                        <span class="task-detail-label">Статус:</span>
-                        <span class="task-detail-value" id="task-modal-status">Доступно</span>
+                        <span class="task-detail-label">Сложность:</span>
+                        <span class="task-detail-value" id="task-modal-difficulty">Легкая</span>
                     </div>
                     <div class="task-detail">
                         <span class="task-detail-label">Осталось:</span>
@@ -2175,8 +2312,8 @@
                     </div>
                     <div class="confirmation-question">Вы выполнили это задание?</div>
                     <div class="confirmation-buttons">
-                        <button class="confirmation-no" onclick="cancelConfirmation()">Нет</button>
-                        <button class="confirmation-yes" onclick="confirmTask()">Да</button>
+                        <button class="confirmation-no" onclick="showCancelConfirmation()">Нет</button>
+                        <button class="confirmation-yes" onclick="showScreenshotUpload()">Да</button>
                     </div>
                 </div>
                 
@@ -2185,11 +2322,15 @@
                         <label style="display: block; margin-bottom: 8px; font-size: 14px;">Загрузите фото выполненного задания:</label>
                         <input type="file" id="task-photo" accept="image/*" style="width: 100%; margin-bottom: 12px;">
                     </div>
-                    <div style="margin-bottom: 16px;">
-                        <label style="display: block; margin-bottom: 8px; font-size: 14px;">Комментарий (необязательно):</label>
-                        <textarea id="task-comment" placeholder="Опишите выполнение задания..." style="width: 100%; height: 80px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; padding: 12px; color: var(--text-primary);"></textarea>
-                    </div>
                     <button class="btn btn-primary btn-full" onclick="submitTaskForReview()">Отправить на проверку</button>
+                </div>
+
+                <div id="cancel-confirmation" style="display: none;">
+                    <div class="confirmation-question">Вы точно не сделали это задание?</div>
+                    <div class="confirmation-buttons">
+                        <button class="confirmation-no" onclick="cancelTask()">Не сделал</button>
+                        <button class="confirmation-yes" onclick="showScreenshotUpload()">Сделал</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2217,44 +2358,16 @@
         </div>
     </div>
 
-    <div class="prices-modal" id="prices-modal">
-        <div class="prices-content">
-            <div class="prices-title">💰 Стоимость размещения</div>
-            <div class="price-grid">
-                <div class="price-item">
-                    <span class="price-time">1 час</span>
-                    <span class="price-amount">200 ₽</span>
-                </div>
-                <div class="price-item">
-                    <span class="price-time">3 часа</span>
-                    <span class="price-amount">600 ₽</span>
-                </div>
-                <div class="price-item">
-                    <span class="price-time">1 день</span>
-                    <span class="price-amount">4 500 ₽</span>
-                </div>
-                <div class="price-item">
-                    <span class="price-time">7 дней</span>
-                    <span class="price-amount">20 000 ₽</span>
-                </div>
-            </div>
-            <button class="prices-btn" onclick="openAdminChatFromPrices()">
-                💬 Написать о рекламе
-            </button>
-        </div>
-    </div>
-
     <script>
         // 🔧 КОНФИГУРАЦИЯ
-        const API_URL = 'https://your-railway-app.railway.app/api'; // ЗАМЕНИТЕ НА ВАШ URL
+        const API_URL = 'https://your-railway-app.railway.app/api';
         const tg = window.Telegram.WebApp;
         const ADMIN_ID = 8036875641;
 
         // Глобальные переменные
         let currentUser = null;
         let currentTask = null;
-        let chats = [];
-        let posts = [];
+        let currentTaskProgress = null;
 
         // Инициализация приложения
         document.addEventListener('DOMContentLoaded', function() {
@@ -2279,6 +2392,7 @@
                 console.log('Telegram user:', currentUser);
                 displayUserProfile();
                 checkAdminRights();
+                loadTasks();
                 loadPosts();
             } else {
                 // Заглушка для тестирования вне Telegram
@@ -2286,11 +2400,12 @@
                     id: 123456789,
                     firstName: 'Тестовый',
                     username: 'test_user',
-                    isAdmin: false
+                    isAdmin: true
                 };
                 console.log('Test user:', currentUser);
                 displayUserProfile();
                 checkAdminRights();
+                loadTasks();
                 loadPosts();
             }
         }
@@ -2322,243 +2437,534 @@
         function checkAdminRights() {
             if (currentUser && currentUser.isAdmin) {
                 console.log('User is ADMIN');
-                document.getElementById('admin-panel').style.display = 'block';
-                document.getElementById('posts-section').style.display = 'block';
+                document.getElementById('admin-nav-item').style.display = 'flex';
             }
         }
 
-        // Загрузка постов с сервера
-        async function loadPosts() {
-            console.log('Loading posts from:', `${API_URL}/posts`);
-            
-            const container = document.getElementById('posts-container');
-            container.innerHTML = '<div class="loading">Загрузка постов...</div>';
-            
-            try {
-                const response = await fetch(`${API_URL}/posts`);
-                console.log('Response status:', response.status);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                posts = await response.json();
-                console.log('Loaded posts:', posts);
-                displayPosts(posts);
-                
-            } catch (error) {
-                console.error('Error loading posts:', error);
-                container.innerHTML = `
-                    <div class="error">
-                        Ошибка загрузки постов: ${error.message}
-                        <br><button onclick="loadPosts()">Попробовать снова</button>
-                    </div>
-                `;
-            }
+        // Навигация
+        function showMainTab() {
+            hideAllTabs();
+            document.getElementById('main-tab').classList.add('active');
+            updateNavState('main');
         }
 
-        // Отображение постов
-        function displayPosts(posts) {
-            const container = document.getElementById('posts-container');
-            const adminContainer = document.getElementById('posts-list');
-            
-            if (!posts || posts.length === 0) {
-                container.innerHTML = '<p>Пока нет постов. Будьте первым!</p>';
-                if (adminContainer) {
-                    adminContainer.innerHTML = '<p>Пока нет постов.</p>';
-                }
-                return;
-            }
-            
-            const postsHTML = posts.map(post => `
-                <div class="post">
-                    <div class="post-content">${escapeHtml(post.content)}</div>
-                    <div class="post-meta">
-                        ${post.isAdmin ? '<span class="admin-badge">Админ</span>' : ''}
-                        Автор: ${escapeHtml(post.author)} | ${new Date(post.timestamp).toLocaleString('ru-RU')}
-                        ${currentUser.isAdmin ? `<button onclick="deletePost(${post.id})" style="margin-left: 10px; background: var(--error); color: white; border: none; padding: 2px 8px; border-radius: 4px; font-size: 10px;">Удалить</button>` : ''}
-                    </div>
-                </div>
-            `).join('');
-            
-            container.innerHTML = postsHTML;
-            if (adminContainer) {
-                adminContainer.innerHTML = postsHTML;
-            }
+        function showTasksTab() {
+            hideAllTabs();
+            document.getElementById('tasks-tab').classList.add('active');
+            updateNavState('tasks');
+            loadTasks();
         }
 
-        // Добавление нового поста
-        async function addNewPost() {
-            const contentInput = document.getElementById('post-content');
-            const content = contentInput.value.trim();
-            
-            if (!content) {
-                alert('Введите текст поста!');
-                return;
-            }
-            
-            if (!currentUser.isAdmin) {
-                alert('Только администратор может публиковать посты!');
-                return;
-            }
-            
-            const newPost = {
-                content: content,
-                author: currentUser.firstName,
-                authorId: currentUser.id,
-                isAdmin: true
-            };
-            
-            console.log('Sending post:', newPost);
-            
-            try {
-                const response = await fetch(`${API_URL}/posts`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(newPost)
-                });
-
-                console.log('Response status:', response.status);
-                
-                if (!response.ok) {
-                    throw new Error(`Ошибка сервера: ${response.status}`);
-                }
-
-                const result = await response.json();
-                console.log('Post created:', result);
-
-                // Очищаем форму
-                contentInput.value = '';
-                alert('Пост успешно опубликован для всех пользователей!');
-                
-                // Перезагружаем посты
-                loadPosts();
-                
-            } catch (error) {
-                console.error('Error adding post:', error);
-                alert(`Ошибка: ${error.message}`);
-            }
+        function showProfileTab() {
+            hideAllTabs();
+            document.getElementById('profile-tab').classList.add('active');
+            updateNavState('profile');
+            loadUserData();
         }
 
-        // Удаление поста
-        async function deletePost(postId) {
-            if (!confirm('Удалить этот пост?')) return;
+        function showAdminTab() {
+            if (!currentUser.isAdmin) return;
+            hideAllTabs();
+            document.getElementById('admin-tab').classList.add('active');
+            updateNavState('admin');
+            loadAdminData();
+        }
+
+        function showHowItWorksPage() {
+            hideAllTabs();
+            document.getElementById('how-it-works-page').classList.add('active');
+        }
+
+        function showAboutPage() {
+            hideAllTabs();
+            document.getElementById('about-page').classList.add('active');
+        }
+
+        function showWithdrawPage() {
+            hideAllTabs();
+            document.getElementById('withdraw-page').classList.add('active');
+            document.getElementById('withdraw-balance').textContent = document.getElementById('user-balance-main').textContent;
+        }
+
+        function hideAllTabs() {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+        }
+
+        function updateNavState(activeTab) {
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
             
-            if (!currentUser.isAdmin) {
-                alert('Только администратор может удалять посты!');
-                return;
-            }
-            
-            try {
-                const response = await fetch(`${API_URL}/posts/${postId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        authorId: currentUser.id
-                    })
-                });
-                
-                if (response.ok) {
-                    alert('Пост успешно удален!');
-                    loadPosts();
-                } else {
-                    throw new Error('Ошибка удаления поста');
-                }
-            } catch (error) {
-                console.error('Error deleting post:', error);
-                alert('Ошибка при удалении поста');
+            const navItems = document.querySelectorAll('.nav-item');
+            switch(activeTab) {
+                case 'main': navItems[0].classList.add('active'); break;
+                case 'tasks': navItems[1].classList.add('active'); break;
+                case 'profile': navItems[2].classList.add('active'); break;
+                case 'admin': navItems[3].classList.add('active'); break;
             }
         }
 
         // Система уровней
         function updateUserLevel() {
             // Заглушка для системы уровней
-            const userLevel = 1;
-            const levelProgress = 30; // 30%
+            const userLevel = 0;
+            const levelProgress = 0;
             
             document.getElementById('user-level').textContent = userLevel;
             document.getElementById('level-progress-bar').style.width = levelProgress + '%';
-            document.querySelector('.level-count').textContent = '3/10 заданий';
+            document.querySelector('.level-count').textContent = '0/10 заданий';
         }
 
-        // Реферальная система
-        function copyReferralLink() {
-            const referralInput = document.getElementById('referral-link');
-            referralInput.select();
-            
-            navigator.clipboard.writeText(referralInput.value).then(() => {
-                alert('Реферальная ссылка скопирована!');
-            }).catch(() => {
-                // Fallback
-                document.execCommand('copy');
-                alert('Реферальная ссылка скопирована!');
+        // Загрузка данных пользователя
+        async function loadUserData() {
+            // Заглушка для загрузки данных пользователя
+            document.getElementById('user-balance-main').textContent = '0 ₽';
+        }
+
+        // Загрузка заданий
+        async function loadTasks() {
+            try {
+                // Заглушка для загрузки заданий
+                const tasks = [
+                    {
+                        id: 1,
+                        title: 'Подписка на канал',
+                        description: 'Подпишитесь на наш Telegram канал и оставайтесь подписанным минимум 3 дня',
+                        price: 50,
+                        time: '5 минут',
+                        difficulty: 'Легкая',
+                        people: 10,
+                        category: 'subscribe'
+                    },
+                    {
+                        id: 2,
+                        title: 'Лайк и комментарий',
+                        description: 'Поставьте лайк и оставьте комментарий под постом',
+                        price: 30,
+                        time: '3 минуты',
+                        difficulty: 'Легкая',
+                        people: 25,
+                        category: 'social'
+                    },
+                    {
+                        id: 3,
+                        title: 'Репост в сторис',
+                        description: 'Сделайте репост нашей публикации в свои сторис',
+                        price: 80,
+                        time: '7 минут',
+                        difficulty: 'Средняя',
+                        people: 15,
+                        category: 'repost'
+                    }
+                ];
+
+                displayTasks(tasks, 'new');
+            } catch (error) {
+                console.error('Error loading tasks:', error);
+            }
+        }
+
+        function displayTasks(tasks, category) {
+            const container = document.getElementById(category + '-tasks');
+            container.innerHTML = '';
+
+            if (tasks.length === 0) {
+                container.innerHTML = `
+                    <div class="no-tasks">
+                        <div class="no-tasks-icon">📝</div>
+                        <div>Заданий пока нет</div>
+                    </div>
+                `;
+                return;
+            }
+
+            tasks.forEach(task => {
+                const taskElement = document.createElement('div');
+                taskElement.className = 'task-card';
+                taskElement.innerHTML = `
+                    <div class="task-header">
+                        <div>
+                            <div class="task-title">${task.title}</div>
+                            <div class="task-category">${task.category}</div>
+                        </div>
+                        <div class="task-price">${task.price} ₽</div>
+                    </div>
+                    <div class="task-description">${task.description}</div>
+                    <div class="task-footer">
+                        <div class="task-time">${task.time}</div>
+                        <button class="task-btn" onclick="openTaskModal(${task.id})">Начать</button>
+                    </div>
+                `;
+                container.appendChild(taskElement);
             });
         }
 
-        // Админ: Показать чаты с пользователями
-        function showAdminChats() {
-            document.getElementById('admin-chats-container').style.display = 'block';
-            document.getElementById('post-management').style.display = 'none';
-            document.getElementById('task-management').style.display = 'none';
+        function showTaskCategory(category) {
+            document.querySelectorAll('.tasks-grid').forEach(grid => {
+                grid.style.display = 'none';
+            });
+            document.getElementById(category + '-tasks').style.display = 'grid';
             
-            // Загрузка чатов (заглушка)
+            document.querySelectorAll('.task-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Загрузка заданий для выбранной категории
+            if (category === 'confirmation') {
+                loadConfirmationTasks();
+            } else if (category === 'completed') {
+                loadCompletedTasks();
+            } else if (category === 'rejected') {
+                loadRejectedTasks();
+            }
+        }
+
+        // Заглушки для загрузки задач по категориям
+        function loadConfirmationTasks() {
+            const tasks = [
+                {
+                    id: 1,
+                    title: 'Подписка на канал',
+                    description: 'Ожидает подтверждения выполнения',
+                    price: 50
+                }
+            ];
+            displayTasks(tasks, 'confirmation');
+        }
+
+        function loadCompletedTasks() {
+            const tasks = [
+                {
+                    id: 2,
+                    title: 'Лайк и комментарий',
+                    description: 'Задание выполнено и оплачено',
+                    price: 30
+                }
+            ];
+            displayTasks(tasks, 'completed');
+        }
+
+        function loadRejectedTasks() {
+            const tasks = [
+                {
+                    id: 3,
+                    title: 'Репост в сторис',
+                    description: 'Задание отклонено администратором',
+                    price: 80
+                }
+            ];
+            displayTasks(tasks, 'rejected');
+        }
+
+        // Работа с заданиями
+        function openTaskModal(taskId) {
+            // Заглушка для загрузки данных задания
+            const task = {
+                id: taskId,
+                title: 'Подписка на канал',
+                description: 'Подпишитесь на наш Telegram канал и оставайтесь подписанным минимум 3 дня',
+                price: 50,
+                time: '5 минут',
+                difficulty: 'Легкая',
+                available: 10
+            };
+
+            document.getElementById('task-modal-title').textContent = task.title;
+            document.getElementById('task-modal-description').textContent = task.description;
+            document.getElementById('task-modal-price').textContent = task.price + ' ₽';
+            document.getElementById('task-modal-time').textContent = task.time;
+            document.getElementById('task-modal-difficulty').textContent = task.difficulty;
+            document.getElementById('task-modal-available').textContent = task.available + ' заданий';
+
+            currentTask = task;
+            document.getElementById('task-modal').classList.add('active');
+        }
+
+        function startTask() {
+            if (!currentTask) return;
+
+            // Открываем URL задания в новом окне
+            window.open('https://t.me/linkgold_channel', '_blank');
+            
+            // Перемещаем задание в раздел подтверждения
+            closeModal('task-modal');
+            showTasksTab();
+            showTaskCategory('confirmation');
+            
+            // Сохраняем прогресс задания
+            currentTaskProgress = {
+                taskId: currentTask.id,
+                status: 'started'
+            };
+
+            alert('Задание начато! Вернитесь после выполнения для подтверждения.');
+        }
+
+        function showScreenshotUpload() {
+            document.getElementById('confirmation-form').style.display = 'block';
+            document.getElementById('confirmation-task').style.display = 'none';
+            document.getElementById('cancel-confirmation').style.display = 'none';
+        }
+
+        function showCancelConfirmation() {
+            document.getElementById('confirmation-form').style.display = 'none';
+            document.getElementById('confirmation-task').style.display = 'none';
+            document.getElementById('cancel-confirmation').style.display = 'block';
+        }
+
+        function submitTaskForReview() {
+            const fileInput = document.getElementById('task-photo');
+            if (!fileInput.files[0]) {
+                alert('Пожалуйста, загрузите скриншот выполнения задания');
+                return;
+            }
+
+            // Здесь будет код отправки на сервер
+            alert('Задание отправлено на проверку! Ожидайте одобрения администратора.');
+            closeModal('confirmation-modal');
+            
+            // Обновляем статус задания
+            currentTaskProgress.status = 'waiting_review';
+        }
+
+        function cancelTask() {
+            closeModal('confirmation-modal');
+            // Удаляем задание из подтверждения
+            currentTaskProgress = null;
+        }
+
+        // Админ-функции
+        function showAdminSection(section) {
+            document.querySelectorAll('.admin-section').forEach(sec => {
+                sec.style.display = 'none';
+            });
+            document.getElementById('admin-' + section + '-section').style.display = 'block';
+        }
+
+        function loadAdminData() {
+            if (!currentUser.isAdmin) return;
+            
+            loadAdminPosts();
+            loadVerificationTasks();
             loadAdminChats();
         }
 
-        function loadAdminChats() {
-            // Заглушка для загрузки чатов
-            chats = [
-                { id: 1, user_name: 'Иван Петров', last_message: 'Здравствуйте, есть вопрос по заданию...', unread: true, userId: 123456 },
-                { id: 2, user_name: 'Мария Сидорова', last_message: 'Спасибо за помощь!', unread: false, userId: 654321 },
-                { id: 3, user_name: 'Алексей Козлов', last_message: 'Когда будут новые задания?', unread: true, userId: 789012 }
-            ];
-            
-            renderAdminChats();
-        }
-
-        function renderAdminChats() {
-            const container = document.getElementById('admin-chats-container');
-            container.innerHTML = chats.map(chat => `
-                <div class="chat-item ${chat.unread ? 'unread' : ''}" onclick="openAdminChatWithUser(${chat.id}, ${chat.userId})">
-                    <div class="chat-avatar-small">👤</div>
-                    <div class="chat-info-small">
-                        <div class="chat-name-small">${chat.user_name}</div>
-                        <div class="chat-last-message">${chat.last_message}</div>
-                    </div>
-                    ${chat.unread ? '<div class="unread-indicator"></div>' : ''}
-                </div>
-            `).join('');
-        }
-
-        function openAdminChatWithUser(chatId, userId) {
-            // Помечаем чат как прочитанный
-            const chat = chats.find(c => c.id === chatId);
-            if (chat) {
-                chat.unread = false;
-                renderAdminChats();
+        async function loadAdminPosts() {
+            try {
+                // Заглушка для загрузки постов
+                const posts = [
+                    {
+                        id: 1,
+                        title: 'Новые задания доступны!',
+                        content: 'Мы добавили новые интересные задания с повышенной оплатой.',
+                        timestamp: new Date().toISOString()
+                    }
+                ];
+                
+                const container = document.getElementById('admin-posts-list');
+                container.innerHTML = '';
+                
+                posts.forEach(post => {
+                    const postElement = document.createElement('div');
+                    postElement.className = 'admin-task-item';
+                    postElement.innerHTML = `
+                        <div class="admin-task-header">
+                            <div class="admin-task-title">${post.title}</div>
+                            <div class="admin-task-actions">
+                                <button class="admin-task-delete" onclick="deletePost(${post.id})">Удалить</button>
+                            </div>
+                        </div>
+                        <div>${post.content}</div>
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
+                            ${new Date(post.timestamp).toLocaleDateString('ru-RU')}
+                        </div>
+                    `;
+                    container.appendChild(postElement);
+                });
+            } catch (error) {
+                console.error('Error loading admin posts:', error);
             }
+        }
+
+        async function addNewPost() {
+            const title = document.getElementById('admin-post-title').value;
+            const content = document.getElementById('admin-post-content').value;
+            const imageFile = document.getElementById('admin-post-image').files[0];
+
+            if (!title || !content) {
+                alert('Заполните заголовок и содержание поста');
+                return;
+            }
+
+            // Здесь будет код отправки на сервер
+            alert('Пост успешно опубликован!');
             
-            // Открываем чат с пользователем
-            alert(`Открыт чат с пользователем ID: ${userId}`);
-            // Здесь должна быть реальная логика открытия чата
+            // Очищаем форму
+            document.getElementById('admin-post-title').value = '';
+            document.getElementById('admin-post-content').value = '';
+            document.getElementById('admin-post-image').value = '';
+            
+            // Обновляем список постов
+            loadAdminPosts();
         }
 
-        // Админ: Управление постами
-        function showPostManagement() {
-            document.getElementById('admin-chats-container').style.display = 'none';
-            document.getElementById('post-management').style.display = 'block';
-            document.getElementById('task-management').style.display = 'none';
+        async function addTask() {
+            const title = document.getElementById('admin-task-title').value;
+            const description = document.getElementById('admin-task-description').value;
+            const price = document.getElementById('admin-task-price').value;
+            const time = document.getElementById('admin-task-time').value;
+            const difficulty = document.getElementById('admin-task-difficulty').value;
+            const people = document.getElementById('admin-task-people').value;
+            const repost = document.getElementById('admin-task-repost').value;
+            const url = document.getElementById('admin-task-url').value;
+            const imageFile = document.getElementById('admin-task-image').files[0];
+
+            if (!title || !description || !price) {
+                alert('Заполните обязательные поля');
+                return;
+            }
+
+            // Здесь будет код отправки на сервер
+            alert('Задание успешно добавлено!');
+            
+            // Очищаем форму
+            document.querySelectorAll('#admin-tasks-section input, #admin-tasks-section textarea').forEach(input => {
+                input.value = '';
+            });
         }
 
-        // Админ: Управление заданиями
-        function showTaskManagement() {
-            document.getElementById('admin-chats-container').style.display = 'none';
-            document.getElementById('post-management').style.display = 'none';
-            document.getElementById('task-management').style.display = 'block';
+        async function loadVerificationTasks() {
+            try {
+                // Заглушка для загрузки заданий на проверке
+                const verifications = [
+                    {
+                        id: 1,
+                        userId: 123456,
+                        userName: 'Иван Иванов',
+                        taskTitle: 'Подписка на канал',
+                        taskPrice: 50,
+                        screenshot: 'https://via.placeholder.com/300'
+                    }
+                ];
+                
+                const container = document.getElementById('admin-verification-list');
+                container.innerHTML = '';
+                
+                verifications.forEach(verification => {
+                    const item = document.createElement('div');
+                    item.className = 'verification-item';
+                    item.innerHTML = `
+                        <div class="verification-header">
+                            <div>
+                                <div class="verification-user">${verification.userName}</div>
+                                <div class="verification-task">${verification.taskTitle}</div>
+                            </div>
+                            <div class="task-price">${verification.taskPrice} ₽</div>
+                        </div>
+                        <img src="${verification.screenshot}" alt="Скриншот" class="verification-image">
+                        <div class="verification-actions">
+                            <button class="admin-task-approve" onclick="approveTask(${verification.id})">Одобрить</button>
+                            <button class="admin-task-reject" onclick="rejectTask(${verification.id})">Отклонить</button>
+                        </div>
+                    `;
+                    container.appendChild(item);
+                });
+            } catch (error) {
+                console.error('Error loading verification tasks:', error);
+            }
+        }
+
+        function approveTask(verificationId) {
+            // Здесь будет код одобрения задания
+            alert('Задание одобрено! Средства перечислены пользователю.');
+            loadVerificationTasks();
+        }
+
+        function rejectTask(verificationId) {
+            // Здесь будет код отклонения задания
+            alert('Задание отклонено! Пользователь уведомлен.');
+            loadVerificationTasks();
+        }
+
+        async function loadAdminChats() {
+            try {
+                // Заглушка для загрузки чатов
+                const chats = [
+                    {
+                        id: 1,
+                        userName: 'Иван Иванов',
+                        lastMessage: 'Здравствуйте, у меня вопрос по заданию...',
+                        unread: true
+                    },
+                    {
+                        id: 2,
+                        userName: 'Мария Петрова',
+                        lastMessage: 'Спасибо за помощь!',
+                        unread: false
+                    }
+                ];
+                
+                const container = document.getElementById('admin-chats-list');
+                container.innerHTML = '';
+                
+                chats.forEach(chat => {
+                    const item = document.createElement('div');
+                    item.className = `chat-item ${chat.unread ? 'unread' : ''}`;
+                    item.innerHTML = `
+                        <div class="chat-avatar-small">👤</div>
+                        <div class="chat-info-small">
+                            <div class="chat-name-small">${chat.userName}</div>
+                            <div class="chat-last-message">${chat.lastMessage}</div>
+                        </div>
+                        ${chat.unread ? '<div class="unread-indicator"></div>' : ''}
+                    `;
+                    container.appendChild(item);
+                });
+            } catch (error) {
+                console.error('Error loading admin chats:', error);
+            }
+        }
+
+        // Посты
+        async function loadPosts() {
+            try {
+                // Заглушка для загрузки постов
+                const posts = [
+                    {
+                        id: 1,
+                        title: 'Новые задания доступны!',
+                        content: 'Мы добавили новые интересные задания с повышенной оплатой. Не упустите возможность заработать!',
+                        image: 'https://via.placeholder.com/300',
+                        author: 'Администратор',
+                        timestamp: new Date().toISOString()
+                    }
+                ];
+                
+                const container = document.getElementById('posts-container');
+                container.innerHTML = '';
+                
+                posts.forEach(post => {
+                    const postElement = document.createElement('div');
+                    postElement.className = 'post';
+                    postElement.innerHTML = `
+                        <h3>${post.title}</h3>
+                        <div class="post-content">${post.content}</div>
+                        ${post.image ? `<img src="${post.image}" alt="Изображение" style="width: 100%; border-radius: 8px; margin: 10px 0;">` : ''}
+                        <div class="post-meta">
+                            👤 ${post.author} | 📅 ${new Date(post.timestamp).toLocaleDateString('ru-RU')}
+                        </div>
+                    `;
+                    container.appendChild(postElement);
+                });
+            } catch (error) {
+                console.error('Error loading posts:', error);
+            }
         }
 
         // Чат с поддержкой
@@ -2595,60 +3001,13 @@
             }
         }
 
-        // Навигация
-        function showMainTab() {
-            document.getElementById('main-tab').classList.add('active');
-            document.getElementById('tasks-tab').classList.remove('active');
-            document.getElementById('profile-tab').classList.remove('active');
-            updateNavState('main');
-        }
-
-        function showTasksTab() {
-            document.getElementById('main-tab').classList.remove('active');
-            document.getElementById('tasks-tab').classList.add('active');
-            document.getElementById('profile-tab').classList.remove('active');
-            updateNavState('tasks');
-        }
-
-        function showProfileTab() {
-            document.getElementById('main-tab').classList.remove('active');
-            document.getElementById('tasks-tab').classList.remove('active');
-            document.getElementById('profile-tab').classList.add('active');
-            updateNavState('profile');
-        }
-
-        function updateNavState(activeTab) {
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            
-            if (activeTab === 'main') {
-                document.querySelector('.nav-item:nth-child(1)').classList.add('active');
-            } else if (activeTab === 'tasks') {
-                document.querySelector('.nav-item:nth-child(2)').classList.add('active');
-            } else if (activeTab === 'profile') {
-                document.querySelector('.nav-item:nth-child(3)').classList.add('active');
-            }
-        }
-
         // Вспомогательные функции
-        function escapeHtml(unsafe) {
-            if (!unsafe) return '';
-            return unsafe
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
         }
 
-        // Заглушки для функций
         function showBalanceModal() {
             document.getElementById('balance-modal').classList.add('active');
-        }
-
-        function showHowItWorksModal() {
-            document.getElementById('how-it-works-modal').classList.add('active');
         }
 
         function showPrices() {
@@ -2662,37 +3021,32 @@
             }, 300);
         }
 
-        function closeModal(modalId) {
-            document.getElementById(modalId).classList.remove('active');
-        }
-
-        function goToProfile() {
-            showProfileTab();
-            closeModal('balance-modal');
-        }
-
-        function showWithdrawModal() {
-            alert('Функция вывода средств скоро будет доступна!');
-        }
-
-        function showAboutPage() {
-            document.getElementById('about-modal').classList.add('active');
-        }
-
-        function copyReferralCode() {
-            const code = 'GOLD' + currentUser.id;
-            navigator.clipboard.writeText(code).then(() => {
-                alert('Реферальный код скопирован: ' + code);
+        function copyReferralLink() {
+            const referralInput = document.getElementById('referral-link');
+            referralInput.select();
+            
+            navigator.clipboard.writeText(referralInput.value).then(() => {
+                alert('Реферальная ссылка скопирована!');
+            }).catch(() => {
+                // Fallback
+                document.execCommand('copy');
+                alert('Реферальная ссылка скопирована!');
             });
         }
 
-        // Заглушки для функций заданий
-        function showTaskTab(tab) {
-            alert('Вкладка заданий будет реализована в следующем обновлении');
-        }
+        function submitWithdraw() {
+            const amount = document.getElementById('withdraw-amount').value;
+            const method = document.getElementById('withdraw-method').value;
+            const details = document.getElementById('withdraw-details').value;
 
-        function addTask() {
-            alert('Функция добавления заданий будет реализована в следующем обновлении');
+            if (!amount || !method || !details) {
+                alert('Заполните все поля для вывода средств');
+                return;
+            }
+
+            // Здесь будет код отправки запроса на вывод
+            alert(`Запрос на вывод ${amount}₽ через ${method} отправлен! Ожидайте обработки.`);
+            showProfileTab();
         }
     </script>
 </body>
