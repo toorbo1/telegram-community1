@@ -1,5 +1,5 @@
 // 🔧 КОНФИГУРАЦИЯ - ЗАМЕНИ НА СВОЙ URL!
-const API_URL = 'https://your-app-name.railway.app/api'; // ЗАМЕНИ!
+const API_URL = 'https://telegram-community1-production.up.railway.app/api'; // ЗАМЕНИ!
 
 // Инициализация Telegram Web App
 const tg = window.Telegram.WebApp;
