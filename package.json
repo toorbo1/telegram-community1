@@ -1,7 +1,7 @@
 {
   "name": "linkgold-platform",
-  "version": "3.1.0",
-  "description": "LinkGold - Complete Telegram earning platform with working admin features",
+  "version": "3.2.0",
+  "description": "LinkGold - Platform with fixed admin features",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
