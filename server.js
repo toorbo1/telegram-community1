@@ -81,6 +81,18 @@ function initDatabase() {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`);
 
+        // User tasks table
+        db.run(`CREATE TABLE IF NOT EXISTS user_tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            task_id INTEGER NOT NULL,
+            status TEXT DEFAULT 'active',
+            screenshot_url TEXT,
+            started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            completed_at DATETIME,
+            FOREIGN KEY(task_id) REFERENCES tasks(id)
+        )`);
+
         // Support chats table
         db.run(`CREATE TABLE IF NOT EXISTS support_chats (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -130,12 +142,12 @@ function getMoscowTime() {
 
 // Функция для форматирования времени в московском часовом поясе
 function formatMoscowTime(timestamp) {
+    if (!timestamp) return '';
     const date = new Date(timestamp);
     return date.toLocaleString("ru-RU", { 
         timeZone: "Europe/Moscow",
-        year: 'numeric',
-        month: '2-digit',
         day: '2-digit',
+        month: '2-digit',
         hour: '2-digit',
         minute: '2-digit'
     });
@@ -247,15 +259,9 @@ app.get('/api/posts', (req, res) => {
             });
         }
         
-        // Форматируем время для каждого поста в московское время
-        const postsWithMoscowTime = rows.map(post => ({
-            ...post,
-            formatted_time: formatMoscowTime(post.timestamp)
-        }));
-        
         res.json({
             success: true,
-            posts: postsWithMoscowTime
+            posts: rows
         });
     });
 });
@@ -388,7 +394,7 @@ app.post('/api/tasks', (req, res) => {
     if (!title || !description || !price || !created_by) {
         return res.status(400).json({
             success: false,
-            error: 'Missing required fields: ' + JSON.stringify({title, description, price, created_by})
+            error: 'Missing required fields'
         });
     }
     
@@ -447,6 +453,88 @@ app.delete('/api/tasks/:id', (req, res) => {
     });
 });
 
+// User tasks endpoints
+app.post('/api/user/tasks/start', (req, res) => {
+    const { userId, taskId } = req.body;
+    
+    if (!userId || !taskId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    // Проверяем, не начал ли пользователь уже это задание
+    db.get("SELECT * FROM user_tasks WHERE user_id = ? AND task_id = ?", [userId, taskId], (err, existing) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        if (existing) {
+            return res.status(400).json({
+                success: false,
+                error: 'Task already started'
+            });
+        }
+        
+        // Добавляем задание пользователю
+        db.run(`INSERT INTO user_tasks (user_id, task_id, status) VALUES (?, ?, 'active')`,
+                [userId, taskId], function(err) {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Database error'
+                });
+            }
+            
+            // Обновляем счетчик активных заданий
+            db.run("UPDATE user_profiles SET active_tasks = active_tasks + 1 WHERE user_id = ?", [userId]);
+            
+            res.json({
+                success: true,
+                message: 'Task started successfully',
+                userTaskId: this.lastID
+            });
+        });
+    });
+});
+
+app.get('/api/user/:userId/tasks', (req, res) => {
+    const userId = req.params.userId;
+    const { status } = req.query;
+    
+    let query = `
+        SELECT ut.*, t.title, t.description, t.price, t.category 
+        FROM user_tasks ut 
+        JOIN tasks t ON ut.task_id = t.id 
+        WHERE ut.user_id = ?
+    `;
+    let params = [userId];
+    
+    if (status) {
+        query += " AND ut.status = ?";
+        params.push(status);
+    }
+    
+    query += " ORDER BY ut.started_at DESC";
+    
+    db.all(query, params, (err, rows) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        res.json({
+            success: true,
+            tasks: rows
+        });
+    });
+});
+
 // Support system endpoints
 app.get('/api/support/chats', (req, res) => {
     const { adminId } = req.query;
@@ -467,15 +555,9 @@ app.get('/api/support/chats', (req, res) => {
             });
         }
         
-        // Форматируем время для каждого чата в московское время
-        const chatsWithMoscowTime = rows.map(chat => ({
-            ...chat,
-            formatted_time: formatMoscowTime(chat.last_message_time)
-        }));
-        
         res.json({
             success: true,
-            chats: chatsWithMoscowTime
+            chats: rows
         });
     });
 });
@@ -535,15 +617,9 @@ app.get('/api/support/chats/:chatId/messages', (req, res) => {
             });
         }
         
-        // Форматируем время для каждого сообщения в московское время
-        const messagesWithMoscowTime = rows.map(message => ({
-            ...message,
-            formatted_time: formatMoscowTime(message.sent_at)
-        }));
-        
         res.json({
             success: true,
-            messages: messagesWithMoscowTime
+            messages: rows
         });
     });
 });

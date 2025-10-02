@@ -2451,6 +2451,399 @@
     font-size: 12px;
     color: var(--text-secondary);
 }
+/* Исправление вкладок заданий */
+.tasks-tabs {
+    display: flex;
+    margin-bottom: 20px;
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 6px;
+    border: 1px solid var(--border);
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+.task-tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px 8px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    min-width: 80px;
+}
+
+.task-tab.active {
+    background: var(--accent);
+    color: white;
+}
+
+/* Улучшенный дизайн для длинных слов */
+.task-tab:last-child {
+    min-width: 90px;
+}
+
+/* Стили для уведомлений */
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--accent);
+    color: white;
+    padding: 12px 16px;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: 300px;
+    animation: slideIn 0.3s ease-out;
+    border: 1px solid var(--border);
+}
+
+.notification-error {
+    background: var(--error);
+}
+
+.notification-success {
+    background: var(--success);
+}
+
+.notification-warning {
+    background: var(--warning);
+}
+
+.notification-content {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Стили для чата админа */
+.admin-chat-list {
+    max-height: 400px;
+    overflow-y: auto;
+    margin-top: 15px;
+}
+
+.chat-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: var(--card-bg);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    transition: all 0.3s ease;
+}
+
+.chat-item:hover {
+    background: var(--bg-secondary);
+    transform: translateY(-2px);
+}
+
+.chat-item.unread {
+    border-left: 4px solid var(--error);
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.chat-avatar-small {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--purple-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    color: white;
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.chat-info-small {
+    flex: 1;
+    min-width: 0;
+}
+
+.chat-name-small {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chat-last-message {
+    font-size: 12px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+.chat-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.chat-time {
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.unread-badge {
+    background: var(--error);
+    color: white;
+    border-radius: 10px;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 600;
+    min-width: 18px;
+    text-align: center;
+}
+
+/* Окно чата для админа */
+.admin-chat-window {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(5, 5, 16, 0.95);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.admin-chat-window.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.admin-chat-header {
+    background: var(--card-bg);
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.admin-chat-user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.admin-chat-messages {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.admin-chat-input-container {
+    padding: 12px 16px;
+    background: var(--card-bg);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.admin-chat-input {
+    flex: 1;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 12px 16px;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.admin-chat-send {
+    background: var(--accent);
+    border: none;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+}
+
+/* Стили для сообщений с фото */
+.message-image {
+    margin-bottom: 5px;
+}
+
+.message-image img {
+    max-width: 100%;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.message-time {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-align: right;
+    margin-top: 4px;
+}
+
+/* Стили для заданий админа */
+.admin-task-item {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border);
+}
+
+.admin-task-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.admin-task-title {
+    font-weight: 600;
+    font-size: 16px;
+    flex: 1;
+}
+
+.admin-task-description {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.admin-task-details {
+    display: flex;
+    gap: 10px;
+    font-size: 12px;
+    flex-wrap: wrap;
+}
+
+.admin-task-price {
+    background: var(--gold-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: 700;
+}
+
+.admin-task-category {
+    background: var(--bg-secondary);
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.admin-task-time {
+    color: var(--text-secondary);
+}
+
+/* Стили для текста о скриншоте */
+.screenshot-note {
+    margin: 15px 0;
+    padding: 10px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border-left: 3px solid var(--warning);
+}
+
+.screenshot-note p {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .chat-item {
+        padding: 10px;
+    }
+    
+    .chat-last-message {
+        max-width: 150px;
+    }
+    
+    .notification {
+        right: 10px;
+        left: 10px;
+        max-width: none;
+    }
+    
+    .admin-task-header {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .admin-task-details {
+        flex-wrap: wrap;
+    }
+    
+    .task-tab {
+        font-size: 11px;
+        padding: 8px 6px;
+        min-width: 70px;
+    }
+}
+
+@media (max-width: 480px) {
+    .tasks-tabs {
+        padding: 4px;
+    }
+    
+    .task-tab {
+        font-size: 10px;
+        padding: 6px 4px;
+        min-width: 65px;
+    }
+}
     </style>
 </head>
 <body>
@@ -3179,6 +3572,7 @@ async function initializeTelegramUser() {
             loadMainPagePosts();
             loadTasks();
             initializeSearch();
+            loadUserTasks();
             
         } else {
             console.log('Telegram user data not available');
@@ -3211,6 +3605,84 @@ function initializeTestUser() {
     loadMainPagePosts();
     loadTasks();
     initializeSearch();
+    loadUserTasks();
+}
+
+// Загрузка заданий пользователя
+async function loadUserTasks() {
+    if (!currentUser) return;
+    
+    try {
+        // Загружаем активные задания пользователя
+        const activeResult = await makeRequest(`${API_URL}/user/${currentUser.id}/tasks?status=active`);
+        if (activeResult.success) {
+            displayUserTasks(activeResult.tasks, 'confirmation');
+        }
+        
+        // Загружаем завершенные задания
+        const completedResult = await makeRequest(`${API_URL}/user/${currentUser.id}/tasks?status=completed`);
+        if (completedResult.success) {
+            displayUserTasks(completedResult.tasks, 'completed');
+        }
+    } catch (error) {
+        console.error('Error loading user tasks:', error);
+    }
+}
+
+function displayUserTasks(tasks, category) {
+    const container = document.getElementById(category + '-tasks');
+    if (!container) return;
+    
+    container.innerHTML = '';
+
+    if (!tasks || tasks.length === 0) {
+        container.innerHTML = `
+            <div class="no-tasks">
+                <div class="no-tasks-icon">📝</div>
+                <div>${category === 'confirmation' ? 'Нет заданий на подтверждение' : 'Нет выполненных заданий'}</div>
+            </div>
+        `;
+        return;
+    }
+
+    tasks.forEach(task => {
+        const taskElement = document.createElement('div');
+        taskElement.className = 'task-card';
+        
+        if (category === 'confirmation') {
+            taskElement.innerHTML = `
+                <div class="task-header">
+                    <div>
+                        <div class="task-title">${task.title}</div>
+                        <div class="task-category">${task.category}</div>
+                    </div>
+                    <div class="task-price">${task.price} ₽</div>
+                </div>
+                <div class="task-description">${task.description}</div>
+                <div class="task-footer">
+                    <div class="task-time">Ожидает подтверждения</div>
+                    <button class="task-btn" onclick="submitTaskCompletion(${task.id})">Подтвердить выполнение</button>
+                </div>
+            `;
+        } else {
+            taskElement.innerHTML = `
+                <div class="task-header">
+                    <div>
+                        <div class="task-title">${task.title}</div>
+                        <div class="task-category">${task.category}</div>
+                    </div>
+                    <div class="task-price">${task.price} ₽</div>
+                </div>
+                <div class="task-description">${task.description}</div>
+                <div class="task-footer">
+                    <div class="task-time">Выполнено</div>
+                    <div class="task-status completed">✅</div>
+                </div>
+            `;
+        }
+        
+        container.appendChild(taskElement);
+    });
 }
 
 // Отображение профиля пользователя
@@ -3446,13 +3918,12 @@ function openTaskModal(taskId) {
         document.getElementById('task-modal-time').textContent = time;
         
         // Добавляем текст о скриншоте
+        const existingNote = document.querySelector('.screenshot-note');
+        if (existingNote) existingNote.remove();
+        
         const screenshotNote = document.createElement('div');
         screenshotNote.className = 'screenshot-note';
         screenshotNote.innerHTML = '<p style="font-size: 12px; color: var(--text-secondary); text-align: center; margin-top: 15px; padding: 10px; background: var(--bg-secondary); border-radius: 8px;">📸 После окончания задания сделайте скриншот для проверки</p>';
-        
-        // Убедимся, что не добавляем дубликат
-        const existingNote = document.querySelector('.screenshot-note');
-        if (existingNote) existingNote.remove();
         
         document.querySelector('.task-modal-buttons').before(screenshotNote);
         
@@ -3461,12 +3932,46 @@ function openTaskModal(taskId) {
     }
 }
 
-function startTask() {
-    if (!selectedTaskId) return;
+async function startTask() {
+    if (!selectedTaskId || !currentUser) return;
     
-    showNotification('Задание начато! После выполнения не забудьте сделать скриншот.', 'success');
-    closeModal('task-modal');
+    try {
+        const result = await makeRequest(`${API_URL}/user/tasks/start`, {
+            method: 'POST',
+            body: JSON.stringify({
+                userId: currentUser.id,
+                taskId: selectedTaskId
+            })
+        });
+
+        if (result.success) {
+            showNotification('Задание начато! После выполнения подтвердите его в разделе "Подтверждение".', 'success');
+            closeModal('task-modal');
+            loadUserTasks(); // Обновляем список заданий пользователя
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error starting task:', error);
+        showNotification('Ошибка начала задания', 'error');
+    }
     selectedTaskId = null;
+}
+
+async function submitTaskCompletion(taskId) {
+    if (!confirm('Вы уверены, что выполнили это задание?')) return;
+    
+    try {
+        // В реальном приложении здесь была бы загрузка скриншота
+        // Для демо просто отмечаем как выполненное
+        showNotification('Задание отправлено на проверку! Скриншот можно отправить в поддержку.', 'success');
+        
+        // Обновляем интерфейс
+        loadUserTasks();
+    } catch (error) {
+        console.error('Error submitting task:', error);
+        showNotification('Ошибка отправки задания', 'error');
+    }
 }
 
 // Загрузка постов на главную
@@ -3505,7 +4010,7 @@ function displayMainPagePosts(posts) {
                     <div class="post-title">${escapeHtml(post.title)}</div>
                 </div>
                 <div class="post-date">
-                    ${post.formatted_time || formatPostDate(post.timestamp)}
+                    ${formatPostDate(post.timestamp)}
                 </div>
             </div>
             
@@ -3580,9 +4085,8 @@ async function addTask() {
     const title = document.getElementById('admin-task-title').value;
     const description = document.getElementById('admin-task-description').value;
     const price = document.getElementById('admin-task-price').value;
-    const category = document.getElementById('admin-task-category').value;
     
-    console.log('Adding task:', { title, description, price, category });
+    console.log('Adding task:', { title, description, price });
     
     if (!title || !description || !price) {
         showNotification('Заполните обязательные поля (название, описание, цена)!', 'error');
@@ -3601,7 +4105,7 @@ async function addTask() {
                 title: title,
                 description: description,
                 price: parseFloat(price),
-                category: category || 'general',
+                category: document.getElementById('admin-task-category').value || 'general',
                 time_to_complete: document.getElementById('admin-task-time').value || '5 минут',
                 difficulty: document.getElementById('admin-task-difficulty').value || 'Легкая',
                 people_required: parseInt(document.getElementById('admin-task-people').value) || 1,
@@ -3798,61 +4302,6 @@ async function sendMessageToAdmin() {
     }
 }
 
-// Функция для отправки фото в чат
-async function sendPhotoToAdmin() {
-    if (!currentUser || !currentChatId) return;
-    
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = async function(e) {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                try {
-                    const result = await makeRequest(`${API_URL}/support/chats/${currentChatId}/messages`, {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            user_id: currentUser.id,
-                            user_name: currentUser.firstName,
-                            message: '',
-                            image_url: e.target.result,
-                            is_admin: false
-                        })
-                    });
-                    
-                    if (result.success) {
-                        // Добавляем фото в интерфейс
-                        const messagesContainer = document.getElementById('chat-messages');
-                        const messageElement = document.createElement('div');
-                        messageElement.className = 'message message-user';
-                        messageElement.innerHTML = `
-                            <div class="message-image">
-                                <img src="${e.target.result}" alt="Отправленное фото" style="max-width: 200px; border-radius: 10px;">
-                            </div>
-                            <div class="message-time">${new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}</div>
-                        `;
-                        messagesContainer.appendChild(messageElement);
-                        
-                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                        
-                        // Обновляем список чатов для админа
-                        if (currentUser.isAdmin) {
-                            loadAdminChats();
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error sending photo:', error);
-                    showNotification('Ошибка отправки фото', 'error');
-                }
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-    input.click();
-}
-
 function displayChatMessages(messages) {
     const messagesContainer = document.getElementById('chat-messages');
     if (!messagesContainer) return;
@@ -3876,7 +4325,7 @@ function displayChatMessages(messages) {
         
         messageElement.innerHTML = `
             ${messageContent}
-            <div class="message-time">${message.formatted_time ? message.formatted_time.split(' ')[1] : new Date(message.sent_at).toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}</div>
+            <div class="message-time">${new Date(message.sent_at).toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}</div>
         `;
         messagesContainer.appendChild(messageElement);
     });
@@ -3927,7 +4376,7 @@ function displayAdminChats(chats) {
                 <div class="chat-last-message">${chat.last_message || 'Нет сообщений'}</div>
             </div>
             <div class="chat-meta">
-                <div class="chat-time">${chat.formatted_time ? chat.formatted_time.split(' ')[1] : 'Нет'}</div>
+                <div class="chat-time">${formatPostDate(chat.last_message_time)}</div>
                 ${chat.unread_count > 0 ? 
                     `<div class="unread-badge">${chat.unread_count}</div>` : 
                     ''
@@ -3986,7 +4435,7 @@ function displayAdminChatMessages(messages) {
         
         messageElement.innerHTML = `
             ${messageContent}
-            <div class="message-time">${message.formatted_time ? message.formatted_time.split(' ')[1] : new Date(message.sent_at).toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}</div>
+            <div class="message-time">${new Date(message.sent_at).toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}</div>
         `;
         container.appendChild(messageElement);
     });
@@ -4033,59 +4482,6 @@ async function sendAdminMessage() {
             console.error('Error sending admin message:', error);
         }
     }
-}
-
-// Функция для отправки фото админом
-async function sendAdminPhoto() {
-    if (!currentAdminChat || !currentUser) return;
-    
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = async function(e) {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                try {
-                    const result = await makeRequest(`${API_URL}/support/chats/${currentAdminChat.id}/messages`, {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            user_id: currentUser.id,
-                            user_name: currentUser.firstName,
-                            message: '',
-                            image_url: e.target.result,
-                            is_admin: true
-                        })
-                    });
-                    
-                    if (result.success) {
-                        // Добавляем фото в интерфейс
-                        const messagesContainer = document.getElementById('admin-chat-messages');
-                        const messageElement = document.createElement('div');
-                        messageElement.className = 'message message-admin';
-                        messageElement.innerHTML = `
-                            <div class="message-image">
-                                <img src="${e.target.result}" alt="Отправленное фото" style="max-width: 200px; border-radius: 10px;">
-                            </div>
-                            <div class="message-time">${new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}</div>
-                        `;
-                        messagesContainer.appendChild(messageElement);
-                        
-                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                        
-                        // Обновляем список чатов
-                        loadAdminChats();
-                    }
-                } catch (error) {
-                    console.error('Error sending admin photo:', error);
-                    showNotification('Ошибка отправки фото', 'error');
-                }
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-    input.click();
 }
 
 function closeAdminChat() {
@@ -4155,6 +4551,22 @@ function showTasksTab() {
     document.getElementById('tasks-tab').classList.add('active');
     updateNavState('tasks');
     loadTasks();
+}
+
+function showTaskCategory(category) {
+    // Скрываем все категории заданий
+    document.querySelectorAll('.tasks-grid').forEach(grid => {
+        grid.style.display = 'none';
+    });
+    
+    // Показываем выбранную категорию
+    document.getElementById(category + '-tasks').style.display = 'grid';
+    
+    // Обновляем активные вкладки
+    document.querySelectorAll('.task-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    event.currentTarget.classList.add('active');
 }
 
 function showProfileTab() {
@@ -4276,7 +4688,6 @@ function formatPostDate(timestamp) {
         timeZone: 'Europe/Moscow',
         day: '2-digit',
         month: '2-digit',
-        year: 'numeric',
         hour: '2-digit',
         minute: '2-digit'
     });
