@@ -2,7 +2,6 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const path = require('path');
-const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -82,46 +81,46 @@ function initDatabase() {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`);
 
-        // User tasks table
-        db.run(`CREATE TABLE IF NOT EXISTS user_tasks (
+        // Support chats table
+        db.run(`CREATE TABLE IF NOT EXISTS support_chats (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
-            task_id INTEGER NOT NULL,
-            status TEXT DEFAULT 'active',
-            started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            completed_at DATETIME,
-            FOREIGN KEY(task_id) REFERENCES tasks(id)
+            user_name TEXT NOT NULL,
+            user_username TEXT,
+            last_message TEXT,
+            last_message_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+            unread_count INTEGER DEFAULT 0,
+            is_active BOOLEAN DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`);
+
+        // Support messages table
+        db.run(`CREATE TABLE IF NOT EXISTS support_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chat_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            user_name TEXT NOT NULL,
+            message TEXT NOT NULL,
+            is_admin BOOLEAN DEFAULT 0,
+            is_read BOOLEAN DEFAULT 0,
+            sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(chat_id) REFERENCES support_chats(id)
+        )`);
+
+        // Withdrawal requests table
+        db.run(`CREATE TABLE IF NOT EXISTS withdrawal_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            amount REAL NOT NULL,
+            method TEXT NOT NULL,
+            details TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`);
     });
 }
 
 const ADMIN_ID = 8036875641;
-const BOT_TOKEN = 'YOUR_BOT_TOKEN'; // Замените на реальный токен бота
-
-// Функция для проверки данных WebApp Telegram
-function validateTelegramData(initData) {
-    try {
-        const urlParams = new URLSearchParams(initData);
-        const hash = urlParams.get('hash');
-        const dataToCheck = [];
-        
-        urlParams.sort();
-        urlParams.forEach((val, key) => {
-            if (key !== 'hash') {
-                dataToCheck.push(`${key}=${val}`);
-            }
-        });
-        
-        const dataCheckString = dataToCheck.join('\n');
-        const secretKey = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
-        const calculatedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
-        
-        return calculatedHash === hash;
-    } catch (error) {
-        console.error('Error validating Telegram data:', error);
-        return false;
-    }
-}
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -134,22 +133,14 @@ app.get('/api/health', (req, res) => {
 
 // User profile endpoints
 app.post('/api/user/auth', (req, res) => {
-    const { initData, user } = req.body;
+    const { user } = req.body;
     
-    if (!initData || !user) {
+    if (!user) {
         return res.status(400).json({
             success: false,
             error: 'Missing required fields'
         });
     }
-    
-    // В реальном приложении раскомментируйте проверку
-    // if (!validateTelegramData(initData)) {
-    //     return res.status(401).json({
-    //         success: false,
-    //         error: 'Invalid Telegram data'
-    //     });
-    // }
     
     const userProfile = {
         user_id: user.id,
@@ -188,14 +179,14 @@ app.post('/api/user/auth', (req, res) => {
                 success: true,
                 user: {
                     ...userProfile,
-                    balance: profile.balance,
-                    level: profile.level,
-                    experience: profile.experience,
-                    tasks_completed: profile.tasks_completed,
-                    active_tasks: profile.active_tasks,
-                    quality_rate: profile.quality_rate,
-                    referral_count: profile.referral_count,
-                    referral_earned: profile.referral_earned
+                    balance: profile.balance || 0,
+                    level: profile.level || 0,
+                    experience: profile.experience || 0,
+                    tasks_completed: profile.tasks_completed || 0,
+                    active_tasks: profile.active_tasks || 0,
+                    quality_rate: profile.quality_rate || 0,
+                    referral_count: profile.referral_count || 0,
+                    referral_earned: profile.referral_earned || 0
                 }
             });
         });
@@ -223,58 +214,6 @@ app.get('/api/user/:userId', (req, res) => {
         res.json({
             success: true,
             profile: profile
-        });
-    });
-});
-
-app.post('/api/user/update-stats', (req, res) => {
-    const { userId, balance, tasks_completed, active_tasks, experience } = req.body;
-    
-    if (!userId) {
-        return res.status(400).json({
-            success: false,
-            error: 'User ID is required'
-        });
-    }
-    
-    let query = 'UPDATE user_profiles SET updated_at = CURRENT_TIMESTAMP';
-    let params = [];
-    
-    if (balance !== undefined) {
-        query += ', balance = ?';
-        params.push(balance);
-    }
-    if (tasks_completed !== undefined) {
-        query += ', tasks_completed = ?';
-        params.push(tasks_completed);
-    }
-    if (active_tasks !== undefined) {
-        query += ', active_tasks = ?';
-        params.push(active_tasks);
-    }
-    if (experience !== undefined) {
-        query += ', experience = ?';
-        params.push(experience);
-        
-        // Автоматическое обновление уровня (каждые 100 опыта = 1 уровень)
-        query += ', level = FLOOR(experience / 100)';
-    }
-    
-    query += ' WHERE user_id = ?';
-    params.push(userId);
-    
-    db.run(query, params, function(err) {
-        if (err) {
-            console.error('Database error:', err);
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        res.json({
-            success: true,
-            message: 'User stats updated successfully'
         });
     });
 });
@@ -332,7 +271,31 @@ app.post('/api/posts', (req, res) => {
     });
 });
 
-// Tasks endpoints with search
+app.delete('/api/posts/:id', (req, res) => {
+    const { authorId } = req.body;
+    
+    if (parseInt(authorId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.run("DELETE FROM posts WHERE id = ?", [req.params.id], function(err) {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        res.json({
+            success: true,
+            message: 'Post deleted successfully'
+        });
+    });
+});
+
+// Tasks endpoints
 app.get('/api/tasks', (req, res) => {
     const { search, category } = req.query;
     let query = "SELECT * FROM tasks WHERE status = 'active'";
@@ -364,27 +327,60 @@ app.get('/api/tasks', (req, res) => {
     });
 });
 
-// User tasks endpoints
-app.get('/api/user/:userId/tasks', (req, res) => {
-    const userId = req.params.userId;
-    const { status } = req.query;
+app.post('/api/tasks', (req, res) => {
+    const { 
+        title, description, price, created_by, category,
+        time_to_complete, difficulty, people_required, repost_time, task_url, image_url
+    } = req.body;
     
-    let query = `
-        SELECT ut.*, t.title, t.description, t.price, t.category 
-        FROM user_tasks ut 
-        JOIN tasks t ON ut.task_id = t.id 
-        WHERE ut.user_id = ?
-    `;
-    let params = [userId];
-    
-    if (status) {
-        query += " AND ut.status = ?";
-        params.push(status);
+    if (!title || !description || !price || !created_by) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
     }
     
-    query += " ORDER BY ut.started_at DESC";
+    // Check admin rights
+    if (parseInt(created_by) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
     
-    db.all(query, params, (err, rows) => {
+    db.run(`INSERT INTO tasks (title, description, price, created_by, category,
+                              time_to_complete, difficulty, people_required, repost_time, task_url, image_url) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [title, description, price, created_by, category || 'general',
+             time_to_complete, difficulty, people_required, repost_time, task_url, image_url],
+            function(err) {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error: ' + err.message
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Task created successfully',
+            taskId: this.lastID
+        });
+    });
+});
+
+app.delete('/api/tasks/:id', (req, res) => {
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.run("DELETE FROM tasks WHERE id = ?", [req.params.id], function(err) {
         if (err) {
             return res.status(500).json({
                 success: false,
@@ -393,23 +389,139 @@ app.get('/api/user/:userId/tasks', (req, res) => {
         }
         res.json({
             success: true,
-            tasks: rows
+            message: 'Task deleted successfully'
         });
     });
 });
 
-app.post('/api/user/tasks/start', (req, res) => {
-    const { userId, taskId } = req.body;
+// Support system endpoints
+app.get('/api/support/chats', (req, res) => {
+    const { adminId } = req.query;
     
-    if (!userId || !taskId) {
-        return res.status(400).json({
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
             success: false,
-            error: 'Missing required fields'
+            error: 'Access denied'
         });
     }
-    
-    // Проверяем, не начал ли пользователь уже это задание
-    db.get("SELECT * FROM user_tasks WHERE user_id = ? AND task_id = ?", [userId, taskId], (err, existing) => {
+
+    db.all(`SELECT * FROM support_chats WHERE is_active = 1 ORDER BY last_message_time DESC`, 
+            [], (err, rows) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        res.json({
+            success: true,
+            chats: rows
+        });
+    });
+});
+
+app.get('/api/support/user-chat/:userId', (req, res) => {
+    const userId = req.params.userId;
+
+    db.get("SELECT * FROM support_chats WHERE user_id = ?", [userId], (err, chat) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+
+        if (!chat) {
+            // Create new chat if doesn't exist
+            db.run(`INSERT INTO support_chats (user_id, user_name, user_username) VALUES (?, ?, ?)`,
+                    [userId, `User_${userId}`, `user_${userId}`], function(err) {
+                if (err) {
+                    return res.status(500).json({
+                        success: false,
+                        error: 'Database error'
+                    });
+                }
+                db.get("SELECT * FROM support_chats WHERE id = ?", [this.lastID], (err, newChat) => {
+                    if (err) {
+                        return res.status(500).json({
+                            success: false,
+                            error: 'Database error'
+                        });
+                    }
+                    res.json({
+                        success: true,
+                        chat: newChat
+                    });
+                });
+            });
+        } else {
+            res.json({
+                success: true,
+                chat: chat
+            });
+        }
+    });
+});
+
+app.get('/api/support/chats/:chatId/messages', (req, res) => {
+    const chatId = req.params.chatId;
+
+    db.all(`SELECT * FROM support_messages WHERE chat_id = ? ORDER BY sent_at ASC`, 
+            [chatId], (err, rows) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        res.json({
+            success: true,
+            messages: rows
+        });
+    });
+});
+
+app.post('/api/support/chats/:chatId/messages', (req, res) => {
+    const chatId = req.params.chatId;
+    const { user_id, user_name, message, is_admin } = req.body;
+
+    if (!message) {
+        return res.status(400).json({
+            success: false,
+            error: 'Message is required'
+        });
+    }
+
+    db.run(`INSERT INTO support_messages (chat_id, user_id, user_name, message, is_admin) 
+            VALUES (?, ?, ?, ?, ?)`,
+            [chatId, user_id, user_name, message, is_admin],
+            function(err) {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+
+        // Update chat last message and time, increment unread count for admin
+        const updateQuery = is_admin ? 
+            `UPDATE support_chats SET last_message = ?, last_message_time = CURRENT_TIMESTAMP WHERE id = ?` :
+            `UPDATE support_chats SET last_message = ?, last_message_time = CURRENT_TIMESTAMP, unread_count = unread_count + 1 WHERE id = ?`;
+        
+        db.run(updateQuery, [message, chatId]);
+
+        res.json({
+            success: true,
+            message: 'Message sent',
+            messageId: this.lastID
+        });
+    });
+});
+
+app.put('/api/support/chats/:chatId/read', (req, res) => {
+    const chatId = req.params.chatId;
+
+    db.run("UPDATE support_chats SET unread_count = 0 WHERE id = ?", [chatId], function(err) {
         if (err) {
             return res.status(500).json({
                 success: false,
@@ -417,32 +529,74 @@ app.post('/api/user/tasks/start', (req, res) => {
             });
         }
         
-        if (existing) {
-            return res.status(400).json({
+        // Also mark messages as read
+        db.run("UPDATE support_messages SET is_read = 1 WHERE chat_id = ? AND is_admin = 0", [chatId]);
+        
+        res.json({
+            success: true,
+            message: 'Chat marked as read'
+        });
+    });
+});
+
+// Withdrawal endpoints
+app.post('/api/withdrawal/request', (req, res) => {
+    const { user_id, amount, method, details } = req.body;
+    
+    if (!user_id || !amount || !method || !details) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    db.run(`INSERT INTO withdrawal_requests (user_id, amount, method, details) 
+            VALUES (?, ?, ?, ?)`,
+            [user_id, amount, method, details],
+            function(err) {
+        if (err) {
+            return res.status(500).json({
                 success: false,
-                error: 'Task already started'
+                error: 'Database error'
             });
         }
         
-        // Добавляем задание пользователю
-        db.run(`INSERT INTO user_tasks (user_id, task_id, status) VALUES (?, ?, 'active')`,
-                [userId, taskId], function(err) {
-            if (err) {
-                return res.status(500).json({
-                    success: false,
-                    error: 'Database error'
-                });
-            }
-            
-            // Обновляем счетчик активных заданий
-            db.run("UPDATE user_profiles SET active_tasks = active_tasks + 1 WHERE user_id = ?", [userId]);
-            
-            res.json({
-                success: true,
-                message: 'Task started successfully',
-                userTaskId: this.lastID
-            });
+        res.json({
+            success: true,
+            message: 'Withdrawal request submitted successfully',
+            requestId: this.lastID
         });
+    });
+});
+
+app.get('/api/withdrawal/requests/:userId', (req, res) => {
+    const userId = req.params.userId;
+    
+    db.all("SELECT * FROM withdrawal_requests WHERE user_id = ? ORDER BY created_at DESC", 
+            [userId], (err, rows) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        res.json({
+            success: true,
+            requests: rows
+        });
+    });
+});
+
+// Serve the main page
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Handle 404
+app.use((req, res) => {
+    res.status(404).json({
+        success: false,
+        error: 'Endpoint not found'
     });
 });
 
