@@ -60,22 +60,23 @@ db.serialize(() => {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
-    // Task submissions for verification
-    db.run(`CREATE TABLE IF NOT EXISTS task_submissions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        task_id INTEGER NOT NULL,
-        user_id INTEGER NOT NULL,
-        user_name TEXT NOT NULL,
-        screenshot_url TEXT,
-        status TEXT DEFAULT 'pending',
-        submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        reviewed_by INTEGER,
-        reviewed_at DATETIME,
-        rejection_reason TEXT,
-        FOREIGN KEY(task_id) REFERENCES tasks(id)
+    // User profiles table
+    db.run(`CREATE TABLE IF NOT EXISTS user_profiles (
+        user_id INTEGER PRIMARY KEY,
+        username TEXT,
+        first_name TEXT,
+        last_name TEXT,
+        balance REAL DEFAULT 0,
+        level INTEGER DEFAULT 0,
+        tasks_completed INTEGER DEFAULT 0,
+        active_tasks INTEGER DEFAULT 0,
+        quality_rate REAL DEFAULT 0,
+        referral_count INTEGER DEFAULT 0,
+        referral_earned REAL DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
-    // Support chats
+    // Support chats table
     db.run(`CREATE TABLE IF NOT EXISTS support_chats (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
@@ -86,7 +87,7 @@ db.serialize(() => {
         is_active BOOLEAN DEFAULT 1
     )`);
 
-    // Support messages
+    // Support messages table
     db.run(`CREATE TABLE IF NOT EXISTS support_messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         chat_id INTEGER NOT NULL,
@@ -110,19 +111,91 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// Posts endpoints
-app.get('/api/posts', (req, res) => {
-    console.log('GET /api/posts request received');
+// User profile endpoints
+app.get('/api/user/:userId', (req, res) => {
+    const userId = req.params.userId;
     
-    db.all("SELECT * FROM posts ORDER BY timestamp DESC", (err, rows) => {
+    db.get("SELECT * FROM user_profiles WHERE user_id = ?", [userId], (err, row) => {
         if (err) {
-            console.error('Database error:', err);
             return res.status(500).json({ 
                 success: false,
                 error: 'Database error' 
             });
         }
-        console.log(`Returning ${rows.length} posts`);
+        
+        if (!row) {
+            // Create default profile if doesn't exist
+            const defaultProfile = {
+                user_id: parseInt(userId),
+                username: `user_${userId}`,
+                first_name: 'Пользователь',
+                last_name: '',
+                balance: 0,
+                level: 0,
+                tasks_completed: 0,
+                active_tasks: 0,
+                quality_rate: 0,
+                referral_count: 0,
+                referral_earned: 0
+            };
+            
+            db.run(`INSERT INTO user_profiles (user_id, username, first_name, balance, level, tasks_completed, active_tasks, quality_rate, referral_count, referral_earned) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [defaultProfile.user_id, defaultProfile.username, defaultProfile.first_name, 
+                     defaultProfile.balance, defaultProfile.level, defaultProfile.tasks_completed,
+                     defaultProfile.active_tasks, defaultProfile.quality_rate, 
+                     defaultProfile.referral_count, defaultProfile.referral_earned],
+                    function(err) {
+                if (err) {
+                    return res.status(500).json({ 
+                        success: false,
+                        error: 'Database error' 
+                    });
+                }
+                res.json({ 
+                    success: true,
+                    profile: defaultProfile 
+                });
+            });
+        } else {
+            res.json({ 
+                success: true,
+                profile: row 
+            });
+        }
+    });
+});
+
+app.post('/api/user/update', (req, res) => {
+    const { user_id, username, first_name, last_name } = req.body;
+    
+    db.run(`INSERT OR REPLACE INTO user_profiles 
+            (user_id, username, first_name, last_name) 
+            VALUES (?, ?, ?, ?)`,
+            [user_id, username, first_name, last_name],
+            function(err) {
+        if (err) {
+            return res.status(500).json({ 
+                success: false,
+                error: 'Database error' 
+            });
+        }
+        res.json({ 
+            success: true,
+            message: 'Profile updated successfully'
+        });
+    });
+});
+
+// Posts endpoints
+app.get('/api/posts', (req, res) => {
+    db.all("SELECT * FROM posts ORDER BY timestamp DESC", (err, rows) => {
+        if (err) {
+            return res.status(500).json({ 
+                success: false,
+                error: 'Database error' 
+            });
+        }
         res.json({ 
             success: true,
             posts: rows 
@@ -131,12 +204,9 @@ app.get('/api/posts', (req, res) => {
 });
 
 app.post('/api/posts', (req, res) => {
-    console.log('POST /api/posts request received:', req.body);
-    
     const { title, content, author, authorId, image_url } = req.body;
     
     if (!title || !content || !author) {
-        console.log('Missing required fields');
         return res.status(400).json({ 
             success: false,
             error: 'Missing required fields' 
@@ -145,7 +215,6 @@ app.post('/api/posts', (req, res) => {
     
     // Check admin rights
     if (parseInt(authorId) !== ADMIN_ID) {
-        console.log('Access denied for user:', authorId);
         return res.status(403).json({ 
             success: false,
             error: 'Access denied' 
@@ -157,14 +226,11 @@ app.post('/api/posts', (req, res) => {
             [title, content, author, authorId, image_url],
             function(err) {
         if (err) {
-            console.error('Database error:', err);
             return res.status(500).json({ 
                 success: false,
                 error: 'Database error: ' + err.message 
             });
         }
-        
-        console.log('Post created successfully with ID:', this.lastID);
         
         res.json({ 
             success: true,
@@ -198,13 +264,26 @@ app.delete('/api/posts/:id', (req, res) => {
     });
 });
 
-// Tasks endpoints
+// Tasks endpoints with search
 app.get('/api/tasks', (req, res) => {
-    console.log('GET /api/tasks request received');
-    
-    db.all("SELECT * FROM tasks WHERE status = 'active'", (err, rows) => {
+    const { search, category } = req.query;
+    let query = "SELECT * FROM tasks WHERE status = 'active'";
+    let params = [];
+
+    if (search) {
+        query += " AND (title LIKE ? OR description LIKE ?)";
+        params.push(`%${search}%`, `%${search}%`);
+    }
+
+    if (category && category !== 'all') {
+        query += " AND category = ?";
+        params.push(category);
+    }
+
+    query += " ORDER BY created_at DESC";
+
+    db.all(query, params, (err, rows) => {
         if (err) {
-            console.error('Database error:', err);
             return res.status(500).json({ 
                 success: false,
                 error: 'Database error' 
@@ -218,15 +297,12 @@ app.get('/api/tasks', (req, res) => {
 });
 
 app.post('/api/tasks', (req, res) => {
-    console.log('POST /api/tasks request received:', req.body);
-    
     const { 
         title, description, price, created_by, category,
         time_to_complete, difficulty, people_required, repost_time, task_url, image_url
     } = req.body;
     
     if (!title || !description || !price || !created_by) {
-        console.log('Missing required fields');
         return res.status(400).json({ 
             success: false,
             error: 'Missing required fields' 
@@ -235,7 +311,6 @@ app.post('/api/tasks', (req, res) => {
     
     // Check admin rights
     if (parseInt(created_by) !== ADMIN_ID) {
-        console.log('Access denied for user:', created_by);
         return res.status(403).json({ 
             success: false,
             error: 'Access denied' 
@@ -249,131 +324,16 @@ app.post('/api/tasks', (req, res) => {
              time_to_complete, difficulty, people_required, repost_time, task_url, image_url],
             function(err) {
         if (err) {
-            console.error('Database error:', err);
             return res.status(500).json({ 
                 success: false,
                 error: 'Database error: ' + err.message 
             });
         }
-        
-        console.log('Task created successfully with ID:', this.lastID);
         
         res.json({ 
             success: true,
             message: 'Task created successfully',
             taskId: this.lastID
-        });
-    });
-});
-
-app.delete('/api/tasks/:id', (req, res) => {
-    const { adminId } = req.body;
-    
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({ 
-            success: false,
-            error: 'Access denied' 
-        });
-    }
-
-    db.run("DELETE FROM tasks WHERE id = ?", [req.params.id], function(err) {
-        if (err) {
-            return res.status(500).json({ 
-                success: false,
-                error: 'Database error' 
-            });
-        }
-        res.json({ 
-            success: true,
-            message: 'Task deleted successfully' 
-        });
-    });
-});
-
-// Task verification endpoints
-app.post('/api/task-submissions', (req, res) => {
-    const { task_id, user_id, user_name, screenshot_url } = req.body;
-    
-    if (!task_id || !user_id || !user_name) {
-        return res.status(400).json({ 
-            success: false,
-            error: 'Missing required fields' 
-        });
-    }
-
-    db.run(`INSERT INTO task_submissions (task_id, user_id, user_name, screenshot_url) 
-            VALUES (?, ?, ?, ?)`,
-            [task_id, user_id, user_name, screenshot_url],
-            function(err) {
-        if (err) {
-            console.error('Database error:', err);
-            return res.status(500).json({ 
-                success: false,
-                error: 'Database error: ' + err.message 
-            });
-        }
-        
-        res.json({ 
-            success: true,
-            message: 'Task submitted for review',
-            submissionId: this.lastID
-        });
-    });
-});
-
-app.get('/api/task-submissions', (req, res) => {
-    const { adminId } = req.query;
-    
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({ 
-            success: false,
-            error: 'Access denied' 
-        });
-    }
-
-    db.all(`SELECT ts.*, t.title as task_title, t.price 
-            FROM task_submissions ts 
-            JOIN tasks t ON ts.task_id = t.id 
-            WHERE ts.status = 'pending'
-            ORDER BY ts.submitted_at DESC`, 
-            [], (err, rows) => {
-        if (err) {
-            return res.status(500).json({ 
-                success: false,
-                error: 'Database error' 
-            });
-        }
-        res.json({ 
-            success: true,
-            submissions: rows 
-        });
-    });
-});
-
-app.put('/api/task-submissions/:id', (req, res) => {
-    const { adminId, status, rejection_reason } = req.body;
-    
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({ 
-            success: false,
-            error: 'Access denied' 
-        });
-    }
-
-    db.run(`UPDATE task_submissions 
-            SET status = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP, rejection_reason = ?
-            WHERE id = ?`,
-            [status, ADMIN_ID, rejection_reason, req.params.id],
-            function(err) {
-        if (err) {
-            return res.status(500).json({ 
-                success: false,
-                error: 'Database error' 
-            });
-        }
-        res.json({ 
-            success: true,
-            message: `Task submission ${status} successfully` 
         });
     });
 });
@@ -497,23 +457,6 @@ app.post('/api/support/chats/:chatId/messages', (req, res) => {
             success: true,
             message: 'Message sent',
             messageId: this.lastID
-        });
-    });
-});
-
-app.put('/api/support/chats/:chatId/read', (req, res) => {
-    const chatId = req.params.chatId;
-
-    db.run("UPDATE support_chats SET unread_count = 0 WHERE id = ?", [chatId], function(err) {
-        if (err) {
-            return res.status(500).json({ 
-                success: false,
-                error: 'Database error' 
-            });
-        }
-        res.json({ 
-            success: true,
-            message: 'Chat marked as read' 
         });
     });
 });

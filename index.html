@@ -2020,7 +2020,18 @@
                     <button class="filter-btn" data-filter="comment">Комментарии</button>
                     <button class="filter-btn" data-filter="repost">Репосты</button>
                 </div>
-                
+                <!-- Лента постов на главной -->
+<div id="posts-section" class="card fade-in" style="display: none;">
+    <div class="posts-header">
+        <h2 style="color: var(--text-primary); margin-bottom: 15px;">Последние новости</h2>
+    </div>
+    <div id="posts-container">
+        <div class="loading-posts">
+            <div class="loading-spinner">⏳</div>
+            <div>Загрузка постов...</div>
+        </div>
+    </div>
+</div>
                 <!-- Новые задания -->
                 <div id="new-tasks" class="tasks-grid">
                     <!-- Задания будут добавлены через JavaScript -->
@@ -2469,42 +2480,363 @@
     </div>
 
     <script>
-    // 🔧 КОНФИГУРАЦИЯ
-    const API_URL = window.location.origin + '/api';
-    const tg = window.Telegram.WebApp;
-    const ADMIN_ID = 8036875641;
+// 🔧 КОНФИГУРАЦИЯ
+const API_URL = window.location.origin + '/api';
+const tg = window.Telegram.WebApp;
+const ADMIN_ID = 8036875641;
 
-    // Глобальные переменные
-    let currentUser = null;
+// Глобальные переменные
+let currentUser = null;
+let currentChatId = null;
 
-    // Улучшенная функция для отправки запросов
-    async function makeRequest(url, options = {}) {
-        try {
-            console.log('Making request to:', url, options);
-            
-            const response = await fetch(url, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...options.headers
-                },
-                ...options
-            });
+// Инициализация приложения
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Initializing LinkGold app...');
+    if (typeof tg !== 'undefined') {
+        tg.expand();
+        tg.ready();
+        initializeTelegramUser();
+    } else {
+        // Для тестирования без Telegram
+        initializeTestUser();
+    }
+});
 
-            console.log('Response status:', response.status);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+// Инициализация пользователя Telegram
+function initializeTelegramUser() {
+    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+        const tgUser = tg.initDataUnsafe.user;
+        currentUser = {
+            id: tgUser.id,
+            firstName: tgUser.first_name || 'Пользователь',
+            username: tgUser.username || `user_${tgUser.id}`,
+            isAdmin: parseInt(tgUser.id) === ADMIN_ID
+        };
+        
+        // Сохраняем пользователя в базу
+        updateUserProfile(currentUser);
+        displayUserProfile();
+        checkAdminRights();
+        loadMainPagePosts();
+        loadTasks();
+        initializeSearch();
+    } else {
+        console.log('Telegram user data not available');
+        initializeTestUser();
+    }
+}
+
+function initializeTestUser() {
+    // Для тестирования
+    currentUser = {
+        id: 123456789,
+        firstName: 'Алексей',
+        username: 'alexey_user',
+        isAdmin: false
+    };
+    displayUserProfile();
+    checkAdminRights();
+    loadMainPagePosts();
+    loadTasks();
+    initializeSearch();
+}
+
+// Обновление профиля пользователя
+async function updateUserProfile(user) {
+    try {
+        await makeRequest(`${API_URL}/user/update`, {
+            method: 'POST',
+            body: JSON.stringify({
+                user_id: user.id,
+                username: user.username,
+                first_name: user.firstName,
+                last_name: user.lastName || ''
+            })
+        });
+    } catch (error) {
+        console.error('Error updating user profile:', error);
+    }
+}
+
+// Загрузка данных пользователя
+async function loadUserProfile() {
+    if (!currentUser) return;
+    
+    try {
+        const result = await makeRequest(`${API_URL}/user/${currentUser.id}`);
+        if (result.success) {
+            updateProfileDisplay(result.profile);
+        }
+    } catch (error) {
+        console.error('Error loading user profile:', error);
+    }
+}
+
+function updateProfileDisplay(profile) {
+    // Обновляем данные в профиле
+    const balanceElement = document.getElementById('user-balance-main');
+    const firstNameElement = document.getElementById('user-first-name');
+    const usernameElement = document.getElementById('user-username');
+    const levelElement = document.getElementById('user-level');
+    
+    if (balanceElement) balanceElement.textContent = `${profile.balance} ₽`;
+    if (firstNameElement) firstNameElement.textContent = profile.first_name;
+    if (usernameElement) usernameElement.textContent = profile.username;
+    if (levelElement) levelElement.textContent = profile.level;
+    
+    // Обновляем статистику
+    document.querySelectorAll('.profile-stat .stat-value')[0].textContent = `${profile.balance} ₽`;
+    document.querySelectorAll('.profile-stat .stat-value')[1].textContent = profile.tasks_completed;
+    document.querySelectorAll('.profile-stat .stat-value')[2].textContent = profile.active_tasks;
+    document.querySelectorAll('.profile-stat .stat-value')[3].textContent = `${profile.quality_rate}%`;
+    
+    // Обновляем реферальную систему
+    document.getElementById('ref-invited').textContent = profile.referral_count;
+    document.getElementById('ref-earned').textContent = `${profile.referral_earned} ₽`;
+    
+    // Обновляем прогресс уровня
+    const progressPercent = (profile.tasks_completed % 10) * 10;
+    document.getElementById('level-progress-bar').style.width = `${progressPercent}%`;
+    document.querySelector('.level-count').textContent = `${profile.tasks_completed % 10}/10 заданий`;
+}
+
+// Инициализация поиска
+function initializeSearch() {
+    const searchInput = document.getElementById('task-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', function(e) {
+            const searchText = e.target.value.trim();
+            if (searchText.length >= 2 || searchText.length === 0) {
+                loadTasks(searchText);
             }
-
-            const data = await response.json();
-            console.log('Response data:', data);
-            return data;
+        });
+    }
+    
+    // Обработчики для фильтров
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    filterButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const filter = this.getAttribute('data-filter');
+            loadTasks('', filter);
             
+            // Обновляем активный класс
+            filterButtons.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+}
+
+// Загрузка заданий с поиском и фильтрацией
+async function loadTasks(search = '', category = 'all') {
+    try {
+        let url = `${API_URL}/tasks`;
+        const params = [];
+        
+        if (search) params.push(`search=${encodeURIComponent(search)}`);
+        if (category && category !== 'all') params.push(`category=${encodeURIComponent(category)}`);
+        
+        if (params.length > 0) {
+            url += '?' + params.join('&');
+        }
+        
+        const result = await makeRequest(url);
+        
+        if (result.success) {
+            displayTasks(result.tasks, 'new');
+        }
+    } catch (error) {
+        console.error('Error loading tasks:', error);
+    }
+}
+
+// Функции для чата поддержки
+async function openAdminChat() {
+    if (!currentUser) return;
+    
+    try {
+        // Получаем или создаем чат
+        const chatResult = await makeRequest(`${API_URL}/support/chats/${currentUser.id}`);
+        if (chatResult.success) {
+            currentChatId = chatResult.chat.id;
+            
+            // Загружаем сообщения
+            const messagesResult = await makeRequest(`${API_URL}/support/chats/${currentChatId}/messages`);
+            if (messagesResult.success) {
+                displayChatMessages(messagesResult.messages);
+            }
+            
+            // Показываем чат
+            document.getElementById('admin-chat').classList.add('active');
+        }
+    } catch (error) {
+        console.error('Error opening chat:', error);
+    }
+}
+
+async function sendMessageToAdmin() {
+    if (!currentUser || !currentChatId) return;
+    
+    const input = document.getElementById('chat-input-field');
+    const message = input.value.trim();
+    
+    if (message) {
+        try {
+            const result = await makeRequest(`${API_URL}/support/chats/${currentChatId}/messages`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    sender_id: currentUser.id,
+                    sender_name: currentUser.firstName,
+                    message: message,
+                    is_admin: false
+                })
+            });
+            
+            if (result.success) {
+                // Добавляем сообщение в интерфейс
+                const messagesContainer = document.getElementById('chat-messages');
+                const messageElement = document.createElement('div');
+                messageElement.className = 'message message-user';
+                messageElement.textContent = message;
+                messagesContainer.appendChild(messageElement);
+                
+                input.value = '';
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
         } catch (error) {
-            console.error('Request failed:', error);
-            throw error;
+            console.error('Error sending message:', error);
         }
     }
+}
+
+function displayChatMessages(messages) {
+    const messagesContainer = document.getElementById('chat-messages');
+    messagesContainer.innerHTML = '';
+    
+    messages.forEach(message => {
+        const messageElement = document.createElement('div');
+        messageElement.className = message.is_admin ? 'message message-admin' : 'message message-user';
+        messageElement.textContent = message.message;
+        messagesContainer.appendChild(messageElement);
+    });
+    
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function closeChat() {
+    document.getElementById('admin-chat').classList.remove('active');
+    currentChatId = null;
+}
+
+// Загрузка постов на главную
+async function loadMainPagePosts() {
+    try {
+        const result = await makeRequest(`${API_URL}/posts`);
+        
+        if (result.success && result.posts && result.posts.length > 0) {
+            displayMainPagePosts(result.posts);
+        }
+    } catch (error) {
+        console.error('Error loading posts:', error);
+    }
+}
+
+function displayMainPagePosts(posts) {
+    const postsSection = document.getElementById('posts-section');
+    const postsContainer = document.getElementById('posts-container');
+    
+    if (!postsContainer) return;
+    
+    // Показываем секцию с постами
+    postsSection.style.display = 'block';
+    
+    postsContainer.innerHTML = '';
+    
+    posts.forEach(post => {
+        const postElement = document.createElement('div');
+        postElement.className = 'post-item fade-in';
+        postElement.innerHTML = `
+            <div class="post-header">
+                <div>
+                    <div class="post-title">${escapeHtml(post.title)}</div>
+                    <div class="post-author">
+                        👤 ${escapeHtml(post.author)}
+                        ${post.isAdmin ? '<span class="admin-badge">АДМИН</span>' : ''}
+                    </div>
+                </div>
+                <div class="post-date">
+                    ${formatPostDate(post.timestamp)}
+                </div>
+            </div>
+            
+            <div class="post-content">
+                ${escapeHtml(post.content)}
+            </div>
+            
+            ${post.image_url ? `
+                <img src="${post.image_url}" alt="Изображение" class="post-image" onerror="this.style.display='none'">
+            ` : ''}
+        `;
+        postsContainer.appendChild(postElement);
+    });
+}
+
+// Проверка прав администратора
+function checkAdminRights() {
+    const adminNavItem = document.getElementById('admin-nav-item');
+    if (currentUser && currentUser.isAdmin && parseInt(currentUser.id) === ADMIN_ID) {
+        if (adminNavItem) {
+            adminNavItem.style.display = 'flex';
+        }
+    } else {
+        if (adminNavItem) {
+            adminNavItem.style.display = 'none';
+        }
+    }
+}
+
+// Вспомогательные функции
+function escapeHtml(unsafe) {
+    if (!unsafe) return '';
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function formatPostDate(timestamp) {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now - date;
+    
+    if (diff < 60000) return 'только что';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)} мин назад`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)} ч назад`;
+    
+    return date.toLocaleDateString('ru-RU');
+}
+
+async function makeRequest(url, options = {}) {
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            },
+            ...options
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Request failed:', error);
+        throw error;
+    }
+}
 
     // Инициализация приложения
     document.addEventListener('DOMContentLoaded', function() {
@@ -3089,6 +3421,7 @@
             input.value = '';
         }
     }
+    
 </script>
 </body>
 </html>
