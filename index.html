@@ -3064,6 +3064,205 @@
     margin-top: 8px;
     display: inline-block;
 }
+/* 🔧 СТИЛИ ДЛЯ УПРАВЛЕНИЯ ЧАТАМИ */
+
+.chat-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+    overflow-x: auto;
+    padding-bottom: 5px;
+}
+
+.chat-tab-btn {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.3s ease;
+}
+
+.chat-tab-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+.chat-stats {
+    background: var(--bg-secondary);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: 1px solid var(--border);
+}
+
+.chat-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: var(--card-bg);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.chat-item:hover {
+    background: var(--bg-secondary);
+    transform: translateY(-2px);
+}
+
+.chat-item.unread {
+    border-left: 4px solid var(--error);
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.chat-item.archived {
+    opacity: 0.7;
+    background: rgba(100, 100, 100, 0.1);
+}
+
+.chat-avatar-small {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--purple-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    color: white;
+    font-weight: 600;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.chat-info-small {
+    flex: 1;
+    min-width: 0;
+}
+
+.chat-name-small {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chat-last-message {
+    font-size: 12px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+.chat-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.chat-time {
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.chat-actions {
+    display: flex;
+    gap: 5px;
+    margin-left: 10px;
+}
+
+.chat-action-btn {
+    background: none;
+    border: none;
+    padding: 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.3s ease;
+}
+
+.chat-delete-btn {
+    color: var(--error);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.chat-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+}
+
+.chat-archive-btn {
+    color: var(--warning);
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.chat-archive-btn:hover {
+    background: rgba(245, 158, 11, 0.2);
+}
+
+.chat-restore-btn {
+    color: var(--success);
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.chat-restore-btn:hover {
+    background: rgba(16, 185, 129, 0.2);
+}
+
+.unread-badge {
+    background: var(--error);
+    color: white;
+    border-radius: 10px;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 600;
+    min-width: 18px;
+    text-align: center;
+}
+
+.archived-badge {
+    background: var(--warning);
+    color: white;
+    border-radius: 6px;
+    padding: 1px 4px;
+    font-size: 9px;
+    margin-left: 5px;
+}
+
+/* Адаптивность для чатов */
+@media (max-width: 768px) {
+    .chat-item {
+        padding: 10px;
+    }
+    
+    .chat-last-message {
+        max-width: 150px;
+    }
+    
+    .chat-actions {
+        flex-direction: column;
+        gap: 3px;
+    }
+    
+    .chat-action-btn {
+        padding: 4px;
+        font-size: 10px;
+    }
+}
     </style>
 </head>
 <body>
@@ -3442,17 +3641,41 @@
                         </div>
                     </div>
 
-                    <!-- Поддержка -->
-                    <div id="admin-support-section" class="admin-section" style="display: none;">
-                        <h3>Чаты с пользователями</h3>
-                        <div id="admin-chats-list">
-                            <button class="admin-chat-photo" onclick="sendAdminPhoto()" title="Отправить фото">📷</button>
-                            <!-- Чаты будут загружаться динамически -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-
+                <!-- Поддержка -->
+<div id="admin-support-section" class="admin-section" style="display: none;">
+    <h3>💬 Чаты с пользователями</h3>
+    
+    <!-- Переключение между активными и архивными чатами -->
+    <div class="chat-tabs" style="margin-bottom: 15px;">
+        <button class="chat-tab-btn active" onclick="showChatTab('active')">Активные чаты</button>
+        <button class="chat-tab-btn" onclick="showChatTab('archived')">Архивные чаты</button>
+        <button class="chat-tab-btn" onclick="showChatTab('all')">Все чаты</button>
+    </div>
+    
+    <!-- Статистика чатов -->
+    <div class="chat-stats" style="margin-bottom: 15px; padding: 10px; background: var(--bg-secondary); border-radius: 10px;">
+        <div style="display: flex; justify-content: space-between; font-size: 12px;">
+            <span>Активные: <strong id="active-chats-count">0</strong></span>
+            <span>Непрочитанные: <strong id="unread-chats-count">0</strong></span>
+            <span>Всего: <strong id="total-chats-count">0</strong></span>
+        </div>
+    </div>
+    
+    <!-- Список активных чатов -->
+    <div id="active-chats-list" class="admin-chat-list">
+        <!-- Активные чаты будут загружены здесь -->
+    </div>
+    
+    <!-- Список архивных чатов -->
+    <div id="archived-chats-list" class="admin-chat-list" style="display: none;">
+        <!-- Архивные чаты будут загружены здесь -->
+    </div>
+    
+    <!-- Список всех чатов -->
+    <div id="all-chats-list" class="admin-chat-list" style="display: none;">
+        <!-- Все чаты будут загружены здесь -->
+    </div>
+</div>
             <!-- Страница "Как работает" -->
             <div id="how-it-works-page" class="page">
                 <div class="page-header">
@@ -3716,6 +3939,7 @@ let currentChatId = null;
 let currentAdminChat = null;
 let selectedTaskId = null;
 let allTasks = [];
+let currentChatView = 'active';
 
 // Улучшенная функция для отправки запросов
 async function makeRequest(url, options = {}) {
@@ -3802,6 +4026,9 @@ async function initializeTelegramUser() {
             
             console.log('Telegram user data:', currentUser);
             
+            // 🔥 КАСТОМИЗАЦИЯ TELEGRAM TOP BAR
+            customizeTelegramTopBar();
+            
             // Аутентифицируем пользователя на сервере
             try {
                 const authResult = await makeRequest(`${API_URL}/user/auth`, {
@@ -3831,6 +4058,104 @@ async function initializeTelegramUser() {
     }
 }
 
+// 🔥 Функция кастомизации Telegram Top Bar
+function customizeTelegramTopBar() {
+    if (typeof tg === 'undefined') return;
+    
+    try {
+        // 1. Устанавливаем заголовок
+        tg.setHeaderTitle('🌟 LinkGold');
+        
+        // 2. Устанавливаем цвет фона Top Bar
+        tg.setHeaderColor('#050510');
+        
+        // 3. Устанавливаем цвет фона всего Web App
+        tg.setBackgroundColor('#050510');
+        
+        // 4. Устанавливаем цвет акцента (кнопки и т.д.)
+        tg.setAccentColor('#6366f1');
+        
+        // 5. Включаем подтверждение при закрытии
+        tg.enableClosingConfirmation();
+        
+        // 6. Настраиваем Main Button (если нужно)
+        tg.MainButton.setParams({
+            text: '💰 Мой баланс',
+            color: '#6366f1',
+            text_color: '#ffffff',
+            is_active: true,
+            is_visible: false
+        });
+        
+        // 7. Обработчик для Main Button
+        tg.MainButton.onClick(function() {
+            showBalanceModal();
+        });
+        
+        console.log('Telegram Top Bar customized successfully');
+        
+    } catch (error) {
+        console.error('Error customizing Telegram Top Bar:', error);
+    }
+}
+
+// 🔥 Функция для показа/скрытия Main Button
+function updateTelegramMainButton(visible = true, text = '💰 Мой баланс') {
+    if (typeof tg === 'undefined') return;
+    
+    try {
+        if (visible) {
+            tg.MainButton.setText(text);
+            tg.MainButton.show();
+        } else {
+            tg.MainButton.hide();
+        }
+    } catch (error) {
+        console.error('Error updating Telegram Main Button:', error);
+    }
+}
+
+// 🔥 Функция для изменения заголовка Top Bar динамически
+function setTelegramTitle(title) {
+    if (typeof tg === 'undefined') return;
+    
+    try {
+        tg.setHeaderTitle(title);
+    } catch (error) {
+        console.error('Error setting Telegram title:', error);
+    }
+}
+
+// 🔥 Функция для показа Haptic Feedback (вибрации)
+function showHapticFeedback(type = 'light') {
+    if (typeof tg === 'undefined') return;
+    
+    try {
+        switch(type) {
+            case 'light':
+                tg.HapticFeedback.impactOccurred('light');
+                break;
+            case 'medium':
+                tg.HapticFeedback.impactOccurred('medium');
+                break;
+            case 'heavy':
+                tg.HapticFeedback.impactOccurred('heavy');
+                break;
+            case 'success':
+                tg.HapticFeedback.notificationOccurred('success');
+                break;
+            case 'error':
+                tg.HapticFeedback.notificationOccurred('error');
+                break;
+            case 'warning':
+                tg.HapticFeedback.notificationOccurred('warning');
+                break;
+        }
+    } catch (error) {
+        console.error('Haptic feedback error:', error);
+    }
+}
+
 // Функция для тестирования (без Telegram)
 function initializeTestUser() {
     currentUser = {
@@ -3850,6 +4175,52 @@ function initializeTestUser() {
     initializeApp();
 }
 
+// 🔥 ДОПОЛНИТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ЛУЧШЕЙ ИНТЕГРАЦИИ
+function setupTelegramFeatures() {
+    if (typeof tg === 'undefined') return;
+    
+    // 1. Расширяем приложение на весь экран
+    tg.expand();
+    
+    // 2. Включаем возможность закрытия с подтверждением
+    tg.enableClosingConfirmation();
+    
+    // 3. Настраиваем обработчик события видимости
+    tg.onEvent('viewportChanged', (event) => {
+        console.log('Viewport changed:', event);
+    });
+    
+    // 4. Обработчик закрытия приложения
+    tg.onEvent('close', () => {
+        console.log('App is closing');
+    });
+    
+    // 5. Обработчик изменения темы
+    tg.onEvent('themeChanged', () => {
+        console.log('Theme changed');
+        applyTelegramTheme();
+    });
+    
+    // Применяем текущую тему Telegram
+    applyTelegramTheme();
+}
+
+// 🔥 Функция применения темы Telegram
+function applyTelegramTheme() {
+    if (typeof tg === 'undefined') return;
+    
+    const theme = tg.colorScheme;
+    console.log('Applying Telegram theme:', theme);
+    
+    if (theme === 'light') {
+        document.documentElement.style.setProperty('--bg-primary', '#ffffff');
+        document.documentElement.style.setProperty('--text-primary', '#000000');
+    } else {
+        document.documentElement.style.setProperty('--bg-primary', '#050510');
+        document.documentElement.style.setProperty('--text-primary', '#ffffff');
+    }
+}
+
 // Основная инициализация приложения
 function initializeApp() {
     displayUserProfile();
@@ -3858,12 +4229,29 @@ function initializeApp() {
     loadTasks();
     initializeSearch();
     loadUserTasks();
+    updateHeaderStats();
+    setupTelegramFeatures();
+    
+    // Обновляем статистику каждые 30 секунд
+    setInterval(updateHeaderStats, 30000);
     
     // Если пользователь админ, загружаем админ-данные
     if (currentUser && currentUser.isAdmin) {
         loadAdminChats();
         loadAdminTasks();
     }
+}
+
+// Функции для улучшенной шапки
+function updateHeaderStats() {
+    // Случайные, но реалистичные данные для демонстрации
+    const onlineUsers = Math.floor(1200 + Math.random() * 300);
+    const totalEarned = (2.5 + Math.random() * 0.5).toFixed(1);
+    const rating = (4.8 + Math.random() * 0.2).toFixed(1);
+    
+    document.getElementById('online-users').textContent = `${(onlineUsers / 1000).toFixed(1)}K+`;
+    document.getElementById('total-earned').textContent = `${totalEarned}M+ ₽`;
+    document.getElementById('rating').textContent = rating;
 }
 
 // Отображение профиля пользователя
@@ -3894,7 +4282,6 @@ function displayUserProfile() {
             userPhotoElement.src = currentUser.photoUrl;
             userPhotoElement.style.display = 'block';
         } else {
-            // Показываем инициалы если нет фото
             userPhotoElement.style.display = 'flex';
             userPhotoElement.style.alignItems = 'center';
             userPhotoElement.style.justifyContent = 'center';
@@ -4125,14 +4512,17 @@ async function startTask() {
         });
 
         if (result.success) {
+            showHapticFeedback('success');
             showNotification('Задание начато! После выполнения подтвердите его в разделе "Подтверждение".', 'success');
             closeModal('task-modal');
-            loadUserTasks(); // Обновляем список заданий пользователя
+            loadUserTasks();
         } else {
+            showHapticFeedback('error');
             showNotification('Ошибка: ' + result.error, 'error');
         }
     } catch (error) {
         console.error('Error starting task:', error);
+        showHapticFeedback('error');
         showNotification('Ошибка начала задания', 'error');
     }
     selectedTaskId = null;
@@ -4227,16 +4617,42 @@ async function submitTaskCompletion(taskId) {
     if (!confirm('Вы уверены, что выполнили это задание?')) return;
     
     try {
-        // В реальном приложении здесь была бы загрузка скриншота
-        // Для демо просто отмечаем как выполненное
+        showHapticFeedback('success');
         showNotification('Задание отправлено на проверку! Скриншот можно отправить в поддержку.', 'success');
         
         // Обновляем интерфейс
         loadUserTasks();
     } catch (error) {
         console.error('Error submitting task:', error);
+        showHapticFeedback('error');
         showNotification('Ошибка отправки задания', 'error');
     }
+}
+
+// Функция для обработки длинного текста в постах
+function handleLongPosts() {
+    const postContents = document.querySelectorAll('.post-content');
+    
+    postContents.forEach(content => {
+        const text = content.textContent;
+        if (text.length > 300) {
+            // Ограничиваем текст и добавляем кнопку "Читать далее"
+            const shortText = text.substring(0, 300) + '...';
+            content.textContent = shortText;
+            content.classList.add('collapsed');
+            
+            const readMoreBtn = document.createElement('button');
+            readMoreBtn.className = 'read-more-btn';
+            readMoreBtn.textContent = 'Читать далее';
+            readMoreBtn.onclick = function() {
+                content.textContent = text;
+                content.classList.remove('collapsed');
+                readMoreBtn.remove();
+            };
+            
+            content.parentNode.insertBefore(readMoreBtn, content.nextSibling);
+        }
+    });
 }
 
 // Загрузка постов на главную
@@ -4283,9 +4699,7 @@ function displayMainPagePosts(posts) {
                 </div>
             </div>
             
-            <div class="post-content">
-                ${escapeHtml(post.content)}
-            </div>
+            <div class="post-content">${escapeHtml(post.content)}</div>
             
             ${post.image_url ? `
                 <img src="${post.image_url}" alt="Изображение" class="post-image" onerror="this.style.display='none'">
@@ -4301,6 +4715,9 @@ function displayMainPagePosts(posts) {
         `;
         postsContainer.appendChild(postElement);
     });
+    
+    // Обрабатываем длинные посты
+    setTimeout(handleLongPosts, 100);
 }
 
 function hidePostsSection() {
@@ -4342,16 +4759,19 @@ async function addNewPost() {
         });
 
         if (result.success) {
+            showHapticFeedback('success');
             showNotification('Пост успешно опубликован!', 'success');
             document.getElementById('admin-post-title').value = '';
             document.getElementById('admin-post-content').value = '';
-            loadMainPagePosts(); // Обновляем посты на главной
+            loadMainPagePosts();
         } else {
+            showHapticFeedback('error');
             showNotification('Ошибка: ' + result.error, 'error');
         }
         
     } catch (error) {
         console.error('Error adding post:', error);
+        showHapticFeedback('error');
         showNotification('Ошибка соединения: ' + error.message, 'error');
     }
 }
@@ -4410,6 +4830,7 @@ async function addTask() {
         });
 
         if (result.success) {
+            showHapticFeedback('success');
             showNotification('Задание успешно создано!', 'success');
             
             // Очищаем форму
@@ -4429,11 +4850,13 @@ async function addTask() {
             loadTasks();
             
         } else {
+            showHapticFeedback('error');
             showNotification('Ошибка: ' + result.error, 'error');
         }
         
     } catch (error) {
         console.error('Error creating task:', error);
+        showHapticFeedback('error');
         showNotification('Ошибка соединения: ' + error.message, 'error');
     }
 }
@@ -4499,13 +4922,16 @@ async function deletePost(postId) {
         });
 
         if (result.success) {
+            showHapticFeedback('success');
             showNotification('Пост успешно удален!', 'success');
-            loadMainPagePosts(); // Обновляем посты на главной
+            loadMainPagePosts();
         } else {
+            showHapticFeedback('error');
             showNotification('Ошибка: ' + result.error, 'error');
         }
     } catch (error) {
         console.error('Error deleting post:', error);
+        showHapticFeedback('error');
         showNotification('Ошибка соединения: ' + error.message, 'error');
     }
 }
@@ -4525,186 +4951,267 @@ async function deleteTask(taskId) {
         });
 
         if (result.success) {
+            showHapticFeedback('success');
             showNotification('Задание успешно удалено!', 'success');
-            loadAdminTasks(); // Обновляем список заданий
-            loadTasks(); // Обновляем задания для пользователей
+            loadAdminTasks();
+            loadTasks();
         } else {
+            showHapticFeedback('error');
             showNotification('Ошибка: ' + result.error, 'error');
         }
     } catch (error) {
         console.error('Error deleting task:', error);
+        showHapticFeedback('error');
         showNotification('Ошибка соединения: ' + error.message, 'error');
     }
 }
 
-// 💬 СИСТЕМА ЧАТА ПОДДЕРЖКИ
+// 🔧 ИСПРАВЛЕННАЯ СИСТЕМА ЧАТОВ С СОХРАНЕНИЕМ СООБЩЕНИЙ
 
-// Чат для пользователя
-async function openAdminChat() {
-    if (!currentUser) return;
-    
-    try {
-        // Получаем или создаем чат для пользователя
-        const chatResult = await makeRequest(`${API_URL}/support/user-chat/${currentUser.id}`);
-        if (chatResult.success) {
-            currentChatId = chatResult.chat.id;
-            
-            // Загружаем сообщения
-            const messagesResult = await makeRequest(`${API_URL}/support/chats/${currentChatId}/messages`);
-            if (messagesResult.success) {
-                displayChatMessages(messagesResult.messages);
-            }
-            
-            // Показываем чат
-            document.getElementById('admin-chat').classList.add('active');
-        }
-    } catch (error) {
-        console.error('Error opening chat:', error);
-        showNotification('Ошибка открытия чата', 'error');
-    }
-}
-
-async function sendMessageToAdmin() {
-    if (!currentUser || !currentChatId) return;
-    
-    const input = document.getElementById('chat-input-field');
-    const message = input.value.trim();
-    
-    if (message) {
-        try {
-            const result = await makeRequest(`${API_URL}/support/chats/${currentChatId}/messages`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    user_id: currentUser.id,
-                    user_name: currentUser.firstName,
-                    message: message,
-                    is_admin: false
-                })
-            });
-            
-            if (result.success) {
-                // Добавляем сообщение в интерфейс
-                const messagesContainer = document.getElementById('chat-messages');
-                const messageElement = document.createElement('div');
-                messageElement.className = 'message message-user';
-                messageElement.innerHTML = `
-                    <div class="message-text">${escapeHtml(message)}</div>
-                    <div class="message-time">${new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}</div>
-                `;
-                messagesContainer.appendChild(messageElement);
-                
-                input.value = '';
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                
-                // Обновляем список чатов для админа
-                if (currentUser.isAdmin) {
-                    loadAdminChats();
-                }
-            }
-        } catch (error) {
-            console.error('Error sending message:', error);
-            showNotification('Ошибка отправки сообщения', 'error');
-        }
-    }
-}
-
-function displayChatMessages(messages) {
-    const messagesContainer = document.getElementById('chat-messages');
-    if (!messagesContainer) return;
-    
-    messagesContainer.innerHTML = '';
-    
-    messages.forEach(message => {
-        const messageElement = document.createElement('div');
-        messageElement.className = message.is_admin ? 'message message-admin' : 'message message-user';
-        
-        let messageContent = '';
-        if (message.image_url) {
-            messageContent = `
-                <div class="message-image">
-                    <img src="${message.image_url}" alt="Фото" style="max-width: 200px; border-radius: 10px;">
-                </div>
-            `;
-        } else {
-            messageContent = `<div class="message-text">${escapeHtml(message.message)}</div>`;
-        }
-        
-        messageElement.innerHTML = `
-            ${messageContent}
-            <div class="message-time">${message.moscow_time || formatMoscowTimeShort(message.sent_at)}</div>
-        `;
-        messagesContainer.appendChild(messageElement);
-    });
-    
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
-function closeChat() {
-    document.getElementById('admin-chat').classList.remove('active');
-    currentChatId = null;
-}
-
-// Чат для админа
+// Загрузка чатов для админа
 async function loadAdminChats() {
     if (!currentUser || !currentUser.isAdmin) return;
     
     try {
-        console.log('Loading admin chats...');
+        console.log('📥 Loading admin chats...');
         const result = await makeRequest(`${API_URL}/support/chats?adminId=${ADMIN_ID}`);
         
         if (result.success) {
-            console.log('Chats loaded:', result.chats);
-            displayAdminChats(result.chats);
+            console.log(`✅ Loaded ${result.chats.length} chats`);
+            displayAdminChats(result.chats, 'active');
+            updateChatStats(result.chats);
         } else {
-            console.error('Failed to load chats:', result.error);
+            console.error('❌ Failed to load chats:', result.error);
         }
     } catch (error) {
-        console.error('Error loading admin chats:', error);
+        console.error('❌ Error loading admin chats:', error);
         showNotification('Ошибка загрузки чатов', 'error');
     }
 }
 
-function displayAdminChats(chats) {
-    const container = document.getElementById('admin-chats-list');
+// Загрузка архивных чатов
+async function loadArchivedChats() {
+    if (!currentUser || !currentUser.isAdmin) return;
+    
+    try {
+        const result = await makeRequest(`${API_URL}/support/archived-chats?adminId=${ADMIN_ID}`);
+        
+        if (result.success) {
+            displayAdminChats(result.chats, 'archived');
+        }
+    } catch (error) {
+        console.error('Error loading archived chats:', error);
+    }
+}
+
+// Обновление статистики чатов
+function updateChatStats(chats) {
+    const activeChats = chats.filter(chat => chat.is_active);
+    const unreadChats = chats.filter(chat => chat.unread_count > 0);
+    
+    document.getElementById('active-chats-count').textContent = activeChats.length;
+    document.getElementById('unread-chats-count').textContent = unreadChats.length;
+    document.getElementById('total-chats-count').textContent = chats.length;
+}
+
+// Отображение чатов
+function displayAdminChats(chats, type = 'active') {
+    const container = document.getElementById(`${type}-chats-list`);
     if (!container) {
-        console.error('Admin chats container not found!');
+        console.error('Chats container not found:', `${type}-chats-list`);
         return;
     }
     
     container.innerHTML = '';
     
     if (!chats || chats.length === 0) {
-        container.innerHTML = '<div class="no-tasks" style="text-align: center; padding: 20px;">Нет активных чатов</div>';
+        container.innerHTML = `
+            <div class="no-tasks" style="text-align: center; padding: 20px;">
+                <div style="font-size: 24px; margin-bottom: 10px;">💬</div>
+                <div>${type === 'archived' ? 'Нет архивных чатов' : 'Нет активных чатов'}</div>
+            </div>
+        `;
         return;
     }
     
     chats.forEach(chat => {
         const chatElement = document.createElement('div');
-        chatElement.className = `chat-item ${chat.unread_count > 0 ? 'unread' : ''}`;
+        const isUnread = chat.unread_count > 0;
+        const isArchived = !chat.is_active;
+        
+        chatElement.className = `chat-item ${isUnread ? 'unread' : ''} ${isArchived ? 'archived' : ''}`;
         chatElement.onclick = () => openAdminChatWindow(chat);
+        
         chatElement.innerHTML = `
             <div class="chat-avatar-small">
                 ${chat.user_name ? chat.user_name.charAt(0).toUpperCase() : 'U'}
             </div>
             <div class="chat-info-small">
-                <div class="chat-name-small">${chat.user_name || `User_${chat.user_id}`}</div>
+                <div class="chat-name-small">
+                    ${chat.user_name || `User_${chat.user_id}`}
+                    ${isArchived ? '<span class="archived-badge">архив</span>' : ''}
+                </div>
                 <div class="chat-last-message">${chat.last_message || 'Нет сообщений'}</div>
             </div>
             <div class="chat-meta">
                 <div class="chat-time">${chat.moscow_time || formatPostDate(chat.last_message_time)}</div>
-                ${chat.unread_count > 0 ? 
-                    `<div class="unread-badge">${chat.unread_count}</div>` : 
-                    ''
-                }
+                ${isUnread ? `<div class="unread-badge">${chat.unread_count}</div>` : ''}
+            </div>
+            <div class="chat-actions">
+                ${!isArchived ? `
+                    <button class="chat-action-btn chat-archive-btn" onclick="event.stopPropagation(); archiveChat(${chat.id})" title="В архив">📁</button>
+                    <button class="chat-action-btn chat-delete-btn" onclick="event.stopPropagation(); deleteChat(${chat.id})" title="Удалить">🗑️</button>
+                ` : `
+                    <button class="chat-action-btn chat-restore-btn" onclick="event.stopPropagation(); restoreChat(${chat.id})" title="Восстановить">↻</button>
+                    <button class="chat-action-btn chat-delete-btn" onclick="event.stopPropagation(); deleteChat(${chat.id})" title="Удалить">🗑️</button>
+                `}
             </div>
         `;
         container.appendChild(chatElement);
     });
 }
 
-// ОТКРЫТИЕ ЧАТА АДМИНА С ПОЛЬЗОВАТЕЛЕМ
+// Переключение между вкладками чатов
+function showChatTab(tab) {
+    currentChatView = tab;
+    
+    // Обновляем активные кнопки
+    document.querySelectorAll('.chat-tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    // Показываем соответствующий список
+    document.getElementById('active-chats-list').style.display = 'none';
+    document.getElementById('archived-chats-list').style.display = 'none';
+    document.getElementById('all-chats-list').style.display = 'none';
+    
+    if (tab === 'active') {
+        document.getElementById('active-chats-list').style.display = 'block';
+        loadAdminChats();
+    } else if (tab === 'archived') {
+        document.getElementById('archived-chats-list').style.display = 'block';
+        loadArchivedChats();
+    } else if (tab === 'all') {
+        document.getElementById('all-chats-list').style.display = 'block';
+        loadAllChats();
+    }
+}
+
+// Загрузка всех чатов
+async function loadAllChats() {
+    if (!currentUser || !currentUser.isAdmin) return;
+    
+    try {
+        const [activeResult, archivedResult] = await Promise.all([
+            makeRequest(`${API_URL}/support/chats?adminId=${ADMIN_ID}`),
+            makeRequest(`${API_URL}/support/archived-chats?adminId=${ADMIN_ID}`)
+        ]);
+        
+        if (activeResult.success && archivedResult.success) {
+            const allChats = [...activeResult.chats, ...archivedResult.chats];
+            displayAdminChats(allChats, 'all');
+        }
+    } catch (error) {
+        console.error('Error loading all chats:', error);
+    }
+}
+
+// 🔧 ФУНКЦИИ УПРАВЛЕНИЯ ЧАТАМИ
+
+// Удаление чата
+async function deleteChat(chatId) {
+    if (!confirm('❌ Вы уверены, что хотите удалить этот чат? Все сообщения будут безвозвратно удалены. Это действие нельзя отменить.')) {
+        return;
+    }
+
+    try {
+        const result = await makeRequest(`${API_URL}/support/chats/${chatId}`, {
+            method: 'DELETE',
+            body: JSON.stringify({
+                adminId: currentUser.id
+            })
+        });
+
+        if (result.success) {
+            showHapticFeedback('success');
+            showNotification('Чат успешно удален', 'success');
+            // Перезагружаем текущий вид чатов
+            if (currentChatView === 'active') {
+                loadAdminChats();
+            } else if (currentChatView === 'archived') {
+                loadArchivedChats();
+            } else {
+                loadAllChats();
+            }
+        } else {
+            showHapticFeedback('error');
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('❌ Error deleting chat:', error);
+        showHapticFeedback('error');
+        showNotification('Ошибка удаления чата', 'error');
+    }
+}
+
+// Архивация чата
+async function archiveChat(chatId) {
+    if (!confirm('📁 Переместить чат в архив? Вы сможете восстановить его позже.')) {
+        return;
+    }
+
+    try {
+        const result = await makeRequest(`${API_URL}/support/chats/${chatId}/archive`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                adminId: currentUser.id
+            })
+        });
+
+        if (result.success) {
+            showHapticFeedback('success');
+            showNotification('Чат перемещен в архив', 'success');
+            loadAdminChats();
+        } else {
+            showHapticFeedback('error');
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error archiving chat:', error);
+        showHapticFeedback('error');
+        showNotification('Ошибка архивации чата', 'error');
+    }
+}
+
+// Восстановление чата из архива
+async function restoreChat(chatId) {
+    try {
+        const result = await makeRequest(`${API_URL}/support/chats/${chatId}/restore`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                adminId: currentUser.id
+            })
+        });
+
+        if (result.success) {
+            showHapticFeedback('success');
+            showNotification('Чат восстановлен', 'success');
+            loadArchivedChats();
+        } else {
+            showHapticFeedback('error');
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error restoring chat:', error);
+        showHapticFeedback('error');
+        showNotification('Ошибка восстановления чата', 'error');
+    }
+}
+
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОТКРЫТИЯ ЧАТА
 async function openAdminChatWindow(chat) {
-    console.log('Opening admin chat:', chat);
+    console.log('💬 Opening admin chat:', chat);
     currentAdminChat = chat;
     
     try {
@@ -4722,6 +5229,7 @@ async function openAdminChatWindow(chat) {
         // Загружаем сообщения
         const messagesResult = await makeRequest(`${API_URL}/support/chats/${chat.id}/messages`);
         if (messagesResult.success) {
+            console.log(`📨 Loaded ${messagesResult.messages.length} messages for chat ${chat.id}`);
             displayAdminChatMessages(messagesResult.messages);
             
             // Помечаем как прочитанное
@@ -4737,10 +5245,12 @@ async function openAdminChatWindow(chat) {
             
             // Показываем окно чата
             showAdminChatWindow();
+        } else {
+            throw new Error('Failed to load messages');
         }
     } catch (error) {
-        console.error('Error opening admin chat:', error);
-        showNotification('Ошибка открытия чата', 'error');
+        console.error('❌ Error opening admin chat:', error);
+        showNotification('Ошибка открытия чата: ' + error.message, 'error');
     }
 }
 
@@ -4765,7 +5275,6 @@ function showAdminChatWindow() {
         chatWindow.classList.add('active');
     } else {
         console.error('Admin chat window element not found!');
-        // Создаем окно чата динамически, если оно не существует
         createAdminChatWindow();
     }
 }
@@ -4832,7 +5341,7 @@ function displayAdminChatMessages(messages) {
     container.scrollTop = container.scrollHeight;
 }
 
-// ОТПРАВКА СООБЩЕНИЯ АДМИНОМ
+// 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ ОТПРАВКИ СООБЩЕНИЙ
 async function sendAdminMessage() {
     if (!currentAdminChat || !currentUser) {
         console.error('No active chat or user');
@@ -4849,6 +5358,8 @@ async function sendAdminMessage() {
     
     if (message) {
         try {
+            console.log(`✉️ Sending message to chat ${currentAdminChat.id}: ${message.substring(0, 50)}...`);
+            
             const result = await makeRequest(`${API_URL}/support/chats/${currentAdminChat.id}/messages`, {
                 method: 'POST',
                 body: JSON.stringify({
@@ -4876,11 +5387,15 @@ async function sendAdminMessage() {
                     
                     // Обновляем список чатов
                     loadAdminChats();
+                    
+                    console.log('✅ Message sent successfully');
                 }
+            } else {
+                throw new Error(result.error);
             }
         } catch (error) {
-            console.error('Error sending admin message:', error);
-            showNotification('Ошибка отправки сообщения', 'error');
+            console.error('❌ Error sending admin message:', error);
+            showNotification('Ошибка отправки сообщения: ' + error.message, 'error');
         }
     }
 }
@@ -4893,59 +5408,140 @@ function closeAdminChat() {
     currentAdminChat = null;
 }
 
-// Функция форматирования короткого московского времени
-function formatMoscowTimeShort(timestamp) {
-    if (!timestamp) return '';
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now - date;
+// 🔧 ДЛЯ ПОЛЬЗОВАТЕЛЬСКОГО ЧАТА - УЛУЧШЕННАЯ ФУНКЦИЯ
+async function openAdminChat() {
+    if (!currentUser) return;
     
-    // Если сообщение сегодняшнее - показываем только время
-    if (diff < 24 * 60 * 60 * 1000) {
-        return date.toLocaleString("ru-RU", { 
-            timeZone: "Europe/Moscow",
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+    try {
+        console.log('👤 User opening support chat');
+        
+        // Получаем или создаем чат для пользователя
+        const chatResult = await makeRequest(`${API_URL}/support/user-chat/${currentUser.id}`);
+        if (chatResult.success) {
+            currentChatId = chatResult.chat.id;
+            console.log(`✅ User chat ID: ${currentChatId}`);
+            
+            // Загружаем сообщения
+            const messagesResult = await makeRequest(`${API_URL}/support/chats/${currentChatId}/messages`);
+            if (messagesResult.success) {
+                console.log(`📨 Loaded ${messagesResult.messages.length} messages for user chat`);
+                displayChatMessages(messagesResult.messages);
+            }
+            
+            // Показываем чат и меняем Top Bar
+            document.getElementById('admin-chat').classList.add('active');
+            setTelegramTitle('💬 Поддержка');
+            updateTelegramMainButton(false);
+        }
+    } catch (error) {
+        console.error('❌ Error opening user chat:', error);
+        showNotification('Ошибка открытия чата поддержки', 'error');
     }
-    
-    // Иначе показываем дату и время
-    return date.toLocaleString("ru-RU", { 
-        timeZone: "Europe/Moscow",
-        day: '2-digit',
-        month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
 }
 
-// Функция для форматирования даты постов с московским временем
-function formatPostDate(timestamp) {
-    if (!timestamp) return '';
-    
-    // Если timestamp уже отформатирован сервером (moscow_time)
-    if (typeof timestamp === 'string' && timestamp.includes('.')) {
-        return timestamp;
+async function sendMessageToAdmin() {
+    if (!currentUser || !currentChatId) {
+        console.error('No user or chat ID');
+        return;
     }
     
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now - date;
+    const input = document.getElementById('chat-input-field');
+    const message = input.value.trim();
     
-    // Используем московское время
-    const moscowDate = new Date(date.toLocaleString("en-US", {timeZone: "Europe/Moscow"}));
+    if (message) {
+        try {
+            console.log(`✉️ User sending message to chat ${currentChatId}: ${message.substring(0, 50)}...`);
+            
+            const result = await makeRequest(`${API_URL}/support/chats/${currentChatId}/messages`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    user_id: currentUser.id,
+                    user_name: currentUser.firstName,
+                    message: message,
+                    is_admin: false
+                })
+            });
+            
+            if (result.success) {
+                // Добавляем сообщение в интерфейс
+                const messagesContainer = document.getElementById('chat-messages');
+                const messageElement = document.createElement('div');
+                messageElement.className = 'message message-user';
+                messageElement.innerHTML = `
+                    <div class="message-text">${escapeHtml(message)}</div>
+                    <div class="message-time">${new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}</div>
+                `;
+                messagesContainer.appendChild(messageElement);
+                
+                input.value = '';
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                
+                // Обновляем список чатов для админа
+                if (currentUser.isAdmin) {
+                    loadAdminChats();
+                }
+                
+                console.log('✅ User message sent successfully');
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            console.error('❌ Error sending user message:', error);
+            showNotification('Ошибка отправки сообщения: ' + error.message, 'error');
+        }
+    }
+}
+
+function displayChatMessages(messages) {
+    const messagesContainer = document.getElementById('chat-messages');
+    if (!messagesContainer) return;
     
-    if (diff < 60000) return 'только что';
-    if (diff < 3600000) return `${Math.floor(diff / 60000)} мин назад`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)} ч назад`;
+    messagesContainer.innerHTML = '';
     
-    return moscowDate.toLocaleString('ru-RU', { 
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    }).replace(',', '');
+    messages.forEach(message => {
+        const messageElement = document.createElement('div');
+        messageElement.className = message.is_admin ? 'message message-admin' : 'message message-user';
+        
+        let messageContent = '';
+        if (message.image_url) {
+            messageContent = `
+                <div class="message-image">
+                    <img src="${message.image_url}" alt="Фото" style="max-width: 200px; border-radius: 10px;">
+                </div>
+            `;
+        } else {
+            messageContent = `<div class="message-text">${escapeHtml(message.message)}</div>`;
+        }
+        
+        messageElement.innerHTML = `
+            ${messageContent}
+            <div class="message-time">${message.moscow_time || formatMoscowTimeShort(message.sent_at)}</div>
+        `;
+        messagesContainer.appendChild(messageElement);
+    });
+    
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function closeChat() {
+    document.getElementById('admin-chat').classList.remove('active');
+    currentChatId = null;
+    
+    // Возвращаем предыдущий заголовок
+    const activeTab = document.querySelector('.tab-content.active');
+    if (activeTab) {
+        const tabId = activeTab.id;
+        if (tabId === 'main-tab') {
+            setTelegramTitle('🌟 LinkGold');
+            updateTelegramMainButton(true, '💰 Мой баланс');
+        } else if (tabId === 'tasks-tab') {
+            setTelegramTitle('📋 Задания');
+            updateTelegramMainButton(true, '🎯 Начать задание');
+        } else if (tabId === 'profile-tab') {
+            setTelegramTitle('👤 Профиль');
+            updateTelegramMainButton(true, '💳 Вывод средств');
+        }
+    }
 }
 
 // 💰 СИСТЕМА ВЫВОДА СРЕДСТВ
@@ -4979,6 +5575,7 @@ async function submitWithdraw() {
         });
 
         if (result.success) {
+            showHapticFeedback('success');
             showNotification(`Запрос на вывод ${amount}₽ отправлен! Ожидайте обработки.`, 'success');
             // Очищаем форму
             document.getElementById('withdraw-amount').value = '';
@@ -4988,10 +5585,12 @@ async function submitWithdraw() {
             // Возвращаемся в профиль
             showProfileTab();
         } else {
+            showHapticFeedback('error');
             showNotification('Ошибка: ' + result.error, 'error');
         }
     } catch (error) {
         console.error('Error submitting withdrawal:', error);
+        showHapticFeedback('error');
         showNotification('Ошибка соединения', 'error');
     }
 }
@@ -5003,6 +5602,10 @@ function showMainTab() {
     document.getElementById('main-tab').classList.add('active');
     updateNavState('main');
     loadMainPagePosts();
+    
+    // Синхронизация с Telegram Top Bar
+    setTelegramTitle('🌟 LinkGold');
+    updateTelegramMainButton(true, '💰 Мой баланс');
 }
 
 function showTasksTab() {
@@ -5010,6 +5613,40 @@ function showTasksTab() {
     document.getElementById('tasks-tab').classList.add('active');
     updateNavState('tasks');
     loadTasks();
+    
+    // Синхронизация с Telegram Top Bar
+    setTelegramTitle('📋 Задания');
+    updateTelegramMainButton(true, '🎯 Начать задание');
+}
+
+function showProfileTab() {
+    hideAllTabs();
+    document.getElementById('profile-tab').classList.add('active');
+    updateNavState('profile');
+    
+    // Синхронизация с Telegram Top Bar
+    setTelegramTitle('👤 Профиль');
+    updateTelegramMainButton(true, '💳 Вывод средств');
+}
+
+function showAdminTab() {
+    if (!currentUser || !currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+        showNotification('Доступ запрещен!', 'error');
+        return;
+    }
+    
+    hideAllTabs();
+    document.getElementById('admin-tab').classList.add('active');
+    updateNavState('admin');
+    
+    // Синхронизация с Telegram Top Bar
+    setTelegramTitle('⚙️ Админ-панель');
+    updateTelegramMainButton(false);
+    
+    // Загружаем данные для админ-панели
+    loadAdminChats();
+    loadAdminTasks();
+    showAdminSection('support');
 }
 
 function showTaskCategory(category) {
@@ -5047,30 +5684,6 @@ function showTaskCategory(category) {
     if (category === 'confirmation' || category === 'completed') {
         loadUserTasks();
     }
-}
-
-function showProfileTab() {
-    hideAllTabs();
-    document.getElementById('profile-tab').classList.add('active');
-    updateNavState('profile');
-}
-
-function showAdminTab() {
-    if (!currentUser || !currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
-        showNotification('Доступ запрещен!', 'error');
-        return;
-    }
-    
-    hideAllTabs();
-    document.getElementById('admin-tab').classList.add('active');
-    updateNavState('admin');
-    
-    // Загружаем данные для админ-панели
-    loadAdminChats();
-    loadAdminTasks();
-    
-    // Показываем раздел поддержки по умолчанию
-    showAdminSection('support');
 }
 
 function showHowItWorksPage() {
@@ -5161,6 +5774,61 @@ function escapeHtml(unsafe) {
         .replace(/'/g, "&#039;");
 }
 
+// Функция для форматирования даты постов с московским временем
+function formatPostDate(timestamp) {
+    if (!timestamp) return '';
+    
+    // Если timestamp уже отформатирован сервером (moscow_time)
+    if (typeof timestamp === 'string' && timestamp.includes('.')) {
+        return timestamp;
+    }
+    
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now - date;
+    
+    // Используем московское время
+    const moscowDate = new Date(date.toLocaleString("en-US", {timeZone: "Europe/Moscow"}));
+    
+    if (diff < 60000) return 'только что';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)} мин назад`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)} ч назад`;
+    
+    return moscowDate.toLocaleString('ru-RU', { 
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    }).replace(',', '');
+}
+
+// Функция форматирования короткого московского времени
+function formatMoscowTimeShort(timestamp) {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now - date;
+    
+    // Если сообщение сегодняшнее - показываем только время
+    if (diff < 24 * 60 * 60 * 1000) {
+        return date.toLocaleString("ru-RU", { 
+            timeZone: "Europe/Moscow",
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+    
+    // Иначе показываем дату и время
+    return date.toLocaleString("ru-RU", { 
+        timeZone: "Europe/Moscow",
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
 function showNotification(message, type = 'info') {
     // Создаем элемент уведомления
     const notification = document.createElement('div');
@@ -5204,13 +5872,14 @@ function copyReferralLink() {
     if (!referralInput) return;
     
     referralInput.select();
-    referralInput.setSelectionRange(0, 99999); // Для мобильных устройств
+    referralInput.setSelectionRange(0, 99999);
     
     navigator.clipboard.writeText(referralInput.value).then(() => {
+        showHapticFeedback('light');
         showNotification('Реферальная ссылка скопирована!', 'success');
     }).catch(() => {
-        // Fallback для старых браузеров
         document.execCommand('copy');
+        showHapticFeedback('light');
         showNotification('Реферальная ссылка скопирована!', 'success');
     });
 }
@@ -5218,6 +5887,9 @@ function copyReferralLink() {
 // Функции для модальных окон
 function showBalanceModal() {
     document.getElementById('balance-modal').classList.add('active');
+    
+    // Скрываем Main Button при открытии модального окна
+    updateTelegramMainButton(false);
 }
 
 function showPrices() {
@@ -5238,6 +5910,19 @@ function goToProfile() {
 
 function closeModal(modalId) {
     document.getElementById(modalId).classList.remove('active');
+    
+    // Показываем Main Button обратно при закрытии модального окна
+    const activeTab = document.querySelector('.tab-content.active');
+    if (activeTab) {
+        const tabId = activeTab.id;
+        if (tabId === 'main-tab') {
+            updateTelegramMainButton(true, '💰 Мой баланс');
+        } else if (tabId === 'tasks-tab') {
+            updateTelegramMainButton(true, '🎯 Начать задание');
+        } else if (tabId === 'profile-tab') {
+            updateTelegramMainButton(true, '💳 Вывод средств');
+        }
+    }
 }
 
 // Инициализация при загрузке
@@ -5295,6 +5980,10 @@ window.deleteTask = deleteTask;
 window.sendAdminMessage = sendAdminMessage;
 window.closeAdminChat = closeAdminChat;
 window.submitTaskCompletion = submitTaskCompletion;
+window.deleteChat = deleteChat;
+window.archiveChat = archiveChat;
+window.restoreChat = restoreChat;
+window.showChatTab = showChatTab;
 </script>
 </body>
 </html>

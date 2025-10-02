@@ -830,7 +830,186 @@ app.use((req, res) => {
         error: 'Endpoint not found'
     });
 });
+// 🔧 ИСПРАВЛЕНИЕ ДЛЯ СОХРАНЕНИЯ СООБЩЕНИЙ И УДАЛЕНИЯ ЧАТОВ
 
+// Убедитесь, что сообщения сохраняются правильно
+app.post('/api/support/chats/:chatId/messages', (req, res) => {
+    const chatId = req.params.chatId;
+    const { user_id, user_name, message, image_url, is_admin } = req.body;
+
+    if (!message && !image_url) {
+        return res.status(400).json({
+            success: false,
+            error: 'Message or image is required'
+        });
+    }
+
+    console.log(`💬 Saving message for chat ${chatId}:`, { 
+        user_id, user_name, 
+        message: message ? message.substring(0, 50) + '...' : 'IMAGE', 
+        is_admin 
+    });
+
+    db.run(`INSERT INTO support_messages (chat_id, user_id, user_name, message, image_url, is_admin) 
+            VALUES (?, ?, ?, ?, ?, ?)`,
+            [chatId, user_id, user_name, message, image_url, is_admin],
+            function(err) {
+        if (err) {
+            console.error('❌ Error saving message:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error: ' + err.message
+            });
+        }
+
+        // Update chat last message and time, increment unread count for admin
+        const displayMessage = message || '📷 Фото';
+        const updateQuery = is_admin ? 
+            `UPDATE support_chats SET last_message = ?, last_message_time = CURRENT_TIMESTAMP WHERE id = ?` :
+            `UPDATE support_chats SET last_message = ?, last_message_time = CURRENT_TIMESTAMP, unread_count = unread_count + 1 WHERE id = ?`;
+        
+        db.run(updateQuery, [displayMessage, chatId], function(updateErr) {
+            if (updateErr) {
+                console.error('❌ Error updating chat:', updateErr);
+            }
+            
+            console.log(`✅ Message saved successfully for chat ${chatId}, ID: ${this.lastID}`);
+        });
+
+        res.json({
+            success: true,
+            message: 'Message sent',
+            messageId: this.lastID
+        });
+    });
+});
+
+// Эндпоинт для удаления чата админом
+app.delete('/api/support/chats/:chatId', (req, res) => {
+    const chatId = req.params.chatId;
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    console.log(`🗑️ Admin ${adminId} deleting chat ${chatId}`);
+
+    // Сначала удаляем все сообщения в чате
+    db.run("DELETE FROM support_messages WHERE chat_id = ?", [chatId], function(err) {
+        if (err) {
+            console.error('❌ Error deleting messages:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        console.log(`✅ Deleted ${this.changes} messages from chat ${chatId}`);
+        
+        // Затем удаляем сам чат
+        db.run("DELETE FROM support_chats WHERE id = ?", [chatId], function(chatErr) {
+            if (chatErr) {
+                console.error('❌ Error deleting chat:', chatErr);
+                return res.status(500).json({
+                    success: false,
+                    error: 'Database error'
+                });
+            }
+            
+            console.log(`✅ Chat ${chatId} deleted successfully`);
+            
+            res.json({
+                success: true,
+                message: 'Chat deleted successfully',
+                deletedMessages: this.changes
+            });
+        });
+    });
+});
+
+// Эндпоинт для архивации чата (альтернатива удалению)
+app.put('/api/support/chats/:chatId/archive', (req, res) => {
+    const chatId = req.params.chatId;
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.run("UPDATE support_chats SET is_active = 0 WHERE id = ?", [chatId], function(err) {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Chat archived successfully'
+        });
+    });
+});
+
+// Эндпоинт для получения архивных чатов
+app.get('/api/support/archived-chats', (req, res) => {
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.all(`SELECT * FROM support_chats WHERE is_active = 0 ORDER BY last_message_time DESC`, 
+            [], (err, rows) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        res.json({
+            success: true,
+            chats: rows
+        });
+    });
+});
+// Эндпоинт для восстановления чата из архива
+app.put('/api/support/chats/:chatId/restore', (req, res) => {
+    const chatId = req.params.chatId;
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.run("UPDATE support_chats SET is_active = 1 WHERE id = ?", [chatId], function(err) {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Chat restored successfully'
+        });
+    });
+});
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
