@@ -2931,6 +2931,70 @@
         padding: 10px 12px;
     }
 }
+/* Стили для московского времени в постах */
+.post-date {
+    font-size: 12px;
+    color: var(--text-secondary);
+    opacity: 0.8;
+}
+
+.post-author {
+    font-size: 13px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.admin-badge {
+    background: var(--purple-gradient);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+/* Улучшенные стили для чатов */
+.chat-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    min-width: 60px;
+}
+
+.chat-time {
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.unread-badge {
+    background: var(--error);
+    color: white;
+    border-radius: 10px;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 600;
+    min-width: 18px;
+    text-align: center;
+}
+
+/* Адаптивность для чатов */
+@media (max-width: 768px) {
+    .chat-item {
+        padding: 10px;
+    }
+    
+    .chat-last-message {
+        max-width: 150px;
+    }
+    
+    .chat-meta {
+        min-width: 50px;
+    }
+}
     </style>
 </head>
 <body>
@@ -3649,24 +3713,6 @@ function initializeEventListeners() {
             }
         });
     }
-    
-    // Обработчик для формы заданий
-    const taskForm = document.querySelector('#admin-tasks-section form');
-    if (taskForm) {
-        taskForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            addTask();
-        });
-    }
-    
-    // Обработчик для формы постов
-    const postForm = document.querySelector('#admin-posts-section form');
-    if (postForm) {
-        postForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            addNewPost();
-        });
-    }
 }
 
 // Инициализация пользователя Telegram
@@ -4158,9 +4204,13 @@ function displayMainPagePosts(posts) {
             <div class="post-header">
                 <div>
                     <div class="post-title">${escapeHtml(post.title)}</div>
+                    <div class="post-author">
+                        👤 ${post.author}
+                        ${post.isAdmin ? '<span class="admin-badge">ADMIN</span>' : ''}
+                    </div>
                 </div>
                 <div class="post-date">
-                    ${formatPostDate(post.timestamp)}
+                    ${post.moscow_time || formatPostDate(post.timestamp)}
                 </div>
             </div>
             
@@ -4512,7 +4562,7 @@ function displayChatMessages(messages) {
         
         messageElement.innerHTML = `
             ${messageContent}
-            <div class="message-time">${new Date(message.sent_at).toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}</div>
+            <div class="message-time">${message.moscow_time || formatMoscowTimeShort(message.sent_at)}</div>
         `;
         messagesContainer.appendChild(messageElement);
     });
@@ -4572,7 +4622,7 @@ function displayAdminChats(chats) {
                 <div class="chat-last-message">${chat.last_message || 'Нет сообщений'}</div>
             </div>
             <div class="chat-meta">
-                <div class="chat-time">${formatPostDate(chat.last_message_time)}</div>
+                <div class="chat-time">${chat.moscow_time || formatPostDate(chat.last_message_time)}</div>
                 ${chat.unread_count > 0 ? 
                     `<div class="unread-badge">${chat.unread_count}</div>` : 
                     ''
@@ -4589,13 +4639,18 @@ async function openAdminChatWindow(chat) {
     currentAdminChat = chat;
     
     try {
-        // Обновляем имя пользователя в заголовке чата
-        const chatUserName = document.getElementById('admin-chat-user-name');
-        if (chatUserName) {
-            chatUserName.textContent = chat.user_name || `User_${chat.user_id}`;
+        // Сначала загружаем полную информацию о чате
+        const chatResult = await makeRequest(`${API_URL}/support/chats/${chat.id}?adminId=${ADMIN_ID}`);
+        if (!chatResult.success) {
+            throw new Error('Failed to load chat details');
         }
         
-        // Загружаем сообщения чата
+        const fullChat = chatResult.chat;
+        
+        // Обновляем интерфейс чата
+        updateAdminChatInterface(fullChat);
+        
+        // Загружаем сообщения
         const messagesResult = await makeRequest(`${API_URL}/support/chats/${chat.id}/messages`);
         if (messagesResult.success) {
             displayAdminChatMessages(messagesResult.messages);
@@ -4605,20 +4660,14 @@ async function openAdminChatWindow(chat) {
                 await makeRequest(`${API_URL}/support/chats/${chat.id}/read`, {
                     method: 'PUT'
                 });
+                // Обновляем список чатов (убираем уведомление)
+                loadAdminChats();
             } catch (readError) {
                 console.log('Mark as read not available, continuing...');
             }
             
-            // Обновляем список чатов
-            loadAdminChats();
-            
             // Показываем окно чата
-            const chatWindow = document.getElementById('admin-chat-window');
-            if (chatWindow) {
-                chatWindow.classList.add('active');
-            } else {
-                console.error('Admin chat window element not found!');
-            }
+            showAdminChatWindow();
         }
     } catch (error) {
         console.error('Error opening admin chat:', error);
@@ -4626,6 +4675,60 @@ async function openAdminChatWindow(chat) {
     }
 }
 
+// Функция обновления интерфейса чата
+function updateAdminChatInterface(chat) {
+    const chatUserName = document.getElementById('admin-chat-user-name');
+    const chatUserAvatar = document.getElementById('admin-chat-avatar');
+    
+    if (chatUserName) {
+        chatUserName.textContent = chat.user_name || `User_${chat.user_id}`;
+    }
+    
+    if (chatUserAvatar) {
+        chatUserAvatar.textContent = chat.user_name ? chat.user_name.charAt(0).toUpperCase() : 'U';
+    }
+}
+
+// Функция показа окна чата админа
+function showAdminChatWindow() {
+    const chatWindow = document.getElementById('admin-chat-window');
+    if (chatWindow) {
+        chatWindow.classList.add('active');
+    } else {
+        console.error('Admin chat window element not found!');
+        // Создаем окно чата динамически, если оно не существует
+        createAdminChatWindow();
+    }
+}
+
+// Создание окна чата админа (если не существует в HTML)
+function createAdminChatWindow() {
+    const chatWindowHTML = `
+        <div class="admin-chat-window" id="admin-chat-window">
+            <div class="admin-chat-header">
+                <div class="admin-chat-user">
+                    <div class="chat-avatar-small" id="admin-chat-avatar">U</div>
+                    <div class="chat-info-small">
+                        <div class="chat-name-small" id="admin-chat-user-name">User</div>
+                        <div class="chat-status">Online</div>
+                    </div>
+                </div>
+                <button class="chat-close" onclick="closeAdminChat()">×</button>
+            </div>
+            <div class="admin-chat-messages" id="admin-chat-messages">
+                <!-- Сообщения будут загружены здесь -->
+            </div>
+            <div class="admin-chat-input-container">
+                <input type="text" id="admin-chat-input" placeholder="Введите сообщение...">
+                <button class="admin-chat-send" onclick="sendAdminMessage()">➤</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', chatWindowHTML);
+}
+
+// Обновленная функция отображения сообщений в админ-чате
 function displayAdminChatMessages(messages) {
     const container = document.getElementById('admin-chat-messages');
     if (!container) {
@@ -4652,7 +4755,7 @@ function displayAdminChatMessages(messages) {
         
         messageElement.innerHTML = `
             ${messageContent}
-            <div class="message-time">${new Date(message.sent_at).toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}</div>
+            <div class="message-time">${message.moscow_time || formatMoscowTimeShort(message.sent_at)}</div>
         `;
         container.appendChild(messageElement);
     });
@@ -4719,6 +4822,61 @@ function closeAdminChat() {
         chatWindow.classList.remove('active');
     }
     currentAdminChat = null;
+}
+
+// Функция форматирования короткого московского времени
+function formatMoscowTimeShort(timestamp) {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now - date;
+    
+    // Если сообщение сегодняшнее - показываем только время
+    if (diff < 24 * 60 * 60 * 1000) {
+        return date.toLocaleString("ru-RU", { 
+            timeZone: "Europe/Moscow",
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+    
+    // Иначе показываем дату и время
+    return date.toLocaleString("ru-RU", { 
+        timeZone: "Europe/Moscow",
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+// Функция для форматирования даты постов с московским временем
+function formatPostDate(timestamp) {
+    if (!timestamp) return '';
+    
+    // Если timestamp уже отформатирован сервером (moscow_time)
+    if (typeof timestamp === 'string' && timestamp.includes('.')) {
+        return timestamp;
+    }
+    
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now - date;
+    
+    // Используем московское время
+    const moscowDate = new Date(date.toLocaleString("en-US", {timeZone: "Europe/Moscow"}));
+    
+    if (diff < 60000) return 'только что';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)} мин назад`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)} ч назад`;
+    
+    return moscowDate.toLocaleString('ru-RU', { 
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    }).replace(',', '');
 }
 
 // 💰 СИСТЕМА ВЫВОДА СРЕДСТВ
@@ -4934,30 +5092,6 @@ function escapeHtml(unsafe) {
         .replace(/'/g, "&#039;");
 }
 
-function formatPostDate(timestamp) {
-    if (!timestamp) return '';
-    
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now - date;
-    
-    if (diff < 60000) return 'только что';
-    if (diff < 3600000) return `${Math.floor(diff / 60000)} мин назад`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)} ч назад`;
-    
-    return date.toLocaleString('ru-RU', { 
-        timeZone: 'Europe/Moscow',
-        day: '2-digit',
-        month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-}
-
-function closeModal(modalId) {
-    document.getElementById(modalId).classList.remove('active');
-}
-
 function showNotification(message, type = 'info') {
     // Создаем элемент уведомления
     const notification = document.createElement('div');
@@ -5031,6 +5165,10 @@ function openAdminChatFromPrices() {
 function goToProfile() {
     closeModal('balance-modal');
     showProfileTab();
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('active');
 }
 
 // Инициализация при загрузке

@@ -148,6 +148,33 @@ function formatMoscowTime(timestamp) {
         timeZone: "Europe/Moscow",
         day: '2-digit',
         month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+// Функция для форматирования времени в коротком формате (для чатов)
+function formatMoscowTimeShort(timestamp) {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now - date;
+    
+    // Если сообщение сегодняшнее - показываем только время
+    if (diff < 24 * 60 * 60 * 1000 && date.getDate() === now.getDate()) {
+        return date.toLocaleString("ru-RU", { 
+            timeZone: "Europe/Moscow",
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+    
+    // Иначе показываем дату и время
+    return date.toLocaleString("ru-RU", { 
+        timeZone: "Europe/Moscow",
+        day: '2-digit',
+        month: '2-digit',
         hour: '2-digit',
         minute: '2-digit'
     });
@@ -259,9 +286,15 @@ app.get('/api/posts', (req, res) => {
             });
         }
         
+        // Форматируем время для каждого поста
+        const postsWithMoscowTime = rows.map(post => ({
+            ...post,
+            moscow_time: formatMoscowTime(post.timestamp)
+        }));
+        
         res.json({
             success: true,
-            posts: rows
+            posts: postsWithMoscowTime
         });
     });
 });
@@ -555,9 +588,15 @@ app.get('/api/support/chats', (req, res) => {
             });
         }
         
+        // Форматируем время для каждого чата
+        const chatsWithMoscowTime = rows.map(chat => ({
+            ...chat,
+            moscow_time: formatMoscowTimeShort(chat.last_message_time)
+        }));
+        
         res.json({
             success: true,
-            chats: rows
+            chats: chatsWithMoscowTime
         });
     });
 });
@@ -592,16 +631,58 @@ app.get('/api/support/user-chat/:userId', (req, res) => {
                     }
                     res.json({
                         success: true,
-                        chat: newChat
+                        chat: {
+                            ...newChat,
+                            moscow_time: formatMoscowTimeShort(newChat.last_message_time)
+                        }
                     });
                 });
             });
         } else {
             res.json({
                 success: true,
-                chat: chat
+                chat: {
+                    ...chat,
+                    moscow_time: formatMoscowTimeShort(chat.last_message_time)
+                }
             });
         }
+    });
+});
+
+app.get('/api/support/chats/:chatId', (req, res) => {
+    const chatId = req.params.chatId;
+    const { adminId } = req.query;
+
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.get("SELECT * FROM support_chats WHERE id = ?", [chatId], (err, chat) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+
+        if (!chat) {
+            return res.status(404).json({
+                success: false,
+                error: 'Chat not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            chat: {
+                ...chat,
+                moscow_time: formatMoscowTimeShort(chat.last_message_time)
+            }
+        });
     });
 });
 
@@ -617,9 +698,15 @@ app.get('/api/support/chats/:chatId/messages', (req, res) => {
             });
         }
         
+        // Форматируем время для каждого сообщения
+        const messagesWithMoscowTime = rows.map(message => ({
+            ...message,
+            moscow_time: formatMoscowTimeShort(message.sent_at)
+        }));
+        
         res.json({
             success: true,
-            messages: rows
+            messages: messagesWithMoscowTime
         });
     });
 });
@@ -749,100 +836,4 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
     console.log(`🔐 Admin ID: ${ADMIN_ID}`);
     console.log(`⏰ Moscow time: ${getMoscowTime()}`);
-});
-// Добавьте эти endpoints в ваш server.js
-
-// Get specific chat by ID
-app.get('/api/support/chats/:chatId', (req, res) => {
-    const chatId = req.params.chatId;
-    const { adminId } = req.query;
-
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied'
-        });
-    }
-
-    db.get("SELECT * FROM support_chats WHERE id = ?", [chatId], (err, chat) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-
-        if (!chat) {
-            return res.status(404).json({
-                success: false,
-                error: 'Chat not found'
-            });
-        }
-
-        res.json({
-            success: true,
-            chat: chat
-        });
-    });
-});
-
-// Update function for task creation to handle all fields properly
-app.post('/api/tasks', (req, res) => {
-    const { 
-        title, description, price, created_by, category,
-        time_to_complete, difficulty, people_required, repost_time, task_url, image_url
-    } = req.body;
-    
-    console.log('Creating task with data:', req.body);
-    
-    // Validate required fields
-    if (!title || !description || !price || !created_by) {
-        return res.status(400).json({
-            success: false,
-            error: 'Missing required fields: title, description, price, created_by'
-        });
-    }
-    
-    // Check admin rights
-    if (parseInt(created_by) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied'
-        });
-    }
-    
-    // Insert task with proper field mapping
-    db.run(`INSERT INTO tasks (
-        title, description, price, created_by, category,
-        time_to_complete, difficulty, people_required, repost_time, task_url, image_url
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-        title, 
-        description, 
-        parseFloat(price), 
-        created_by, 
-        category || 'general',
-        time_to_complete || '5 минут', 
-        difficulty || 'Легкая', 
-        parseInt(people_required) || 1, 
-        repost_time || '1 день', 
-        task_url || '', 
-        image_url || ''
-    ], function(err) {
-        if (err) {
-            console.error('Database error:', err);
-            return res.status(500).json({
-                success: false,
-                error: 'Database error: ' + err.message
-            });
-        }
-        
-        console.log('Task created successfully with ID:', this.lastID);
-        
-        res.json({
-            success: true,
-            message: 'Task created successfully',
-            taskId: this.lastID
-        });
-    });
 });
