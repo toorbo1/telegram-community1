@@ -3048,6 +3048,182 @@
             alert(`Запрос на вывод ${amount}₽ через ${method} отправлен! Ожидайте обработки.`);
             showProfileTab();
         }
+        // Admin functions
+async function addNewPost() {
+    const title = document.getElementById('admin-post-title').value;
+    const content = document.getElementById('admin-post-content').value;
+    
+    if (!title || !content) {
+        alert('Please fill in title and content');
+        return;
+    }
+    
+    if (!currentUser.isAdmin) {
+        alert('Only administrator can publish posts!');
+        return;
+    }
+    
+    try {
+        console.log('Sending post data:', { title, content, author: currentUser.firstName, authorId: currentUser.id });
+        
+        const response = await fetch(`${API_URL}/posts`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                title,
+                content,
+                author: currentUser.firstName,
+                authorId: currentUser.id
+            })
+        });
+
+        const result = await response.json();
+        console.log('Server response:', result);
+
+        if (result.success) {
+            alert('Post successfully published for all users!');
+            document.getElementById('admin-post-title').value = '';
+            document.getElementById('admin-post-content').value = '';
+            loadAdminPosts();
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error'));
+        }
+        
+    } catch (error) {
+        console.error('Error adding post:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+async function addTask() {
+    const title = document.getElementById('admin-task-title').value;
+    const description = document.getElementById('admin-task-description').value;
+    const price = document.getElementById('admin-task-price').value;
+    const time = document.getElementById('admin-task-time').value;
+    const difficulty = document.getElementById('admin-task-difficulty').value;
+    const people = document.getElementById('admin-task-people').value;
+    const repost = document.getElementById('admin-task-repost').value;
+    const url = document.getElementById('admin-task-url').value;
+    
+    if (!title || !description || !price) {
+        alert('Please fill in required fields');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/tasks`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                title,
+                description,
+                price: parseFloat(price),
+                time_to_complete: time,
+                difficulty,
+                people_required: parseInt(people),
+                repost_time: repost,
+                task_url: url,
+                created_by: currentUser.id
+            })
+        });
+
+        const result = await response.json();
+        console.log('Task creation response:', result);
+
+        if (result.success) {
+            alert('Task created successfully!');
+            document.getElementById('admin-task-title').value = '';
+            document.getElementById('admin-task-description').value = '';
+            document.getElementById('admin-task-price').value = '';
+            document.getElementById('admin-task-time').value = '';
+            document.getElementById('admin-task-difficulty').value = '';
+            document.getElementById('admin-task-people').value = '';
+            document.getElementById('admin-task-repost').value = '';
+            document.getElementById('admin-task-url').value = '';
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error'));
+        }
+        
+    } catch (error) {
+        console.error('Error creating task:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+async function loadAdminPosts() {
+    try {
+        const response = await fetch(`${API_URL}/posts`);
+        const result = await response.json();
+        
+        if (result.success) {
+            displayAdminPosts(result.posts);
+        } else {
+            console.error('Error loading posts:', result.error);
+        }
+    } catch (error) {
+        console.error('Error loading admin posts:', error);
+    }
+}
+
+function displayAdminPosts(posts) {
+    const container = document.getElementById('admin-posts-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!posts || posts.length === 0) {
+        container.innerHTML = '<p>No posts yet.</p>';
+        return;
+    }
+    
+    posts.forEach(post => {
+        const postElement = document.createElement('div');
+        postElement.className = 'admin-task-item';
+        postElement.innerHTML = `
+            <div class="admin-task-header">
+                <div class="admin-task-title">${escapeHtml(post.title)}</div>
+                <div class="admin-task-actions">
+                    <button class="admin-task-delete" onclick="deletePost(${post.id})">Delete</button>
+                </div>
+            </div>
+            <div>${escapeHtml(post.content)}</div>
+            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
+                Author: ${escapeHtml(post.author)} | ${new Date(post.timestamp).toLocaleDateString('ru-RU')}
+            </div>
+        `;
+        container.appendChild(postElement);
+    });
+}
+
+async function deletePost(postId) {
+    if (!confirm('Delete this post?')) return;
+    
+    try {
+        const response = await fetch(`${API_URL}/posts/${postId}`, {
+            method: 'DELETE',
+            headers: { 
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ authorId: currentUser.id })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Post deleted successfully!');
+            loadAdminPosts();
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error deleting post:', error);
+        alert('Error: ' + error.message);
+    }
+}
     </script>
 </body>
 </html>
