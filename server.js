@@ -750,3 +750,99 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🔐 Admin ID: ${ADMIN_ID}`);
     console.log(`⏰ Moscow time: ${getMoscowTime()}`);
 });
+// Добавьте эти endpoints в ваш server.js
+
+// Get specific chat by ID
+app.get('/api/support/chats/:chatId', (req, res) => {
+    const chatId = req.params.chatId;
+    const { adminId } = req.query;
+
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.get("SELECT * FROM support_chats WHERE id = ?", [chatId], (err, chat) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+
+        if (!chat) {
+            return res.status(404).json({
+                success: false,
+                error: 'Chat not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            chat: chat
+        });
+    });
+});
+
+// Update function for task creation to handle all fields properly
+app.post('/api/tasks', (req, res) => {
+    const { 
+        title, description, price, created_by, category,
+        time_to_complete, difficulty, people_required, repost_time, task_url, image_url
+    } = req.body;
+    
+    console.log('Creating task with data:', req.body);
+    
+    // Validate required fields
+    if (!title || !description || !price || !created_by) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields: title, description, price, created_by'
+        });
+    }
+    
+    // Check admin rights
+    if (parseInt(created_by) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+    
+    // Insert task with proper field mapping
+    db.run(`INSERT INTO tasks (
+        title, description, price, created_by, category,
+        time_to_complete, difficulty, people_required, repost_time, task_url, image_url
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+        title, 
+        description, 
+        parseFloat(price), 
+        created_by, 
+        category || 'general',
+        time_to_complete || '5 минут', 
+        difficulty || 'Легкая', 
+        parseInt(people_required) || 1, 
+        repost_time || '1 день', 
+        task_url || '', 
+        image_url || ''
+    ], function(err) {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error: ' + err.message
+            });
+        }
+        
+        console.log('Task created successfully with ID:', this.lastID);
+        
+        res.json({
+            success: true,
+            message: 'Task created successfully',
+            taskId: this.lastID
+        });
+    });
+});
