@@ -12,8 +12,8 @@ app.use(cors({
     methods: ['GET', 'POST', 'DELETE', 'PUT'],
     credentials: true
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Serve static files
 app.use(express.static('.'));
@@ -101,6 +101,7 @@ function initDatabase() {
             user_id INTEGER NOT NULL,
             user_name TEXT NOT NULL,
             message TEXT NOT NULL,
+            image_url TEXT,
             is_admin BOOLEAN DEFAULT 0,
             is_read BOOLEAN DEFAULT 0,
             sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -122,12 +123,30 @@ function initDatabase() {
 
 const ADMIN_ID = 8036875641;
 
+// Функция для получения московского времени
+function getMoscowTime() {
+    return new Date().toLocaleString("ru-RU", { timeZone: "Europe/Moscow" });
+}
+
+// Функция для форматирования времени в московском часовом поясе
+function formatMoscowTime(timestamp) {
+    const date = new Date(timestamp);
+    return date.toLocaleString("ru-RU", { 
+        timeZone: "Europe/Moscow",
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({ 
         status: 'OK', 
         message: 'LinkGold API is running!',
-        timestamp: new Date().toISOString()
+        timestamp: getMoscowTime()
     });
 });
 
@@ -227,9 +246,16 @@ app.get('/api/posts', (req, res) => {
                 error: 'Database error'
             });
         }
+        
+        // Форматируем время для каждого поста в московское время
+        const postsWithMoscowTime = rows.map(post => ({
+            ...post,
+            formatted_time: formatMoscowTime(post.timestamp)
+        }));
+        
         res.json({
             success: true,
-            posts: rows
+            posts: postsWithMoscowTime
         });
     });
 });
@@ -327,16 +353,42 @@ app.get('/api/tasks', (req, res) => {
     });
 });
 
+app.get('/api/admin/tasks', (req, res) => {
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.all("SELECT * FROM tasks ORDER BY created_at DESC", (err, rows) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        res.json({
+            success: true,
+            tasks: rows
+        });
+    });
+});
+
 app.post('/api/tasks', (req, res) => {
     const { 
         title, description, price, created_by, category,
         time_to_complete, difficulty, people_required, repost_time, task_url, image_url
     } = req.body;
     
+    console.log('Creating task with data:', req.body);
+    
     if (!title || !description || !price || !created_by) {
         return res.status(400).json({
             success: false,
-            error: 'Missing required fields'
+            error: 'Missing required fields: ' + JSON.stringify({title, description, price, created_by})
         });
     }
     
@@ -351,8 +403,9 @@ app.post('/api/tasks', (req, res) => {
     db.run(`INSERT INTO tasks (title, description, price, created_by, category,
                               time_to_complete, difficulty, people_required, repost_time, task_url, image_url) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [title, description, price, created_by, category || 'general',
-             time_to_complete, difficulty, people_required, repost_time, task_url, image_url],
+            [title, description, parseFloat(price), created_by, category || 'general',
+             time_to_complete || '5 минут', difficulty || 'Легкая', 
+             people_required || 1, repost_time || '1 день', task_url || '', image_url || ''],
             function(err) {
         if (err) {
             console.error('Database error:', err);
@@ -413,9 +466,16 @@ app.get('/api/support/chats', (req, res) => {
                 error: 'Database error'
             });
         }
+        
+        // Форматируем время для каждого чата в московское время
+        const chatsWithMoscowTime = rows.map(chat => ({
+            ...chat,
+            formatted_time: formatMoscowTime(chat.last_message_time)
+        }));
+        
         res.json({
             success: true,
-            chats: rows
+            chats: chatsWithMoscowTime
         });
     });
 });
@@ -474,27 +534,34 @@ app.get('/api/support/chats/:chatId/messages', (req, res) => {
                 error: 'Database error'
             });
         }
+        
+        // Форматируем время для каждого сообщения в московское время
+        const messagesWithMoscowTime = rows.map(message => ({
+            ...message,
+            formatted_time: formatMoscowTime(message.sent_at)
+        }));
+        
         res.json({
             success: true,
-            messages: rows
+            messages: messagesWithMoscowTime
         });
     });
 });
 
 app.post('/api/support/chats/:chatId/messages', (req, res) => {
     const chatId = req.params.chatId;
-    const { user_id, user_name, message, is_admin } = req.body;
+    const { user_id, user_name, message, image_url, is_admin } = req.body;
 
-    if (!message) {
+    if (!message && !image_url) {
         return res.status(400).json({
             success: false,
-            error: 'Message is required'
+            error: 'Message or image is required'
         });
     }
 
-    db.run(`INSERT INTO support_messages (chat_id, user_id, user_name, message, is_admin) 
-            VALUES (?, ?, ?, ?, ?)`,
-            [chatId, user_id, user_name, message, is_admin],
+    db.run(`INSERT INTO support_messages (chat_id, user_id, user_name, message, image_url, is_admin) 
+            VALUES (?, ?, ?, ?, ?, ?)`,
+            [chatId, user_id, user_name, message, image_url, is_admin],
             function(err) {
         if (err) {
             return res.status(500).json({
@@ -504,11 +571,12 @@ app.post('/api/support/chats/:chatId/messages', (req, res) => {
         }
 
         // Update chat last message and time, increment unread count for admin
+        const displayMessage = message || '📷 Фото';
         const updateQuery = is_admin ? 
             `UPDATE support_chats SET last_message = ?, last_message_time = CURRENT_TIMESTAMP WHERE id = ?` :
             `UPDATE support_chats SET last_message = ?, last_message_time = CURRENT_TIMESTAMP, unread_count = unread_count + 1 WHERE id = ?`;
         
-        db.run(updateQuery, [message, chatId]);
+        db.run(updateQuery, [displayMessage, chatId]);
 
         res.json({
             success: true,
@@ -604,4 +672,5 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
     console.log(`🔐 Admin ID: ${ADMIN_ID}`);
+    console.log(`⏰ Moscow time: ${getMoscowTime()}`);
 });
