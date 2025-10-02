@@ -1740,6 +1740,116 @@
                 grid-template-columns: repeat(3, 1fr);
             }
         }
+        /* Стили для ленты постов на главной */
+.posts-feed {
+    margin-top: 20px;
+}
+
+.post-item {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+    animation: fadeIn 0.6s ease-out;
+}
+
+.post-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.post-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.post-author {
+    font-size: 12px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.admin-badge {
+    background: var(--purple-gradient);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.post-date {
+    font-size: 11px;
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+.post-content {
+    color: var(--text-primary);
+    line-height: 1.5;
+    margin-bottom: 12px;
+    white-space: pre-wrap;
+}
+
+.post-image {
+    width: 100%;
+    border-radius: 12px;
+    margin: 12px 0;
+    max-height: 300px;
+    object-fit: cover;
+}
+
+.post-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+
+.post-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.like-btn, .share-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.like-btn:hover, .share-btn:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.loading-posts {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-secondary);
+}
+
+.loading-spinner {
+    font-size: 24px;
+    margin-bottom: 12px;
+}
     </style>
 </head>
 <body>
@@ -2360,7 +2470,7 @@
 
     <script>
     // 🔧 КОНФИГУРАЦИЯ
-    const API_URL = window.location.origin + '/api'; // Автоматическое определение URL
+    const API_URL = window.location.origin + '/api';
     const tg = window.Telegram.WebApp;
     const ADMIN_ID = 8036875641;
 
@@ -2408,36 +2518,64 @@
 
     // Инициализация приложения
     function initializeApp() {
-        // Тестовый пользователь для демонстрации
+        // Для тестирования - замените на реальные данные Telegram
         currentUser = {
-            id: ADMIN_ID,
-            firstName: 'Администратор',
-            username: 'admin',
+            id: ADMIN_ID, // ТЕСТ: Используем ID админа
+            firstName: 'Алексей',
+            username: 'alexey_admin',
             isAdmin: true
         };
 
+        // Если хотите протестировать обычного пользователя, используйте:
+        // currentUser = {
+        //     id: 123456789,
+        //     firstName: 'Обычный',
+        //     username: 'regular_user', 
+        //     isAdmin: false
+        // };
+
         console.log('Current user:', currentUser);
         displayUserProfile();
-        
-        if (currentUser.isAdmin) {
-            document.getElementById('admin-nav-item').style.display = 'flex';
-            loadAdminPosts();
-        }
-
+        checkAdminRights();
+        loadMainPagePosts(); // Загружаем посты на главную
         loadTasks();
-        loadPosts();
+    }
+
+    // Проверка прав администратора и скрытие вкладки
+    function checkAdminRights() {
+        const adminNavItem = document.getElementById('admin-nav-item');
+        if (currentUser && currentUser.isAdmin && parseInt(currentUser.id) === ADMIN_ID) {
+            console.log('User is ADMIN - showing admin tab');
+            if (adminNavItem) {
+                adminNavItem.style.display = 'flex';
+            }
+        } else {
+            console.log('User is NOT admin - hiding admin tab');
+            if (adminNavItem) {
+                adminNavItem.style.display = 'none';
+            }
+            // Скрываем админ-панель на главной если она есть
+            const adminPanel = document.getElementById('admin-panel');
+            if (adminPanel) {
+                adminPanel.style.display = 'none';
+            }
+        }
     }
 
     // Отображение профиля пользователя
     function displayUserProfile() {
         if (!currentUser) return;
 
-        document.getElementById('user-first-name').textContent = currentUser.firstName;
-        document.getElementById('user-username').textContent = currentUser.username;
+        const firstNameElement = document.getElementById('user-first-name');
+        const usernameElement = document.getElementById('user-username');
+        
+        if (firstNameElement) firstNameElement.textContent = currentUser.firstName;
+        if (usernameElement) usernameElement.textContent = currentUser.username;
         
         // Генерация реферальной ссылки
         const referralLink = `https://t.me/your_bot?start=ref_${currentUser.id}`;
-        document.getElementById('referral-link').value = referralLink;
+        const referralInput = document.getElementById('referral-link');
+        if (referralInput) referralInput.value = referralLink;
     }
 
     // Навигация
@@ -2445,6 +2583,7 @@
         hideAllTabs();
         document.getElementById('main-tab').classList.add('active');
         updateNavState('main');
+        loadMainPagePosts(); // Перезагружаем посты при переходе на главную
     }
 
     function showTasksTab() {
@@ -2461,7 +2600,10 @@
     }
 
     function showAdminTab() {
-        if (!currentUser.isAdmin) return;
+        if (!currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+            alert('Доступ запрещен!');
+            return;
+        }
         hideAllTabs();
         document.getElementById('admin-tab').classList.add('active');
         updateNavState('admin');
@@ -2502,19 +2644,112 @@
             case 'main': navItems[0].classList.add('active'); break;
             case 'tasks': navItems[1].classList.add('active'); break;
             case 'profile': navItems[2].classList.add('active'); break;
-            case 'admin': navItems[3].classList.add('active'); break;
+            case 'admin': 
+                if (navItems[3]) navItems[3].classList.add('active'); 
+                break;
         }
+    }
+
+    // 📝 ЗАГРУЗКА ПОСТОВ НА ГЛАВНУЮ СТРАНИЦУ
+    async function loadMainPagePosts() {
+        const container = document.getElementById('posts-container');
+        if (!container) {
+            console.log('Posts container not found');
+            return;
+        }
+
+        // Показываем загрузку
+        container.innerHTML = `
+            <div class="loading-posts">
+                <div class="loading-spinner">⏳</div>
+                <div>Загрузка постов...</div>
+            </div>
+        `;
+
+        try {
+            const result = await makeRequest(`${API_URL}/posts`);
+            
+            if (result.success && result.posts && result.posts.length > 0) {
+                displayMainPagePosts(result.posts);
+            } else {
+                container.innerHTML = `
+                    <div class="no-tasks">
+                        <div class="no-tasks-icon">📝</div>
+                        <div>Пока нет постов. Будьте первым!</div>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error loading posts for main page:', error);
+            container.innerHTML = `
+                <div class="no-tasks">
+                    <div class="no-tasks-icon">❌</div>
+                    <div>Ошибка загрузки постов</div>
+                    <button onclick="loadMainPagePosts()" class="btn btn-primary" style="margin-top: 12px;">Попробовать снова</button>
+                </div>
+            `;
+        }
+    }
+
+    function displayMainPagePosts(posts) {
+        const container = document.getElementById('posts-container');
+        if (!container) return;
+        
+        container.innerHTML = '<div class="posts-feed"></div>';
+        const postsFeed = container.querySelector('.posts-feed');
+        
+        posts.forEach(post => {
+            const postElement = document.createElement('div');
+            postElement.className = 'post-item fade-in';
+            postElement.innerHTML = `
+                <div class="post-header">
+                    <div>
+                        <div class="post-title">${escapeHtml(post.title)}</div>
+                        <div class="post-author">
+                            👤 ${escapeHtml(post.author)}
+                            ${post.isAdmin ? '<span class="admin-badge">АДМИН</span>' : ''}
+                        </div>
+                    </div>
+                    <div class="post-date">
+                        ${formatPostDate(post.timestamp)}
+                    </div>
+                </div>
+                
+                <div class="post-content">
+                    ${escapeHtml(post.content)}
+                </div>
+                
+                ${post.image_url ? `
+                    <img src="${post.image_url}" alt="Изображение" class="post-image" onerror="this.style.display='none'">
+                ` : ''}
+                
+                <div class="post-footer">
+                    <div class="post-actions">
+                        <button class="like-btn" onclick="likePost(${post.id})">
+                            ❤️ <span>0</span>
+                        </button>
+                        <button class="share-btn" onclick="sharePost(${post.id})">
+                            🔗 Поделиться
+                        </button>
+                    </div>
+                    ${currentUser.isAdmin && parseInt(currentUser.id) === ADMIN_ID ? `
+                        <button class="admin-task-delete" onclick="deletePost(${post.id})" style="font-size: 12px; padding: 4px 8px;">
+                            Удалить
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+            postsFeed.appendChild(postElement);
+        });
     }
 
     // 📝 АДМИН-ФУНКЦИИ
 
-    // Загрузка данных админа
     function loadAdminData() {
-        if (!currentUser.isAdmin) return;
+        if (!currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) return;
         loadAdminPosts();
     }
 
-    // Показать секцию админа
     function showAdminSection(section) {
         document.querySelectorAll('.admin-section').forEach(sec => {
             sec.style.display = 'none';
@@ -2522,13 +2757,17 @@
         document.getElementById('admin-' + section + '-section').style.display = 'block';
     }
 
-    // Добавление поста
     async function addNewPost() {
         const title = document.getElementById('admin-post-title').value;
         const content = document.getElementById('admin-post-content').value;
         
         if (!title || !content) {
             alert('Заполните заголовок и содержание поста!');
+            return;
+        }
+        
+        if (!currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+            alert('Только администратор может публиковать посты!');
             return;
         }
         
@@ -2548,6 +2787,7 @@
                 document.getElementById('admin-post-title').value = '';
                 document.getElementById('admin-post-content').value = '';
                 loadAdminPosts();
+                loadMainPagePosts(); // Обновляем посты на главной
             } else {
                 alert('Ошибка: ' + result.error);
             }
@@ -2558,19 +2798,18 @@
         }
     }
 
-    // Добавление задания
     async function addTask() {
         const title = document.getElementById('admin-task-title').value;
         const description = document.getElementById('admin-task-description').value;
         const price = document.getElementById('admin-task-price').value;
-        const time = document.getElementById('admin-task-time').value;
-        const difficulty = document.getElementById('admin-task-difficulty').value;
-        const people = document.getElementById('admin-task-people').value;
-        const repost = document.getElementById('admin-task-repost').value;
-        const url = document.getElementById('admin-task-url').value;
         
         if (!title || !description || !price) {
             alert('Заполните обязательные поля!');
+            return;
+        }
+        
+        if (!currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+            alert('Только администратор может создавать задания!');
             return;
         }
         
@@ -2581,11 +2820,11 @@
                     title: title,
                     description: description,
                     price: parseFloat(price),
-                    time_to_complete: time,
-                    difficulty: difficulty,
-                    people_required: parseInt(people) || 1,
-                    repost_time: repost,
-                    task_url: url,
+                    time_to_complete: document.getElementById('admin-task-time').value || '5 минут',
+                    difficulty: document.getElementById('admin-task-difficulty').value || 'Легкая',
+                    people_required: parseInt(document.getElementById('admin-task-people').value) || 1,
+                    repost_time: document.getElementById('admin-task-repost').value || '1 день',
+                    task_url: document.getElementById('admin-task-url').value || '',
                     created_by: currentUser.id
                 })
             });
@@ -2593,14 +2832,10 @@
             if (result.success) {
                 alert('Задание успешно создано!');
                 // Очищаем форму
-                document.getElementById('admin-task-title').value = '';
-                document.getElementById('admin-task-description').value = '';
-                document.getElementById('admin-task-price').value = '';
-                document.getElementById('admin-task-time').value = '';
-                document.getElementById('admin-task-difficulty').value = '';
-                document.getElementById('admin-task-people').value = '';
-                document.getElementById('admin-task-repost').value = '';
-                document.getElementById('admin-task-url').value = '';
+                document.querySelectorAll('#admin-tasks-section input, #admin-tasks-section textarea').forEach(input => {
+                    input.value = '';
+                });
+                loadTasks(); // Обновляем задания
             } else {
                 alert('Ошибка: ' + result.error);
             }
@@ -2611,15 +2846,12 @@
         }
     }
 
-    // Загрузка постов для админа
     async function loadAdminPosts() {
         try {
             const result = await makeRequest(`${API_URL}/posts`);
             
             if (result.success) {
                 displayAdminPosts(result.posts);
-            } else {
-                console.error('Error loading posts:', result.error);
             }
         } catch (error) {
             console.error('Error loading admin posts:', error);
@@ -2649,16 +2881,20 @@
                 </div>
                 <div>${escapeHtml(post.content)}</div>
                 <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
-                    Автор: ${escapeHtml(post.author)} | ${new Date(post.timestamp).toLocaleDateString('ru-RU')}
+                    Автор: ${escapeHtml(post.author)} | ${formatPostDate(post.timestamp)}
                 </div>
             `;
             container.appendChild(postElement);
         });
     }
 
-    // Удаление поста
     async function deletePost(postId) {
         if (!confirm('Удалить этот пост?')) return;
+        
+        if (!currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+            alert('Только администратор может удалять посты!');
+            return;
+        }
         
         try {
             const result = await makeRequest(`${API_URL}/posts/${postId}`, {
@@ -2669,6 +2905,7 @@
             if (result.success) {
                 alert('Пост успешно удален!');
                 loadAdminPosts();
+                loadMainPagePosts(); // Обновляем посты на главной
             } else {
                 alert('Ошибка: ' + result.error);
             }
@@ -2679,8 +2916,6 @@
     }
 
     // 📋 ФУНКЦИИ ЗАДАНИЙ
-
-    // Загрузка заданий
     async function loadTasks() {
         try {
             const result = await makeRequest(`${API_URL}/tasks`);
@@ -2690,17 +2925,6 @@
             }
         } catch (error) {
             console.error('Error loading tasks:', error);
-            // Заглушка для демонстрации
-            const tasks = [
-                {
-                    id: 1,
-                    title: 'Подписка на канал',
-                    description: 'Подпишитесь на наш Telegram канал',
-                    price: 50,
-                    category: 'subscribe'
-                }
-            ];
-            displayTasks(tasks, 'new');
         }
     }
 
@@ -2733,7 +2957,7 @@
                 </div>
                 <div class="task-description">${task.description}</div>
                 <div class="task-footer">
-                    <div class="task-time">5 минут</div>
+                    <div class="task-time">${task.time_to_complete || '5 минут'}</div>
                     <button class="task-btn" onclick="openTaskModal(${task.id})">Начать</button>
                 </div>
             `;
@@ -2753,47 +2977,18 @@
         event.target.classList.add('active');
     }
 
-    // 📮 ФУНКЦИИ ПОСТОВ
-
-    // Загрузка постов
-    async function loadPosts() {
-        try {
-            const result = await makeRequest(`${API_URL}/posts`);
-            
-            if (result.success) {
-                displayPosts(result.posts);
-            }
-        } catch (error) {
-            console.error('Error loading posts:', error);
-        }
-    }
-
-    function displayPosts(posts) {
-        const container = document.getElementById('posts-container');
-        if (!container) return;
-        
-        container.innerHTML = '';
-        
-        if (!posts || posts.length === 0) {
-            container.innerHTML = '<p>Пока нет постов.</p>';
-            return;
-        }
-        
-        posts.forEach(post => {
-            const postElement = document.createElement('div');
-            postElement.className = 'post';
-            postElement.innerHTML = `
-                <h3>${escapeHtml(post.title)}</h3>
-                <div class="post-content">${escapeHtml(post.content)}</div>
-                <div class="post-meta">
-                    👤 ${escapeHtml(post.author)} | 📅 ${new Date(post.timestamp).toLocaleDateString('ru-RU')}
-                </div>
-            `;
-            container.appendChild(postElement);
-        });
-    }
-
     // 🎯 ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+    function formatPostDate(timestamp) {
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diff = now - date;
+        
+        if (diff < 60000) return 'только что';
+        if (diff < 3600000) return `${Math.floor(diff / 60000)} мин назад`;
+        if (diff < 86400000) return `${Math.floor(diff / 3600000)} ч назад`;
+        
+        return date.toLocaleDateString('ru-RU');
+    }
 
     function escapeHtml(unsafe) {
         if (!unsafe) return '';
@@ -2850,9 +3045,17 @@
         showProfileTab();
     }
 
-    // Заглушки для остальных функций
+    // Заглушки для функций
     function openTaskModal(taskId) {
-        alert('Функция в разработке');
+        alert('Функция задания в разработке');
+    }
+
+    function likePost(postId) {
+        alert('Лайк добавлен!');
+    }
+
+    function sharePost(postId) {
+        alert('Поделиться постом!');
     }
 
     function openAdminChat() {
