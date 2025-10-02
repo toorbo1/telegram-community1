@@ -1932,6 +1932,15 @@
                         Смотреть все задания
                     </button>
                 </div>
+                <!-- Секция постов на главной -->
+<div id="posts-section" class="card fade-in" style="display: none; margin-top: 20px;">
+    <div class="posts-header">
+        <h2 style="color: var(--text-primary); margin-bottom: 15px; text-align: center;">📢 Последние новости</h2>
+    </div>
+    <div id="posts-container">
+        <!-- Посты будут загружаться здесь -->
+    </div>
+</div>
 
                 <!-- Панель администратора (только для главного админа) -->
                 <div id="admin-panel" class="admin-panel fade-in" style="display: none;">
@@ -2489,50 +2498,108 @@ const ADMIN_ID = 8036875641;
 let currentUser = null;
 let currentChatId = null;
 
+// Улучшенная функция для отправки запросов
+async function makeRequest(url, options = {}) {
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            },
+            ...options
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Request failed:', error);
+        throw error;
+    }
+}
+
 // Инициализация приложения
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Initializing LinkGold app...');
+    console.log('Initializing LinkGold app with Telegram integration...');
+    
     if (typeof tg !== 'undefined') {
         tg.expand();
         tg.ready();
         initializeTelegramUser();
     } else {
-        // Для тестирования без Telegram
+        console.log('Telegram Web App context not available');
         initializeTestUser();
     }
 });
 
 // Инициализация пользователя Telegram
-function initializeTelegramUser() {
-    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-        const tgUser = tg.initDataUnsafe.user;
-        currentUser = {
-            id: tgUser.id,
-            firstName: tgUser.first_name || 'Пользователь',
-            username: tgUser.username || `user_${tgUser.id}`,
-            isAdmin: parseInt(tgUser.id) === ADMIN_ID
-        };
-        
-        // Сохраняем пользователя в базу
-        updateUserProfile(currentUser);
-        displayUserProfile();
-        checkAdminRights();
-        loadMainPagePosts();
-        loadTasks();
-        initializeSearch();
-    } else {
-        console.log('Telegram user data not available');
+async function initializeTelegramUser() {
+    try {
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            const tgUser = tg.initDataUnsafe.user;
+            
+            // Создаем объект пользователя из данных Telegram
+            currentUser = {
+                id: tgUser.id,
+                firstName: tgUser.first_name || 'Пользователь',
+                lastName: tgUser.last_name || '',
+                username: tgUser.username || `user_${tgUser.id}`,
+                photoUrl: tgUser.photo_url || '',
+                isAdmin: parseInt(tgUser.id) === ADMIN_ID,
+                languageCode: tgUser.language_code || 'ru'
+            };
+            
+            console.log('Telegram user data:', currentUser);
+            
+            // Аутентифицируем пользователя на сервере
+            const authResult = await makeRequest(`${API_URL}/user/auth`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    initData: tg.initData,
+                    user: currentUser
+                })
+            });
+            
+            if (authResult.success) {
+                // Обновляем данные пользователя с сервера
+                Object.assign(currentUser, authResult.user);
+                console.log('User authenticated successfully:', currentUser);
+            }
+            
+            displayUserProfile();
+            checkAdminRights();
+            loadMainPagePosts();
+            loadTasks();
+            initializeSearch();
+            
+        } else {
+            console.log('Telegram user data not available');
+            initializeTestUser();
+        }
+    } catch (error) {
+        console.error('Error initializing Telegram user:', error);
         initializeTestUser();
     }
 }
 
+// Функция для тестирования (без Telegram)
 function initializeTestUser() {
-    // Для тестирования
     currentUser = {
         id: 123456789,
         firstName: 'Алексей',
-        username: 'alexey_user',
-        isAdmin: false
+        lastName: 'Иванов',
+        username: 'alexey_test',
+        isAdmin: false,
+        balance: 150,
+        level: 1,
+        tasks_completed: 5,
+        active_tasks: 2,
+        quality_rate: 95,
+        referral_count: 3,
+        referral_earned: 450
     };
     displayUserProfile();
     checkAdminRights();
@@ -2541,74 +2608,123 @@ function initializeTestUser() {
     initializeSearch();
 }
 
-// Обновление профиля пользователя
-async function updateUserProfile(user) {
-    try {
-        await makeRequest(`${API_URL}/user/update`, {
-            method: 'POST',
-            body: JSON.stringify({
-                user_id: user.id,
-                username: user.username,
-                first_name: user.firstName,
-                last_name: user.lastName || ''
-            })
-        });
-    } catch (error) {
-        console.error('Error updating user profile:', error);
-    }
-}
-
-// Загрузка данных пользователя
-async function loadUserProfile() {
+// Отображение профиля пользователя
+function displayUserProfile() {
     if (!currentUser) return;
-    
-    try {
-        const result = await makeRequest(`${API_URL}/user/${currentUser.id}`);
-        if (result.success) {
-            updateProfileDisplay(result.profile);
-        }
-    } catch (error) {
-        console.error('Error loading user profile:', error);
-    }
-}
 
-function updateProfileDisplay(profile) {
-    // Обновляем данные в профиле
-    const balanceElement = document.getElementById('user-balance-main');
+    // Обновляем основные элементы профиля
     const firstNameElement = document.getElementById('user-first-name');
     const usernameElement = document.getElementById('user-username');
     const levelElement = document.getElementById('user-level');
+    const balanceElement = document.getElementById('user-balance-main');
     
-    if (balanceElement) balanceElement.textContent = `${profile.balance} ₽`;
-    if (firstNameElement) firstNameElement.textContent = profile.first_name;
-    if (usernameElement) usernameElement.textContent = profile.username;
-    if (levelElement) levelElement.textContent = profile.level;
+    if (firstNameElement) {
+        const fullName = currentUser.lastName ? 
+            `${currentUser.firstName} ${currentUser.lastName}` : 
+            currentUser.firstName;
+        firstNameElement.textContent = fullName;
+    }
     
-    // Обновляем статистику
-    document.querySelectorAll('.profile-stat .stat-value')[0].textContent = `${profile.balance} ₽`;
-    document.querySelectorAll('.profile-stat .stat-value')[1].textContent = profile.tasks_completed;
-    document.querySelectorAll('.profile-stat .stat-value')[2].textContent = profile.active_tasks;
-    document.querySelectorAll('.profile-stat .stat-value')[3].textContent = `${profile.quality_rate}%`;
+    if (usernameElement) usernameElement.textContent = currentUser.username;
+    if (levelElement) levelElement.textContent = currentUser.level || 0;
+    if (balanceElement) balanceElement.textContent = `${currentUser.balance || 0} ₽`;
+    
+    // Обновляем аватар
+    const userPhotoElement = document.getElementById('user-photo');
+    if (userPhotoElement && currentUser.photoUrl) {
+        userPhotoElement.src = currentUser.photoUrl;
+        userPhotoElement.style.display = 'block';
+    }
+    
+    // Обновляем статистику профиля
+    updateProfileStats();
     
     // Обновляем реферальную систему
-    document.getElementById('ref-invited').textContent = profile.referral_count;
-    document.getElementById('ref-earned').textContent = `${profile.referral_earned} ₽`;
+    updateReferralSystem();
     
     // Обновляем прогресс уровня
-    const progressPercent = (profile.tasks_completed % 10) * 10;
-    document.getElementById('level-progress-bar').style.width = `${progressPercent}%`;
-    document.querySelector('.level-count').textContent = `${profile.tasks_completed % 10}/10 заданий`;
+    updateLevelProgress();
 }
 
-// Инициализация поиска
+// Обновление статистики профиля
+function updateProfileStats() {
+    if (!currentUser) return;
+    
+    const stats = document.querySelectorAll('.profile-stat .stat-value');
+    if (stats.length >= 4) {
+        stats[0].textContent = `${currentUser.balance || 0} ₽`;
+        stats[1].textContent = currentUser.tasks_completed || 0;
+        stats[2].textContent = currentUser.active_tasks || 0;
+        stats[3].textContent = `${currentUser.quality_rate || 0}%`;
+    }
+}
+
+// Обновление реферальной системы
+function updateReferralSystem() {
+    if (!currentUser) return;
+    
+    // Обновляем реферальную ссылку
+    const referralLink = `https://t.me/your_bot?start=ref_${currentUser.id}`;
+    const referralInput = document.getElementById('referral-link');
+    if (referralInput) referralInput.value = referralLink;
+    
+    // Обновляем статистику рефералов
+    document.getElementById('ref-invited').textContent = currentUser.referral_count || 0;
+    document.getElementById('ref-earned').textContent = `${currentUser.referral_earned || 0} ₽`;
+}
+
+// Обновление прогресса уровня
+function updateLevelProgress() {
+    if (!currentUser) return;
+    
+    const experience = currentUser.experience || 0;
+    const currentLevel = currentUser.level || 0;
+    const experienceForNextLevel = (currentLevel + 1) * 100;
+    const experienceInCurrentLevel = experience % 100;
+    const progressPercent = (experienceInCurrentLevel / 100) * 100;
+    
+    const progressBar = document.getElementById('level-progress-bar');
+    const levelCount = document.querySelector('.level-count');
+    
+    if (progressBar) {
+        progressBar.style.width = `${progressPercent}%`;
+    }
+    
+    if (levelCount) {
+        levelCount.textContent = `${experienceInCurrentLevel}/100 опыта`;
+    }
+}
+
+// Проверка прав администратора
+function checkAdminRights() {
+    const adminNavItem = document.getElementById('admin-nav-item');
+    const adminPanel = document.getElementById('admin-panel');
+    
+    if (currentUser && currentUser.isAdmin && parseInt(currentUser.id) === ADMIN_ID) {
+        console.log('User is ADMIN - showing admin features');
+        if (adminNavItem) adminNavItem.style.display = 'flex';
+        if (adminPanel) adminPanel.style.display = 'block';
+    } else {
+        console.log('User is NOT admin - hiding admin features');
+        if (adminNavItem) adminNavItem.style.display = 'none';
+        if (adminPanel) adminPanel.style.display = 'none';
+    }
+}
+
+// Инициализация поиска заданий
 function initializeSearch() {
     const searchInput = document.getElementById('task-search');
     if (searchInput) {
+        let searchTimeout;
         searchInput.addEventListener('input', function(e) {
+            clearTimeout(searchTimeout);
             const searchText = e.target.value.trim();
-            if (searchText.length >= 2 || searchText.length === 0) {
-                loadTasks(searchText);
-            }
+            
+            searchTimeout = setTimeout(() => {
+                if (searchText.length >= 2 || searchText.length === 0) {
+                    loadTasks(searchText, getActiveFilter());
+                }
+            }, 300);
         });
     }
     
@@ -2624,6 +2740,11 @@ function initializeSearch() {
             this.classList.add('active');
         });
     });
+}
+
+function getActiveFilter() {
+    const activeFilter = document.querySelector('.filter-btn.active');
+    return activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
 }
 
 // Загрузка заданий с поиском и фильтрацией
@@ -2646,85 +2767,8 @@ async function loadTasks(search = '', category = 'all') {
         }
     } catch (error) {
         console.error('Error loading tasks:', error);
+        showNotification('Ошибка загрузки заданий', 'error');
     }
-}
-
-// Функции для чата поддержки
-async function openAdminChat() {
-    if (!currentUser) return;
-    
-    try {
-        // Получаем или создаем чат
-        const chatResult = await makeRequest(`${API_URL}/support/chats/${currentUser.id}`);
-        if (chatResult.success) {
-            currentChatId = chatResult.chat.id;
-            
-            // Загружаем сообщения
-            const messagesResult = await makeRequest(`${API_URL}/support/chats/${currentChatId}/messages`);
-            if (messagesResult.success) {
-                displayChatMessages(messagesResult.messages);
-            }
-            
-            // Показываем чат
-            document.getElementById('admin-chat').classList.add('active');
-        }
-    } catch (error) {
-        console.error('Error opening chat:', error);
-    }
-}
-
-async function sendMessageToAdmin() {
-    if (!currentUser || !currentChatId) return;
-    
-    const input = document.getElementById('chat-input-field');
-    const message = input.value.trim();
-    
-    if (message) {
-        try {
-            const result = await makeRequest(`${API_URL}/support/chats/${currentChatId}/messages`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    sender_id: currentUser.id,
-                    sender_name: currentUser.firstName,
-                    message: message,
-                    is_admin: false
-                })
-            });
-            
-            if (result.success) {
-                // Добавляем сообщение в интерфейс
-                const messagesContainer = document.getElementById('chat-messages');
-                const messageElement = document.createElement('div');
-                messageElement.className = 'message message-user';
-                messageElement.textContent = message;
-                messagesContainer.appendChild(messageElement);
-                
-                input.value = '';
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }
-        } catch (error) {
-            console.error('Error sending message:', error);
-        }
-    }
-}
-
-function displayChatMessages(messages) {
-    const messagesContainer = document.getElementById('chat-messages');
-    messagesContainer.innerHTML = '';
-    
-    messages.forEach(message => {
-        const messageElement = document.createElement('div');
-        messageElement.className = message.is_admin ? 'message message-admin' : 'message message-user';
-        messageElement.textContent = message.message;
-        messagesContainer.appendChild(messageElement);
-    });
-    
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
-function closeChat() {
-    document.getElementById('admin-chat').classList.remove('active');
-    currentChatId = null;
 }
 
 // Загрузка постов на главную
@@ -2734,9 +2778,12 @@ async function loadMainPagePosts() {
         
         if (result.success && result.posts && result.posts.length > 0) {
             displayMainPagePosts(result.posts);
+        } else {
+            hidePostsSection();
         }
     } catch (error) {
         console.error('Error loading posts:', error);
+        hidePostsSection();
     }
 }
 
@@ -2747,7 +2794,7 @@ function displayMainPagePosts(posts) {
     if (!postsContainer) return;
     
     // Показываем секцию с постами
-    postsSection.style.display = 'block';
+    if (postsSection) postsSection.style.display = 'block';
     
     postsContainer.innerHTML = '';
     
@@ -2780,18 +2827,9 @@ function displayMainPagePosts(posts) {
     });
 }
 
-// Проверка прав администратора
-function checkAdminRights() {
-    const adminNavItem = document.getElementById('admin-nav-item');
-    if (currentUser && currentUser.isAdmin && parseInt(currentUser.id) === ADMIN_ID) {
-        if (adminNavItem) {
-            adminNavItem.style.display = 'flex';
-        }
-    } else {
-        if (adminNavItem) {
-            adminNavItem.style.display = 'none';
-        }
-    }
+function hidePostsSection() {
+    const postsSection = document.getElementById('posts-section');
+    if (postsSection) postsSection.style.display = 'none';
 }
 
 // Вспомогательные функции
@@ -2817,170 +2855,66 @@ function formatPostDate(timestamp) {
     return date.toLocaleDateString('ru-RU');
 }
 
-async function makeRequest(url, options = {}) {
-    try {
-        const response = await fetch(url, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            },
-            ...options
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        return await response.json();
-    } catch (error) {
-        console.error('Request failed:', error);
-        throw error;
-    }
+function showNotification(message, type = 'info') {
+    // Простая реализация уведомлений
+    alert(`${type.toUpperCase()}: ${message}`);
 }
 
-    // Инициализация приложения
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('Initializing LinkGold app...');
-        if (typeof tg !== 'undefined') {
-            tg.expand();
-            tg.ready();
-        }
-        initializeApp();
+// Навигация
+function showMainTab() {
+    hideAllTabs();
+    document.getElementById('main-tab').classList.add('active');
+    updateNavState('main');
+    loadMainPagePosts();
+}
+
+function showTasksTab() {
+    hideAllTabs();
+    document.getElementById('tasks-tab').classList.add('active');
+    updateNavState('tasks');
+    loadTasks();
+}
+
+function showProfileTab() {
+    hideAllTabs();
+    document.getElementById('profile-tab').classList.add('active');
+    updateNavState('profile');
+}
+
+function showAdminTab() {
+    if (!currentUser || !currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+        showNotification('Доступ запрещен!', 'error');
+        return;
+    }
+    hideAllTabs();
+    document.getElementById('admin-tab').classList.add('active');
+    updateNavState('admin');
+}
+
+function hideAllTabs() {
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
     });
+    document.querySelectorAll('.page').forEach(page => {
+        page.classList.remove('active');
+    });
+}
 
-    // Инициализация приложения
-    function initializeApp() {
-        // Для тестирования - замените на реальные данные Telegram
-        currentUser = {
-            id: ADMIN_ID, // ТЕСТ: Используем ID админа
-            firstName: 'Алексей',
-            username: 'alexey_admin',
-            isAdmin: true
-        };
-
-        // Если хотите протестировать обычного пользователя, используйте:
-        // currentUser = {
-        //     id: 123456789,
-        //     firstName: 'Обычный',
-        //     username: 'regular_user', 
-        //     isAdmin: false
-        // };
-
-        console.log('Current user:', currentUser);
-        displayUserProfile();
-        checkAdminRights();
-        loadMainPagePosts(); // Загружаем посты на главную
-        loadTasks();
+function updateNavState(activeTab) {
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    const navItems = document.querySelectorAll('.nav-item');
+    switch(activeTab) {
+        case 'main': navItems[0].classList.add('active'); break;
+        case 'tasks': navItems[1].classList.add('active'); break;
+        case 'profile': navItems[2].classList.add('active'); break;
+        case 'admin': 
+            if (navItems[3]) navItems[3].classList.add('active'); 
+            break;
     }
-
-    // Проверка прав администратора и скрытие вкладки
-    function checkAdminRights() {
-        const adminNavItem = document.getElementById('admin-nav-item');
-        if (currentUser && currentUser.isAdmin && parseInt(currentUser.id) === ADMIN_ID) {
-            console.log('User is ADMIN - showing admin tab');
-            if (adminNavItem) {
-                adminNavItem.style.display = 'flex';
-            }
-        } else {
-            console.log('User is NOT admin - hiding admin tab');
-            if (adminNavItem) {
-                adminNavItem.style.display = 'none';
-            }
-            // Скрываем админ-панель на главной если она есть
-            const adminPanel = document.getElementById('admin-panel');
-            if (adminPanel) {
-                adminPanel.style.display = 'none';
-            }
-        }
-    }
-
-    // Отображение профиля пользователя
-    function displayUserProfile() {
-        if (!currentUser) return;
-
-        const firstNameElement = document.getElementById('user-first-name');
-        const usernameElement = document.getElementById('user-username');
-        
-        if (firstNameElement) firstNameElement.textContent = currentUser.firstName;
-        if (usernameElement) usernameElement.textContent = currentUser.username;
-        
-        // Генерация реферальной ссылки
-        const referralLink = `https://t.me/your_bot?start=ref_${currentUser.id}`;
-        const referralInput = document.getElementById('referral-link');
-        if (referralInput) referralInput.value = referralLink;
-    }
-
-    // Навигация
-    function showMainTab() {
-        hideAllTabs();
-        document.getElementById('main-tab').classList.add('active');
-        updateNavState('main');
-        loadMainPagePosts(); // Перезагружаем посты при переходе на главную
-    }
-
-    function showTasksTab() {
-        hideAllTabs();
-        document.getElementById('tasks-tab').classList.add('active');
-        updateNavState('tasks');
-        loadTasks();
-    }
-
-    function showProfileTab() {
-        hideAllTabs();
-        document.getElementById('profile-tab').classList.add('active');
-        updateNavState('profile');
-    }
-
-    function showAdminTab() {
-        if (!currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
-            alert('Доступ запрещен!');
-            return;
-        }
-        hideAllTabs();
-        document.getElementById('admin-tab').classList.add('active');
-        updateNavState('admin');
-        loadAdminData();
-    }
-
-    function showHowItWorksPage() {
-        hideAllTabs();
-        document.getElementById('how-it-works-page').classList.add('active');
-    }
-
-    function showAboutPage() {
-        hideAllTabs();
-        document.getElementById('about-page').classList.add('active');
-    }
-
-    function showWithdrawPage() {
-        hideAllTabs();
-        document.getElementById('withdraw-page').classList.add('active');
-    }
-
-    function hideAllTabs() {
-        document.querySelectorAll('.tab-content').forEach(tab => {
-            tab.classList.remove('active');
-        });
-        document.querySelectorAll('.page').forEach(page => {
-            page.classList.remove('active');
-        });
-    }
-
-    function updateNavState(activeTab) {
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.classList.remove('active');
-        });
-        
-        const navItems = document.querySelectorAll('.nav-item');
-        switch(activeTab) {
-            case 'main': navItems[0].classList.add('active'); break;
-            case 'tasks': navItems[1].classList.add('active'); break;
-            case 'profile': navItems[2].classList.add('active'); break;
-            case 'admin': 
-                if (navItems[3]) navItems[3].classList.add('active'); 
-                break;
-        }
-    }
+}
 
     // 📝 ЗАГРУЗКА ПОСТОВ НА ГЛАВНУЮ СТРАНИЦУ
     async function loadMainPagePosts() {
