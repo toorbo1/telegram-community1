@@ -3382,6 +3382,118 @@
     font-size: 14px;
     width: 60px;
 }
+/* ДОБАВЬТЕ ЭТИ СТИЛИ В CSS */
+.post-minimal {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+}
+
+.post-minimal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.post-minimal-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.post-minimal-date {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-left: 12px;
+}
+
+.post-minimal-content {
+    font-size: 14px;
+    color: var(--text-primary);
+    line-height: 1.4;
+    margin-bottom: 8px;
+}
+
+.post-minimal-image {
+    width: 100%;
+    border-radius: 8px;
+    margin: 8px 0;
+    max-height: 300px;
+    object-fit: cover;
+}
+
+.exclusive-badge {
+    background: linear-gradient(135deg, #ff6b35, #ff8e35);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-block;
+    margin: 4px 0;
+}
+
+.level-requirement {
+    color: #8b5cf6;
+    font-size: 12px;
+    margin: 4px 0;
+}
+
+.task-type-buttons {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.task-type-btn {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    flex: 1;
+    text-align: center;
+}
+
+.task-type-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+.task-image {
+    max-width: 100%;
+    border-radius: 8px;
+    margin: 8px 0;
+}
+
+.task-people {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.admin-task-exclusive {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0;
+}
+
+.admin-task-min-level {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px;
+    color: var(--text-primary);
+    font-size: 14px;
+    width: 60px;
+}
     </style>
 </head>
 <body>
@@ -3464,13 +3576,178 @@
                         Смотреть все задания
                     </button>
                 </div>
-                <!-- Секция постов на главной -->
+<!-- ЗАМЕНИТЕ СЕКЦИЮ ПОСТОВ НА ГЛАВНОЙ -->
 <div id="posts-section" class="card fade-in" style="display: none; margin-top: 20px;">
     <div class="posts-header">
         <h2 style="color: var(--text-primary); margin-bottom: 15px; text-align: center;">📢 Последние новости</h2>
     </div>
     <div id="posts-container">
         <!-- Посты будут загружаться здесь -->
+    </div>
+</div>
+
+<!-- ДОБАВЬТЕ ПОСЛЕ ФИЛЬТРОВ ЗАДАНИЙ -->
+<div class="task-type-buttons">
+    <button class="task-type-btn active" data-type="all">Все задания</button>
+    <button class="task-type-btn" data-type="ordinary">Обычные</button>
+    <button class="task-type-btn" data-type="exclusive">Эксклюзивные</button>
+</div>
+
+<!-- ОБНОВИТЕ ФОРМУ СОЗДАНИЯ ЗАДАНИЯ В АДМИНКЕ -->
+<div id="admin-tasks-section" class="admin-section" style="display: none;">
+    <h3>Добавить задание</h3>
+    <div class="admin-form">
+        <input type="text" class="admin-input" id="admin-task-title" placeholder="Название задания">
+        <textarea class="admin-textarea" id="admin-task-description" placeholder="Описание задания"></textarea>
+        <input type="text" class="admin-input" id="admin-task-price" placeholder="Цена (в рублях)">
+        <input type="text" class="admin-input" id="admin-task-time" placeholder="Время выполнения">
+        <input type="text" class="admin-input" id="admin-task-difficulty" placeholder="Сложность">
+        <input type="number" class="admin-input" id="admin-task-people" placeholder="Сколько человек должно выполнить">
+        <input type="text" class="admin-input" id="admin-task-repost" placeholder="Время повторной публикации">
+        <input type="url" class="admin-input" id="admin-task-url" placeholder="URL задания">
+        <input type="file" class="admin-input" id="admin-task-image" accept="image/*">
+        
+        <!-- ДОБАВЬТЕ ЭТИ ПОЛЯ ДЛЯ ЭКСКЛЮЗИВНЫХ ЗАДАНИЙ -->
+        <div class="admin-task-exclusive">
+            <input type="checkbox" id="admin-task-exclusive">
+            <label for="admin-task-exclusive">Эксклюзивное задание</label>
+            <input type="number" id="admin-task-min-level" class="admin-task-min-level" placeholder="Уровень" min="1" max="10" value="1">
+        </div>
+        
+        <button class="admin-submit" onclick="addTask()">Добавить задание</button>
+    </div>
+</div>
+
+<!-- ДОБАВЬТЕ СТРАНИЦУ ВЫВОДА СРЕДСТВ -->
+<div id="withdraw-page" class="page">
+    <div class="page-header">
+        <button class="back-button" onclick="showProfileTab()">←</button>
+        <div class="page-title">Вывод средств</div>
+    </div>
+
+    <div class="card">
+        <div class="balance-amount" id="withdraw-balance">0 ₽</div>
+        <p class="about-text" style="text-align: center; margin-bottom: 20px;">Доступно для вывода</p>
+
+        <div class="admin-form">
+            <h3>Запрос на вывод</h3>
+            <input type="number" class="admin-input" id="withdraw-amount" placeholder="Сумма вывода" min="50">
+            <select class="admin-input" id="withdraw-method">
+                <option value="">Выберите способ вывода</option>
+                <option value="card">Банковская карта</option>
+                <option value="qiwi">QIWI Кошелек</option>
+                <option value="yoomoney">ЮMoney</option>
+                <option value="crypto">Криптовалюта</option>
+            </select>
+            <input type="text" class="admin-input" id="withdraw-details" placeholder="Реквизиты для вывода">
+            <button class="admin-submit" onclick="submitWithdraw()">Заказать выплату</button>
+        </div>
+
+        <div style="margin-top: 20px; padding: 15px; background: var(--bg-secondary); border-radius: 10px;">
+            <h4 style="margin-bottom: 10px;">💡 Информация о выводе</h4>
+            <ul style="font-size: 14px; color: var(--text-secondary); padding-left: 20px;">
+                <li>Минимальная сумма вывода: 50₽</li>
+                <li>Обработка заявки: до 24 часов</li>
+                <li>Комиссия: 0% для всех способов</li>
+                <li>Вывод доступен 24/7</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- ДОБАВЬТЕ СТРАНИЦУ "КАК РАБОТАЕТ" -->
+<div id="how-it-works-page" class="page">
+    <div class="page-header">
+        <button class="back-button" onclick="showProfileTab()">←</button>
+        <div class="page-title">Как работает LinkGold</div>
+    </div>
+
+    <div class="card">
+        <h3 style="margin-bottom: 15px;">🚀 Начните зарабатывать за 3 простых шага:</h3>
+        
+        <div style="margin-bottom: 20px;">
+            <h4 style="color: var(--accent); margin-bottom: 8px;">1. Выбирайте задания</h4>
+            <p style="color: var(--text-secondary); font-size: 14px;">
+                В разделе "Задания" вы найдете различные активности: подписки, лайки, репосты, комментарии. 
+                Каждое задание имеет четкую инструкцию и вознаграждение.
+            </p>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <h4 style="color: var(--accent); margin-bottom: 8px;">2. Выполняйте и подтверждайте</h4>
+            <p style="color: var(--text-secondary); font-size: 14px;">
+                После выполнения задания нажмите "Подтвердить выполнение" и при необходимости 
+                прикрепите скриншот. Задание отправится на проверку модератору.
+            </p>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <h4 style="color: var(--accent); margin-bottom: 8px;">3. Получайте оплату</h4>
+            <p style="color: var(--text-secondary); font-size: 14px;">
+                После проверки деньги автоматически зачисляются на ваш баланс. 
+                Выводите средства удобным способом когда захотите.
+            </p>
+        </div>
+
+        <div style="background: var(--bg-secondary); padding: 15px; border-radius: 10px; margin-top: 20px;">
+            <h4 style="margin-bottom: 10px;">💎 Система уровней</h4>
+            <p style="color: var(--text-secondary); font-size: 14px;">
+                Выполняйте задания и повышайте уровень! С каждым новым уровнем открываются 
+                эксклюзивные задания с повышенным вознаграждением.
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- ДОБАВЬТЕ СТРАНИЦУ "О ПРИЛОЖЕНИИ" -->
+<div id="about-page" class="page">
+    <div class="page-header">
+        <button class="back-button" onclick="showProfileTab()">←</button>
+        <div class="page-title">О LinkGold</div>
+    </div>
+
+    <div class="card">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 48px; margin-bottom: 10px;">💎</div>
+            <h2 style="background: var(--gold-gradient); -webkit-background-clip: text; background-clip: text; color: transparent;">
+                LinkGold
+            </h2>
+        </div>
+
+        <p style="color: var(--text-secondary); margin-bottom: 15px; text-align: center;">
+            Инновационная платформа для монетизации вашей активности в социальных сетях
+        </p>
+
+        <div style="margin: 20px 0;">
+            <h4 style="margin-bottom: 10px;">🎯 Наша миссия</h4>
+            <p style="color: var(--text-secondary); font-size: 14px;">
+                Мы создаем равные возможности для заработка каждому пользователю. 
+                Наша платформа соединяет рекламодателей и активных пользователей, 
+                создавая взаимовыгодные условия для всех участников.
+            </p>
+        </div>
+
+        <div style="margin: 20px 0;">
+            <h4 style="margin-bottom: 10px;">🛡️ Безопасность и надежность</h4>
+            <p style="color: var(--text-secondary); font-size: 14px;">
+                Все платежи защищены, данные пользователей шифруются. 
+                Мы гарантируем честные выплаты и прозрачные условия сотрудничества.
+            </p>
+        </div>
+
+        <div style="background: var(--bg-secondary); padding: 15px; border-radius: 10px; margin-top: 20px;">
+            <h4 style="margin-bottom: 10px;">📞 Контакты</h4>
+            <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 8px;">
+                💬 Поддержка: @linkgold_support
+            </p>
+            <p style="color: var(--text-secondary); font-size: 14px;">
+                📧 Email: support@linkgold.ru
+            </p>
+        </div>
+
+        <div style="text-align: center; margin-top: 20px; color: var(--text-secondary); font-size: 12px;">
+            LinkGold © 2024. Все права защищены.
+        </div>
     </div>
 </div>
 
@@ -5155,7 +5432,189 @@ window.addEventListener('load', function() {
         taskTabs[0].click();
     }
 });
+// ДОБАВЬТЕ ЭТИ ФУНКЦИИ В JavaScript
 
+// Инициализация кнопок типа заданий
+function initializeTaskTypeButtons() {
+    const buttons = document.querySelectorAll('.task-type-btn');
+    buttons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            buttons.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentTaskType = this.getAttribute('data-type');
+            loadTasks('', getActiveFilter());
+        });
+    });
+}
+
+// Функция вывода средств
+async function submitWithdraw() {
+    if (!currentUser) return;
+    
+    const amount = parseFloat(document.getElementById('withdraw-amount').value);
+    const method = document.getElementById('withdraw-method').value;
+    const details = document.getElementById('withdraw-details').value;
+    
+    if (!amount || !method || !details) {
+        showNotification('Заполните все поля для вывода средств', 'error');
+        return;
+    }
+    
+    if (amount > (currentUser.balance || 0)) {
+        showNotification('Недостаточно средств на балансе', 'error');
+        return;
+    }
+    
+    if (amount < 50) {
+        showNotification('Минимальная сумма вывода: 50₽', 'error');
+        return;
+    }
+    
+    try {
+        const result = await makeRequest(`${API_URL}/withdrawal/request`, {
+            method: 'POST',
+            body: JSON.stringify({
+                user_id: currentUser.id,
+                amount: amount,
+                method: method,
+                details: details
+            })
+        });
+
+        if (result.success) {
+            showNotification(`Запрос на вывод ${amount}₽ отправлен! Ожидайте обработки в течение 24 часов.`, 'success');
+            document.getElementById('withdraw-amount').value = '';
+            document.getElementById('withdraw-method').value = '';
+            document.getElementById('withdraw-details').value = '';
+            
+            showProfileTab();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error submitting withdrawal:', error);
+        showNotification('Ошибка соединения', 'error');
+    }
+}
+
+// Функция создания задания с изображением
+async function addTask() {
+    const title = document.getElementById('admin-task-title').value;
+    const description = document.getElementById('admin-task-description').value;
+    const price = document.getElementById('admin-task-price').value;
+    const imageFile = document.getElementById('admin-task-image').files[0];
+    const isExclusive = document.getElementById('admin-task-exclusive').checked;
+    const minLevel = document.getElementById('admin-task-min-level').value || 1;
+
+    if (!title || !description || !price) {
+        showNotification('Заполните обязательные поля: название, описание и цена!', 'error');
+        return;
+    }
+
+    if (!currentUser || !currentUser.isAdmin) {
+        showNotification('Только администратор может создавать задания!', 'error');
+        return;
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('description', description);
+        formData.append('price', parseFloat(price) || 0);
+        formData.append('created_by', currentUser.id);
+        formData.append('is_exclusive', isExclusive);
+        formData.append('min_level', minLevel);
+        
+        if (imageFile) {
+            formData.append('image', imageFile);
+        }
+
+        const result = await makeFormDataRequest(`${API_URL}/tasks`, formData);
+
+        if (result.success) {
+            showNotification('Задание успешно создано!', 'success');
+            
+            // Очистка формы
+            document.getElementById('admin-task-title').value = '';
+            document.getElementById('admin-task-description').value = '';
+            document.getElementById('admin-task-price').value = '';
+            document.getElementById('admin-task-image').value = '';
+            document.getElementById('admin-task-exclusive').checked = false;
+            document.getElementById('admin-task-min-level').value = '1';
+            
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error creating task:', error);
+        showNotification('Ошибка соединения: ' + error.message, 'error');
+    }
+}
+
+// Функция для отправки FormData
+async function makeFormDataRequest(url, formData) {
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Request failed:', error);
+        showNotification(`Ошибка соединения: ${error.message}`, 'error');
+        throw error;
+    }
+}
+
+// Обновите функцию загрузки заданий для поддержки типов
+async function loadTasks(search = '', category = 'all') {
+    try {
+        let url = `${API_URL}/tasks`;
+        const params = [];
+        
+        if (search) params.push(`search=${encodeURIComponent(search)}`);
+        if (category && category !== 'all') params.push(`category=${encodeURIComponent(category)}`);
+        if (currentTaskType && currentTaskType !== 'all') params.push(`task_type=${currentTaskType}`);
+        if (currentUser) params.push(`user_id=${currentUser.id}`);
+        
+        if (params.length > 0) {
+            url += '?' + params.join('&');
+        }
+        
+        const result = await makeRequest(url);
+        
+        if (result.success) {
+            allTasks = result.tasks;
+            displayTasks(result.tasks, 'new');
+        }
+    } catch (error) {
+        console.error('Error loading tasks:', error);
+        showNotification('Ошибка загрузки заданий', 'error');
+    }
+}
+
+// Добавьте вызов инициализации в основную функцию
+function initializeApp() {
+    displayUserProfile();
+    checkAdminRights();
+    loadMainPagePosts();
+    loadTasks();
+    initializeSearch();
+    initializeTaskTypeButtons(); // Добавьте эту строку
+    loadUserTasks();
+    
+    if (currentUser && currentUser.isAdmin) {
+        loadAdminChats();
+        loadAdminTasks();
+    }
+}
 // Экспортируем функции для глобального использования
 window.openAdminChat = openAdminChat;
 window.closeChat = closeChat;
