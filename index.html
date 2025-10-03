@@ -3774,58 +3774,49 @@
             </div>
             
             <!-- Вкладка заданий -->
-            <div class="tasks-tabs">
-    <div class="task-tab active" onclick="showTaskCategory('new')">Новые</div>
-    <div class="task-tab" id="confirmation-tab" onclick="showTaskCategory('confirmation')">Подтверждение</div>
-    <div class="task-tab" onclick="showTaskCategory('completed')">Выполненные</div>
-    <div class="task-tab" onclick="showTaskCategory('rejected')">Отклоненные</div>
-</div>
-                
-                <div class="search-container fade-in">
-                    <div class="search-icon">🔍</div>
-                    <input type="text" class="search-input" id="task-search" placeholder="Поиск заданий...">
-                </div>
-                
-                <div class="filters-container fade-in">
-                    <button class="filter-btn active" data-filter="all">Все</button>
-                    <button class="filter-btn" data-filter="social">Соцсети</button>
-                    <button class="filter-btn" data-filter="subscribe">Подписки</button>
-                    <button class="filter-btn" data-filter="view">Просмотры</button>
-                    <button class="filter-btn" data-filter="comment">Комментарии</button>
-                    <button class="filter-btn" data-filter="repost">Репосты</button>
-                </div>
-                <!-- Лента постов на главной -->
-<div id="posts-section" class="card fade-in" style="display: none;">
-    <div class="posts-header">
-        <h2 style="color: var(--text-primary); margin-bottom: 15px;">Последние новости</h2>
+            <!-- Вкладка заданий -->
+<div id="tasks-tab" class="tab-content tasks-tab">
+    <div class="tasks-tabs">
+        <div class="task-tab active" onclick="showTaskCategory('new')">Новые</div>
+        <div class="task-tab" id="confirmation-tab" onclick="showTaskCategory('confirmation')">Подтверждение</div>
+        <div class="task-tab" onclick="showTaskCategory('completed')">Выполненные</div>
+        <div class="task-tab" onclick="showTaskCategory('rejected')">Отклоненные</div>
     </div>
-    <div id="posts-container">
-        <div class="loading-posts">
-            <div class="loading-spinner">⏳</div>
-            <div>Загрузка постов...</div>
-        </div>
+    
+    <div class="search-container fade-in">
+        <div class="search-icon">🔍</div>
+        <input type="text" class="search-input" id="task-search" placeholder="Поиск заданий...">
     </div>
-</div>
-                <!-- Новые задания -->
-                <div id="new-tasks" class="tasks-grid">
-                    <!-- Задания будут добавлены через JavaScript -->
-                </div>
-                
-                <!-- Задания на подтверждение -->
-                <div id="confirmation-tasks" class="tasks-grid" style="display: none;">
-                    <!-- Задания будут добавлены через JavaScript -->
-                </div>
-                
-                <!-- Выполненные задания -->
-                <div id="completed-tasks" class="tasks-grid" style="display: none;">
-                    <!-- Задания будут добавлены через JavaScript -->
-                </div>
+    
+    <div class="filters-container fade-in">
+        <button class="filter-btn active" data-filter="all">Все</button>
+        <button class="filter-btn" data-filter="social">Соцсети</button>
+        <button class="filter-btn" data-filter="subscribe">Подписки</button>
+        <button class="filter-btn" data-filter="view">Просмотры</button>
+        <button class="filter-btn" data-filter="comment">Комментарии</button>
+        <button class="filter-btn" data-filter="repost">Репосты</button>
+    </div>
+    
+    <!-- Новые задания -->
+    <div id="new-tasks" class="tasks-grid">
+        <!-- Задания будут добавлены через JavaScript -->
+    </div>
+    
+    <!-- Задания на подтверждение -->
+    <div id="confirmation-tasks" class="tasks-grid" style="display: none;">
+        <!-- Задания будут добавлены через JavaScript -->
+    </div>
+    
+    <!-- Выполненные задания -->
+    <div id="completed-tasks" class="tasks-grid" style="display: none;">
+        <!-- Задания будут добавлены через JavaScript -->
+    </div>
 
-                <!-- Отклоненные задания -->
-                <div id="rejected-tasks" class="tasks-grid" style="display: none;">
-                    <!-- Задания будут добавлены через JavaScript -->
-                </div>
-            </div>
+    <!-- Отклоненные задания -->
+    <div id="rejected-tasks" class="tasks-grid" style="display: none;">
+        <!-- Задания будут добавлены через JavaScript -->
+    </div>
+</div>
             
             <!-- Вкладка профиля -->
             <div id="profile-tab" class="tab-content">
