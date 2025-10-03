@@ -4640,7 +4640,7 @@ async function deleteTask(taskId) {
     }
 }
 
-// 🔧 УПРОЩЕННАЯ ИСПРАВЛЕННАЯ СИСТЕМА ЧАТОВ
+// 🔧 ИСПРАВЛЕННАЯ СИСТЕМА ЧАТОВ
 
 // Чат для пользователя
 async function openAdminChat() {
@@ -4872,15 +4872,6 @@ async function openAdminChatWindow(chat) {
     currentAdminChat = chat;
     
     try {
-        // Сначала загружаем полную информацию о чате
-        const chatResult = await makeRequest(`${API_URL}/support/chats/${chat.id}?adminId=${ADMIN_ID}`);
-        if (!chatResult.success) {
-            throw new Error('Failed to load chat details');
-        }
-        
-        const fullChat = chatResult.chat;
-        updateAdminChatInterface(fullChat);
-        
         // Загружаем сообщения
         const messagesResult = await makeRequest(`${API_URL}/support/chats/${chat.id}/messages`);
         if (messagesResult.success) {
@@ -4899,7 +4890,7 @@ async function openAdminChatWindow(chat) {
             }
             
             // Показываем окно чата
-            showAdminChatWindow();
+            showAdminChatWindow(chat);
         } else {
             throw new Error('Failed to load messages');
         }
@@ -4909,7 +4900,15 @@ async function openAdminChatWindow(chat) {
     }
 }
 
-function updateAdminChatInterface(chat) {
+function showAdminChatWindow(chat) {
+    // Создаем окно чата если не существует
+    let chatWindow = document.getElementById('admin-chat-window');
+    if (!chatWindow) {
+        createAdminChatWindow();
+        chatWindow = document.getElementById('admin-chat-window');
+    }
+    
+    // Обновляем информацию о пользователе
     const chatUserName = document.getElementById('admin-chat-user-name');
     const chatUserAvatar = document.getElementById('admin-chat-avatar');
     
@@ -4920,19 +4919,10 @@ function updateAdminChatInterface(chat) {
     if (chatUserAvatar) {
         chatUserAvatar.textContent = chat.user_name ? chat.user_name.charAt(0).toUpperCase() : 'U';
     }
+    
+    chatWindow.classList.add('active');
 }
 
-function showAdminChatWindow() {
-    const chatWindow = document.getElementById('admin-chat-window');
-    if (chatWindow) {
-        chatWindow.classList.add('active');
-    } else {
-        console.error('Admin chat window element not found!');
-        createAdminChatWindow();
-    }
-}
-
-// Создание окна чата админа (если не существует в HTML)
 function createAdminChatWindow() {
     const chatWindowHTML = `
         <div class="admin-chat-window" id="admin-chat-window">
