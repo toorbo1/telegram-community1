@@ -1,7 +1,7 @@
 {
   "name": "linkgold-platform",
-  "version": "4.0.0",
-  "description": "LinkGold - Platform with task verification system",
+  "version": "4.1.0",
+  "description": "LinkGold - Platform with task verification and image upload",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

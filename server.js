@@ -29,7 +29,7 @@ const storage = multer.diskStorage({
     },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, 'screenshot-' + uniqueSuffix + path.extname(file.originalname));
+        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
     }
 });
 
@@ -348,8 +348,10 @@ app.get('/api/posts', (req, res) => {
     });
 });
 
-app.post('/api/posts', (req, res) => {
-    const { title, content, author, authorId, image_url } = req.body;
+// Обновленный эндпоинт для создания постов с фото
+app.post('/api/posts', upload.single('image'), (req, res) => {
+    const { title, content, author, authorId } = req.body;
+    const image_url = req.file ? `/uploads/${req.file.filename}` : null;
     
     if (!title || !content || !author) {
         return res.status(400).json({
@@ -465,11 +467,13 @@ app.get('/api/admin/tasks', (req, res) => {
     });
 });
 
-app.post('/api/tasks', (req, res) => {
+// Обновленный эндпоинт для создания заданий с фото
+app.post('/api/tasks', upload.single('image'), (req, res) => {
     const { 
         title, description, price, created_by, category,
-        time_to_complete, difficulty, people_required, repost_time, task_url, image_url
+        time_to_complete, difficulty, people_required, repost_time, task_url
     } = req.body;
+    const image_url = req.file ? `/uploads/${req.file.filename}` : null;
     
     console.log('Creating task with data:', req.body);
     
@@ -493,7 +497,7 @@ app.post('/api/tasks', (req, res) => {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [title, description, parseFloat(price), created_by, category || 'general',
              time_to_complete || '5 минут', difficulty || 'Легкая', 
-             people_required || 1, repost_time || '1 день', task_url || '', image_url || ''],
+             people_required || 1, repost_time || '1 день', task_url || '', image_url],
             function(err) {
         if (err) {
             console.error('Database error:', err);

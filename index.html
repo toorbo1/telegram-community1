@@ -3615,6 +3615,63 @@
         margin-bottom: 16px;
     }
 }
+/* Стили для загрузки изображений */
+.upload-container {
+    margin: 15px 0;
+    text-align: center;
+}
+
+.upload-area {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: var(--bg-secondary);
+}
+
+.upload-area:hover {
+    border-color: var(--accent);
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.upload-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+    color: var(--text-secondary);
+}
+
+.upload-text {
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.upload-hint {
+    font-size: 12px;
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+.image-preview {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 10px;
+    margin-top: 15px;
+    display: none;
+}
+
+.remove-image {
+    background: var(--error);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+}
     </style>
 </head>
 <body>
@@ -3724,33 +3781,58 @@
                     </div>
                     
                     <!-- Управление постами -->
-                    <div id="post-management" class="admin-form" style="display: none;">
-                        <h3>Добавить пост для всех пользователей</h3>
-                        <input type="text" class="admin-input" id="post-title" placeholder="Заголовок поста">
-                        <textarea class="admin-textarea" id="post-content" placeholder="Введите текст поста..."></textarea>
-                        <input type="file" class="admin-input" id="post-image" accept="image/*">
-                        <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
-                        
-                        <h3 style="margin-top: 20px;">Существующие посты</h3>
-                        <div id="posts-list">
-                            <!-- Посты будут загружаться динамически -->
-                        </div>
-                    </div>
+                    <!-- Управление постами -->
+<div id="post-management" class="admin-form" style="display: none;">
+    <h3>Добавить пост для всех пользователей</h3>
+    <input type="text" class="admin-input" id="post-title" placeholder="Заголовок поста">
+    <textarea class="admin-textarea" id="post-content" placeholder="Введите текст поста..."></textarea>
+    
+    <!-- Загрузка изображения для поста -->
+    <div class="upload-container">
+        <div class="upload-area" id="post-upload-area">
+            <div class="upload-icon">📷</div>
+            <div class="upload-text">Нажмите для загрузки изображения</div>
+            <div class="upload-hint">PNG, JPG до 10MB</div>
+        </div>
+        <input type="file" id="post-image" class="file-input" accept="image/*">
+        <img id="post-image-preview" class="image-preview" alt="Предпросмотр">
+        <button id="remove-post-image" class="remove-image" style="display: none;">Удалить изображение</button>
+    </div>
+    
+    <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
+    
+    <h3 style="margin-top: 20px;">Существующие посты</h3>
+    <div id="posts-list">
+        <!-- Посты будут загружаться динамически -->
+    </div>
+</div>
 
-                    <!-- Управление заданиями -->
-                    <div id="task-management" class="admin-form" style="display: none;">
-                        <h3>Добавить задание</h3>
-                        <input type="text" class="admin-input" id="task-title" placeholder="Название задания">
-                        <textarea class="admin-textarea" id="task-description" placeholder="Описание задания"></textarea>
-                        <input type="text" class="admin-input" id="task-price" placeholder="Цена (в рублях)">
-                        <input type="text" class="admin-input" id="task-time" placeholder="Время выполнения">
-                        <input type="text" class="admin-input" id="task-difficulty" placeholder="Сложность">
-                        <input type="number" class="admin-input" id="task-people" placeholder="Сколько человек должно выполнить">
-                        <input type="text" class="admin-input" id="task-repost" placeholder="Время повторной публикации">
-                        <input type="url" class="admin-input" id="task-url" placeholder="URL задания">
-                        <input type="file" class="admin-input" id="task-image" accept="image/*">
-                        <button class="admin-submit" onclick="addTask()">Добавить задание</button>
-                    </div>
+                  <!-- Управление заданиями -->
+<div id="task-management" class="admin-form" style="display: none;">
+    <h3>Добавить задание</h3>
+    <input type="text" class="admin-input" id="task-title" placeholder="Название задания">
+    <textarea class="admin-textarea" id="task-description" placeholder="Описание задания"></textarea>
+    <input type="text" class="admin-input" id="task-price" placeholder="Цена (в рублях)">
+    <input type="text" class="admin-input" id="task-time" placeholder="Время выполнения">
+    <input type="text" class="admin-input" id="task-difficulty" placeholder="Сложность">
+    <input type="number" class="admin-input" id="task-people" placeholder="Сколько человек должно выполнить">
+    <input type="text" class="admin-input" id="task-repost" placeholder="Время повторной публикации">
+    <input type="url" class="admin-input" id="task-url" placeholder="URL задания">
+    
+    <!-- Загрузка изображения для задания -->
+    <div class="upload-container">
+        <div class="upload-area" id="task-upload-area">
+            <div class="upload-icon">📷</div>
+            <div class="upload-text">Нажмите для загрузки изображения задания</div>
+            <div class="upload-hint">PNG, JPG до 10MB</div>
+        </div>
+        <input type="file" id="task-image" class="file-input" accept="image/*">
+        <img id="task-image-preview" class="image-preview" alt="Предпросмотр">
+        <button id="remove-task-image" class="remove-image" style="display: none;">Удалить изображение</button>
+    </div>
+    
+    <button class="admin-submit" onclick="addTask()">Добавить задание</button>
+</div>
 
                     <!-- Проверка заданий -->
                     <div id="task-verification" class="admin-form" style="display: none;">
@@ -4219,85 +4301,88 @@
         </div>
     </div>
         <!-- Модальное окно подтверждения выполнения задания -->
-        <div class="modal" id="confirmation-modal">
-            <div class="confirmation-modal-content">
-                <div class="confirmation-icon">❓</div>
-                <div class="confirmation-title">Подтверждение задания</div>
-                <div class="confirmation-text" id="confirmation-task-text">Вы выполнили задание "<span id="confirmation-task-name"></span>"?</div>
-                
-                <div class="confirmation-buttons">
-                    <button class="confirmation-btn confirmation-yes" onclick="showScreenshotUpload()">Да, выполнил</button>
-                    <button class="confirmation-btn confirmation-no" onclick="showCancelConfirmation()">Нет, не выполнил</button>
-                </div>
-                
-                <button class="confirmation-btn confirmation-cancel" onclick="closeModal('confirmation-modal')">Отмена</button>
-            </div>
+        <!-- Модальное окно подтверждения выполнения задания -->
+<div class="modal" id="confirmation-modal">
+    <div class="confirmation-modal-content">
+        <div class="confirmation-icon">❓</div>
+        <div class="confirmation-title">Подтверждение задания</div>
+        <div class="confirmation-text" id="confirmation-task-text">Вы выполнили задание "<span id="confirmation-task-name"></span>"?</div>
+        
+        <div class="confirmation-buttons">
+            <button class="confirmation-btn confirmation-yes" onclick="showScreenshotUpload()">Да, выполнил</button>
+            <button class="confirmation-btn confirmation-no" onclick="showCancelConfirmation()">Нет, не выполнил</button>
         </div>
+        
+        <button class="confirmation-btn confirmation-cancel" onclick="closeModal('confirmation-modal')">Отмена</button>
+    </div>
+</div>
 
-        <!-- Модальное окно отмены подтверждения -->
-        <div class="modal" id="cancel-confirmation-modal">
-            <div class="confirmation-modal-content">
-                <div class="confirmation-icon">⚠️</div>
-                <div class="confirmation-title">Вы уверены?</div>
-                <div class="confirmation-text">Вы точно не выполнили это задание?</div>
-                
-                <div class="confirmation-buttons">
-                    <button class="confirmation-btn confirmation-no" onclick="cancelTask()">Не выполнил</button>
-                    <button class="confirmation-btn confirmation-yes" onclick="showScreenshotUpload()">Выполнил</button>
-                </div>
-                
-                <button class="confirmation-btn confirmation-cancel" onclick="closeModal('cancel-confirmation-modal')">Отмена</button>
-            </div>
+<!-- Модальное окно отмены подтверждения -->
+<div class="modal" id="cancel-confirmation-modal">
+    <div class="confirmation-modal-content">
+        <div class="confirmation-icon">⚠️</div>
+        <div class="confirmation-title">Вы уверены?</div>
+        <div class="confirmation-text">Вы точно не выполнили это задание?</div>
+        
+        <div class="confirmation-buttons">
+            <button class="confirmation-btn confirmation-no" onclick="cancelTask()">Не выполнил</button>
+            <button class="confirmation-btn confirmation-yes" onclick="showScreenshotUpload()">Выполнил</button>
         </div>
+        
+        <button class="confirmation-btn confirmation-cancel" onclick="closeModal('cancel-confirmation-modal')">Отмена</button>
+    </div>
+</div>
 
-        <!-- Модальное окно загрузки скриншота -->
-        <div class="modal" id="screenshot-modal">
-            <div class="confirmation-modal-content">
-                <div class="confirmation-icon">📸</div>
-                <div class="confirmation-title">Отправьте скриншот</div>
-                <div class="confirmation-text">Загрузите скриншот выполнения задания для проверки администратором</div>
-                
-                <div class="screenshot-upload">
-                    <input type="file" id="screenshot-file" class="file-input" accept="image/*">
-                    <button class="upload-btn" onclick="document.getElementById('screenshot-file').click()">
-                        📁 Выбрать файл
-                    </button>
-                    <img id="screenshot-preview" class="screenshot-preview" alt="Предпросмотр скриншота">
-                    <div id="file-name" style="font-size: 14px; color: var(--text-secondary); margin-bottom: 16px;"></div>
-                </div>
-                
-                <div class="confirmation-buttons">
-                    <button class="confirmation-btn confirmation-cancel" onclick="closeModal('screenshot-modal')">Отмена</button>
-                    <button class="confirmation-btn confirmation-yes" onclick="submitScreenshot()" id="submit-screenshot-btn" disabled>Отправить на проверку</button>
-                </div>
+<!-- Модальное окно загрузки скриншота -->
+<div class="modal" id="screenshot-modal">
+    <div class="confirmation-modal-content">
+        <div class="confirmation-icon">📸</div>
+        <div class="confirmation-title">Отправьте скриншот</div>
+        <div class="confirmation-text">Загрузите скриншот выполнения задания для проверки администратором</div>
+        
+        <div class="screenshot-upload">
+            <div class="upload-area" id="screenshot-upload-area">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Нажмите для выбора скриншота</div>
+                <div class="upload-hint">PNG, JPG до 10MB</div>
             </div>
+            <input type="file" id="screenshot-file" class="file-input" accept="image/*">
+            <img id="screenshot-preview" class="image-preview" alt="Предпросмотр скриншота">
+            <div id="file-name" style="font-size: 14px; color: var(--text-secondary); margin-bottom: 16px;"></div>
         </div>
+        
+        <div class="confirmation-buttons">
+            <button class="confirmation-btn confirmation-cancel" onclick="closeModal('screenshot-modal')">Отмена</button>
+            <button class="confirmation-btn confirmation-yes" onclick="submitScreenshot()" id="submit-screenshot-btn" disabled>Отправить на проверку</button>
+        </div>
+    </div>
+</div>
 
-        <!-- Модальное окно проверки задания для админа -->
-        <div class="verification-modal" id="verification-modal">
-            <div class="verification-modal-content">
-                <div class="verification-modal-header">
-                    <div class="verification-modal-user">
-                        <div class="verification-modal-avatar" id="verification-user-avatar">U</div>
-                        <div class="verification-modal-user-info">
-                            <div class="verification-modal-user-name" id="verification-user-name">Пользователь</div>
-                            <div class="verification-modal-task" id="verification-task-title">Задание</div>
-                        </div>
-                    </div>
-                    <div class="verification-modal-price" id="verification-task-price">0 ₽</div>
+<!-- Модальное окно проверки задания для админа -->
+<div class="verification-modal" id="verification-modal">
+    <div class="verification-modal-content">
+        <div class="verification-modal-header">
+            <div class="verification-modal-user">
+                <div class="verification-modal-avatar" id="verification-user-avatar">U</div>
+                <div class="verification-modal-user-info">
+                    <div class="verification-modal-user-name" id="verification-user-name">Пользователь</div>
+                    <div class="verification-modal-task" id="verification-task-title">Задание</div>
                 </div>
-                
-                <div class="confirmation-text">Скриншот выполнения задания:</div>
-                <img id="verification-screenshot" class="verification-modal-screenshot" alt="Скриншот задания">
-                
-                <div class="verification-modal-actions">
-                    <button class="verification-reject" onclick="rejectVerification()">❌ Отклонить</button>
-                    <button class="verification-approve" onclick="approveVerification()">✅ Одобрить</button>
-                </div>
-                
-                <button class="confirmation-btn confirmation-cancel" onclick="closeModal('verification-modal')" style="margin-top: 16px; width: 100%;">Закрыть</button>
             </div>
+            <div class="verification-modal-price" id="verification-task-price">0 ₽</div>
         </div>
+        
+        <div class="confirmation-text">Скриншот выполнения задания:</div>
+        <img id="verification-screenshot" class="verification-modal-screenshot" alt="Скриншот задания">
+        
+        <div class="verification-modal-actions">
+            <button class="verification-reject" onclick="rejectVerification()">❌ Отклонить</button>
+            <button class="verification-approve" onclick="approveVerification()">✅ Одобрить</button>
+        </div>
+        
+        <button class="confirmation-btn confirmation-cancel" onclick="closeModal('verification-modal')" style="margin-top: 16px; width: 100%;">Закрыть</button>
+    </div>
+</div>
     <div class="modal" id="confirmation-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -6033,70 +6118,108 @@ window.addEventListener('load', function() {
     }
 });
 // Глобальные переменные для системы проверки
+// Глобальные переменные для системы проверки
 let currentUserTaskId = null;
 let currentVerificationId = null;
 
-// Функции для системы проверки заданий
-
-// Показать модальное окно подтверждения выполнения
-function showTaskConfirmation(userTaskId, taskName) {
-    currentUserTaskId = userTaskId;
-    document.getElementById('confirmation-task-name').textContent = taskName;
-    document.getElementById('confirmation-modal').classList.add('active');
+// Инициализация загрузки изображений
+function initializeImageUploads() {
+    // Для постов
+    const postUploadArea = document.getElementById('post-upload-area');
+    const postImageInput = document.getElementById('post-image');
+    const postImagePreview = document.getElementById('post-image-preview');
+    const removePostImage = document.getElementById('remove-post-image');
+    
+    if (postUploadArea) {
+        postUploadArea.addEventListener('click', () => postImageInput.click());
+        postImageInput.addEventListener('change', handleImageUpload.bind(null, postImageInput, postImagePreview, removePostImage));
+        removePostImage.addEventListener('click', removeImage.bind(null, postImageInput, postImagePreview, removePostImage));
+    }
+    
+    // Для заданий
+    const taskUploadArea = document.getElementById('task-upload-area');
+    const taskImageInput = document.getElementById('task-image');
+    const taskImagePreview = document.getElementById('task-image-preview');
+    const removeTaskImage = document.getElementById('remove-task-image');
+    
+    if (taskUploadArea) {
+        taskUploadArea.addEventListener('click', () => taskImageInput.click());
+        taskImageInput.addEventListener('change', handleImageUpload.bind(null, taskImageInput, taskImagePreview, removeTaskImage));
+        removeTaskImage.addEventListener('click', removeImage.bind(null, taskImageInput, taskImagePreview, removeTaskImage));
+    }
+    
+    // Для скриншотов
+    const screenshotUploadArea = document.getElementById('screenshot-upload-area');
+    const screenshotInput = document.getElementById('screenshot-file');
+    const screenshotPreview = document.getElementById('screenshot-preview');
+    
+    if (screenshotUploadArea) {
+        screenshotUploadArea.addEventListener('click', () => screenshotInput.click());
+        screenshotInput.addEventListener('change', handleScreenshotUpload.bind(null, screenshotInput, screenshotPreview));
+    }
 }
 
-// Показать окно загрузки скриншота
-function showScreenshotUpload() {
-    closeModal('confirmation-modal');
-    closeModal('cancel-confirmation-modal');
-    
-    // Сброс формы
-    document.getElementById('screenshot-file').value = '';
-    document.getElementById('screenshot-preview').style.display = 'none';
-    document.getElementById('file-name').textContent = '';
-    document.getElementById('submit-screenshot-btn').disabled = true;
-    
-    // Настройка обработчика файла
-    document.getElementById('screenshot-file').onchange = function(e) {
-        const file = e.target.files[0];
-        if (file) {
-            document.getElementById('file-name').textContent = file.name;
+function handleImageUpload(input, preview, removeBtn, event) {
+    const file = input.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            preview.style.display = 'block';
+            removeBtn.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function handleScreenshotUpload(input, preview, event) {
+    const file = input.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            preview.style.display = 'block';
             document.getElementById('submit-screenshot-btn').disabled = false;
-            
-            // Показать превью
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const preview = document.getElementById('screenshot-preview');
-                preview.src = e.target.result;
-                preview.style.display = 'block';
-            };
-            reader.readAsDataURL(file);
-        }
-    };
+            document.getElementById('file-name').textContent = file.name;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function removeImage(input, preview, removeBtn) {
+    input.value = '';
+    preview.style.display = 'none';
+    removeBtn.style.display = 'none';
+}
+
+// Обновленные функции для создания постов и заданий
+async function addNewPost() {
+    const title = document.getElementById('post-title').value;
+    const content = document.getElementById('post-content').value;
+    const imageInput = document.getElementById('post-image');
     
-    document.getElementById('screenshot-modal').classList.add('active');
-}
-
-// Показать подтверждение отмены
-function showCancelConfirmation() {
-    closeModal('confirmation-modal');
-    document.getElementById('cancel-confirmation-modal').classList.add('active');
-}
-
-// Отправить скриншот на проверку
-async function submitScreenshot() {
-    const fileInput = document.getElementById('screenshot-file');
-    if (!fileInput.files[0]) {
-        showNotification('Выберите файл скриншота', 'error');
+    if (!title || !content) {
+        showNotification('Заполните заголовок и содержание поста!', 'error');
         return;
     }
-
+    
+    if (!currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+        showNotification('Только администратор может публиковать посты!', 'error');
+        return;
+    }
+    
     const formData = new FormData();
-    formData.append('screenshot', fileInput.files[0]);
-    formData.append('userId', currentUser.id);
-
+    formData.append('title', title);
+    formData.append('content', content);
+    formData.append('author', currentUser.firstName);
+    formData.append('authorId', currentUser.id);
+    
+    if (imageInput.files[0]) {
+        formData.append('image', imageInput.files[0]);
+    }
+    
     try {
-        const response = await fetch(`${API_URL}/user/tasks/${currentUserTaskId}/submit`, {
+        const response = await fetch(`${API_URL}/posts`, {
             method: 'POST',
             body: formData
         });
@@ -6104,281 +6227,110 @@ async function submitScreenshot() {
         const result = await response.json();
 
         if (result.success) {
-            showNotification('Скриншот отправлен на проверку!', 'success');
-            closeModal('screenshot-modal');
-            loadUserTasks(); // Обновить список заданий
+            showNotification('Пост успешно опубликован!', 'success');
+            document.getElementById('post-title').value = '';
+            document.getElementById('post-content').value = '';
+            document.getElementById('post-image').value = '';
+            document.getElementById('post-image-preview').style.display = 'none';
+            document.getElementById('remove-post-image').style.display = 'none';
+            loadMainPagePosts();
         } else {
             showNotification('Ошибка: ' + result.error, 'error');
         }
+        
     } catch (error) {
-        console.error('Error submitting screenshot:', error);
-        showNotification('Ошибка отправки скриншота', 'error');
+        console.error('Error adding post:', error);
+        showNotification('Ошибка соединения: ' + error.message, 'error');
     }
 }
 
-// Отменить задание
-async function cancelTask() {
-    if (!currentUserTaskId) return;
+async function addTask() {
+    const title = document.getElementById('task-title').value;
+    const description = document.getElementById('task-description').value;
+    const price = document.getElementById('task-price').value;
+    const imageInput = document.getElementById('task-image');
 
-    try {
-        const result = await makeRequest(`${API_URL}/user/tasks/${currentUserTaskId}/cancel`, {
-            method: 'POST',
-            body: JSON.stringify({
-                userId: currentUser.id
-            })
-        });
-
-        if (result.success) {
-            showNotification('Задание отменено', 'success');
-            closeModal('cancel-confirmation-modal');
-            loadUserTasks(); // Обновить список заданий
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error cancelling task:', error);
-        showNotification('Ошибка отмены задания', 'error');
-    }
-}
-
-// Загрузка заданий на проверку для админа
-async function loadTaskVerifications() {
-    if (!currentUser || !currentUser.isAdmin) return;
-
-    try {
-        const result = await makeRequest(`${API_URL}/admin/task-verifications?adminId=${ADMIN_ID}`);
-        if (result.success) {
-            displayTaskVerifications(result.verifications);
-        }
-    } catch (error) {
-        console.error('Error loading task verifications:', error);
-    }
-}
-
-// Отображение заданий на проверку
-function displayTaskVerifications(verifications) {
-    const container = document.getElementById('admin-verification-list');
-    if (!container) return;
-
-    container.innerHTML = '';
-
-    if (!verifications || verifications.length === 0) {
-        container.innerHTML = `
-            <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
-                <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
-                <div>Нет заданий на проверке</div>
-                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
-                    Все задания проверены
-                </div>
-            </div>
-        `;
+    if (!title || !description || !price) {
+        showNotification('Заполните обязательные поля: название, описание и цена!', 'error');
         return;
     }
 
-    verifications.forEach(verification => {
-        const verificationElement = document.createElement('div');
-        verificationElement.className = 'verification-item';
-        verificationElement.onclick = () => openVerificationModal(verification);
-
-        const userAvatar = verification.user_name ? verification.user_name.charAt(0).toUpperCase() : 'U';
-        const submissionTime = formatPostDate(verification.submitted_at);
-
-        verificationElement.innerHTML = `
-            <div class="verification-header">
-                <div class="verification-avatar">
-                    ${userAvatar}
-                </div>
-                <div class="verification-user-info">
-                    <div class="verification-user-name">
-                        ${verification.user_name}
-                        ${verification.username ? `(@${verification.username})` : ''}
-                    </div>
-                    <div class="verification-task-title">${verification.task_title}</div>
-                </div>
-                <div class="verification-price">${verification.task_price} ₽</div>
-            </div>
-            <div class="verification-time">Отправлено: ${submissionTime}</div>
-        `;
-
-        container.appendChild(verificationElement);
-    });
-}
-
-// Открыть модальное окно проверки задания
-function openVerificationModal(verification) {
-    currentVerificationId = verification.id;
-
-    document.getElementById('verification-user-avatar').textContent = 
-        verification.user_name ? verification.user_name.charAt(0).toUpperCase() : 'U';
-    document.getElementById('verification-user-name').textContent = verification.user_name;
-    document.getElementById('verification-task-title').textContent = verification.task_title;
-    document.getElementById('verification-task-price').textContent = verification.task_price + ' ₽';
-    
-    // Загрузка скриншота
-    const screenshotImg = document.getElementById('verification-screenshot');
-    screenshotImg.src = verification.screenshot_url;
-    screenshotImg.onerror = function() {
-        this.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjMWExYTNhIi8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM4YjlkZGEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4K';
-    };
-
-    document.getElementById('verification-modal').classList.add('active');
-}
-
-// Одобрить задание
-async function approveVerification() {
-    if (!currentVerificationId) return;
-
-    try {
-        const result = await makeRequest(`${API_URL}/admin/task-verifications/${currentVerificationId}/approve`, {
-            method: 'POST',
-            body: JSON.stringify({
-                adminId: currentUser.id
-            })
-        });
-
-        if (result.success) {
-            showNotification('Задание одобрено! Баланс пользователя обновлен.', 'success');
-            closeModal('verification-modal');
-            loadTaskVerifications(); // Обновить список проверок
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error approving verification:', error);
-        showNotification('Ошибка одобрения задания', 'error');
-    }
-}
-
-// Отклонить задание
-async function rejectVerification() {
-    if (!currentVerificationId) return;
-
-    try {
-        const result = await makeRequest(`${API_URL}/admin/task-verifications/${currentVerificationId}/reject`, {
-            method: 'POST',
-            body: JSON.stringify({
-                adminId: currentUser.id
-            })
-        });
-
-        if (result.success) {
-            showNotification('Задание отклонено', 'success');
-            closeModal('verification-modal');
-            loadTaskVerifications(); // Обновить список проверок
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error rejecting verification:', error);
-        showNotification('Ошибка отклонения задания', 'error');
-    }
-}
-
-// Обновление функции отображения заданий пользователя
-function displayUserTasks(tasks, category) {
-    const container = document.getElementById(category + '-tasks');
-    if (!container) return;
-    
-    container.innerHTML = '';
-
-    if (!tasks || tasks.length === 0) {
-        container.innerHTML = `
-            <div class="no-tasks">
-                <div class="no-tasks-icon">📝</div>
-                <div>${
-                    category === 'confirmation' ? 'Нет заданий на подтверждение' : 
-                    category === 'completed' ? 'Нет выполненных заданий' :
-                    category === 'rejected' ? 'Нет отклоненных заданий' : 'Нет заданий'
-                }</div>
-            </div>
-        `;
+    if (!currentUser || !currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+        showNotification('Только администратор может создавать задания!', 'error');
         return;
     }
 
-    tasks.forEach(task => {
-        const taskElement = document.createElement('div');
-        taskElement.className = `task-card ${task.status === 'rejected' ? 'rejected-task' : ''}`;
-        
-        if (category === 'confirmation') {
-            taskElement.innerHTML = `
-                <div class="task-header">
-                    <div>
-                        <div class="task-title">${task.title}</div>
-                        <div class="task-category">${task.category}</div>
-                    </div>
-                    <div class="task-price">${task.price} ₽</div>
-                </div>
-                <div class="task-description">${task.description}</div>
-                <div class="task-footer">
-                    <div class="task-time">Ожидает подтверждения</div>
-                    <button class="task-btn" onclick="showTaskConfirmation(${task.id}, '${escapeHtml(task.title)}')">Подтвердить выполнение</button>
-                </div>
-            `;
-        } else if (category === 'completed') {
-            taskElement.innerHTML = `
-                <div class="task-header">
-                    <div>
-                        <div class="task-title">${task.title}</div>
-                        <div class="task-category">${task.category}</div>
-                    </div>
-                    <div class="task-price">${task.price} ₽</div>
-                </div>
-                <div class="task-description">${task.description}</div>
-                <div class="task-footer">
-                    <div class="task-time">Выполнено</div>
-                    <div class="task-status completed">✅</div>
-                </div>
-            `;
-        } else if (category === 'rejected') {
-            taskElement.innerHTML = `
-                <div class="task-header">
-                    <div>
-                        <div class="task-title">${task.title}</div>
-                        <div class="task-category">${task.category}</div>
-                    </div>
-                    <div class="task-price">${task.price} ₽</div>
-                </div>
-                <div class="task-description">${task.description}</div>
-                <div class="task-footer">
-                    <div class="task-time">Отклонено</div>
-                    <button class="support-btn" onclick="openAdminChat()">Написать в поддержку</button>
-                </div>
-            `;
-        }
-        
-        container.appendChild(taskElement);
-    });
-}
-
-// Обновление функции загрузки заданий пользователя
-async function loadUserTasks() {
-    if (!currentUser) return;
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('description', description);
+    formData.append('price', price);
+    formData.append('created_by', currentUser.id);
     
+    if (imageInput.files[0]) {
+        formData.append('image', imageInput.files[0]);
+    }
+
     try {
-        // Активные задания (на подтверждение)
-        const activeResult = await makeRequest(`${API_URL}/user/${currentUser.id}/tasks?status=active`);
-        if (activeResult.success) {
-            displayUserTasks(activeResult.tasks, 'confirmation');
-        }
-        
-        // Выполненные задания
-        const completedResult = await makeRequest(`${API_URL}/user/${currentUser.id}/tasks?status=completed`);
-        if (completedResult.success) {
-            displayUserTasks(completedResult.tasks, 'completed');
-        }
-        
-        // Отклоненные задания
-        const rejectedResult = await makeRequest(`${API_URL}/user/${currentUser.id}/tasks?status=rejected`);
-        if (rejectedResult.success) {
-            displayUserTasks(rejectedResult.tasks, 'rejected');
+        const response = await fetch(`${API_URL}/tasks`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showNotification('Задание успешно создано!', 'success');
+            
+            // Сброс формы
+            document.getElementById('task-title').value = '';
+            document.getElementById('task-description').value = '';
+            document.getElementById('task-price').value = '';
+            document.getElementById('task-image').value = '';
+            document.getElementById('task-image-preview').style.display = 'none';
+            document.getElementById('remove-task-image').style.display = 'none';
+            
+            loadAdminTasks();
+            loadTasks();
+            
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
         }
         
     } catch (error) {
-        console.error('Error loading user tasks:', error);
+        console.error('Error creating task:', error);
+        showNotification('Ошибка соединения: ' + error.message, 'error');
     }
 }
 
-// Обновить инициализацию приложения
+// Функции для системы проверки заданий
+async function startTask() {
+    if (!selectedTaskId || !currentUser) return;
+    
+    try {
+        const result = await makeRequest(`${API_URL}/user/tasks/start`, {
+            method: 'POST',
+            body: JSON.stringify({
+                userId: currentUser.id,
+                taskId: selectedTaskId
+            })
+        });
+
+        if (result.success) {
+            showNotification('Задание начато! После выполнения подтвердите его в разделе "Подтверждение".', 'success');
+            closeModal('task-modal');
+            loadTasks(); // Обновить список заданий (убрать из "Новых")
+            loadUserTasks(); // Загрузить задания пользователя
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error starting task:', error);
+        showNotification('Ошибка начала задания', 'error');
+    }
+    selectedTaskId = null;
+}
+
+// Обновить функцию инициализации
 function initializeApp() {
     displayUserProfile();
     checkAdminRights();
@@ -6386,12 +6338,13 @@ function initializeApp() {
     loadTasks();
     initializeSearch();
     loadUserTasks();
+    initializeImageUploads(); // Добавить эту строку
     
     // Если пользователь админ, загружаем админ-данные
     if (currentUser && currentUser.isAdmin) {
         loadAdminChats();
         loadAdminTasks();
-        loadTaskVerifications(); // Добавить эту строку
+        loadTaskVerifications();
     }
 }
 
