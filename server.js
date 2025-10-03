@@ -932,3 +932,85 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🔐 Admin ID: ${ADMIN_ID}`);
     console.log(`⏰ Moscow time: ${getMoscowTime()}`);
 });
+// 🔧 ДОБАВЬТЕ ЭТОТ ENDPOINT В server.js
+
+// Получение или создание чата для пользователя
+app.get('/api/support/user-chat/:userId', (req, res) => {
+    const userId = req.params.userId;
+    
+    console.log(`🔍 Getting user chat for user ID: ${userId}`);
+
+    // Сначала проверяем существующий чат
+    db.get("SELECT * FROM support_chats WHERE user_id = ?", [userId], (err, chat) => {
+        if (err) {
+            console.error('❌ Database error:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error: ' + err.message
+            });
+        }
+
+        if (chat) {
+            console.log(`✅ Found existing chat: ${chat.id}`);
+            // Форматируем время для чата
+            res.json({
+                success: true,
+                chat: {
+                    ...chat,
+                    moscow_time: formatMoscowTimeShort(chat.last_message_time)
+                }
+            });
+        } else {
+            console.log(`📝 Creating new chat for user: ${userId}`);
+            
+            // Создаем новый чат
+            const userName = `User_${userId}`;
+            const userUsername = `user_${userId}`;
+            
+            db.run(`INSERT INTO support_chats (user_id, user_name, user_username, last_message, last_message_time) 
+                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+                    [userId, userName, userUsername, 'Чат создан'], function(err) {
+                if (err) {
+                    console.error('❌ Error creating chat:', err);
+                    return res.status(500).json({
+                        success: false,
+                        error: 'Database error: ' + err.message
+                    });
+                }
+                
+                const newChatId = this.lastID;
+                console.log(`✅ Created new chat with ID: ${newChatId}`);
+                
+                // Получаем созданный чат
+                db.get("SELECT * FROM support_chats WHERE id = ?", [newChatId], (err, newChat) => {
+                    if (err) {
+                        console.error('❌ Error fetching new chat:', err);
+                        return res.status(500).json({
+                            success: false,
+                            error: 'Database error: ' + err.message
+                        });
+                    }
+                    
+                    // Создаем приветственное сообщение от админа
+                    db.run(`INSERT INTO support_messages (chat_id, user_id, user_name, message, is_admin, is_read) 
+                            VALUES (?, ?, ?, ?, 1, 1)`,
+                            [newChatId, ADMIN_ID, 'Администратор', 'Здравствуйте! Чем могу помочь?'], function(err) {
+                        if (err) {
+                            console.error('❌ Error creating welcome message:', err);
+                        } else {
+                            console.log(`✅ Created welcome message for chat ${newChatId}`);
+                        }
+                    });
+                    
+                    res.json({
+                        success: true,
+                        chat: {
+                            ...newChat,
+                            moscow_time: formatMoscowTimeShort(newChat.last_message_time)
+                        }
+                    });
+                });
+            });
+        }
+    });
+});
