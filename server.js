@@ -154,6 +154,32 @@ function formatMoscowTime(timestamp) {
     });
 }
 
+// Функция для форматирования времени в коротком формате (для чатов)
+function formatMoscowTimeShort(timestamp) {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now - date;
+    
+    // Если сообщение сегодняшнее - показываем только время
+    if (diff < 24 * 60 * 60 * 1000 && date.getDate() === now.getDate()) {
+        return date.toLocaleString("ru-RU", { 
+            timeZone: "Europe/Moscow",
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+    
+    // Иначе показываем дату и время
+    return date.toLocaleString("ru-RU", { 
+        timeZone: "Europe/Moscow",
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({ 
@@ -183,6 +209,7 @@ app.post('/api/user/auth', (req, res) => {
         isAdmin: parseInt(user.id) === ADMIN_ID
     };
     
+    // Сохраняем или обновляем профиль пользователя
     db.run(`INSERT OR REPLACE INTO user_profiles 
             (user_id, username, first_name, last_name, photo_url, updated_at) 
             VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
@@ -197,6 +224,7 @@ app.post('/api/user/auth', (req, res) => {
             });
         }
         
+        // Получаем полный профиль пользователя
         db.get("SELECT * FROM user_profiles WHERE user_id = ?", [userProfile.user_id], (err, profile) => {
             if (err) {
                 return res.status(500).json({
@@ -258,6 +286,7 @@ app.get('/api/posts', (req, res) => {
             });
         }
         
+        // Форматируем время для каждого поста
         const postsWithMoscowTime = rows.map(post => ({
             ...post,
             moscow_time: formatMoscowTime(post.timestamp)
@@ -280,6 +309,7 @@ app.post('/api/posts', (req, res) => {
         });
     }
     
+    // Check admin rights
     if (parseInt(authorId) !== ADMIN_ID) {
         return res.status(403).json({
             success: false,
@@ -392,6 +422,8 @@ app.post('/api/tasks', (req, res) => {
         time_to_complete, difficulty, people_required, repost_time, task_url, image_url
     } = req.body;
     
+    console.log('Creating task with data:', req.body);
+    
     if (!title || !description || !price || !created_by) {
         return res.status(400).json({
             success: false,
@@ -399,6 +431,7 @@ app.post('/api/tasks', (req, res) => {
         });
     }
     
+    // Check admin rights
     if (parseInt(created_by) !== ADMIN_ID) {
         return res.status(403).json({
             success: false,
@@ -464,6 +497,7 @@ app.post('/api/user/tasks/start', (req, res) => {
         });
     }
     
+    // Проверяем, не начал ли пользователь уже это задание
     db.get("SELECT * FROM user_tasks WHERE user_id = ? AND task_id = ?", [userId, taskId], (err, existing) => {
         if (err) {
             return res.status(500).json({
@@ -479,6 +513,7 @@ app.post('/api/user/tasks/start', (req, res) => {
             });
         }
         
+        // Добавляем задание пользователю
         db.run(`INSERT INTO user_tasks (user_id, task_id, status) VALUES (?, ?, 'active')`,
                 [userId, taskId], function(err) {
             if (err) {
@@ -488,6 +523,7 @@ app.post('/api/user/tasks/start', (req, res) => {
                 });
             }
             
+            // Обновляем счетчик активных заданий
             db.run("UPDATE user_profiles SET active_tasks = active_tasks + 1 WHERE user_id = ?", [userId]);
             
             res.json({
@@ -532,374 +568,6 @@ app.get('/api/user/:userId/tasks', (req, res) => {
     });
 });
 
-// Task completion and verification endpoints
-app.post('/api/user/tasks/complete', (req, res) => {
-    const { userTaskId, screenshotUrl } = req.body;
-    
-    if (!userTaskId) {
-        return res.status(400).json({
-            success: false,
-            error: 'Missing required fields'
-        });
-    }
-    
-    db.run("UPDATE user_tasks SET status = 'pending', screenshot_url = ? WHERE id = ?", 
-           [screenshotUrl, userTaskId], function(err) {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        res.json({
-            success: true,
-            message: 'Task submitted for review'
-        });
-    });
-});
-
-app.post('/api/user/tasks/cancel', (req, res) => {
-    const { userTaskId, userId } = req.body;
-    
-    if (!userTaskId || !userId) {
-        return res.status(400).json({
-            success: false,
-            error: 'Missing required fields'
-        });
-    }
-    
-    db.run("DELETE FROM user_tasks WHERE id = ?", [userTaskId], function(err) {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        db.run("UPDATE user_profiles SET active_tasks = active_tasks - 1 WHERE user_id = ?", [userId]);
-        
-        res.json({
-            success: true,
-            message: 'Task cancelled'
-        });
-    });
-});
-
-// Get tasks pending verification for admin
-app.get('/api/admin/tasks/pending', (req, res) => {
-    const { adminId } = req.query;
-    
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied'
-        });
-    }
-
-    const query = `
-        SELECT ut.*, u.first_name, u.last_name, u.username, u.photo_url, 
-               t.title, t.price, t.description, t.category
-        FROM user_tasks ut
-        JOIN user_profiles u ON ut.user_id = u.user_id
-        JOIN tasks t ON ut.task_id = t.id
-        WHERE ut.status = 'pending'
-        ORDER BY ut.started_at DESC
-    `;
-    
-    db.all(query, [], (err, rows) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        res.json({
-            success: true,
-            tasks: rows
-        });
-    });
-});
-
-// Verify task (approve or reject)
-app.post('/api/admin/tasks/verify', (req, res) => {
-    const { adminId, userTaskId, action } = req.body;
-    
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied'
-        });
-    }
-    
-    if (!userTaskId || !action) {
-        return res.status(400).json({
-            success: false,
-            error: 'Missing required fields'
-        });
-    }
-    
-    db.get(`
-        SELECT ut.user_id, ut.task_id, t.price 
-        FROM user_tasks ut 
-        JOIN tasks t ON ut.task_id = t.id 
-        WHERE ut.id = ?
-    `, [userTaskId], (err, task) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        if (!task) {
-            return res.status(404).json({
-                success: false,
-                error: 'Task not found'
-            });
-        }
-        
-        const newStatus = action === 'approve' ? 'completed' : 'rejected';
-        
-        db.run("UPDATE user_tasks SET status = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?", 
-               [newStatus, userTaskId], function(err) {
-            if (err) {
-                return res.status(500).json({
-                    success: false,
-                    error: 'Database error'
-                });
-            }
-            
-            if (action === 'approve') {
-                db.run(`
-                    UPDATE user_profiles 
-                    SET balance = balance + ?, 
-                        tasks_completed = tasks_completed + 1,
-                        active_tasks = active_tasks - 1,
-                        experience = experience + 10
-                    WHERE user_id = ?
-                `, [task.price, task.user_id], function(err) {
-                    if (err) {
-                        return res.status(500).json({
-                            success: false,
-                            error: 'Database error updating balance'
-                        });
-                    }
-                    
-                    res.json({
-                        success: true,
-                        message: 'Task approved and user balance updated'
-                    });
-                });
-            } else {
-                db.run("UPDATE user_profiles SET active_tasks = active_tasks - 1 WHERE user_id = ?", 
-                       [task.user_id], function(err) {
-                    if (err) {
-                        return res.status(500).json({
-                            success: false,
-                            error: 'Database error'
-                        });
-                    }
-                    
-                    res.json({
-                        success: true,
-                        message: 'Task rejected'
-                    });
-                });
-            }
-        });
-    });
-});
-// Добавляем эти эндпоинты в существующий server.js после поддержки
-
-// Task completion and verification endpoints
-app.post('/api/user/tasks/complete', (req, res) => {
-    const { userTaskId, screenshotUrl } = req.body;
-    
-    if (!userTaskId) {
-        return res.status(400).json({
-            success: false,
-            error: 'Missing required fields'
-        });
-    }
-    
-    // Update user task with screenshot and mark as pending review
-    db.run("UPDATE user_tasks SET status = 'pending', screenshot_url = ? WHERE id = ?", 
-           [screenshotUrl, userTaskId], function(err) {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        res.json({
-            success: true,
-            message: 'Task submitted for review'
-        });
-    });
-});
-
-app.post('/api/user/tasks/cancel', (req, res) => {
-    const { userTaskId, userId } = req.body;
-    
-    if (!userTaskId || !userId) {
-        return res.status(400).json({
-            success: false,
-            error: 'Missing required fields'
-        });
-    }
-    
-    // Delete the user task
-    db.run("DELETE FROM user_tasks WHERE id = ?", [userTaskId], function(err) {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        // Update active tasks count
-        db.run("UPDATE user_profiles SET active_tasks = active_tasks - 1 WHERE user_id = ?", 
-               [userId]);
-        
-        res.json({
-            success: true,
-            message: 'Task cancelled'
-        });
-    });
-});
-
-// Get tasks pending verification for admin
-app.get('/api/admin/tasks/pending', (req, res) => {
-    const { adminId } = req.query;
-    
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied'
-        });
-    }
-
-    const query = `
-        SELECT ut.*, u.first_name, u.last_name, u.username, u.photo_url, 
-               t.title, t.price, t.description, t.category
-        FROM user_tasks ut
-        JOIN user_profiles u ON ut.user_id = u.user_id
-        JOIN tasks t ON ut.task_id = t.id
-        WHERE ut.status = 'pending'
-        ORDER BY ut.started_at DESC
-    `;
-    
-    db.all(query, [], (err, rows) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        res.json({
-            success: true,
-            tasks: rows
-        });
-    });
-});
-
-// Verify task (approve or reject)
-app.post('/api/admin/tasks/verify', (req, res) => {
-    const { adminId, userTaskId, action } = req.body; // action: 'approve' or 'reject'
-    
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied'
-        });
-    }
-    
-    if (!userTaskId || !action) {
-        return res.status(400).json({
-            success: false,
-            error: 'Missing required fields'
-        });
-    }
-    
-    // First get task details to update user balance if approved
-    db.get(`
-        SELECT ut.user_id, ut.task_id, t.price 
-        FROM user_tasks ut 
-        JOIN tasks t ON ut.task_id = t.id 
-        WHERE ut.id = ?
-    `, [userTaskId], (err, task) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        if (!task) {
-            return res.status(404).json({
-                success: false,
-                error: 'Task not found'
-            });
-        }
-        
-        const newStatus = action === 'approve' ? 'completed' : 'rejected';
-        
-        // Update task status
-        db.run("UPDATE user_tasks SET status = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?", 
-               [newStatus, userTaskId], function(err) {
-            if (err) {
-                return res.status(500).json({
-                    success: false,
-                    error: 'Database error'
-                });
-            }
-            
-            if (action === 'approve') {
-                // Update user balance and stats
-                db.run(`
-                    UPDATE user_profiles 
-                    SET balance = balance + ?, 
-                        tasks_completed = tasks_completed + 1,
-                        active_tasks = active_tasks - 1,
-                        experience = experience + 10
-                    WHERE user_id = ?
-                `, [task.price, task.user_id], function(err) {
-                    if (err) {
-                        return res.status(500).json({
-                            success: false,
-                            error: 'Database error updating balance'
-                        });
-                    }
-                    
-                    res.json({
-                        success: true,
-                        message: 'Task approved and user balance updated'
-                    });
-                });
-            } else {
-                // For rejected tasks, just update active tasks count
-                db.run("UPDATE user_profiles SET active_tasks = active_tasks - 1 WHERE user_id = ?", 
-                       [task.user_id], function(err) {
-                    if (err) {
-                        return res.status(500).json({
-                            success: false,
-                            error: 'Database error'
-                        });
-                    }
-                    
-                    res.json({
-                        success: true,
-                        message: 'Task rejected'
-                    });
-                });
-            }
-        });
-    });
-});
 // Support system endpoints
 app.get('/api/support/chats', (req, res) => {
     const { adminId } = req.query;
@@ -921,19 +589,29 @@ app.get('/api/support/chats', (req, res) => {
             });
         }
         
+        // Форматируем время для каждого чата
+        const chatsWithMoscowTime = rows.map(chat => ({
+            ...chat,
+            moscow_time: formatMoscowTimeShort(chat.last_message_time)
+        }));
+        
         res.json({
             success: true,
-            chats: rows
+            chats: chatsWithMoscowTime
         });
     });
 });
 
+// Получение или создание чата для пользователя
 app.get('/api/support/user-chat/:userId', (req, res) => {
     const userId = req.params.userId;
     
+    console.log(`🔍 Getting user chat for user ID: ${userId}`);
+
+    // Сначала проверяем существующий чат
     db.get("SELECT * FROM support_chats WHERE user_id = ?", [userId], (err, chat) => {
         if (err) {
-            console.error('Database error:', err);
+            console.error('❌ Database error:', err);
             return res.status(500).json({
                 success: false,
                 error: 'Database error: ' + err.message
@@ -941,11 +619,19 @@ app.get('/api/support/user-chat/:userId', (req, res) => {
         }
 
         if (chat) {
+            console.log(`✅ Found existing chat: ${chat.id}`);
+            // Форматируем время для чата
             res.json({
                 success: true,
-                chat: chat
+                chat: {
+                    ...chat,
+                    moscow_time: formatMoscowTimeShort(chat.last_message_time)
+                }
             });
         } else {
+            console.log(`📝 Creating new chat for user: ${userId}`);
+            
+            // Создаем новый чат
             const userName = `User_${userId}`;
             const userUsername = `user_${userId}`;
             
@@ -953,7 +639,7 @@ app.get('/api/support/user-chat/:userId', (req, res) => {
                     VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`,
                     [userId, userName, userUsername, 'Чат создан'], function(err) {
                 if (err) {
-                    console.error('Error creating chat:', err);
+                    console.error('❌ Error creating chat:', err);
                     return res.status(500).json({
                         success: false,
                         error: 'Database error: ' + err.message
@@ -961,23 +647,35 @@ app.get('/api/support/user-chat/:userId', (req, res) => {
                 }
                 
                 const newChatId = this.lastID;
+                console.log(`✅ Created new chat with ID: ${newChatId}`);
                 
-                db.run(`INSERT INTO support_messages (chat_id, user_id, user_name, message, is_admin, is_read) 
-                        VALUES (?, ?, ?, ?, 1, 1)`,
-                        [newChatId, ADMIN_ID, 'Администратор LinkGold', 'Здравствуйте! Чем могу помочь?']);
-                
+                // Получаем созданный чат
                 db.get("SELECT * FROM support_chats WHERE id = ?", [newChatId], (err, newChat) => {
                     if (err) {
-                        console.error('Error fetching new chat:', err);
+                        console.error('❌ Error fetching new chat:', err);
                         return res.status(500).json({
                             success: false,
                             error: 'Database error: ' + err.message
                         });
                     }
                     
+                    // Создаем приветственное сообщение от админа
+                    db.run(`INSERT INTO support_messages (chat_id, user_id, user_name, message, is_admin, is_read) 
+                            VALUES (?, ?, ?, ?, 1, 1)`,
+                            [newChatId, ADMIN_ID, 'Администратор LinkGold', 'Здравствуйте! Чем могу помочь?'], function(err) {
+                        if (err) {
+                            console.error('❌ Error creating welcome message:', err);
+                        } else {
+                            console.log(`✅ Created welcome message for chat ${newChatId}`);
+                        }
+                    });
+                    
                     res.json({
                         success: true,
-                        chat: newChat
+                        chat: {
+                            ...newChat,
+                            moscow_time: formatMoscowTimeShort(newChat.last_message_time)
+                        }
                     });
                 });
             });
@@ -985,8 +683,11 @@ app.get('/api/support/user-chat/:userId', (req, res) => {
     });
 });
 
+// Получение сообщений чата
 app.get('/api/support/chats/:chatId/messages', (req, res) => {
     const chatId = req.params.chatId;
+    
+    console.log(`📨 Loading messages for chat ${chatId}`);
     
     db.all("SELECT * FROM support_messages WHERE chat_id = ? ORDER BY sent_at ASC", [chatId], (err, rows) => {
         if (err) {
@@ -997,9 +698,17 @@ app.get('/api/support/chats/:chatId/messages', (req, res) => {
             });
         }
 
+        // Форматируем время для каждого сообщения
+        const messagesWithMoscowTime = rows.map(message => ({
+            ...message,
+            moscow_time: formatMoscowTimeShort(message.sent_at)
+        }));
+
+        console.log(`✅ Loaded ${messagesWithMoscowTime.length} messages for chat ${chatId}`);
+        
         res.json({
             success: true,
-            messages: rows
+            messages: messagesWithMoscowTime
         });
     });
 });
@@ -1015,31 +724,78 @@ app.post('/api/support/chats/:chatId/messages', (req, res) => {
         });
     }
 
+    console.log(`💬 Saving message for chat ${chatId}:`, { 
+        user_id, user_name, 
+        message: message ? message.substring(0, 50) + '...' : 'IMAGE', 
+        is_admin 
+    });
+
+    // Для сообщений от пользователей - получаем актуальные данные из профиля
+    if (!is_admin) {
+        db.get("SELECT first_name, last_name, username FROM user_profiles WHERE user_id = ?", [user_id], (err, userProfile) => {
+            if (err) {
+                console.error('Error fetching user profile:', err);
+                // Продолжаем с исходными данными если ошибка
+                saveMessage(chatId, user_id, user_name, message, image_url, is_admin, res);
+            } else if (userProfile) {
+                // Используем актуальные данные из профиля
+                const actualUserName = userProfile.first_name + (userProfile.last_name ? ' ' + userProfile.last_name : '');
+                const actualUserUsername = userProfile.username;
+                
+                console.log(`Using actual user data: ${actualUserName} (@${actualUserUsername})`);
+                
+                // Обновляем имя в чате если оно изменилось
+                db.run("UPDATE support_chats SET user_name = ?, user_username = ? WHERE user_id = ?", 
+                    [actualUserName, actualUserUsername, user_id]);
+                
+                saveMessage(chatId, user_id, actualUserName, message, image_url, is_admin, res);
+            } else {
+                // Профиль не найден, используем исходные данные
+                saveMessage(chatId, user_id, user_name, message, image_url, is_admin, res);
+            }
+        });
+    } else {
+        // Для админа используем исходные данные
+        saveMessage(chatId, user_id, user_name, message, image_url, is_admin, res);
+    }
+});
+
+// Вынесенная функция сохранения сообщения
+function saveMessage(chatId, user_id, user_name, message, image_url, is_admin, res) {
     db.run(`INSERT INTO support_messages (chat_id, user_id, user_name, message, image_url, is_admin) 
             VALUES (?, ?, ?, ?, ?, ?)`,
             [chatId, user_id, user_name, message, image_url, is_admin],
             function(err) {
         if (err) {
-            console.error('Error saving message:', err);
+            console.error('❌ Error saving message:', err);
             return res.status(500).json({
                 success: false,
                 error: 'Database error: ' + err.message
             });
         }
 
+        // Update chat last message and time
         const displayMessage = message || '📷 Фото';
         let updateQuery;
         let updateParams;
 
         if (is_admin) {
+            // Сообщение от админа - сбрасываем счетчик непрочитанных
             updateQuery = `UPDATE support_chats SET last_message = ?, last_message_time = CURRENT_TIMESTAMP, unread_count = 0 WHERE id = ?`;
             updateParams = [displayMessage, chatId];
         } else {
+            // Сообщение от пользователя - увеличиваем счетчик непрочитанных
             updateQuery = `UPDATE support_chats SET last_message = ?, last_message_time = CURRENT_TIMESTAMP, unread_count = unread_count + 1 WHERE id = ?`;
             updateParams = [displayMessage, chatId];
         }
         
-        db.run(updateQuery, updateParams);
+        db.run(updateQuery, updateParams, function(updateErr) {
+            if (updateErr) {
+                console.error('❌ Error updating chat:', updateErr);
+            } else {
+                console.log(`✅ Chat ${chatId} updated successfully`);
+            }
+        });
 
         res.json({
             success: true,
@@ -1047,7 +803,7 @@ app.post('/api/support/chats/:chatId/messages', (req, res) => {
             messageId: this.lastID
         });
     });
-});
+}
 
 app.put('/api/support/chats/:chatId/read', (req, res) => {
     const chatId = req.params.chatId;
@@ -1061,11 +817,140 @@ app.put('/api/support/chats/:chatId/read', (req, res) => {
             });
         }
         
+        // Also mark messages as read
         db.run("UPDATE support_messages SET is_read = 1 WHERE chat_id = ? AND is_admin = 0", [chatId]);
         
         res.json({
             success: true,
             message: 'Chat marked as read'
+        });
+    });
+});
+
+// Эндпоинт для удаления чата админом
+app.delete('/api/support/chats/:chatId', (req, res) => {
+    const chatId = req.params.chatId;
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    console.log(`🗑️ Admin ${adminId} deleting chat ${chatId}`);
+
+    // Сначала удаляем все сообщения в чате
+    db.run("DELETE FROM support_messages WHERE chat_id = ?", [chatId], function(err) {
+        if (err) {
+            console.error('❌ Error deleting messages:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        console.log(`✅ Deleted ${this.changes} messages from chat ${chatId}`);
+        
+        // Затем удаляем сам чат
+        db.run("DELETE FROM support_chats WHERE id = ?", [chatId], function(chatErr) {
+            if (chatErr) {
+                console.error('❌ Error deleting chat:', chatErr);
+                return res.status(500).json({
+                    success: false,
+                    error: 'Database error'
+                });
+            }
+            
+            console.log(`✅ Chat ${chatId} deleted successfully`);
+            
+            res.json({
+                success: true,
+                message: 'Chat deleted successfully',
+                deletedMessages: this.changes
+            });
+        });
+    });
+});
+
+// Эндпоинт для архивации чата (альтернатива удалению)
+app.put('/api/support/chats/:chatId/archive', (req, res) => {
+    const chatId = req.params.chatId;
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.run("UPDATE support_chats SET is_active = 0 WHERE id = ?", [chatId], function(err) {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Chat archived successfully'
+        });
+    });
+});
+
+// Эндпоинт для восстановления чата из архива
+app.put('/api/support/chats/:chatId/restore', (req, res) => {
+    const chatId = req.params.chatId;
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.run("UPDATE support_chats SET is_active = 1 WHERE id = ?", [chatId], function(err) {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Chat restored successfully'
+        });
+    });
+});
+
+// Эндпоинт для получения архивных чатов
+app.get('/api/support/archived-chats', (req, res) => {
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.all(`SELECT * FROM support_chats WHERE is_active = 0 ORDER BY last_message_time DESC`, 
+            [], (err, rows) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        res.json({
+            success: true,
+            chats: rows
         });
     });
 });
@@ -1105,4 +990,146 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
     console.log(`🔐 Admin ID: ${ADMIN_ID}`);
     console.log(`⏰ Moscow time: ${getMoscowTime()}`);
+});
+// Добавьте этот эндпоинт для получения конкретного чата
+app.get('/api/support/chats/:chatId', (req, res) => {
+    const chatId = req.params.chatId;
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.get("SELECT * FROM support_chats WHERE id = ?", [chatId], (err, chat) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        if (!chat) {
+            return res.status(404).json({
+                success: false,
+                error: 'Chat not found'
+            });
+        }
+        
+        res.json({
+            success: true,
+            chat: {
+                ...chat,
+                moscow_time: formatMoscowTimeShort(chat.last_message_time)
+            }
+        });
+    });
+});
+
+// Эндпоинт для получения всех чатов (активных и архивных)
+app.get('/api/support/all-chats', (req, res) => {
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.all(`SELECT * FROM support_chats ORDER BY last_message_time DESC`, 
+            [], (err, rows) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        // Форматируем время для каждого чата
+        const chatsWithMoscowTime = rows.map(chat => ({
+            ...chat,
+            moscow_time: formatMoscowTimeShort(chat.last_message_time)
+        }));
+        
+        res.json({
+            success: true,
+            chats: chatsWithMoscowTime
+        });
+    });
+});
+// Добавьте этот эндпоинт для получения конкретного чата
+app.get('/api/support/chats/:chatId', (req, res) => {
+    const chatId = req.params.chatId;
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.get("SELECT * FROM support_chats WHERE id = ?", [chatId], (err, chat) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        if (!chat) {
+            return res.status(404).json({
+                success: false,
+                error: 'Chat not found'
+            });
+        }
+        
+        res.json({
+            success: true,
+            chat: {
+                ...chat,
+                moscow_time: formatMoscowTimeShort(chat.last_message_time)
+            }
+        });
+    });
+});
+
+// Эндпоинт для получения всех чатов (активных и архивных)
+app.get('/api/support/all-chats', (req, res) => {
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.all(`SELECT * FROM support_chats ORDER BY last_message_time DESC`, 
+            [], (err, rows) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        // Форматируем время для каждого чата
+        const chatsWithMoscowTime = rows.map(chat => ({
+            ...chat,
+            moscow_time: formatMoscowTimeShort(chat.last_message_time)
+        }));
+        
+        res.json({
+            success: true,
+            chats: chatsWithMoscowTime
+        });
+    });
 });
