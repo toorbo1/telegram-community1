@@ -3263,7 +3263,434 @@
         font-size: 10px;
     }
 }
-/* Стили для системы проверки заданий */
+.verification-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(5, 5, 16, 0.95);
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            padding: 20px;
+        }
+
+        .verification-modal.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .verification-content {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 24px;
+            width: 90%;
+            max-width: 400px;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .verification-task-info {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .verification-task-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .verification-task-price {
+            font-size: 24px;
+            font-weight: 800;
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-align: center;
+            margin: 16px 0;
+        }
+
+        .screenshot-upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            margin: 20px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .screenshot-upload-area:hover {
+            border-color: var(--accent);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .screenshot-upload-area.dragover {
+            border-color: var(--accent);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .screenshot-preview {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 12px;
+            margin: 16px 0;
+            display: none;
+        }
+
+        .verification-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .verification-btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .verification-approve {
+            background: var(--success);
+            color: white;
+        }
+
+        .verification-reject {
+            background: var(--error);
+            color: white;
+        }
+
+        .admin-verification-list {
+            max-height: 500px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .verification-item {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .verification-item:hover {
+            background: var(--bg-secondary);
+            transform: translateY(-2px);
+        }
+
+        .verification-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .verification-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--purple-gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .verification-user-info {
+            flex: 1;
+        }
+
+        .verification-user-name {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+
+        .verification-task-name {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .verification-price {
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .rejected-task {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .rejected-info {
+            color: var(--error);
+            font-size: 14px;
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        .support-btn-small {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 8px;
+            width: 100%;
+        }
+
+        /* Анимации */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+
+        /* Улучшенные стили для вкладок */
+        .tasks-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 6px;
+            border: 1px solid var(--border);
+            overflow-x: auto;
+        }
+
+        .task-tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px 8px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .task-tab.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        .task-tab.has-notification {
+            position: relative;
+            color: var(--error);
+        }
+
+        .task-tab.has-notification::after {
+            content: '';
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 8px;
+            height: 8px;
+            background: var(--error);
+            border-radius: 50%;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 480px) {
+            .tasks-tabs {
+                padding: 4px;
+            }
+            
+            .task-tab {
+                font-size: 11px;
+                padding: 8px 4px;
+            }
+            
+            .verification-buttons {
+                flex-direction: column;
+            }
+        }
+
+        /* Стили для модального окна проверки админа */
+        .admin-verification-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(5, 5, 16, 0.95);
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            padding: 20px;
+        }
+
+        .admin-verification-modal.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .admin-verification-content {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 24px;
+            width: 95%;
+            max-width: 500px;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .admin-verification-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .admin-verification-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--purple-gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 16px;
+            color: white;
+            font-weight: 600;
+            font-size: 20px;
+        }
+
+        .admin-verification-user-info {
+            flex: 1;
+        }
+
+        .admin-verification-user-name {
+            font-weight: 600;
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+
+        .admin-verification-user-id {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .admin-verification-screenshot {
+            width: 100%;
+            border-radius: 12px;
+            margin: 16px 0;
+            max-height: 400px;
+            object-fit: contain;
+            background: var(--bg-secondary);
+        }
+
+        .admin-verification-task-info {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+            border: 1px solid var(--border);
+        }
+
+        .admin-verification-task-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .admin-verification-task-description {
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+
+        .admin-verification-task-price {
+            font-size: 28px;
+            font-weight: 800;
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-align: center;
+            margin: 16px 0;
+        }
+
+        .admin-verification-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .admin-verification-btn {
+            flex: 1;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 16px;
+        }
+
+        .admin-verification-approve {
+            background: var(--success);
+            color: white;
+        }
+
+        .admin-verification-approve:hover {
+            background: #0da271;
+        }
+
+        .admin-verification-reject {
+            background: var(--error);
+            color: white;
+        }
+
+        .admin-verification-reject:hover {
+            background: #dc2626;
+        }
+        /* Стили для системы проверки заданий */
 .confirmation-modal-content {
     background: var(--card-bg);
     border-radius: 20px;
@@ -3615,805 +4042,588 @@
         margin-bottom: 16px;
     }
 }
-/* Стили для загрузки изображений */
-.upload-container {
-    margin: 15px 0;
-    text-align: center;
-}
-
-.upload-area {
-    border: 2px dashed var(--border);
-    border-radius: 12px;
-    padding: 30px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    background: var(--bg-secondary);
-}
-
-.upload-area:hover {
-    border-color: var(--accent);
-    background: rgba(99, 102, 241, 0.05);
-}
-
-.upload-icon {
-    font-size: 48px;
-    margin-bottom: 12px;
-    color: var(--text-secondary);
-}
-
-.upload-text {
-    color: var(--text-secondary);
-    margin-bottom: 8px;
-}
-
-.upload-hint {
-    font-size: 12px;
-    color: var(--text-secondary);
-    opacity: 0.7;
-}
-
-.image-preview {
-    max-width: 100%;
-    max-height: 200px;
-    border-radius: 10px;
-    margin-top: 15px;
-    display: none;
-}
-
-.remove-image {
-    background: var(--error);
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    margin-top: 8px;
-}
     </style>
 </head>
 <body>
+<div class="container">
+    <header class="header fade-in">
+        <div class="logo" onclick="showMainTab()">
+            <div class="logo-text">LinkGold</div>
+        </div>
+        <div class="slogan">Монетизируйте вашу активность</div>
+    </header>
 
-    <div class="container">
-        <header class="header fade-in">
-            <div class="logo" onclick="showMainTab()">
-                <div class="logo-text">LinkGold</div>
+    <main class="main-content">
+        <!-- Вкладка главной страницы -->
+        <div id="main-tab" class="tab-content active">
+            <!-- Герой баннер с видео -->
+            <div class="hero-banner fade-in">
+                <video autoplay muted loop playsinline>
+                    <source src="unwatermark_Awards Nomination Promo Kit_free.mp4" type="video/mp4">
+                </video>
             </div>
-            <div class="slogan">Монетизируйте вашу активность</div>
-        </header>
 
-        <main class="main-content">
-            <!-- Вкладка главной страницы -->
-            <div id="main-tab" class="tab-content active">
-                <!-- Герой баннер с видео -->
-                <div class="hero-banner fade-in">
-                    <video autoplay muted loop playsinline>
-                        <source src="unwatermark_Awards Nomination Promo Kit_free.mp4" type="video/mp4">
-                    </video>
-                </div>
-
-                <!-- Компактные параллельные блоки -->
-                <div class="stats-grid fade-in">
-                    <div class="stat-card balance-card" onclick="showBalanceModal()">
-                        <div class="stat-icon">
-                            <div class="video-container">
-                                <video class="video-icon" autoplay muted loop playsinline>
-                                    <source src="From KlickPin CF Деньги пнг _ money png _ Элементы графического дизайна Анимационный дизайн Стикер-арт-Picsart-BackgroundRemover.mp4" type="video/mp4">
-                                </video>
-                            </div>
-                        </div>
-                        <div class="stat-label">Баланс</div>
-                        <div class="stat-value" id="user-balance-main">0 ₽</div>
-                    </div>
-                    
-                    <div class="stat-card support-card" onclick="openAdminChat()">
-                        <div class="stat-icon">
-                            <div class="video-container">
-                                <video class="video-icon" autoplay muted loop playsinline>
-                                    <source src="support-video-Picsart-BackgroundRemover.mp4" type="video/mp4">
-                                </video>
-                            </div>
-                        </div>
-                        <div class="stat-label">Поддержка</div>
-                        <div class="stat-value">24/7</div>
-                    </div>
-                </div>
-
-                <!-- Как работает -->
-                <div class="exchange-card fade-in" onclick="showHowItWorksPage()">
-                    <div class="exchange-icon">
+            <!-- Компактные параллельные блоки -->
+            <div class="stats-grid fade-in">
+                <div class="stat-card balance-card" onclick="showBalanceModal()">
+                    <div class="stat-icon">
                         <div class="video-container">
                             <video class="video-icon" autoplay muted loop playsinline>
-                                <source src="From KlickPin CF Компютер пнг _ laptop png in 2025 — копия-Picsart-BackgroundRemover (2).mp4" type="video/mp4">
+                                <source src="From KlickPin CF Деньги пнг _ money png _ Элементы графического дизайна Анимационный дизайн Стикер-арт-Picsart-BackgroundRemover.mp4" type="video/mp4">
                             </video>
                         </div>
                     </div>
-                    <div class="exchange-title">Как работает</div>
-                    <div class="exchange-text">О заработке и выводе средств</div>
+                    <div class="stat-label">Баланс</div>
+                    <div class="stat-value" id="user-balance-main">0 ₽</div>
                 </div>
-
-                <!-- Размещение поста -->
-                <div class="post-promo fade-in">
-                    <div class="post-icon">
-                        <div class="video-container video-large">
+                
+                <div class="stat-card support-card" onclick="openAdminChat()">
+                    <div class="stat-icon">
+                        <div class="video-container">
                             <video class="video-icon" autoplay muted loop playsinline>
-                                <source src="post-video-Picsart-BackgroundRemover.mp4" type="video/mp4">
+                                <source src="support-video-Picsart-BackgroundRemover.mp4" type="video/mp4">
                             </video>
                         </div>
                     </div>
-                    <div class="post-title">Разместите пост</div>
-                    <div class="post-description">Рекламируйте в нашем канале и получайте охват аудитории</div>
-                    <button class="btn btn-primary btn-full" onclick="showPrices()">Разместить</button>
+                    <div class="stat-label">Поддержка</div>
+                    <div class="stat-value">24/7</div>
                 </div>
+            </div>
 
-                <!-- Кнопка перехода к заданиям -->
-                <div class="tasks-button-container fade-in">
-                    <button class="tasks-btn" onclick="showTasksTab()">
-                        Смотреть все задания
-                    </button>
-                </div>
-                <!-- Секция постов на главной -->
-<div id="posts-section" class="card fade-in" style="display: none; margin-top: 20px;">
-    <div class="posts-header">
-        <h2 style="color: var(--text-primary); margin-bottom: 15px; text-align: center;">📢 Последние новости</h2>
-    </div>
-    <div id="posts-container">
-        <!-- Посты будут загружаться здесь -->
-    </div>
-</div>
-
-                <!-- Панель администратора (только для главного админа) -->
-                <div id="admin-panel" class="admin-panel fade-in" style="display: none;">
-                    <div class="admin-title">Панель администратора</div>
-                    <div class="admin-buttons">
-                        <button class="admin-btn" onclick="showAdminChats()">Чаты с пользователями</button>
-                        <button class="admin-btn" onclick="showPostManagement()">Управление постами</button>
-                        <button class="admin-btn" onclick="showTaskManagement()">Управление заданиями</button>
-                        <button class="admin-btn" onclick="showTaskVerification()">Проверка заданий</button>
+            <!-- Как работает -->
+            <div class="exchange-card fade-in" onclick="showHowItWorksPage()">
+                <div class="exchange-icon">
+                    <div class="video-container">
+                        <video class="video-icon" autoplay muted loop playsinline>
+                            <source src="From KlickPin CF Компютер пнг _ laptop png in 2025 — копия-Picsart-BackgroundRemover (2).mp4" type="video/mp4">
+                        </video>
                     </div>
+                </div>
+                <div class="exchange-title">Как работает</div>
+                <div class="exchange-text">О заработке и выводе средств</div>
+            </div>
+
+            <!-- Размещение поста -->
+            <div class="post-promo fade-in">
+                <div class="post-icon">
+                    <div class="video-container video-large">
+                        <video class="video-icon" autoplay muted loop playsinline>
+                            <source src="post-video-Picsart-BackgroundRemover.mp4" type="video/mp4">
+                        </video>
+                    </div>
+                </div>
+                <div class="post-title">Разместите пост</div>
+                <div class="post-description">Рекламируйте в нашем канале и получайте охват аудитории</div>
+                <button class="btn btn-primary btn-full" onclick="showPrices()">Разместить</button>
+            </div>
+
+            <!-- Кнопка перехода к заданиям -->
+            <div class="tasks-button-container fade-in">
+                <button class="tasks-btn" onclick="showTasksTab()">
+                    Смотреть все задания
+                </button>
+            </div>
+
+            <!-- Секция постов на главной -->
+            <div id="posts-section" class="card fade-in" style="display: none; margin-top: 20px;">
+                <div class="posts-header">
+                    <h2 style="color: var(--text-primary); margin-bottom: 15px; text-align: center;">📢 Последние новости</h2>
+                </div>
+                <div id="posts-container">
+                    <!-- Посты будут загружаться здесь -->
+                </div>
+            </div>
+
+            <!-- Панель администратора (только для главного админа) -->
+            <div id="admin-panel" class="admin-panel fade-in" style="display: none;">
+                <div class="admin-title">Панель администратора</div>
+                <div class="admin-buttons">
+                    <button class="admin-btn" onclick="showAdminChats()">Чаты с пользователями</button>
+                    <button class="admin-btn" onclick="showPostManagement()">Управление постами</button>
+                    <button class="admin-btn" onclick="showTaskManagement()">Управление заданиями</button>
+                    <button class="admin-btn" onclick="showTaskVerification()">Проверка заданий</button>
+                </div>
+                
+                <!-- Чаты с пользователями -->
+                <div id="admin-chats-container" class="admin-chats-container" style="display: none;">
+                    <!-- Чаты будут загружаться динамически -->
+                </div>
+                
+                <!-- Управление постами -->
+                <div id="post-management" class="admin-form" style="display: none;">
+                    <h3>Добавить пост для всех пользователей</h3>
+                    <input type="text" class="admin-input" id="post-title" placeholder="Заголовок поста">
+                    <textarea class="admin-textarea" id="post-content" placeholder="Введите текст поста..."></textarea>
+                    <input type="file" class="admin-input" id="post-image" accept="image/*">
+                    <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
                     
-                    <!-- Чаты с пользователями -->
-                    <div id="admin-chats-container" class="admin-chats-container" style="display: none;">
-                        <button class="chat-photo-btn" onclick="sendPhotoToAdmin()" title="Отправить фото">📷</button>
-                        <!-- Чаты будут загружаться динамически -->
-                    </div>
-                    
-                    <!-- Управление постами -->
-                    <!-- Управление постами -->
-<div id="post-management" class="admin-form" style="display: none;">
-    <h3>Добавить пост для всех пользователей</h3>
-    <input type="text" class="admin-input" id="post-title" placeholder="Заголовок поста">
-    <textarea class="admin-textarea" id="post-content" placeholder="Введите текст поста..."></textarea>
-    
-    <!-- Загрузка изображения для поста -->
-    <div class="upload-container">
-        <div class="upload-area" id="post-upload-area">
-            <div class="upload-icon">📷</div>
-            <div class="upload-text">Нажмите для загрузки изображения</div>
-            <div class="upload-hint">PNG, JPG до 10MB</div>
-        </div>
-        <input type="file" id="post-image" class="file-input" accept="image/*">
-        <img id="post-image-preview" class="image-preview" alt="Предпросмотр">
-        <button id="remove-post-image" class="remove-image" style="display: none;">Удалить изображение</button>
-    </div>
-    
-    <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
-    
-    <h3 style="margin-top: 20px;">Существующие посты</h3>
-    <div id="posts-list">
-        <!-- Посты будут загружаться динамически -->
-    </div>
-</div>
-
-                  <!-- Управление заданиями -->
-<div id="task-management" class="admin-form" style="display: none;">
-    <h3>Добавить задание</h3>
-    <input type="text" class="admin-input" id="task-title" placeholder="Название задания">
-    <textarea class="admin-textarea" id="task-description" placeholder="Описание задания"></textarea>
-    <input type="text" class="admin-input" id="task-price" placeholder="Цена (в рублях)">
-    <input type="text" class="admin-input" id="task-time" placeholder="Время выполнения">
-    <input type="text" class="admin-input" id="task-difficulty" placeholder="Сложность">
-    <input type="number" class="admin-input" id="task-people" placeholder="Сколько человек должно выполнить">
-    <input type="text" class="admin-input" id="task-repost" placeholder="Время повторной публикации">
-    <input type="url" class="admin-input" id="task-url" placeholder="URL задания">
-    
-    <!-- Загрузка изображения для задания -->
-    <div class="upload-container">
-        <div class="upload-area" id="task-upload-area">
-            <div class="upload-icon">📷</div>
-            <div class="upload-text">Нажмите для загрузки изображения задания</div>
-            <div class="upload-hint">PNG, JPG до 10MB</div>
-        </div>
-        <input type="file" id="task-image" class="file-input" accept="image/*">
-        <img id="task-image-preview" class="image-preview" alt="Предпросмотр">
-        <button id="remove-task-image" class="remove-image" style="display: none;">Удалить изображение</button>
-    </div>
-    
-    <button class="admin-submit" onclick="addTask()">Добавить задание</button>
-</div>
-
-                    <!-- Проверка заданий -->
-                    <div id="task-verification" class="admin-form" style="display: none;">
-                        <h3>Задания на проверке</h3>
-                        <div id="verification-list">
-                            <!-- Задания на проверке будут загружаться динамически -->
-                        </div>
+                    <h3 style="margin-top: 20px;">Существующие посты</h3>
+                    <div id="posts-list">
+                        <!-- Посты будут загружаться динамически -->
                     </div>
                 </div>
 
-                <!-- Лента постов -->
-                <div id="posts-section" class="card fade-in" style="display: none;">
-                    <div class="posts-header">
-                        <h2>Последние посты</h2>
-                        <button onclick="loadPosts()" class="refresh-btn">Обновить</button>
+                <!-- Управление заданиями -->
+                <div id="task-management" class="admin-form" style="display: none;">
+                    <h3>Добавить задание</h3>
+                    <input type="text" class="admin-input" id="task-title" placeholder="Название задания">
+                    <textarea class="admin-textarea" id="task-description" placeholder="Описание задания"></textarea>
+                    <input type="text" class="admin-input" id="task-price" placeholder="Цена (в рублях)">
+                    <input type="text" class="admin-input" id="task-time" placeholder="Время выполнения">
+                    <input type="text" class="admin-input" id="task-difficulty" placeholder="Сложность">
+                    <input type="number" class="admin-input" id="task-people" placeholder="Сколько человек должно выполнить">
+                    <input type="text" class="admin-input" id="task-repost" placeholder="Время повторной публикации">
+                    <input type="url" class="admin-input" id="task-url" placeholder="URL задания">
+                    <input type="file" class="admin-input" id="task-image" accept="image/*">
+                    <button class="admin-submit" onclick="addTask()">Добавить задание</button>
+                </div>
+
+                <!-- Проверка заданий -->
+                <div id="task-verification" class="admin-form" style="display: none;">
+                    <h3>Задания на проверке</h3>
+                    <div id="verification-list">
+                        <!-- Задания на проверке будут загружаться динамически -->
                     </div>
-                    <div id="posts-container">
-                        <div class="loading">Загрузка постов...</div>
+                </div>
+            </div>
+        </div>
+        
+       <div class="tasks-tabs">
+    <div class="task-tab active" onclick="showTaskCategory('new')">Новые</div>
+    <div class="task-tab" id="confirmation-tab" onclick="showTaskCategory('confirmation')">Подтверждение</div>
+    <div class="task-tab" onclick="showTaskCategory('completed')">Выполненные</div>
+    <div class="task-tab" onclick="showTaskCategory('rejected')">Отклоненные</div>
+</div>
+            
+            <div class="search-container fade-in">
+                <div class="search-icon">🔍</div>
+                <input type="text" class="search-input" id="task-search" placeholder="Поиск заданий...">
+            </div>
+            
+            <div class="filters-container fade-in">
+                <button class="filter-btn active" data-filter="all">Все</button>
+                <button class="filter-btn" data-filter="social">Соцсети</button>
+                <button class="filter-btn" data-filter="subscribe">Подписки</button>
+                <button class="filter-btn" data-filter="view">Просмотры</button>
+                <button class="filter-btn" data-filter="comment">Комментарии</button>
+                <button class="filter-btn" data-filter="repost">Репосты</button>
+            </div>
+
+            <!-- Новые задания -->
+            <div id="new-tasks" class="tasks-grid">
+                <!-- Задания будут добавлены через JavaScript -->
+            </div>
+            
+            <!-- Задания на подтверждение -->
+            <div id="confirmation-tasks" class="tasks-grid" style="display: none;">
+                <!-- Задания будут добавлены через JavaScript -->
+            </div>
+            
+            <!-- Выполненные задания -->
+            <div id="completed-tasks" class="tasks-grid" style="display: none;">
+                <!-- Задания будут добавлены через JavaScript -->
+            </div>
+
+            <!-- Отклоненные задания -->
+            <div id="rejected-tasks" class="tasks-grid" style="display: none;">
+                <!-- Задания будут добавлены через JavaScript -->
+            </div>
+        </div>
+        
+        <!-- Вкладка профиля -->
+        <div id="profile-tab" class="tab-content">
+            <!-- Заголовок профиля -->
+            <div class="profile-header fade-in">
+                <div class="profile-avatar">
+                    <img id="user-photo" src="" alt="Фото профиля" style="width: 100%; height: 100%; object-fit: cover;">
+                </div>
+                <div class="profile-info">
+                    <div class="profile-name" id="user-first-name">Имя</div>
+                    <div class="profile-id">TG: @<span id="user-username">username</span></div>
+                    <div class="profile-level">Уровень <span id="user-level">0</span></div>
+                </div>
+            </div>
+            
+            <!-- Статистика профиля -->
+            <div class="profile-stats fade-in">
+                <div class="profile-stat">
+                    <div class="stat-value">0 ₽</div>
+                    <div class="stat-label">Баланс</div>
+                </div>
+                <div class="profile-stat">
+                    <div class="stat-value">0</div>
+                    <div class="stat-label">Выполнено</div>
+                </div>
+                <div class="profile-stat">
+                    <div class="stat-value">0</div>
+                    <div class="stat-label">Активных</div>
+                </div>
+                <div class="profile-stat">
+                    <div class="stat-value">0%</div>
+                    <div class="stat-label">Качество</div>
+                </div>
+            </div>
+            
+            <!-- Прогресс уровня -->
+            <div class="level-progress fade-in">
+                <div class="level-title">
+                    <span class="level-name">Прогресс уровня</span>
+                    <span class="level-count">0/10 заданий</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="level-progress-bar"></div>
+                </div>
+                <div class="level-info">
+                    Выполните 10 заданий для достижения 1 уровня
+                </div>
+            </div>
+            
+            <!-- Реферальная система -->
+            <div class="referral-system fade-in">
+                <div class="referral-title">Реферальная система</div>
+                
+                <div class="referral-code">
+                    <div class="referral-label">Ваша реферальная ссылка</div>
+                    <input type="text" id="referral-link" readonly style="width: 100%; padding: 8px; margin: 8px 0; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); text-align: center;">
+                    <button class="copy-btn" onclick="copyReferralLink()">Скопировать ссылку</button>
+                </div>
+                
+                <div class="referral-stats">
+                    <div class="referral-stat">
+                        <div class="referral-value" id="ref-invited">0</div>
+                        <div class="referral-label">Приглашено</div>
+                    </div>
+                    <div class="referral-stat">
+                        <div class="referral-value" id="ref-earned">0 ₽</div>
+                        <div class="referral-label">Заработано</div>
+                    </div>
+                </div>
+                
+                <div class="referral-info">
+                    Приглашайте друзей и получайте 10% от их заработка!
+                </div>
+            </div>
+            
+            <!-- Действия профиля -->
+            <div class="profile-section fade-in">
+                <div class="section-title">Действия</div>
+                <div class="profile-actions">
+                    <div class="profile-action" onclick="showWithdrawPage()">
+                        <div class="action-icon">💳</div>
+                        <div class="action-text">Вывод средств</div>
+                        <div class="action-arrow">›</div>
+                    </div>
+                    <div class="profile-action" onclick="showHowItWorksPage()">
+                        <div class="action-icon">❓</div>
+                        <div class="action-text">Как это работает</div>
+                        <div class="action-arrow">›</div>
+                    </div>
+                    <div class="profile-action" onclick="showAboutPage()">
+                        <div class="action-icon">ℹ️</div>
+                        <div class="action-text">О приложении</div>
+                        <div class="action-arrow">›</div>
                     </div>
                 </div>
             </div>
             
-            <!-- Вкладка заданий -->
-            <div id="tasks-tab" class="tab-content tasks-tab">
-                <div class="tasks-tabs">
-                    <div class="task-tab active" onclick="showTaskCategory('new')">Новые</div>
-                    <div class="task-tab" id="confirmation-tab" onclick="showTaskCategory('confirmation')">Подтверждение</div>
-                    <div class="task-tab" onclick="showTaskCategory('completed')">Выполненные</div>
-                    <div class="task-tab" onclick="showTaskCategory('rejected')">Отклоненные</div>
+            <!-- Настройки -->
+            <div class="profile-section fade-in">
+                <div class="section-title">Настройки</div>
+                <div class="profile-actions">
+                    <div class="profile-action" onclick="openAdminChat()">
+                        <div class="action-icon">🛟</div>
+                        <div class="action-text">Поддержка</div>
+                        <div class="action-arrow">›</div>
+                    </div>
                 </div>
-                
-                <div class="search-container fade-in">
-                    <div class="search-icon">🔍</div>
-                    <input type="text" class="search-input" id="task-search" placeholder="Поиск заданий...">
-                </div>
-                
-                <div class="filters-container fade-in">
-                    <button class="filter-btn active" data-filter="all">Все</button>
-                    <button class="filter-btn" data-filter="social">Соцсети</button>
-                    <button class="filter-btn" data-filter="subscribe">Подписки</button>
-                    <button class="filter-btn" data-filter="view">Просмотры</button>
-                    <button class="filter-btn" data-filter="comment">Комментарии</button>
-                    <button class="filter-btn" data-filter="repost">Репосты</button>
-                </div>
-                <!-- Лента постов на главной -->
-<div id="posts-section" class="card fade-in" style="display: none;">
-    <div class="posts-header">
-        <h2 style="color: var(--text-primary); margin-bottom: 15px;">Последние новости</h2>
-    </div>
-    <div id="posts-container">
-        <div class="loading-posts">
-            <div class="loading-spinner">⏳</div>
-            <div>Загрузка постов...</div>
+            </div>
         </div>
-    </div>
-</div>
-                <!-- Новые задания -->
-                <div id="new-tasks" class="tasks-grid">
-                    <!-- Задания будут добавлены через JavaScript -->
-                </div>
-                
-                <!-- Задания на подтверждение -->
-                <div id="confirmation-tasks" class="tasks-grid" style="display: none;">
-                    <!-- Задания будут добавлены через JavaScript -->
-                </div>
-                
-                <!-- Выполненные задания -->
-                <div id="completed-tasks" class="tasks-grid" style="display: none;">
-                    <!-- Задания будут добавлены через JavaScript -->
-                </div>
 
-                <!-- Отклоненные задания -->
-                <div id="rejected-tasks" class="tasks-grid" style="display: none;">
-                    <!-- Задания будут добавлены через JavaScript -->
-                </div>
-            </div>
-            
-            <!-- Вкладка профиля -->
-            <div id="profile-tab" class="tab-content">
-                <!-- Заголовок профиля -->
-                <div class="profile-header fade-in">
-                    <div class="profile-avatar">
-                        <img id="user-photo" src="" alt="Фото профиля" style="width: 100%; height: 100%; object-fit: cover;">
-                    </div>
-                    <div class="profile-info">
-                        <div class="profile-name" id="user-first-name">Имя</div>
-                        <div class="profile-id">TG: @<span id="user-username">username</span></div>
-                        <div class="profile-level">Уровень <span id="user-level">0</span></div>
-                    </div>
-                </div>
-                
-                <!-- Статистика профиля -->
-                <div class="profile-stats fade-in">
-                    <div class="profile-stat">
-                        <div class="stat-value">0 ₽</div>
-                        <div class="stat-label">Баланс</div>
-                    </div>
-                    <div class="profile-stat">
-                        <div class="stat-value">0</div>
-                        <div class="stat-label">Выполнено</div>
-                    </div>
-                    <div class="profile-stat">
-                        <div class="stat-value">0</div>
-                        <div class="stat-label">Активных</div>
-                    </div>
-                    <div class="profile-stat">
-                        <div class="stat-value">0%</div>
-                        <div class="stat-label">Качество</div>
-                    </div>
-                </div>
-                
-                <!-- Прогресс уровня -->
-                <div class="level-progress fade-in">
-                    <div class="level-title">
-                        <span class="level-name">Прогресс уровня</span>
-                        <span class="level-count">0/10 заданий</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="level-progress-bar"></div>
-                    </div>
-                    <div class="level-info">
-                        Выполните 10 заданий для достижения 1 уровня
-                    </div>
-                </div>
-                
-                <!-- Реферальная система -->
-                <div class="referral-system fade-in">
-                    <div class="referral-title">Реферальная система</div>
-                    
-                    <div class="referral-code">
-                        <div class="referral-label">Ваша реферальная ссылка</div>
-                        <input type="text" id="referral-link" readonly style="width: 100%; padding: 8px; margin: 8px 0; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); text-align: center;">
-                        <button class="copy-btn" onclick="copyReferralLink()">Скопировать ссылку</button>
-                    </div>
-                    
-                    <div class="referral-stats">
-                        <div class="referral-stat">
-                            <div class="referral-value" id="ref-invited">0</div>
-                            <div class="referral-label">Приглашено</div>
-                        </div>
-                        <div class="referral-stat">
-                            <div class="referral-value" id="ref-earned">0 ₽</div>
-                            <div class="referral-label">Заработано</div>
-                        </div>
-                    </div>
-                    
-                    <div class="referral-info">
-                        Приглашайте друзей и получайте 10% от их заработка!
-                    </div>
-                </div>
-                
-                <!-- Действия профиля -->
-                <div class="profile-section fade-in">
-                    <div class="section-title">Действия</div>
-                    <div class="profile-actions">
-                        <div class="profile-action" onclick="showWithdrawPage()">
-                            <div class="action-icon">💳</div>
-                            <div class="action-text">Вывод средств</div>
-                            <div class="action-arrow">›</div>
-                        </div>
-                        <div class="profile-action" onclick="showHowItWorksPage()">
-                            <div class="action-icon">❓</div>
-                            <div class="action-text">Как это работает</div>
-                            <div class="action-arrow">›</div>
-                        </div>
-                        <div class="profile-action" onclick="showAboutPage()">
-                            <div class="action-icon">ℹ️</div>
-                            <div class="action-text">О приложении</div>
-                            <div class="action-arrow">›</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Настройки -->
-                <div class="profile-section fade-in">
-                    <div class="section-title">Настройки</div>
-                    <div class="profile-actions">
-                        <div class="profile-action" onclick="openAdminChat()">
-                            <div class="action-icon">🛟</div>
-                            <div class="action-text">Поддержка</div>
-                            <div class="action-arrow">›</div>
-                        </div>
-                    </div>
-                </div>
+        <!-- Вкладка админа (отдельная) -->
+        <div id="admin-tab" class="tab-content">
+            <div class="page-header">
+                <button class="back-button" onclick="showMainTab()">←</button>
+                <div class="page-title">Панель администратора</div>
             </div>
 
-            <!-- Вкладка админа (отдельная) -->
-            <div id="admin-tab" class="tab-content">
-                <div class="page-header">
-                    <button class="back-button" onclick="showMainTab()">←</button>
-                    <div class="page-title">Панель администратора</div>
+            <div class="admin-panel">
+                <div class="admin-buttons">
+                    <button class="admin-btn" onclick="showAdminSection('posts')">Управление постами</button>
+                    <button class="admin-btn" onclick="showAdminSection('tasks')">Управление заданиями</button>
+                    <button class="admin-btn" onclick="showAdminSection('verification')">Проверка заданий</button>
+                    <button class="admin-btn" onclick="showAdminSection('support')">Поддержка</button>
                 </div>
-
-                <div class="admin-panel">
-                    <div class="admin-buttons">
-                        <button class="admin-btn" onclick="showAdminSection('posts')">Управление постами</button>
-                        <button class="admin-btn" onclick="showAdminSection('tasks')">Управление заданиями</button>
-                        <button class="admin-btn" onclick="showAdminSection('verification')">Проверка заданий</button>
-                        <button class="admin-btn" onclick="showAdminSection('support')">Поддержка</button>
+                
+                <!-- Управление постами -->
+                <div id="admin-posts-section" class="admin-section">
+                    <h3>Добавить пост для всех пользователей</h3>
+                    <div class="admin-form">
+                        <input type="text" class="admin-input" id="admin-post-title" placeholder="Заголовок поста">
+                        <textarea class="admin-textarea" id="admin-post-content" placeholder="Введите текст поста..."></textarea>
+                        <input type="file" class="admin-input" id="admin-post-image" accept="image/*">
+                        <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
                     </div>
                     
-                    <!-- Убедитесь, что этот раздел существует в admin-tab -->
-<div id="admin-posts-section" class="admin-section">
-    <h3>Добавить пост для всех пользователей</h3>
-    <div class="admin-form">
-        <input type="text" class="admin-input" id="admin-post-title" placeholder="Заголовок поста">
-        <textarea class="admin-textarea" id="admin-post-content" placeholder="Введите текст поста..."></textarea>
-        
-        <!-- Загрузка изображения для поста -->
-        <div class="upload-container">
-            <div class="upload-area" id="admin-post-upload-area">
-                <div class="upload-icon">📷</div>
-                <div class="upload-text">Нажмите для загрузки изображения</div>
-                <div class="upload-hint">PNG, JPG до 10MB</div>
-            </div>
-            <input type="file" id="admin-post-image" class="file-input" accept="image/*">
-            <img id="admin-post-image-preview" class="image-preview" alt="Предпросмотр">
-            <button id="remove-admin-post-image" class="remove-image" style="display: none;">Удалить изображение</button>
-        </div>
-        
-        <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
-    </div>
-    
-    <h3 style="margin-top: 20px;">Существующие посты</h3>
-    <div id="admin-posts-list">
-        <!-- Посты будут загружаться динамически -->
-    </div>
-</div>
-
-                    <!-- Управление заданиями -->
-                    <div id="admin-tasks-section" class="admin-section" style="display: none;">
-                        <h3>Добавить задание</h3>
-                        <div class="admin-form">
-                            <input type="text" class="admin-input" id="admin-task-title" placeholder="Название задания">
-                            <textarea class="admin-textarea" id="admin-task-description" placeholder="Описание задания"></textarea>
-                            <input type="text" class="admin-input" id="admin-task-price" placeholder="Цена (в рублях)">
-                            <input type="text" class="admin-input" id="admin-task-time" placeholder="Время выполнения">
-                            <input type="text" class="admin-input" id="admin-task-difficulty" placeholder="Сложность">
-                            <input type="number" class="admin-input" id="admin-task-people" placeholder="Сколько человек должно выполнить">
-                            <input type="text" class="admin-input" id="admin-task-repost" placeholder="Время повторной публикации">
-                            <input type="url" class="admin-input" id="admin-task-url" placeholder="URL задания">
-                            <input type="file" class="admin-input" id="admin-task-image" accept="image/*">
-                            <button class="admin-submit" onclick="addTask()">Добавить задание</button>
-                        </div>
+                    <h3 style="margin-top: 20px;">Существующие посты</h3>
+                    <div id="admin-posts-list">
+                        <!-- Посты будут загружаться динамически -->
                     </div>
+                </div>
 
-                    <!-- Проверка заданий -->
-                    <div id="admin-verification-section" class="admin-section" style="display: none;">
-                        <h3>Задания на проверке</h3>
-                        <div id="admin-verification-list">
-                            <!-- Задания на проверке будут загружаться динамически -->
-                        </div>
+                <!-- Управление заданиями -->
+                <div id="admin-tasks-section" class="admin-section" style="display: none;">
+                    <h3>Добавить задание</h3>
+                    <div class="admin-form">
+                        <input type="text" class="admin-input" id="admin-task-title" placeholder="Название задания">
+                        <textarea class="admin-textarea" id="admin-task-description" placeholder="Описание задания"></textarea>
+                        <input type="text" class="admin-input" id="admin-task-price" placeholder="Цена (в рублях)">
+                        <input type="text" class="admin-input" id="admin-task-time" placeholder="Время выполнения">
+                        <input type="text" class="admin-input" id="admin-task-difficulty" placeholder="Сложность">
+                        <input type="number" class="admin-input" id="admin-task-people" placeholder="Сколько человек должно выполнить">
+                        <input type="text" class="admin-input" id="admin-task-repost" placeholder="Время повторной публикации">
+                        <input type="url" class="admin-input" id="admin-task-url" placeholder="URL задания">
+                        <input type="file" class="admin-input" id="admin-task-image" accept="image/*">
+                        <button class="admin-submit" onclick="addTask()">Добавить задание</button>
                     </div>
+                </div>
+
+                <!-- Проверка заданий -->
+                <div id="admin-verification-section" class="admin-section" style="display: none;">
+                    <h3>Задания на проверке</h3>
+                    <div id="admin-verification-list">
+                        <!-- Задания на проверке будут загружаться динамически -->
+                    </div>
+                </div>
 
                 <!-- Поддержка -->
-<div id="admin-support-section" class="admin-section" style="display: none;">
-    <h3>💬 Чаты с пользователями</h3>
-    
-    <!-- Переключение между активными и архивными чатами -->
-    <div class="chat-tabs" style="margin-bottom: 15px;">
-        <button class="chat-tab-btn active" onclick="showChatTab('active')">Активные чаты</button>
-        <button class="chat-tab-btn" onclick="showChatTab('archived')">Архивные чаты</button>
-        <button class="chat-tab-btn" onclick="showChatTab('all')">Все чаты</button>
-    </div>
-    
-    <!-- Статистика чатов -->
-    <div class="chat-stats" style="margin-bottom: 15px; padding: 10px; background: var(--bg-secondary); border-radius: 10px;">
-        <div style="display: flex; justify-content: space-between; font-size: 12px;">
-            <span>Активные: <strong id="active-chats-count">0</strong></span>
-            <span>Непрочитанные: <strong id="unread-chats-count">0</strong></span>
-            <span>Всего: <strong id="total-chats-count">0</strong></span>
-        </div>
-    </div>
-    
-    <!-- Список активных чатов -->
-    <div id="active-chats-list" class="admin-chat-list">
-        <!-- Активные чаты будут загружены здесь -->
-    </div>
-    
-    <!-- Список архивных чатов -->
-    <div id="archived-chats-list" class="admin-chat-list" style="display: none;">
-        <!-- Архивные чаты будут загружены здесь -->
-    </div>
-    
-    <!-- Список всех чатов -->
-    <div id="all-chats-list" class="admin-chat-list" style="display: none;">
-        <!-- Все чаты будут загружены здесь -->
-    </div>
-</div>
-            <!-- Страница "Как работает" -->
-            <div id="how-it-works-page" class="page">
-                <div class="page-header">
-                    <button class="back-button" onclick="showProfileTab()">←</button>
-                    <div class="page-title">Как работает LinkGold</div>
-                </div>
-
-                <div class="card">
-                    <p class="about-text">LinkGold — это платформа для заработка на выполнении простых заданий и активности в социальных сетях.</p>
+                <div id="admin-support-section" class="admin-section" style="display: none;">
+                    <h3>💬 Чаты с пользователями</h3>
                     
-                    <p class="about-text">Основные принципы работы:</p>
-                    <ul class="about-text" style="padding-left: 20px; margin-bottom: 16px;">
-                        <li><strong>Выбирайте задания</strong> из доступных в вашем профиле</li>
-                        <li><strong>Выполняйте</strong> их согласно инструкции</li>
-                        <li><strong>Получайте оплату</strong> сразу после проверки</li>
-                        <li><strong>Выводите средства</strong> удобным способом</li>
-                    </ul>
+                    <!-- Переключение между активными и архивными чатами -->
+                    <div class="chat-tabs" style="margin-bottom: 15px;">
+                        <button class="chat-tab-btn active" onclick="showChatTab('active')">Активные чаты</button>
+                        <button class="chat-tab-btn" onclick="showChatTab('archived')">Архивные чаты</button>
+                        <button class="chat-tab-btn" onclick="showChatTab('all')">Все чаты</button>
+                    </div>
                     
-                    <p class="about-text">Виды заданий:</p>
-                    <ul class="about-text" style="padding-left: 20px; margin-bottom: 16px;">
-                        <li>Подписки на каналы и аккаунты</li>
-                        <li>Просмотры и лайки</li>
-                        <li>Репосты и комментарии</li>
-                        <li>Участие в опросах</li>
-                    </ul>
-
-                    <div class="about-features">
-                        <div class="about-feature">
-                            <div class="feature-icon">🚀</div>
-                            <div class="feature-text">Быстрый старт</div>
+                    <!-- Статистика чатов -->
+                    <div class="chat-stats" style="margin-bottom: 15px; padding: 10px; background: var(--bg-secondary); border-radius: 10px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                            <span>Активные: <strong id="active-chats-count">0</strong></span>
+                            <span>Непрочитанные: <strong id="unread-chats-count">0</strong></span>
+                            <span>Всего: <strong id="total-chats-count">0</strong></span>
                         </div>
-                        <div class="about-feature">
-                            <div class="feature-icon">💎</div>
-                            <div class="feature-text">Честные условия</div>
-                        </div>
-                        <div class="about-feature">
-                            <div class="feature-icon">🛡️</div>
-                            <div class="feature-text">Надежная защита</div>
-                        </div>
-                        <div class="about-feature">
-                            <div class="feature-icon">📈</div>
-                            <div class="feature-text">Постоянный рост</div>
-                        </div>
+                    </div>
+                    
+                    <!-- Список активных чатов -->
+                    <div id="active-chats-list" class="admin-chat-list">
+                        <!-- Активные чаты будут загружены здесь -->
+                    </div>
+                    
+                    <!-- Список архивных чатов -->
+                    <div id="archived-chats-list" class="admin-chat-list" style="display: none;">
+                        <!-- Архивные чаты будут загружены здесь -->
+                    </div>
+                    
+                    <!-- Список всех чатов -->
+                    <div id="all-chats-list" class="admin-chat-list" style="display: none;">
+                        <!-- Все чаты будут загружены здесь -->
                     </div>
                 </div>
             </div>
-
-            <!-- Страница "О приложении" -->
-            <div id="about-page" class="page">
-                <div class="page-header">
-                    <button class="back-button" onclick="showProfileTab()">←</button>
-                    <div class="page-title">О LinkGold</div>
-                </div>
-
-                <div class="card">
-                    <p class="about-text">LinkGold — это инновационная платформа для заработка, которая позволяет каждому пользователю монетизировать свою активность в интернете. Мы создали удобный и прозрачный сервис, где вы можете выполнять интересные задания и получать за это достойное вознаграждение.</p>
-                    
-                    <p class="about-text">Наша миссия — предоставить возможность дополнительного заработка для всех, кто готов проявить активность и выполнять простые задачи. Мы верим, что каждый должен иметь возможность монетизировать свое время и усилия, проведенные в интернете.</p>
-                    
-                    <p class="about-text">Мы постоянно работаем над улучшением сервиса, добавляем новые задания и возможности для заработка. Наша команда заботится о каждом пользователе и стремится создать лучшие условия для взаимовыгодного сотрудничества.</p>
-                    
-                    <div class="about-footer">
-                        LinkGold © 2023. Все права защищены.
-                    </div>
-                </div>
-            </div>
-
-            <!-- Страница вывода средств -->
-            <div id="withdraw-page" class="page">
-                <div class="page-header">
-                    <button class="back-button" onclick="showProfileTab()">←</button>
-                    <div class="page-title">Вывод средств</div>
-                </div>
-
-                <div class="card">
-                    <div class="balance-amount" id="withdraw-balance">0 ₽</div>
-                    <p class="about-text" style="text-align: center; margin-bottom: 20px;">Доступно для вывода</p>
-
-                    <div class="admin-form">
-                        <h3>Запрос на вывод</h3>
-                        <input type="number" class="admin-input" id="withdraw-amount" placeholder="Сумма вывода">
-                        <select class="admin-input" id="withdraw-method">
-                            <option value="">Выберите способ вывода</option>
-                            <option value="card">Банковская карта</option>
-                            <option value="qiwi">QIWI Кошелек</option>
-                            <option value="yoomoney">ЮMoney</option>
-                            <option value="crypto">Криптовалюта</option>
-                        </select>
-                        <input type="text" class="admin-input" id="withdraw-details" placeholder="Реквизиты для вывода">
-                        <button class="admin-submit" onclick="submitWithdraw()">Заказать выплату</button>
-                    </div>
-                </div>
-            </div>
-        </main>
-
-        <!-- Навигация -->
-        <nav class="bottom-nav">
-            <div class="nav-item active" onclick="showMainTab()">
-                <div class="nav-icon">🏠</div>
-                <div class="nav-label">Главная</div>
-            </div>
-            <div class="nav-item" onclick="showTasksTab()">
-                <div class="nav-icon">📋</div>
-                <div class="nav-label">Задания</div>
-            </div>
-            <div class="nav-item" onclick="showProfileTab()">
-                <div class="nav-icon">👤</div>
-                <div class="nav-label">Профиль</div>
-            </div>
-            <div class="nav-item" id="admin-nav-item" onclick="showAdminTab()" style="display: none;">
-                <div class="nav-icon">⚙️</div>
-                <div class="nav-label">Админ</div>
-            </div>
-        </nav>
-    </div>
-
-    <!-- Модальные окна -->
-    <div class="modal" id="balance-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-title">💰 Ваш баланс</div>
-                <button class="modal-close" onclick="closeModal('balance-modal')">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="balance-amount">0 ₽</div>
-                <button class="profile-btn" onclick="goToProfile()">Перейти в профиль</button>
-            </div>
         </div>
-    </div>
 
-    <div class="modal" id="prices-modal">
-        <div class="prices-content">
-            <div class="prices-title">💰 Стоимость размещения</div>
-            <div class="price-grid">
-                <div class="price-item">
-                    <span class="price-time">1 час</span>
-                    <span class="price-amount">200 ₽</span>
-                </div>
-                <div class="price-item">
-                    <span class="price-time">3 часа</span>
-                    <span class="price-amount">600 ₽</span>
-                </div>
-                <div class="price-item">
-                    <span class="price-time">1 день</span>
-                    <span class="price-amount">4 500 ₽</span>
-                </div>
-                <div class="price-item">
-                    <span class="price-time">7 дней</span>
-                    <span class="price-amount">20 000 ₽</span>
-                </div>
+        <!-- Страница "Как работает" -->
+        <div id="how-it-works-page" class="page">
+            <div class="page-header">
+                <button class="back-button" onclick="showProfileTab()">←</button>
+                <div class="page-title">Как работает LinkGold</div>
             </div>
-            <button class="prices-btn" onclick="openAdminChatFromPrices()">
-                💬 Написать о рекламе
-            </button>
-        </div>
-    </div>
 
-    <div class="modal" id="task-modal">
-        <div class="modal-content task-modal-content">
-            <div class="modal-header">
-                <div class="task-modal-title" id="task-modal-title">Название задания</div>
-                <button class="modal-close" onclick="closeModal('task-modal')">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="task-modal-category" id="task-modal-category">Категория</div>
-                <div class="task-modal-price" id="task-modal-price">0 ₽</div>
-                <div class="task-modal-description" id="task-modal-description">Описание задания</div>
+            <div class="card">
+                <p class="about-text">LinkGold — это платформа для заработка на выполнении простых заданий и активности в социальных сетях.</p>
                 
-                <div class="task-modal-details">
-                    <div class="task-detail">
-                        <span class="task-detail-label">Время выполнения:</span>
-                        <span class="task-detail-value" id="task-modal-time">5 мин</span>
-                    </div>
-                    <div class="task-detail">
-                        <span class="task-detail-label">Сложность:</span>
-                        <span class="task-detail-value" id="task-modal-difficulty">Легкая</span>
-                    </div>
-                    <div class="task-detail">
-                        <span class="task-detail-label">Осталось:</span>
-                        <span class="task-detail-value" id="task-modal-available">15 заданий</span>
-                    </div>
-                </div>
+                <p class="about-text">Основные принципы работы:</p>
+                <ul class="about-text" style="padding-left: 20px; margin-bottom: 16px;">
+                    <li><strong>Выбирайте задания</strong> из доступных в вашем профиле</li>
+                    <li><strong>Выполняйте</strong> их согласно инструкции</li>
+                    <li><strong>Получайте оплату</strong> сразу после проверки</li>
+                    <li><strong>Выводите средства</strong> удобным способом</li>
+                </ul>
                 
-                <div class="task-modal-buttons">
-                    <button class="task-modal-cancel" onclick="closeModal('task-modal')">Отмена</button>
-                    <button class="task-modal-start" onclick="startTask()">Начать задание</button>
-                </div>
-            </div>
-        </div>
-    </div>
-        <!-- Модальное окно подтверждения выполнения задания -->
-        <!-- Модальное окно подтверждения выполнения задания -->
-<div class="modal" id="confirmation-modal">
-    <div class="confirmation-modal-content">
-        <div class="confirmation-icon">❓</div>
-        <div class="confirmation-title">Подтверждение задания</div>
-        <div class="confirmation-text" id="confirmation-task-text">Вы выполнили задание "<span id="confirmation-task-name"></span>"?</div>
-        
-        <div class="confirmation-buttons">
-            <button class="confirmation-btn confirmation-yes" onclick="showScreenshotUpload()">Да, выполнил</button>
-            <button class="confirmation-btn confirmation-no" onclick="showCancelConfirmation()">Нет, не выполнил</button>
-        </div>
-        
-        <button class="confirmation-btn confirmation-cancel" onclick="closeModal('confirmation-modal')">Отмена</button>
-    </div>
-</div>
+                <p class="about-text">Виды заданий:</p>
+                <ul class="about-text" style="padding-left: 20px; margin-bottom: 16px;">
+                    <li>Подписки на каналы и аккаунты</li>
+                    <li>Просмотры и лайки</li>
+                    <li>Репосты и комментарии</li>
+                    <li>Участие в опросах</li>
+                </ul>
 
-<!-- Модальное окно отмены подтверждения -->
-<div class="modal" id="cancel-confirmation-modal">
-    <div class="confirmation-modal-content">
-        <div class="confirmation-icon">⚠️</div>
-        <div class="confirmation-title">Вы уверены?</div>
-        <div class="confirmation-text">Вы точно не выполнили это задание?</div>
-        
-        <div class="confirmation-buttons">
-            <button class="confirmation-btn confirmation-no" onclick="cancelTask()">Не выполнил</button>
-            <button class="confirmation-btn confirmation-yes" onclick="showScreenshotUpload()">Выполнил</button>
-        </div>
-        
-        <button class="confirmation-btn confirmation-cancel" onclick="closeModal('cancel-confirmation-modal')">Отмена</button>
-    </div>
-</div>
-
-<!-- Модальное окно загрузки скриншота -->
-<div class="modal" id="screenshot-modal">
-    <div class="confirmation-modal-content">
-        <div class="confirmation-icon">📸</div>
-        <div class="confirmation-title">Отправьте скриншот</div>
-        <div class="confirmation-text">Загрузите скриншот выполнения задания для проверки администратором</div>
-        
-        <div class="screenshot-upload">
-            <div class="upload-area" id="screenshot-upload-area">
-                <div class="upload-icon">📁</div>
-                <div class="upload-text">Нажмите для выбора скриншота</div>
-                <div class="upload-hint">PNG, JPG до 10MB</div>
-            </div>
-            <input type="file" id="screenshot-file" class="file-input" accept="image/*">
-            <img id="screenshot-preview" class="image-preview" alt="Предпросмотр скриншота">
-            <div id="file-name" style="font-size: 14px; color: var(--text-secondary); margin-bottom: 16px;"></div>
-        </div>
-        
-        <div class="confirmation-buttons">
-            <button class="confirmation-btn confirmation-cancel" onclick="closeModal('screenshot-modal')">Отмена</button>
-            <button class="confirmation-btn confirmation-yes" onclick="submitScreenshot()" id="submit-screenshot-btn" disabled>Отправить на проверку</button>
-        </div>
-    </div>
-</div>
-
-<!-- Модальное окно проверки задания для админа -->
-<div class="verification-modal" id="verification-modal">
-    <div class="verification-modal-content">
-        <div class="verification-modal-header">
-            <div class="verification-modal-user">
-                <div class="verification-modal-avatar" id="verification-user-avatar">U</div>
-                <div class="verification-modal-user-info">
-                    <div class="verification-modal-user-name" id="verification-user-name">Пользователь</div>
-                    <div class="verification-modal-task" id="verification-task-title">Задание</div>
-                </div>
-            </div>
-            <div class="verification-modal-price" id="verification-task-price">0 ₽</div>
-        </div>
-        
-        <div class="confirmation-text">Скриншот выполнения задания:</div>
-        <img id="verification-screenshot" class="verification-modal-screenshot" alt="Скриншот задания">
-        
-        <div class="verification-modal-actions">
-            <button class="verification-reject" onclick="rejectVerification()">❌ Отклонить</button>
-            <button class="verification-approve" onclick="approveVerification()">✅ Одобрить</button>
-        </div>
-        
-        <button class="confirmation-btn confirmation-cancel" onclick="closeModal('verification-modal')" style="margin-top: 16px; width: 100%;">Закрыть</button>
-    </div>
-</div>
-    <div class="modal" id="confirmation-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-title">📸 Подтверждение задания</div>
-                <button class="modal-close" onclick="closeModal('confirmation-modal')">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="confirmation-task">
-                    <div class="confirmation-header">
-                        <div class="confirmation-title" id="confirmation-task-title">Название задания</div>
-                        <div class="confirmation-price" id="confirmation-task-price">0 ₽</div>
+                <div class="about-features">
+                    <div class="about-feature">
+                        <div class="feature-icon">🚀</div>
+                        <div class="feature-text">Быстрый старт</div>
                     </div>
-                    <div class="confirmation-question">Вы выполнили это задание?</div>
-                    <div class="confirmation-buttons">
-                        <button class="confirmation-no" onclick="showCancelConfirmation()">Нет</button>
-                        <button class="confirmation-yes" onclick="showScreenshotUpload()">Да</button>
+                    <div class="about-feature">
+                        <div class="feature-icon">💎</div>
+                        <div class="feature-text">Честные условия</div>
+                    </div>
+                    <div class="about-feature">
+                        <div class="feature-icon">🛡️</div>
+                        <div class="feature-text">Надежная защита</div>
+                    </div>
+                    <div class="about-feature">
+                        <div class="feature-icon">📈</div>
+                        <div class="feature-text">Постоянный рост</div>
                     </div>
                 </div>
-                        <!-- Модальное окно подтверждения выполнения задания -->
+            </div>
+        </div>
+
+        <!-- Страница "О приложении" -->
+        <div id="about-page" class="page">
+            <div class="page-header">
+                <button class="back-button" onclick="showProfileTab()">←</button>
+                <div class="page-title">О LinkGold</div>
+            </div>
+
+            <div class="card">
+                <p class="about-text">LinkGold — это инновационная платформа для заработка, которая позволяет каждому пользователю монетизировать свою активность в интернете. Мы создали удобный и прозрачный сервис, где вы можете выполнять интересные задания и получать за это достойное вознаграждение.</p>
+                
+                <p class="about-text">Наша миссия — предоставить возможность дополнительного заработка для всех, кто готов проявить активность и выполнять простые задачи. Мы верим, что каждый должен иметь возможность монетизировать свое время и усилия, проведенные в интернете.</p>
+                
+                <p class="about-text">Мы постоянно работаем над улучшением сервиса, добавляем новые задания и возможности для заработка. Наша команда заботится о каждом пользователе и стремится создать лучшие условия для взаимовыгодного сотрудничества.</p>
+                
+                <div class="about-footer">
+                    LinkGold © 2023. Все права защищены.
+                </div>
+            </div>
+        </div>
+
+        <!-- Страница вывода средств -->
+        <div id="withdraw-page" class="page">
+            <div class="page-header">
+                <button class="back-button" onclick="showProfileTab()">←</button>
+                <div class="page-title">Вывод средств</div>
+            </div>
+
+            <div class="card">
+                <div class="balance-amount" id="withdraw-balance">0 ₽</div>
+                <p class="about-text" style="text-align: center; margin-bottom: 20px;">Доступно для вывода</p>
+
+                <div class="admin-form">
+                    <h3>Запрос на вывод</h3>
+                    <input type="number" class="admin-input" id="withdraw-amount" placeholder="Сумма вывода">
+                    <select class="admin-input" id="withdraw-method">
+                        <option value="">Выберите способ вывода</option>
+                        <option value="card">Банковская карта</option>
+                        <option value="qiwi">QIWI Кошелек</option>
+                        <option value="yoomoney">ЮMoney</option>
+                        <option value="crypto">Криптовалюта</option>
+                    </select>
+                    <input type="text" class="admin-input" id="withdraw-details" placeholder="Реквизиты для вывода">
+                    <button class="admin-submit" onclick="submitWithdraw()">Заказать выплату</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Навигация -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" onclick="showMainTab()">
+            <div class="nav-icon">🏠</div>
+            <div class="nav-label">Главная</div>
+        </div>
+        <div class="nav-item" onclick="showTasksTab()">
+            <div class="nav-icon">📋</div>
+            <div class="nav-label">Задания</div>
+        </div>
+        <div class="nav-item" onclick="showProfileTab()">
+            <div class="nav-icon">👤</div>
+            <div class="nav-label">Профиль</div>
+        </div>
+        <div class="nav-item" id="admin-nav-item" onclick="showAdminTab()" style="display: none;">
+            <div class="nav-icon">⚙️</div>
+            <div class="nav-label">Админ</div>
+        </div>
+    </nav>
+</div>
+
+<!-- Модальные окна -->
+<div class="modal" id="balance-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div class="modal-title">💰 Ваш баланс</div>
+            <button class="modal-close" onclick="closeModal('balance-modal')">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="balance-amount">0 ₽</div>
+            <button class="profile-btn" onclick="goToProfile()">Перейти в профиль</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="prices-modal">
+    <div class="prices-content">
+        <div class="prices-title">💰 Стоимость размещения</div>
+        <div class="price-grid">
+            <div class="price-item">
+                <span class="price-time">1 час</span>
+                <span class="price-amount">200 ₽</span>
+            </div>
+            <div class="price-item">
+                <span class="price-time">3 часа</span>
+                <span class="price-amount">600 ₽</span>
+            </div>
+            <div class="price-item">
+                <span class="price-time">1 день</span>
+                <span class="price-amount">4 500 ₽</span>
+            </div>
+            <div class="price-item">
+                <span class="price-time">7 дней</span>
+                <span class="price-amount">20 000 ₽</span>
+            </div>
+        </div>
+        <button class="prices-btn" onclick="openAdminChatFromPrices()">
+            💬 Написать о рекламе
+        </button>
+    </div>
+</div>
+
+<div class="modal" id="task-modal">
+    <div class="modal-content task-modal-content">
+        <div class="modal-header">
+            <div class="task-modal-title" id="task-modal-title">Название задания</div>
+            <button class="modal-close" onclick="closeModal('task-modal')">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="task-modal-category" id="task-modal-category">Категория</div>
+            <div class="task-modal-price" id="task-modal-price">0 ₽</div>
+            <div class="task-modal-description" id="task-modal-description">Описание задания</div>
+            
+            <div class="task-modal-details">
+                <div class="task-detail">
+                    <span class="task-detail-label">Время выполнения:</span>
+                    <span class="task-detail-value" id="task-modal-time">5 мин</span>
+                </div>
+                <div class="task-detail">
+                    <span class="task-detail-label">Сложность:</span>
+                    <span class="task-detail-value" id="task-modal-difficulty">Легкая</span>
+                </div>
+                <div class="task-detail">
+                    <span class="task-detail-label">Осталось:</span>
+                    <span class="task-detail-value" id="task-modal-available">15 заданий</span>
+                </div>
+            </div>
+            
+            <div class="task-modal-buttons">
+                <button class="task-modal-cancel" onclick="closeModal('task-modal')">Отмена</button>
+                <button class="task-modal-start" onclick="startTask()">Начать задание</button>
+            </div>
+        </div>
+    </div>
+</div>
+        <!-- Модальное окно подтверждения выполнения задания -->
         <div class="modal" id="confirmation-modal">
             <div class="confirmation-modal-content">
                 <div class="confirmation-icon">❓</div>
@@ -4493,49 +4703,123 @@
                 <button class="confirmation-btn confirmation-cancel" onclick="closeModal('verification-modal')" style="margin-top: 16px; width: 100%;">Закрыть</button>
             </div>
         </div>
-                <div id="confirmation-form" style="display: none;">
-                    <div style="margin-bottom: 16px;">
-                        <label style="display: block; margin-bottom: 8px; font-size: 14px;">Загрузите фото выполненного задания:</label>
-                        <input type="file" id="task-photo" accept="image/*" style="width: 100%; margin-bottom: 12px;">
-                    </div>
-                    <button class="btn btn-primary btn-full" onclick="submitTaskForReview()">Отправить на проверку</button>
+<!-- Модальное окно подтверждения выполнения задания -->
+<div class="modal" id="confirmation-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div class="modal-title">✅ Подтверждение задания</div>
+            <button class="modal-close" onclick="closeConfirmationModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="verification-task-info">
+                <div class="verification-task-title" id="confirmation-task-title">Название задания</div>
+                <div class="verification-task-price" id="confirmation-task-price">0 ₽</div>
+            </div>
+            
+            <div id="confirmation-question">
+                <div style="text-align: center; margin-bottom: 20px; font-size: 16px;">
+                    Вы выполнили это задание?
                 </div>
+                <div class="verification-buttons">
+                    <button class="verification-btn verification-reject" onclick="showCancelConfirmation()">Нет</button>
+                    <button class="verification-btn verification-approve" onclick="showScreenshotUpload()">Да</button>
+                </div>
+            </div>
 
-                <div id="cancel-confirmation" style="display: none;">
-                    <div class="confirmation-question">Вы точно не сделали это задание?</div>
-                    <div class="confirmation-buttons">
-                        <button class="confirmation-no" onclick="cancelTask()">Не сделал</button>
-                        <button class="confirmation-yes" onclick="showScreenshotUpload()">Сделал</button>
+            <div id="cancel-confirmation" style="display: none;">
+                <div style="text-align: center; margin-bottom: 20px; font-size: 16px;">
+                    Вы точно не сделали это задание?
+                </div>
+                <div class="verification-buttons">
+                    <button class="verification-btn verification-reject" onclick="cancelTask()">Не сделал</button>
+                    <button class="verification-btn verification-approve" onclick="showScreenshotUpload()">Сделал</button>
+                </div>
+            </div>
+
+            <div id="screenshot-upload" style="display: none;">
+                <div style="text-align: center; margin-bottom: 16px;">
+                    <div style="font-size: 16px; margin-bottom: 8px;">📸 Отправьте скриншот для проверки</div>
+                    <div style="font-size: 14px; color: var(--text-secondary);">
+                        Загрузите фото выполненного задания
                     </div>
                 </div>
+                
+                <div class="screenshot-upload-area" id="screenshot-dropzone" onclick="document.getElementById('screenshot-input').click()">
+                    <div style="font-size: 48px; margin-bottom: 12px;">📁</div>
+                    <div style="font-size: 16px; margin-bottom: 8px;">Нажмите для загрузки скриншота</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">
+                        или перетащите файл сюда
+                    </div>
+                </div>
+                
+                <input type="file" id="screenshot-input" accept="image/*" style="display: none;" onchange="handleScreenshotUpload(this.files[0])">
+                
+                <img id="screenshot-preview" class="screenshot-preview" alt="Предпросмотр скриншота">
+                
+                <div class="screenshot-note">
+                    <p>💡 <strong>Важно:</strong> Убедитесь, что скриншот четко показывает выполнение задания. Размытые или нечитаемые скриншоты будут отклонены.</p>
+                </div>
+                
+                <button class="btn btn-primary btn-full" id="submit-screenshot-btn" onclick="submitScreenshot()" style="display: none; margin-top: 16px;">
+                    Отправить на проверку
+                </button>
             </div>
         </div>
     </div>
+</div>
 
-    <div class="chat-modal" id="admin-chat">
-        <div class="chat-header">
-            <div class="chat-avatar">
-                <div class="video-icon">💬</div>
+<!-- Модальное окно проверки задания для админа -->
+<div class="admin-verification-modal" id="admin-verification-modal">
+    <div class="admin-verification-content">
+        <div class="admin-verification-header">
+            <div class="admin-verification-avatar" id="admin-verification-avatar">U</div>
+            <div class="admin-verification-user-info">
+                <div class="admin-verification-user-name" id="admin-verification-user-name">Пользователь</div>
+                <div class="admin-verification-user-id">ID: <span id="admin-verification-user-id">0</span></div>
             </div>
-            <div class="chat-info">
-                <div class="chat-name">Администратор LinkGold</div>
-                <div class="chat-status">TG: @linkgold_admin</div>
-            </div>
-            <button class="chat-close" onclick="closeChat()">×</button>
+            <button class="modal-close" onclick="closeAdminVerificationModal()">×</button>
         </div>
-        <div class="chat-messages" id="chat-messages">
-            <div class="message message-admin">
-                Здравствуйте! Чем могу помочь?
-            </div>
+
+        <div class="admin-verification-task-info">
+            <div class="admin-verification-task-title" id="admin-verification-task-title">Название задания</div>
+            <div class="admin-verification-task-description" id="admin-verification-task-description">Описание задания</div>
+            <div class="admin-verification-task-price" id="admin-verification-task-price">0 ₽</div>
         </div>
-        <div class="chat-input">
-            <input type="text" id="chat-input-field" placeholder="Введите сообщение...">
-            <button class="chat-send" onclick="sendMessageToAdmin()">➤</button>
+
+        <div style="text-align: center; margin: 20px 0;">
+            <div style="font-size: 18px; font-weight: 600; margin-bottom: 12px;">📸 Скриншот от пользователя:</div>
+            <img id="admin-verification-screenshot" class="admin-verification-screenshot" alt="Скриншот задания">
+        </div>
+
+        <div class="admin-verification-buttons">
+            <button class="admin-verification-btn admin-verification-reject" onclick="rejectTask()">❌ Отклонить</button>
+            <button class="admin-verification-btn admin-verification-approve" onclick="approveTask()">✅ Одобрить</button>
         </div>
     </div>
+</div>
 
-    <script>
-console.log('Script loaded, ADMIN_ID:', ADMIN_ID);
+<div class="chat-modal" id="admin-chat">
+    <div class="chat-header">
+        <div class="chat-avatar">
+            <div class="video-icon">💬</div>
+        </div>
+        <div class="chat-info">
+            <div class="chat-name">Администратор LinkGold</div>
+            <div class="chat-status">TG: @linkgold_admin</div>
+        </div>
+        <button class="chat-close" onclick="closeChat()">×</button>
+    </div>
+    <div class="chat-messages" id="chat-messages">
+        <div class="message message-admin">
+            Здравствуйте! Чем могу помочь?
+        </div>
+    </div>
+    <div class="chat-input">
+        <input type="text" id="chat-input-field" placeholder="Введите сообщение...">
+        <button class="chat-send" onclick="sendMessageToAdmin()">➤</button>
+    </div>
+</div>
+        <script>
 // 🔧 КОНФИГУРАЦИЯ
 const API_URL = window.location.origin + '/api';
 const tg = window.Telegram.WebApp;
@@ -5424,22 +5708,7 @@ function createChatElement(chat, listType) {
     
     return chatElement;
 }
-// Дополните функцию initializeImageUploads
-function initializeImageUploads() {
-    // ... существующий код ...
-    
-    // Для админ-постов
-    const adminPostUploadArea = document.getElementById('admin-post-upload-area');
-    const adminPostImageInput = document.getElementById('admin-post-image');
-    const adminPostImagePreview = document.getElementById('admin-post-image-preview');
-    const removeAdminPostImage = document.getElementById('remove-admin-post-image');
-    
-    if (adminPostUploadArea) {
-        adminPostUploadArea.addEventListener('click', () => adminPostImageInput.click());
-        adminPostImageInput.addEventListener('change', handleImageUpload.bind(null, adminPostImageInput, adminPostImagePreview, removeAdminPostImage));
-        removeAdminPostImage.addEventListener('click', removeImage.bind(null, adminPostImageInput, adminPostImagePreview, removeAdminPostImage));
-    }
-}
+
 // Обновление статистики чатов
 function updateChatsStats(chats) {
     const activeChats = chats.filter(chat => chat.is_active).length;
@@ -6225,219 +6494,352 @@ window.addEventListener('load', function() {
     }
 });
 // Глобальные переменные для системы проверки
-// Глобальные переменные для системы проверки
 let currentUserTaskId = null;
 let currentVerificationId = null;
 
-// Инициализация загрузки изображений
-function initializeImageUploads() {
-    // Для постов
-    const postUploadArea = document.getElementById('post-upload-area');
-    const postImageInput = document.getElementById('post-image');
-    const postImagePreview = document.getElementById('post-image-preview');
-    const removePostImage = document.getElementById('remove-post-image');
-    
-    if (postUploadArea) {
-        postUploadArea.addEventListener('click', () => postImageInput.click());
-        postImageInput.addEventListener('change', handleImageUpload.bind(null, postImageInput, postImagePreview, removePostImage));
-        removePostImage.addEventListener('click', removeImage.bind(null, postImageInput, postImagePreview, removePostImage));
-    }
-    
-    // Для заданий
-    const taskUploadArea = document.getElementById('task-upload-area');
-    const taskImageInput = document.getElementById('task-image');
-    const taskImagePreview = document.getElementById('task-image-preview');
-    const removeTaskImage = document.getElementById('remove-task-image');
-    
-    if (taskUploadArea) {
-        taskUploadArea.addEventListener('click', () => taskImageInput.click());
-        taskImageInput.addEventListener('change', handleImageUpload.bind(null, taskImageInput, taskImagePreview, removeTaskImage));
-        removeTaskImage.addEventListener('click', removeImage.bind(null, taskImageInput, taskImagePreview, removeTaskImage));
-    }
-    
-    // Для скриншотов
-    const screenshotUploadArea = document.getElementById('screenshot-upload-area');
-    const screenshotInput = document.getElementById('screenshot-file');
-    const screenshotPreview = document.getElementById('screenshot-preview');
-    
-    if (screenshotUploadArea) {
-        screenshotUploadArea.addEventListener('click', () => screenshotInput.click());
-        screenshotInput.addEventListener('change', handleScreenshotUpload.bind(null, screenshotInput, screenshotPreview));
-    }
-}
-
-function handleImageUpload(input, preview, removeBtn, event) {
-    const file = input.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            preview.src = e.target.result;
-            preview.style.display = 'block';
-            removeBtn.style.display = 'block';
-        };
-        reader.readAsDataURL(file);
-    }
-}
-
-function handleScreenshotUpload(input, preview, event) {
-    const file = input.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            preview.src = e.target.result;
-            preview.style.display = 'block';
-            document.getElementById('submit-screenshot-btn').disabled = false;
-            document.getElementById('file-name').textContent = file.name;
-        };
-        reader.readAsDataURL(file);
-    }
-}
-
-function removeImage(input, preview, removeBtn) {
-    input.value = '';
-    preview.style.display = 'none';
-    removeBtn.style.display = 'none';
-}
-
-// Обновленные функции для создания постов и заданий
-async function addNewPost() {
-    const title = document.getElementById('post-title').value;
-    const content = document.getElementById('post-content').value;
-    const imageInput = document.getElementById('post-image');
-    
-    if (!title || !content) {
-        showNotification('Заполните заголовок и содержание поста!', 'error');
-        return;
-    }
-    
-    if (!currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
-        showNotification('Только администратор может публиковать посты!', 'error');
-        return;
-    }
-    
-    const formData = new FormData();
-    formData.append('title', title);
-    formData.append('content', content);
-    formData.append('author', currentUser.firstName);
-    formData.append('authorId', currentUser.id);
-    
-    if (imageInput.files[0]) {
-        formData.append('image', imageInput.files[0]);
-    }
-    
-    try {
-        const response = await fetch(`${API_URL}/posts`, {
-            method: 'POST',
-            body: formData
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            showNotification('Пост успешно опубликован!', 'success');
-            document.getElementById('post-title').value = '';
-            document.getElementById('post-content').value = '';
-            document.getElementById('post-image').value = '';
-            document.getElementById('post-image-preview').style.display = 'none';
-            document.getElementById('remove-post-image').style.display = 'none';
-            loadMainPagePosts();
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-        
-    } catch (error) {
-        console.error('Error adding post:', error);
-        showNotification('Ошибка соединения: ' + error.message, 'error');
-    }
-}
-
-async function addTask() {
-    const title = document.getElementById('task-title').value;
-    const description = document.getElementById('task-description').value;
-    const price = document.getElementById('task-price').value;
-    const imageInput = document.getElementById('task-image');
-
-    if (!title || !description || !price) {
-        showNotification('Заполните обязательные поля: название, описание и цена!', 'error');
-        return;
-    }
-
-    if (!currentUser || !currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
-        showNotification('Только администратор может создавать задания!', 'error');
-        return;
-    }
-
-    const formData = new FormData();
-    formData.append('title', title);
-    formData.append('description', description);
-    formData.append('price', price);
-    formData.append('created_by', currentUser.id);
-    
-    if (imageInput.files[0]) {
-        formData.append('image', imageInput.files[0]);
-    }
-
-    try {
-        const response = await fetch(`${API_URL}/tasks`, {
-            method: 'POST',
-            body: formData
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            showNotification('Задание успешно создано!', 'success');
-            
-            // Сброс формы
-            document.getElementById('task-title').value = '';
-            document.getElementById('task-description').value = '';
-            document.getElementById('task-price').value = '';
-            document.getElementById('task-image').value = '';
-            document.getElementById('task-image-preview').style.display = 'none';
-            document.getElementById('remove-task-image').style.display = 'none';
-            
-            loadAdminTasks();
-            loadTasks();
-            
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-        
-    } catch (error) {
-        console.error('Error creating task:', error);
-        showNotification('Ошибка соединения: ' + error.message, 'error');
-    }
-}
-
 // Функции для системы проверки заданий
-async function startTask() {
-    if (!selectedTaskId || !currentUser) return;
+
+// Показать модальное окно подтверждения выполнения
+function showTaskConfirmation(userTaskId, taskName) {
+    currentUserTaskId = userTaskId;
+    document.getElementById('confirmation-task-name').textContent = taskName;
+    document.getElementById('confirmation-modal').classList.add('active');
+}
+
+// Показать окно загрузки скриншота
+function showScreenshotUpload() {
+    closeModal('confirmation-modal');
+    closeModal('cancel-confirmation-modal');
     
+    // Сброс формы
+    document.getElementById('screenshot-file').value = '';
+    document.getElementById('screenshot-preview').style.display = 'none';
+    document.getElementById('file-name').textContent = '';
+    document.getElementById('submit-screenshot-btn').disabled = true;
+    
+    // Настройка обработчика файла
+    document.getElementById('screenshot-file').onchange = function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            document.getElementById('file-name').textContent = file.name;
+            document.getElementById('submit-screenshot-btn').disabled = false;
+            
+            // Показать превью
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.getElementById('screenshot-preview');
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+    
+    document.getElementById('screenshot-modal').classList.add('active');
+}
+
+// Показать подтверждение отмены
+function showCancelConfirmation() {
+    closeModal('confirmation-modal');
+    document.getElementById('cancel-confirmation-modal').classList.add('active');
+}
+
+// Отправить скриншот на проверку
+async function submitScreenshot() {
+    const fileInput = document.getElementById('screenshot-file');
+    if (!fileInput.files[0]) {
+        showNotification('Выберите файл скриншота', 'error');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('screenshot', fileInput.files[0]);
+    formData.append('userId', currentUser.id);
+
     try {
-        const result = await makeRequest(`${API_URL}/user/tasks/start`, {
+        const response = await fetch(`${API_URL}/user/tasks/${currentUserTaskId}/submit`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showNotification('Скриншот отправлен на проверку!', 'success');
+            closeModal('screenshot-modal');
+            loadUserTasks(); // Обновить список заданий
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error submitting screenshot:', error);
+        showNotification('Ошибка отправки скриншота', 'error');
+    }
+}
+
+// Отменить задание
+async function cancelTask() {
+    if (!currentUserTaskId) return;
+
+    try {
+        const result = await makeRequest(`${API_URL}/user/tasks/${currentUserTaskId}/cancel`, {
             method: 'POST',
             body: JSON.stringify({
-                userId: currentUser.id,
-                taskId: selectedTaskId
+                userId: currentUser.id
             })
         });
 
         if (result.success) {
-            showNotification('Задание начато! После выполнения подтвердите его в разделе "Подтверждение".', 'success');
-            closeModal('task-modal');
-            loadTasks(); // Обновить список заданий (убрать из "Новых")
-            loadUserTasks(); // Загрузить задания пользователя
+            showNotification('Задание отменено', 'success');
+            closeModal('cancel-confirmation-modal');
+            loadUserTasks(); // Обновить список заданий
         } else {
             showNotification('Ошибка: ' + result.error, 'error');
         }
     } catch (error) {
-        console.error('Error starting task:', error);
-        showNotification('Ошибка начала задания', 'error');
+        console.error('Error cancelling task:', error);
+        showNotification('Ошибка отмены задания', 'error');
     }
-    selectedTaskId = null;
 }
 
-// Обновить функцию инициализации
+// Загрузка заданий на проверку для админа
+async function loadTaskVerifications() {
+    if (!currentUser || !currentUser.isAdmin) return;
+
+    try {
+        const result = await makeRequest(`${API_URL}/admin/task-verifications?adminId=${ADMIN_ID}`);
+        if (result.success) {
+            displayTaskVerifications(result.verifications);
+        }
+    } catch (error) {
+        console.error('Error loading task verifications:', error);
+    }
+}
+
+// Отображение заданий на проверку
+function displayTaskVerifications(verifications) {
+    const container = document.getElementById('admin-verification-list');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!verifications || verifications.length === 0) {
+        container.innerHTML = `
+            <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
+                <div>Нет заданий на проверке</div>
+                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
+                    Все задания проверены
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    verifications.forEach(verification => {
+        const verificationElement = document.createElement('div');
+        verificationElement.className = 'verification-item';
+        verificationElement.onclick = () => openVerificationModal(verification);
+
+        const userAvatar = verification.user_name ? verification.user_name.charAt(0).toUpperCase() : 'U';
+        const submissionTime = formatPostDate(verification.submitted_at);
+
+        verificationElement.innerHTML = `
+            <div class="verification-header">
+                <div class="verification-avatar">
+                    ${userAvatar}
+                </div>
+                <div class="verification-user-info">
+                    <div class="verification-user-name">
+                        ${verification.user_name}
+                        ${verification.username ? `(@${verification.username})` : ''}
+                    </div>
+                    <div class="verification-task-title">${verification.task_title}</div>
+                </div>
+                <div class="verification-price">${verification.task_price} ₽</div>
+            </div>
+            <div class="verification-time">Отправлено: ${submissionTime}</div>
+        `;
+
+        container.appendChild(verificationElement);
+    });
+}
+
+// Открыть модальное окно проверки задания
+function openVerificationModal(verification) {
+    currentVerificationId = verification.id;
+
+    document.getElementById('verification-user-avatar').textContent = 
+        verification.user_name ? verification.user_name.charAt(0).toUpperCase() : 'U';
+    document.getElementById('verification-user-name').textContent = verification.user_name;
+    document.getElementById('verification-task-title').textContent = verification.task_title;
+    document.getElementById('verification-task-price').textContent = verification.task_price + ' ₽';
+    
+    // Загрузка скриншота
+    const screenshotImg = document.getElementById('verification-screenshot');
+    screenshotImg.src = verification.screenshot_url;
+    screenshotImg.onerror = function() {
+        this.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjMWExYTNhIi8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM4YjlkZGEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4K';
+    };
+
+    document.getElementById('verification-modal').classList.add('active');
+}
+
+// Одобрить задание
+async function approveVerification() {
+    if (!currentVerificationId) return;
+
+    try {
+        const result = await makeRequest(`${API_URL}/admin/task-verifications/${currentVerificationId}/approve`, {
+            method: 'POST',
+            body: JSON.stringify({
+                adminId: currentUser.id
+            })
+        });
+
+        if (result.success) {
+            showNotification('Задание одобрено! Баланс пользователя обновлен.', 'success');
+            closeModal('verification-modal');
+            loadTaskVerifications(); // Обновить список проверок
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error approving verification:', error);
+        showNotification('Ошибка одобрения задания', 'error');
+    }
+}
+
+// Отклонить задание
+async function rejectVerification() {
+    if (!currentVerificationId) return;
+
+    try {
+        const result = await makeRequest(`${API_URL}/admin/task-verifications/${currentVerificationId}/reject`, {
+            method: 'POST',
+            body: JSON.stringify({
+                adminId: currentUser.id
+            })
+        });
+
+        if (result.success) {
+            showNotification('Задание отклонено', 'success');
+            closeModal('verification-modal');
+            loadTaskVerifications(); // Обновить список проверок
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error rejecting verification:', error);
+        showNotification('Ошибка отклонения задания', 'error');
+    }
+}
+
+// Обновление функции отображения заданий пользователя
+function displayUserTasks(tasks, category) {
+    const container = document.getElementById(category + '-tasks');
+    if (!container) return;
+    
+    container.innerHTML = '';
+
+    if (!tasks || tasks.length === 0) {
+        container.innerHTML = `
+            <div class="no-tasks">
+                <div class="no-tasks-icon">📝</div>
+                <div>${
+                    category === 'confirmation' ? 'Нет заданий на подтверждение' : 
+                    category === 'completed' ? 'Нет выполненных заданий' :
+                    category === 'rejected' ? 'Нет отклоненных заданий' : 'Нет заданий'
+                }</div>
+            </div>
+        `;
+        return;
+    }
+
+    tasks.forEach(task => {
+        const taskElement = document.createElement('div');
+        taskElement.className = `task-card ${task.status === 'rejected' ? 'rejected-task' : ''}`;
+        
+        if (category === 'confirmation') {
+            taskElement.innerHTML = `
+                <div class="task-header">
+                    <div>
+                        <div class="task-title">${task.title}</div>
+                        <div class="task-category">${task.category}</div>
+                    </div>
+                    <div class="task-price">${task.price} ₽</div>
+                </div>
+                <div class="task-description">${task.description}</div>
+                <div class="task-footer">
+                    <div class="task-time">Ожидает подтверждения</div>
+                    <button class="task-btn" onclick="showTaskConfirmation(${task.id}, '${escapeHtml(task.title)}')">Подтвердить выполнение</button>
+                </div>
+            `;
+        } else if (category === 'completed') {
+            taskElement.innerHTML = `
+                <div class="task-header">
+                    <div>
+                        <div class="task-title">${task.title}</div>
+                        <div class="task-category">${task.category}</div>
+                    </div>
+                    <div class="task-price">${task.price} ₽</div>
+                </div>
+                <div class="task-description">${task.description}</div>
+                <div class="task-footer">
+                    <div class="task-time">Выполнено</div>
+                    <div class="task-status completed">✅</div>
+                </div>
+            `;
+        } else if (category === 'rejected') {
+            taskElement.innerHTML = `
+                <div class="task-header">
+                    <div>
+                        <div class="task-title">${task.title}</div>
+                        <div class="task-category">${task.category}</div>
+                    </div>
+                    <div class="task-price">${task.price} ₽</div>
+                </div>
+                <div class="task-description">${task.description}</div>
+                <div class="task-footer">
+                    <div class="task-time">Отклонено</div>
+                    <button class="support-btn" onclick="openAdminChat()">Написать в поддержку</button>
+                </div>
+            `;
+        }
+        
+        container.appendChild(taskElement);
+    });
+}
+
+// Обновление функции загрузки заданий пользователя
+async function loadUserTasks() {
+    if (!currentUser) return;
+    
+    try {
+        // Активные задания (на подтверждение)
+        const activeResult = await makeRequest(`${API_URL}/user/${currentUser.id}/tasks?status=active`);
+        if (activeResult.success) {
+            displayUserTasks(activeResult.tasks, 'confirmation');
+        }
+        
+        // Выполненные задания
+        const completedResult = await makeRequest(`${API_URL}/user/${currentUser.id}/tasks?status=completed`);
+        if (completedResult.success) {
+            displayUserTasks(completedResult.tasks, 'completed');
+        }
+        
+        // Отклоненные задания
+        const rejectedResult = await makeRequest(`${API_URL}/user/${currentUser.id}/tasks?status=rejected`);
+        if (rejectedResult.success) {
+            displayUserTasks(rejectedResult.tasks, 'rejected');
+        }
+        
+    } catch (error) {
+        console.error('Error loading user tasks:', error);
+    }
+}
+
+// Обновить инициализацию приложения
 function initializeApp() {
     displayUserProfile();
     checkAdminRights();
@@ -6445,13 +6847,12 @@ function initializeApp() {
     loadTasks();
     initializeSearch();
     loadUserTasks();
-    initializeImageUploads(); // Добавить эту строку
     
     // Если пользователь админ, загружаем админ-данные
     if (currentUser && currentUser.isAdmin) {
         loadAdminChats();
         loadAdminTasks();
-        loadTaskVerifications();
+        loadTaskVerifications(); // Добавить эту строку
     }
 }
 
@@ -6466,297 +6867,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
-// Основные функции админ-панели
-function showAdminChats() {
-    document.getElementById('admin-chats-container').style.display = 'block';
-    document.getElementById('post-management').style.display = 'none';
-    document.getElementById('task-management').style.display = 'none';
-    document.getElementById('task-verification').style.display = 'none';
-    loadAdminChats();
-}
-
-function showPostManagement() {
-    document.getElementById('admin-chats-container').style.display = 'none';
-    document.getElementById('post-management').style.display = 'block';
-    document.getElementById('task-management').style.display = 'none';
-    document.getElementById('task-verification').style.display = 'none';
-    loadAdminPosts();
-}
-
-function showTaskManagement() {
-    document.getElementById('admin-chats-container').style.display = 'none';
-    document.getElementById('post-management').style.display = 'none';
-    document.getElementById('task-management').style.display = 'block';
-    document.getElementById('task-verification').style.display = 'none';
-    loadAdminTasks();
-}
-
-function showTaskVerification() {
-    document.getElementById('admin-chats-container').style.display = 'none';
-    document.getElementById('post-management').style.display = 'none';
-    document.getElementById('task-management').style.display = 'none';
-    document.getElementById('task-verification').style.display = 'block';
-    loadTaskVerifications();
-}
-
-// Функции для админ-разделов
-function showAdminSection(section) {
-    document.querySelectorAll('.admin-section').forEach(sec => {
-        sec.style.display = 'none';
-    });
-    
-    const targetSection = document.getElementById('admin-' + section + '-section');
-    if (targetSection) {
-        targetSection.style.display = 'block';
-    }
-    
-    if (section === 'support') {
-        loadAdminChats();
-    } else if (section === 'tasks') {
-        loadAdminTasks();
-    } else if (section === 'verification') {
-        loadTaskVerifications();
-    } else if (section === 'posts') {
-        loadAdminPosts();
-    }
-}
-
-// Загрузка постов для админа
-async function loadAdminPosts() {
-    if (!currentUser || !currentUser.isAdmin) return;
-    
-    try {
-        const result = await makeRequest(`${API_URL}/posts`);
-        if (result.success) {
-            displayAdminPosts(result.posts);
-        }
-    } catch (error) {
-        console.error('Error loading admin posts:', error);
-    }
-}
-
-function displayAdminPosts(posts) {
-    const container = document.getElementById('admin-posts-list');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    if (!posts || posts.length === 0) {
-        container.innerHTML = '<div class="no-tasks" style="text-align: center; padding: 20px;">Нет опубликованных постов</div>';
-        return;
-    }
-    
-    posts.forEach(post => {
-        const postElement = document.createElement('div');
-        postElement.className = 'admin-task-item';
-        postElement.innerHTML = `
-            <div class="admin-task-header">
-                <div class="admin-task-title">${post.title}</div>
-                <div class="admin-task-actions">
-                    <button class="admin-task-delete" onclick="deletePost(${post.id})">🗑️ Удалить</button>
-                </div>
-            </div>
-            <div class="admin-task-description">${post.content}</div>
-            ${post.image_url ? `<img src="${post.image_url}" style="max-width: 200px; border-radius: 8px; margin-top: 8px;" alt="Изображение поста">` : ''}
-            <div class="admin-task-details">
-                <span class="admin-task-time">${formatPostDate(post.timestamp)}</span>
-                <span class="admin-task-category">Автор: ${post.author}</span>
-            </div>
-        `;
-        container.appendChild(postElement);
-    });
-}
-
-// Обновленная функция проверки прав администратора
-function checkAdminRights() {
-    const adminNavItem = document.getElementById('admin-nav-item');
-    const adminPanel = document.getElementById('admin-panel');
-    
-    console.log('Checking admin rights:', {
-        currentUser: currentUser,
-        ADMIN_ID: ADMIN_ID,
-        isAdmin: currentUser && currentUser.isAdmin,
-        idMatch: currentUser && parseInt(currentUser.id) === ADMIN_ID
-    });
-    
-    if (currentUser && currentUser.isAdmin && parseInt(currentUser.id) === ADMIN_ID) {
-        if (adminNavItem) {
-            adminNavItem.style.display = 'flex';
-            console.log('Admin nav item shown');
-        }
-        if (adminPanel) {
-            adminPanel.style.display = 'block';
-            console.log('Admin panel shown');
-        }
-    } else {
-        if (adminNavItem) {
-            adminNavItem.style.display = 'none';
-            console.log('Admin nav item hidden');
-        }
-        if (adminPanel) {
-            adminPanel.style.display = 'none';
-            console.log('Admin panel hidden');
-        }
-    }
-}
-
-// Обновленная функция инициализации
-function initializeApp() {
-    console.log('Initializing app for user:', currentUser);
-    
-    displayUserProfile();
-    checkAdminRights();
-    loadMainPagePosts();
-    loadTasks();
-    initializeSearch();
-    loadUserTasks();
-    initializeImageUploads();
-    
-    // Если пользователь админ, загружаем админ-данные
-    if (currentUser && currentUser.isAdmin && parseInt(currentUser.id) === ADMIN_ID) {
-        console.log('Loading admin data...');
-        loadAdminChats();
-        loadAdminTasks();
-        loadTaskVerifications();
-        loadAdminPosts();
-    }
-}
-
-// Функции навигации
-function showMainTab() {
-    hideAllTabs();
-    document.getElementById('main-tab').classList.add('active');
-    updateNavState('main');
-    loadMainPagePosts();
-}
-
-function showTasksTab() {
-    hideAllTabs();
-    document.getElementById('tasks-tab').classList.add('active');
-    updateNavState('tasks');
-    loadTasks();
-}
-
-function showProfileTab() {
-    hideAllTabs();
-    document.getElementById('profile-tab').classList.add('active');
-    updateNavState('profile');
-}
-
-function showAdminTab() {
-    if (!currentUser || !currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
-        showNotification('Доступ запрещен!', 'error');
-        return;
-    }
-    
-    hideAllTabs();
-    document.getElementById('admin-tab').classList.add('active');
-    updateNavState('admin');
-    
-    loadAdminChats();
-    loadAdminTasks();
-    loadTaskVerifications();
-    showAdminSection('support');
-}
-
-function hideAllTabs() {
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    document.querySelectorAll('.page').forEach(page => {
-        page.classList.remove('active');
-    });
-}
-
-function updateNavState(activeTab) {
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    
-    const navItems = document.querySelectorAll('.nav-item');
-    switch(activeTab) {
-        case 'main': 
-            if (navItems[0]) navItems[0].classList.add('active'); 
-            break;
-        case 'tasks': 
-            if (navItems[1]) navItems[1].classList.add('active'); 
-            break;
-        case 'profile': 
-            if (navItems[2]) navItems[2].classList.add('active'); 
-            break;
-        case 'admin': 
-            if (navItems[3]) navItems[3].classList.add('active'); 
-            break;
-    }
-}
-
-// Обновленная функция инициализации пользователя Telegram
-async function initializeTelegramUser() {
-    try {
-        if (typeof tg !== 'undefined' && tg.initDataUnsafe && tg.initDataUnsafe.user) {
-            const tgUser = tg.initDataUnsafe.user;
-            
-            currentUser = {
-                id: tgUser.id,
-                firstName: tgUser.first_name || 'Пользователь',
-                lastName: tgUser.last_name || '',
-                username: tgUser.username || `user_${tgUser.id}`,
-                photoUrl: tgUser.photo_url || '',
-                isAdmin: parseInt(tgUser.id) === ADMIN_ID
-            };
-            
-            console.log('Telegram user initialized:', currentUser);
-            
-            // Аутентифицируем пользователя на сервере
-            try {
-                const authResult = await makeRequest(`${API_URL}/user/auth`, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        user: currentUser
-                    })
-                });
-                
-                if (authResult.success) {
-                    Object.assign(currentUser, authResult.user);
-                    console.log('User authenticated with server:', currentUser);
-                }
-            } catch (authError) {
-                console.log('Auth endpoint not available, continuing with basic user data');
-            }
-            
-            initializeApp();
-            
-        } else {
-            console.log('Telegram user data not available');
-            initializeTestUser();
-        }
-    } catch (error) {
-        console.error('Error initializing Telegram user:', error);
-        initializeTestUser();
-    }
-}
-
-// Обновленная тестовая функция
-function initializeTestUser() {
-    // Для тестирования админа, используйте ADMIN_ID
-    currentUser = {
-        id: ADMIN_ID, // Это сделает пользователя админом
-        firstName: 'Администратор',
-        lastName: 'Тестовый',
-        username: 'admin_test',
-        isAdmin: true,
-        balance: 1500,
-        level: 5,
-        tasks_completed: 25,
-        active_tasks: 3,
-        quality_rate: 98,
-        referral_count: 10,
-        referral_earned: 1200
-    };
-    
-    console.log('Test user initialized (ADMIN):', currentUser);
-    initializeApp();
-}
 
 // Экспортируем новые функции
 window.showTaskConfirmation = showTaskConfirmation;
