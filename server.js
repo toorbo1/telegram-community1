@@ -568,7 +568,7 @@ app.get('/api/user/:userId/tasks', (req, res) => {
     });
 });
 
-// Support system endpoints
+// Support system endpoints - ИСПРАВЛЕННЫЕ
 app.get('/api/support/chats', (req, res) => {
     const { adminId } = req.query;
     
@@ -582,6 +582,7 @@ app.get('/api/support/chats', (req, res) => {
     db.all(`SELECT * FROM support_chats WHERE is_active = 1 ORDER BY last_message_time DESC`, 
             [], (err, rows) => {
         if (err) {
+            console.error('Database error:', err);
             return res.status(500).json({
                 success: false,
                 error: 'Database error'
@@ -606,6 +607,7 @@ app.get('/api/support/user-chat/:userId', (req, res) => {
 
     db.get("SELECT * FROM support_chats WHERE user_id = ?", [userId], (err, chat) => {
         if (err) {
+            console.error('Database error:', err);
             return res.status(500).json({
                 success: false,
                 error: 'Database error'
@@ -614,21 +616,38 @@ app.get('/api/support/user-chat/:userId', (req, res) => {
 
         if (!chat) {
             // Create new chat if doesn't exist
-            db.run(`INSERT INTO support_chats (user_id, user_name, user_username) VALUES (?, ?, ?)`,
-                    [userId, `User_${userId}`, `user_${userId}`], function(err) {
+            const userName = `User_${userId}`;
+            const userUsername = `user_${userId}`;
+            
+            db.run(`INSERT INTO support_chats (user_id, user_name, user_username, last_message, last_message_time) 
+                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+                    [userId, userName, userUsername, 'Чат создан'], function(err) {
                 if (err) {
+                    console.error('Database error:', err);
                     return res.status(500).json({
                         success: false,
                         error: 'Database error'
                     });
                 }
-                db.get("SELECT * FROM support_chats WHERE id = ?", [this.lastID], (err, newChat) => {
+                
+                const newChatId = this.lastID;
+                db.get("SELECT * FROM support_chats WHERE id = ?", [newChatId], (err, newChat) => {
                     if (err) {
                         return res.status(500).json({
                             success: false,
                             error: 'Database error'
                         });
                     }
+                    
+                    // Создаем приветственное сообщение от админа
+                    db.run(`INSERT INTO support_messages (chat_id, user_id, user_name, message, is_admin, is_read) 
+                            VALUES (?, ?, ?, ?, 1, 1)`,
+                            [newChatId, ADMIN_ID, 'Администратор', 'Здравствуйте! Чем могу помочь?'], function(err) {
+                        if (err) {
+                            console.error('Error creating welcome message:', err);
+                        }
+                    });
+                    
                     res.json({
                         success: true,
                         chat: {
@@ -650,48 +669,13 @@ app.get('/api/support/user-chat/:userId', (req, res) => {
     });
 });
 
-app.get('/api/support/chats/:chatId', (req, res) => {
-    const chatId = req.params.chatId;
-    const { adminId } = req.query;
-
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied'
-        });
-    }
-
-    db.get("SELECT * FROM support_chats WHERE id = ?", [chatId], (err, chat) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-
-        if (!chat) {
-            return res.status(404).json({
-                success: false,
-                error: 'Chat not found'
-            });
-        }
-
-        res.json({
-            success: true,
-            chat: {
-                ...chat,
-                moscow_time: formatMoscowTimeShort(chat.last_message_time)
-            }
-        });
-    });
-});
-
 app.get('/api/support/chats/:chatId/messages', (req, res) => {
     const chatId = req.params.chatId;
 
     db.all(`SELECT * FROM support_messages WHERE chat_id = ? ORDER BY sent_at ASC`, 
             [chatId], (err, rows) => {
         if (err) {
+            console.error('Database error:', err);
             return res.status(500).json({
                 success: false,
                 error: 'Database error'
@@ -722,128 +706,6 @@ app.post('/api/support/chats/:chatId/messages', (req, res) => {
         });
     }
 
-    db.run(`INSERT INTO support_messages (chat_id, user_id, user_name, message, image_url, is_admin) 
-            VALUES (?, ?, ?, ?, ?, ?)`,
-            [chatId, user_id, user_name, message, image_url, is_admin],
-            function(err) {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-
-        // Update chat last message and time, increment unread count for admin
-        const displayMessage = message || '📷 Фото';
-        const updateQuery = is_admin ? 
-            `UPDATE support_chats SET last_message = ?, last_message_time = CURRENT_TIMESTAMP WHERE id = ?` :
-            `UPDATE support_chats SET last_message = ?, last_message_time = CURRENT_TIMESTAMP, unread_count = unread_count + 1 WHERE id = ?`;
-        
-        db.run(updateQuery, [displayMessage, chatId]);
-
-        res.json({
-            success: true,
-            message: 'Message sent',
-            messageId: this.lastID
-        });
-    });
-});
-
-app.put('/api/support/chats/:chatId/read', (req, res) => {
-    const chatId = req.params.chatId;
-
-    db.run("UPDATE support_chats SET unread_count = 0 WHERE id = ?", [chatId], function(err) {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        // Also mark messages as read
-        db.run("UPDATE support_messages SET is_read = 1 WHERE chat_id = ? AND is_admin = 0", [chatId]);
-        
-        res.json({
-            success: true,
-            message: 'Chat marked as read'
-        });
-    });
-});
-
-// Withdrawal endpoints
-app.post('/api/withdrawal/request', (req, res) => {
-    const { user_id, amount, method, details } = req.body;
-    
-    if (!user_id || !amount || !method || !details) {
-        return res.status(400).json({
-            success: false,
-            error: 'Missing required fields'
-        });
-    }
-    
-    db.run(`INSERT INTO withdrawal_requests (user_id, amount, method, details) 
-            VALUES (?, ?, ?, ?)`,
-            [user_id, amount, method, details],
-            function(err) {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        res.json({
-            success: true,
-            message: 'Withdrawal request submitted successfully',
-            requestId: this.lastID
-        });
-    });
-});
-
-app.get('/api/withdrawal/requests/:userId', (req, res) => {
-    const userId = req.params.userId;
-    
-    db.all("SELECT * FROM withdrawal_requests WHERE user_id = ? ORDER BY created_at DESC", 
-            [userId], (err, rows) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        res.json({
-            success: true,
-            requests: rows
-        });
-    });
-});
-
-// Serve the main page
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-// Handle 404
-app.use((req, res) => {
-    res.status(404).json({
-        success: false,
-        error: 'Endpoint not found'
-    });
-});
-// 🔧 ИСПРАВЛЕНИЕ ДЛЯ СОХРАНЕНИЯ СООБЩЕНИЙ И УДАЛЕНИЯ ЧАТОВ
-
-// Убедитесь, что сообщения сохраняются правильно
-app.post('/api/support/chats/:chatId/messages', (req, res) => {
-    const chatId = req.params.chatId;
-    const { user_id, user_name, message, image_url, is_admin } = req.body;
-
-    if (!message && !image_url) {
-        return res.status(400).json({
-            success: false,
-            error: 'Message or image is required'
-        });
-    }
-
     console.log(`💬 Saving message for chat ${chatId}:`, { 
         user_id, user_name, 
         message: message ? message.substring(0, 50) + '...' : 'IMAGE', 
@@ -862,24 +724,55 @@ app.post('/api/support/chats/:chatId/messages', (req, res) => {
             });
         }
 
-        // Update chat last message and time, increment unread count for admin
+        // Update chat last message and time, increment unread count for admin if message from user
         const displayMessage = message || '📷 Фото';
-        const updateQuery = is_admin ? 
-            `UPDATE support_chats SET last_message = ?, last_message_time = CURRENT_TIMESTAMP WHERE id = ?` :
-            `UPDATE support_chats SET last_message = ?, last_message_time = CURRENT_TIMESTAMP, unread_count = unread_count + 1 WHERE id = ?`;
+        let updateQuery;
+        let updateParams;
+
+        if (is_admin) {
+            // Сообщение от админа - сбрасываем счетчик непрочитанных
+            updateQuery = `UPDATE support_chats SET last_message = ?, last_message_time = CURRENT_TIMESTAMP, unread_count = 0 WHERE id = ?`;
+            updateParams = [displayMessage, chatId];
+        } else {
+            // Сообщение от пользователя - увеличиваем счетчик непрочитанных
+            updateQuery = `UPDATE support_chats SET last_message = ?, last_message_time = CURRENT_TIMESTAMP, unread_count = unread_count + 1 WHERE id = ?`;
+            updateParams = [displayMessage, chatId];
+        }
         
-        db.run(updateQuery, [displayMessage, chatId], function(updateErr) {
+        db.run(updateQuery, updateParams, function(updateErr) {
             if (updateErr) {
                 console.error('❌ Error updating chat:', updateErr);
+            } else {
+                console.log(`✅ Chat ${chatId} updated successfully`);
             }
-            
-            console.log(`✅ Message saved successfully for chat ${chatId}, ID: ${this.lastID}`);
         });
 
         res.json({
             success: true,
             message: 'Message sent',
             messageId: this.lastID
+        });
+    });
+});
+
+app.put('/api/support/chats/:chatId/read', (req, res) => {
+    const chatId = req.params.chatId;
+
+    db.run("UPDATE support_chats SET unread_count = 0 WHERE id = ?", [chatId], function(err) {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        // Also mark messages as read
+        db.run("UPDATE support_messages SET is_read = 1 WHERE chat_id = ? AND is_admin = 0", [chatId]);
+        
+        res.json({
+            success: true,
+            message: 'Chat marked as read'
         });
     });
 });
