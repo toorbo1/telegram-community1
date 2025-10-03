@@ -3401,6 +3401,329 @@
     border-radius: 8px;
     text-align: center;
 }
+/* Минималистичный дизайн - дополнение к существующим стилям */
+:root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --text-primary: #1a1a1a;
+    --text-secondary: #666666;
+    --accent: #007aff;
+    --accent-hover: #0056cc;
+    --card-bg: #ffffff;
+    --border: #e5e5e7;
+    --success: #34c759;
+    --error: #ff3b30;
+    --warning: #ff9500;
+}
+
+/* Упрощенные карточки */
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Минималистичные кнопки */
+.btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 8px;
+    transition: background-color 0.2s;
+}
+
+.btn:active {
+    background: var(--accent-hover);
+}
+
+.btn-secondary {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+}
+
+/* Упрощенная навигация */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-top: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-around;
+    backdrop-filter: blur(10px);
+}
+
+.nav-item {
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 8px;
+    flex: 1;
+    transition: background-color 0.2s;
+}
+
+.nav-item.active {
+    background: var(--bg-secondary);
+}
+
+.nav-icon {
+    font-size: 20px;
+    margin-bottom: 4px;
+}
+
+.nav-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+/* Минималистичные модальные окна */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 1000;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    width: 100%;
+    max-width: 400px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.modal-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Упрощенные задачи */
+.task-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 8px;
+    transition: transform 0.2s;
+}
+
+.task-card:active {
+    transform: scale(0.98);
+}
+
+.task-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.task-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--text-primary);
+}
+
+.task-category {
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    padding: 2px 8px;
+    border-radius: 6px;
+    display: inline-block;
+}
+
+.task-price {
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 18px;
+}
+
+.task-description {
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1.4;
+    margin-bottom: 12px;
+}
+
+.task-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.task-time {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* Статус задания */
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-pending { 
+    background: #fff3cd; 
+    color: #856404; 
+}
+
+.status-completed { 
+    background: #d4edda; 
+    color: #155724; 
+}
+
+.status-rejected { 
+    background: #f8d7da; 
+    color: #721c24; 
+}
+
+/* Вкладки заданий */
+.tasks-tabs {
+    display: flex;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 4px;
+    margin-bottom: 16px;
+}
+
+.task-tab {
+    flex: 1;
+    text-align: center;
+    padding: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.task-tab.active {
+    background: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Форма подтверждения */
+.confirmation-task {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.confirmation-header {
+    margin-bottom: 16px;
+}
+
+.confirmation-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.confirmation-price {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.confirmation-question {
+    font-size: 16px;
+    margin-bottom: 20px;
+    color: var(--text-primary);
+}
+
+.confirmation-buttons {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.confirmation-no, .confirmation-yes {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.confirmation-no {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.confirmation-yes {
+    background: var(--accent);
+    color: white;
+}
+
+/* Поле загрузки файла */
+.file-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    margin-bottom: 12px;
+}
+
+.screenshot-note {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 6px;
+    padding: 12px;
+    margin: 16px 0;
+    font-size: 12px;
+    color: #856404;
+}
     </style>
 </head>
 <body>
@@ -4005,6 +4328,7 @@
         </div>
     </div>
 <!-- Модальное окно подтверждения выполнения задания -->
+<!-- Модальное окно подтверждения выполнения задания -->
 <div class="modal" id="confirmation-modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -4012,6 +4336,7 @@
             <button class="modal-close" onclick="closeConfirmationModal()">×</button>
         </div>
         <div class="modal-body">
+            <!-- Основное подтверждение -->
             <div class="confirmation-task">
                 <div class="confirmation-header">
                     <div class="confirmation-title" id="confirmation-task-title">Название задания</div>
@@ -4027,20 +4352,18 @@
             <!-- Форма подтверждения с скриншотом -->
             <div id="confirmation-form" style="display: none;">
                 <div style="margin-bottom: 16px;">
-                    <label style="display: block; margin-bottom: 8px; font-size: 14px; color: var(--text-primary);">
-                        📸 Загрузите скриншот выполнения задания:
-                    </label>
-                    <input type="file" id="task-screenshot" accept="image/*" style="width: 100%; margin-bottom: 12px; padding: 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; color: var(--text-primary);">
+                    <div style="font-weight: 600; margin-bottom: 8px;">📸 Загрузите скриншот выполнения задания:</div>
+                    <input type="file" id="task-screenshot" accept="image/*" class="file-input">
                 </div>
                 <div class="screenshot-note">
-                    <p>⚠️ Убедитесь, что скриншот четко показывает выполнение задания. Размытые или нечитаемые скриншоты будут отклонены.</p>
+                    ⚠️ Убедитесь, что скриншот четко показывает выполнение задания. Размытые или нечитаемые скриншоты будут отклонены.
                 </div>
-                <button class="btn btn-primary btn-full" onclick="submitTaskForReview()">📤 Отправить на проверку</button>
+                <button class="btn" onclick="submitTaskForReview()">📤 Отправить на проверку</button>
             </div>
 
             <!-- Подтверждение отмены -->
             <div id="cancel-confirmation" style="display: none;">
-                <div class="confirmation-question" style="color: var(--warning);">Вы точно не сделали это задание?</div>
+                <div class="confirmation-question">Вы точно не сделали это задание?</div>
                 <div class="confirmation-buttons">
                     <button class="confirmation-no" onclick="cancelTask()">❌ Не сделал</button>
                     <button class="confirmation-yes" onclick="showScreenshotUpload()">✅ Сделал</button>
@@ -4061,9 +4384,9 @@
             <div id="verification-task-info">
                 <!-- Информация о задании будет загружена здесь -->
             </div>
-            <div class="task-modal-buttons" style="margin-top: 20px;">
-                <button class="task-modal-cancel" onclick="rejectTask()">❌ Отклонить</button>
-                <button class="task-modal-start" onclick="approveTask()">✅ Одобрить</button>
+            <div style="display: flex; gap: 12px; margin-top: 20px;">
+                <button class="btn btn-secondary" onclick="rejectTask()" style="flex: 1;">❌ Отклонить</button>
+                <button class="btn" onclick="approveTask()" style="flex: 1;">✅ Одобрить</button>
             </div>
         </div>
     </div>
@@ -5803,6 +6126,7 @@ window.addEventListener('load', function() {
     }
 });
 // Глобальные переменные для управления заданиями
+// Глобальные переменные для управления заданиями
 let currentUserTaskId = null;
 let currentVerificationTask = null;
 
@@ -5891,13 +6215,14 @@ function fileToBase64(file) {
 }
 
 async function cancelTask() {
-    if (!currentUserTaskId) return;
+    if (!currentUserTaskId || !currentUser) return;
     
     try {
         const result = await makeRequest(`${API_URL}/user/tasks/cancel`, {
             method: 'POST',
             body: JSON.stringify({
-                userTaskId: currentUserTaskId
+                userTaskId: currentUserTaskId,
+                userId: currentUser.id
             })
         });
         
@@ -5936,10 +6261,10 @@ function displayPendingTasks(tasks) {
     
     if (!tasks || tasks.length === 0) {
         container.innerHTML = `
-            <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
+            <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
                 <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
                 <div>Нет заданий на проверку</div>
-                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
+                <div style="font-size: 14px; margin-top: 8px;">
                     Все задания проверены
                 </div>
             </div>
@@ -5949,32 +6274,23 @@ function displayPendingTasks(tasks) {
     
     tasks.forEach(task => {
         const taskElement = document.createElement('div');
-        taskElement.className = 'verification-item';
+        taskElement.className = 'card';
         taskElement.onclick = () => openTaskVerification(task);
+        taskElement.style.cursor = 'pointer';
         
-        const userAvatarText = task.first_name ? task.first_name.charAt(0).toUpperCase() : 'U';
         const userName = task.last_name ? 
             `${task.first_name} ${task.last_name}` : 
             task.first_name;
         
         taskElement.innerHTML = `
-            <div class="verification-header">
-                <div class="verification-user">
-                    <div class="user-avatar-small">
-                        ${userAvatarText}
-                    </div>
-                    <div class="user-info">
-                        <div class="user-name">${userName}</div>
-                        <div class="user-username">@${task.username}</div>
-                    </div>
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div style="flex: 1;">
+                    <div style="font-weight: 600; margin-bottom: 4px;">${task.title}</div>
+                    <div style="color: var(--text-secondary); font-size: 14px;">${userName}</div>
                 </div>
-                <div class="verification-task">
-                    <div class="task-name">${task.title}</div>
-                    <div class="task-price">${task.price} ₽</div>
-                </div>
-                <div class="verification-meta">
-                    <div class="verification-time">${formatPostDate(task.started_at)}</div>
-                    <div class="status-badge status-pending">На проверке</div>
+                <div style="text-align: right;">
+                    <div style="font-weight: 600; color: var(--accent);">${task.price} ₽</div>
+                    <div class="status-badge status-pending" style="margin-top: 4px;">На проверке</div>
                 </div>
             </div>
         `;
@@ -5994,11 +6310,11 @@ function openTaskVerification(task) {
     let screenshotContent = '';
     if (task.screenshot_url) {
         screenshotContent = `
-            <img src="${task.screenshot_url}" alt="Скриншот выполнения" class="verification-screenshot">
+            <img src="${task.screenshot_url}" alt="Скриншот выполнения" style="width: 100%; border-radius: 8px; margin: 10px 0; border: 1px solid var(--border);">
         `;
     } else {
         screenshotContent = `
-            <div class="screenshot-placeholder">
+            <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary); background: var(--bg-secondary); border-radius: 8px; margin: 10px 0;">
                 <div style="font-size: 24px; margin-bottom: 8px;">📷</div>
                 <div>Скриншот не загружен</div>
             </div>
@@ -6006,24 +6322,26 @@ function openTaskVerification(task) {
     }
     
     container.innerHTML = `
-        <div style="margin-bottom: 15px;">
+        <div style="margin-bottom: 16px;">
             <h3 style="color: var(--text-primary); margin-bottom: 8px;">${task.title}</h3>
             <p style="color: var(--text-secondary); margin-bottom: 10px;">${task.description}</p>
         </div>
         
-        <div style="background: var(--bg-secondary); padding: 15px; border-radius: 12px; margin-bottom: 15px;">
-            <h4 style="color: var(--text-primary); margin-bottom: 10px;">👤 Информация о пользователе</h4>
+        <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+            <div style="font-weight: 600; margin-bottom: 8px;">👤 Информация о пользователе</div>
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                <div class="user-avatar-small">${userName.charAt(0).toUpperCase()}</div>
+                <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                    ${userName.charAt(0).toUpperCase()}
+                </div>
                 <div>
-                    <div style="font-weight: 600;">${userName}</div>
+                    <div style="font-weight: 500;">${userName}</div>
                     <div style="font-size: 12px; color: var(--text-secondary);">@${task.username}</div>
                 </div>
             </div>
-            <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-top: 8px;">
                 <div>
                     <div style="font-size: 12px; color: var(--text-secondary);">Цена задания</div>
-                    <div style="font-size: 18px; font-weight: 700; background: var(--gold-gradient); -webkit-background-clip: text; background-clip: text; color: transparent;">${task.price} ₽</div>
+                    <div style="font-size: 18px; font-weight: 700; color: var(--accent);">${task.price} ₽</div>
                 </div>
                 <div>
                     <div style="font-size: 12px; color: var(--text-secondary);">Начато</div>
@@ -6033,7 +6351,7 @@ function openTaskVerification(task) {
         </div>
         
         <div>
-            <h4 style="color: var(--text-primary); margin-bottom: 10px;">📸 Скриншот выполнения</h4>
+            <div style="font-weight: 600; margin-bottom: 8px;">📸 Скриншот выполнения</div>
             ${screenshotContent}
         </div>
     `;
@@ -6093,7 +6411,7 @@ async function rejectTask() {
     }
 }
 
-// Обновим функцию loadUserTasks для отображения разных статусов
+// Обновляем функцию loadUserTasks для отображения разных статусов
 async function loadUserTasks() {
     if (!currentUser) return;
     
@@ -6121,7 +6439,7 @@ async function loadUserTasks() {
     }
 }
 
-// Обновим функцию displayUserTasks для разных статусов
+// Обновляем функцию displayUserTasks для разных статусов
 function displayUserTasks(tasks, category) {
     const container = document.getElementById(category + '-tasks');
     if (!container) return;
@@ -6148,8 +6466,8 @@ function displayUserTasks(tasks, category) {
         }
         
         container.innerHTML = `
-            <div class="no-tasks">
-                <div class="no-tasks-icon">${icon}</div>
+            <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
+                <div style="font-size: 48px; margin-bottom: 16px;">${icon}</div>
                 <div>${message}</div>
             </div>
         `;
@@ -6172,7 +6490,7 @@ function displayUserTasks(tasks, category) {
                 <div class="task-description">${task.description}</div>
                 <div class="task-footer">
                     <div class="task-time">Ожидает подтверждения</div>
-                    <button class="task-btn" onclick="submitTaskCompletion(${task.id}, '${task.title}', ${task.price})">Подтвердить выполнение</button>
+                    <button class="btn" onclick="submitTaskCompletion(${task.id}, '${escapeHtml(task.title)}', ${task.price})">Подтвердить выполнение</button>
                 </div>
             `;
         } else if (category === 'completed') {
@@ -6187,11 +6505,10 @@ function displayUserTasks(tasks, category) {
                 <div class="task-description">${task.description}</div>
                 <div class="task-footer">
                     <div class="task-time">Выполнено</div>
-                    <div class="task-status completed">✅</div>
+                    <div class="status-badge status-completed">✅ Выполнено</div>
                 </div>
             `;
         } else if (category === 'rejected') {
-            taskElement.className = 'task-card rejected-task';
             taskElement.innerHTML = `
                 <div class="task-header">
                     <div>
@@ -6201,15 +6518,26 @@ function displayUserTasks(tasks, category) {
                     <div class="task-price">${task.price} ₽</div>
                 </div>
                 <div class="task-description">${task.description}</div>
-                <div class="rejected-message">
-                    Задание отклонено
-                    <button class="btn" onclick="openAdminChat()" style="margin-top: 8px; padding: 6px 12px; font-size: 12px;">Написать в поддержку</button>
+                <div style="margin-top: 12px;">
+                    <div class="status-badge status-rejected" style="margin-bottom: 8px;">❌ Отклонено</div>
+                    <button class="btn btn-secondary" onclick="openAdminChat()">Написать в поддержку</button>
                 </div>
             `;
         }
         
         container.appendChild(taskElement);
     });
+}
+
+// Функция экранирования HTML
+function escapeHtml(unsafe) {
+    if (!unsafe) return '';
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 // Обновим функцию showTaskManagement для админа
