@@ -4034,21 +4034,33 @@
                         <button class="admin-btn" onclick="showAdminSection('support')">Поддержка</button>
                     </div>
                     
-                    <!-- Управление постами -->
-                    <div id="admin-posts-section" class="admin-section">
-                        <h3>Добавить пост для всех пользователей</h3>
-                        <div class="admin-form">
-                            <input type="text" class="admin-input" id="admin-post-title" placeholder="Заголовок поста">
-                            <textarea class="admin-textarea" id="admin-post-content" placeholder="Введите текст поста..."></textarea>
-                            <input type="file" class="admin-input" id="admin-post-image" accept="image/*">
-                            <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
-                        </div>
-                        
-                        <h3 style="margin-top: 20px;">Существующие посты</h3>
-                        <div id="admin-posts-list">
-                            <!-- Посты будут загружаться динамически -->
-                        </div>
-                    </div>
+                    <!-- Убедитесь, что этот раздел существует в admin-tab -->
+<div id="admin-posts-section" class="admin-section">
+    <h3>Добавить пост для всех пользователей</h3>
+    <div class="admin-form">
+        <input type="text" class="admin-input" id="admin-post-title" placeholder="Заголовок поста">
+        <textarea class="admin-textarea" id="admin-post-content" placeholder="Введите текст поста..."></textarea>
+        
+        <!-- Загрузка изображения для поста -->
+        <div class="upload-container">
+            <div class="upload-area" id="admin-post-upload-area">
+                <div class="upload-icon">📷</div>
+                <div class="upload-text">Нажмите для загрузки изображения</div>
+                <div class="upload-hint">PNG, JPG до 10MB</div>
+            </div>
+            <input type="file" id="admin-post-image" class="file-input" accept="image/*">
+            <img id="admin-post-image-preview" class="image-preview" alt="Предпросмотр">
+            <button id="remove-admin-post-image" class="remove-image" style="display: none;">Удалить изображение</button>
+        </div>
+        
+        <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
+    </div>
+    
+    <h3 style="margin-top: 20px;">Существующие посты</h3>
+    <div id="admin-posts-list">
+        <!-- Посты будут загружаться динамически -->
+    </div>
+</div>
 
                     <!-- Управление заданиями -->
                     <div id="admin-tasks-section" class="admin-section" style="display: none;">
@@ -4444,6 +4456,7 @@
     </div>
 
     <script>
+console.log('Script loaded, ADMIN_ID:', ADMIN_ID);
 // 🔧 КОНФИГУРАЦИЯ
 const API_URL = window.location.origin + '/api';
 const tg = window.Telegram.WebApp;
@@ -5332,7 +5345,22 @@ function createChatElement(chat, listType) {
     
     return chatElement;
 }
-
+// Дополните функцию initializeImageUploads
+function initializeImageUploads() {
+    // ... существующий код ...
+    
+    // Для админ-постов
+    const adminPostUploadArea = document.getElementById('admin-post-upload-area');
+    const adminPostImageInput = document.getElementById('admin-post-image');
+    const adminPostImagePreview = document.getElementById('admin-post-image-preview');
+    const removeAdminPostImage = document.getElementById('remove-admin-post-image');
+    
+    if (adminPostUploadArea) {
+        adminPostUploadArea.addEventListener('click', () => adminPostImageInput.click());
+        adminPostImageInput.addEventListener('change', handleImageUpload.bind(null, adminPostImageInput, adminPostImagePreview, removeAdminPostImage));
+        removeAdminPostImage.addEventListener('click', removeImage.bind(null, adminPostImageInput, adminPostImagePreview, removeAdminPostImage));
+    }
+}
 // Обновление статистики чатов
 function updateChatsStats(chats) {
     const activeChats = chats.filter(chat => chat.is_active).length;
@@ -6359,7 +6387,297 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+// Основные функции админ-панели
+function showAdminChats() {
+    document.getElementById('admin-chats-container').style.display = 'block';
+    document.getElementById('post-management').style.display = 'none';
+    document.getElementById('task-management').style.display = 'none';
+    document.getElementById('task-verification').style.display = 'none';
+    loadAdminChats();
+}
 
+function showPostManagement() {
+    document.getElementById('admin-chats-container').style.display = 'none';
+    document.getElementById('post-management').style.display = 'block';
+    document.getElementById('task-management').style.display = 'none';
+    document.getElementById('task-verification').style.display = 'none';
+    loadAdminPosts();
+}
+
+function showTaskManagement() {
+    document.getElementById('admin-chats-container').style.display = 'none';
+    document.getElementById('post-management').style.display = 'none';
+    document.getElementById('task-management').style.display = 'block';
+    document.getElementById('task-verification').style.display = 'none';
+    loadAdminTasks();
+}
+
+function showTaskVerification() {
+    document.getElementById('admin-chats-container').style.display = 'none';
+    document.getElementById('post-management').style.display = 'none';
+    document.getElementById('task-management').style.display = 'none';
+    document.getElementById('task-verification').style.display = 'block';
+    loadTaskVerifications();
+}
+
+// Функции для админ-разделов
+function showAdminSection(section) {
+    document.querySelectorAll('.admin-section').forEach(sec => {
+        sec.style.display = 'none';
+    });
+    
+    const targetSection = document.getElementById('admin-' + section + '-section');
+    if (targetSection) {
+        targetSection.style.display = 'block';
+    }
+    
+    if (section === 'support') {
+        loadAdminChats();
+    } else if (section === 'tasks') {
+        loadAdminTasks();
+    } else if (section === 'verification') {
+        loadTaskVerifications();
+    } else if (section === 'posts') {
+        loadAdminPosts();
+    }
+}
+
+// Загрузка постов для админа
+async function loadAdminPosts() {
+    if (!currentUser || !currentUser.isAdmin) return;
+    
+    try {
+        const result = await makeRequest(`${API_URL}/posts`);
+        if (result.success) {
+            displayAdminPosts(result.posts);
+        }
+    } catch (error) {
+        console.error('Error loading admin posts:', error);
+    }
+}
+
+function displayAdminPosts(posts) {
+    const container = document.getElementById('admin-posts-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!posts || posts.length === 0) {
+        container.innerHTML = '<div class="no-tasks" style="text-align: center; padding: 20px;">Нет опубликованных постов</div>';
+        return;
+    }
+    
+    posts.forEach(post => {
+        const postElement = document.createElement('div');
+        postElement.className = 'admin-task-item';
+        postElement.innerHTML = `
+            <div class="admin-task-header">
+                <div class="admin-task-title">${post.title}</div>
+                <div class="admin-task-actions">
+                    <button class="admin-task-delete" onclick="deletePost(${post.id})">🗑️ Удалить</button>
+                </div>
+            </div>
+            <div class="admin-task-description">${post.content}</div>
+            ${post.image_url ? `<img src="${post.image_url}" style="max-width: 200px; border-radius: 8px; margin-top: 8px;" alt="Изображение поста">` : ''}
+            <div class="admin-task-details">
+                <span class="admin-task-time">${formatPostDate(post.timestamp)}</span>
+                <span class="admin-task-category">Автор: ${post.author}</span>
+            </div>
+        `;
+        container.appendChild(postElement);
+    });
+}
+
+// Обновленная функция проверки прав администратора
+function checkAdminRights() {
+    const adminNavItem = document.getElementById('admin-nav-item');
+    const adminPanel = document.getElementById('admin-panel');
+    
+    console.log('Checking admin rights:', {
+        currentUser: currentUser,
+        ADMIN_ID: ADMIN_ID,
+        isAdmin: currentUser && currentUser.isAdmin,
+        idMatch: currentUser && parseInt(currentUser.id) === ADMIN_ID
+    });
+    
+    if (currentUser && currentUser.isAdmin && parseInt(currentUser.id) === ADMIN_ID) {
+        if (adminNavItem) {
+            adminNavItem.style.display = 'flex';
+            console.log('Admin nav item shown');
+        }
+        if (adminPanel) {
+            adminPanel.style.display = 'block';
+            console.log('Admin panel shown');
+        }
+    } else {
+        if (adminNavItem) {
+            adminNavItem.style.display = 'none';
+            console.log('Admin nav item hidden');
+        }
+        if (adminPanel) {
+            adminPanel.style.display = 'none';
+            console.log('Admin panel hidden');
+        }
+    }
+}
+
+// Обновленная функция инициализации
+function initializeApp() {
+    console.log('Initializing app for user:', currentUser);
+    
+    displayUserProfile();
+    checkAdminRights();
+    loadMainPagePosts();
+    loadTasks();
+    initializeSearch();
+    loadUserTasks();
+    initializeImageUploads();
+    
+    // Если пользователь админ, загружаем админ-данные
+    if (currentUser && currentUser.isAdmin && parseInt(currentUser.id) === ADMIN_ID) {
+        console.log('Loading admin data...');
+        loadAdminChats();
+        loadAdminTasks();
+        loadTaskVerifications();
+        loadAdminPosts();
+    }
+}
+
+// Функции навигации
+function showMainTab() {
+    hideAllTabs();
+    document.getElementById('main-tab').classList.add('active');
+    updateNavState('main');
+    loadMainPagePosts();
+}
+
+function showTasksTab() {
+    hideAllTabs();
+    document.getElementById('tasks-tab').classList.add('active');
+    updateNavState('tasks');
+    loadTasks();
+}
+
+function showProfileTab() {
+    hideAllTabs();
+    document.getElementById('profile-tab').classList.add('active');
+    updateNavState('profile');
+}
+
+function showAdminTab() {
+    if (!currentUser || !currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+        showNotification('Доступ запрещен!', 'error');
+        return;
+    }
+    
+    hideAllTabs();
+    document.getElementById('admin-tab').classList.add('active');
+    updateNavState('admin');
+    
+    loadAdminChats();
+    loadAdminTasks();
+    loadTaskVerifications();
+    showAdminSection('support');
+}
+
+function hideAllTabs() {
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelectorAll('.page').forEach(page => {
+        page.classList.remove('active');
+    });
+}
+
+function updateNavState(activeTab) {
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    const navItems = document.querySelectorAll('.nav-item');
+    switch(activeTab) {
+        case 'main': 
+            if (navItems[0]) navItems[0].classList.add('active'); 
+            break;
+        case 'tasks': 
+            if (navItems[1]) navItems[1].classList.add('active'); 
+            break;
+        case 'profile': 
+            if (navItems[2]) navItems[2].classList.add('active'); 
+            break;
+        case 'admin': 
+            if (navItems[3]) navItems[3].classList.add('active'); 
+            break;
+    }
+}
+
+// Обновленная функция инициализации пользователя Telegram
+async function initializeTelegramUser() {
+    try {
+        if (typeof tg !== 'undefined' && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            const tgUser = tg.initDataUnsafe.user;
+            
+            currentUser = {
+                id: tgUser.id,
+                firstName: tgUser.first_name || 'Пользователь',
+                lastName: tgUser.last_name || '',
+                username: tgUser.username || `user_${tgUser.id}`,
+                photoUrl: tgUser.photo_url || '',
+                isAdmin: parseInt(tgUser.id) === ADMIN_ID
+            };
+            
+            console.log('Telegram user initialized:', currentUser);
+            
+            // Аутентифицируем пользователя на сервере
+            try {
+                const authResult = await makeRequest(`${API_URL}/user/auth`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        user: currentUser
+                    })
+                });
+                
+                if (authResult.success) {
+                    Object.assign(currentUser, authResult.user);
+                    console.log('User authenticated with server:', currentUser);
+                }
+            } catch (authError) {
+                console.log('Auth endpoint not available, continuing with basic user data');
+            }
+            
+            initializeApp();
+            
+        } else {
+            console.log('Telegram user data not available');
+            initializeTestUser();
+        }
+    } catch (error) {
+        console.error('Error initializing Telegram user:', error);
+        initializeTestUser();
+    }
+}
+
+// Обновленная тестовая функция
+function initializeTestUser() {
+    // Для тестирования админа, используйте ADMIN_ID
+    currentUser = {
+        id: ADMIN_ID, // Это сделает пользователя админом
+        firstName: 'Администратор',
+        lastName: 'Тестовый',
+        username: 'admin_test',
+        isAdmin: true,
+        balance: 1500,
+        level: 5,
+        tasks_completed: 25,
+        active_tasks: 3,
+        quality_rate: 98,
+        referral_count: 10,
+        referral_earned: 1200
+    };
+    
+    console.log('Test user initialized (ADMIN):', currentUser);
+    initializeApp();
+}
 // Экспортируем новые функции
 window.showTaskConfirmation = showTaskConfirmation;
 window.showScreenshotUpload = showScreenshotUpload;
