@@ -4413,7 +4413,86 @@
                         <button class="confirmation-yes" onclick="showScreenshotUpload()">Да</button>
                     </div>
                 </div>
+                        <!-- Модальное окно подтверждения выполнения задания -->
+        <div class="modal" id="confirmation-modal">
+            <div class="confirmation-modal-content">
+                <div class="confirmation-icon">❓</div>
+                <div class="confirmation-title">Подтверждение задания</div>
+                <div class="confirmation-text" id="confirmation-task-text">Вы выполнили задание "<span id="confirmation-task-name"></span>"?</div>
                 
+                <div class="confirmation-buttons">
+                    <button class="confirmation-btn confirmation-yes" onclick="showScreenshotUpload()">Да, выполнил</button>
+                    <button class="confirmation-btn confirmation-no" onclick="showCancelConfirmation()">Нет, не выполнил</button>
+                </div>
+                
+                <button class="confirmation-btn confirmation-cancel" onclick="closeModal('confirmation-modal')">Отмена</button>
+            </div>
+        </div>
+
+        <!-- Модальное окно отмены подтверждения -->
+        <div class="modal" id="cancel-confirmation-modal">
+            <div class="confirmation-modal-content">
+                <div class="confirmation-icon">⚠️</div>
+                <div class="confirmation-title">Вы уверены?</div>
+                <div class="confirmation-text">Вы точно не выполнили это задание?</div>
+                
+                <div class="confirmation-buttons">
+                    <button class="confirmation-btn confirmation-no" onclick="cancelTask()">Не выполнил</button>
+                    <button class="confirmation-btn confirmation-yes" onclick="showScreenshotUpload()">Выполнил</button>
+                </div>
+                
+                <button class="confirmation-btn confirmation-cancel" onclick="closeModal('cancel-confirmation-modal')">Отмена</button>
+            </div>
+        </div>
+
+        <!-- Модальное окно загрузки скриншота -->
+        <div class="modal" id="screenshot-modal">
+            <div class="confirmation-modal-content">
+                <div class="confirmation-icon">📸</div>
+                <div class="confirmation-title">Отправьте скриншот</div>
+                <div class="confirmation-text">Загрузите скриншот выполнения задания для проверки администратором</div>
+                
+                <div class="screenshot-upload">
+                    <input type="file" id="screenshot-file" class="file-input" accept="image/*">
+                    <button class="upload-btn" onclick="document.getElementById('screenshot-file').click()">
+                        📁 Выбрать файл
+                    </button>
+                    <img id="screenshot-preview" class="screenshot-preview" alt="Предпросмотр скриншота">
+                    <div id="file-name" style="font-size: 14px; color: var(--text-secondary); margin-bottom: 16px;"></div>
+                </div>
+                
+                <div class="confirmation-buttons">
+                    <button class="confirmation-btn confirmation-cancel" onclick="closeModal('screenshot-modal')">Отмена</button>
+                    <button class="confirmation-btn confirmation-yes" onclick="submitScreenshot()" id="submit-screenshot-btn" disabled>Отправить на проверку</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Модальное окно проверки задания для админа -->
+        <div class="verification-modal" id="verification-modal">
+            <div class="verification-modal-content">
+                <div class="verification-modal-header">
+                    <div class="verification-modal-user">
+                        <div class="verification-modal-avatar" id="verification-user-avatar">U</div>
+                        <div class="verification-modal-user-info">
+                            <div class="verification-modal-user-name" id="verification-user-name">Пользователь</div>
+                            <div class="verification-modal-task" id="verification-task-title">Задание</div>
+                        </div>
+                    </div>
+                    <div class="verification-modal-price" id="verification-task-price">0 ₽</div>
+                </div>
+                
+                <div class="confirmation-text">Скриншот выполнения задания:</div>
+                <img id="verification-screenshot" class="verification-modal-screenshot" alt="Скриншот задания">
+                
+                <div class="verification-modal-actions">
+                    <button class="verification-reject" onclick="rejectVerification()">❌ Отклонить</button>
+                    <button class="verification-approve" onclick="approveVerification()">✅ Одобрить</button>
+                </div>
+                
+                <button class="confirmation-btn confirmation-cancel" onclick="closeModal('verification-modal')" style="margin-top: 16px; width: 100%;">Закрыть</button>
+            </div>
+        </div>
                 <div id="confirmation-form" style="display: none;">
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; margin-bottom: 8px; font-size: 14px;">Загрузите фото выполненного задания:</label>
@@ -6678,6 +6757,7 @@ function initializeTestUser() {
     console.log('Test user initialized (ADMIN):', currentUser);
     initializeApp();
 }
+
 // Экспортируем новые функции
 window.showTaskConfirmation = showTaskConfirmation;
 window.showScreenshotUpload = showScreenshotUpload;
