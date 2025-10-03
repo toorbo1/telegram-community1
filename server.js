@@ -1062,3 +1062,315 @@ app.get('/api/support/all-chats', (req, res) => {
         });
     });
 });
+// Добавьте эти поля в инициализацию таблицы tasks в функции initDatabase()
+db.run(`CREATE TABLE IF NOT EXISTS tasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    category TEXT DEFAULT 'general',
+    price REAL NOT NULL,
+    time_to_complete TEXT,
+    difficulty TEXT,
+    people_required INTEGER DEFAULT 1,
+    current_people INTEGER DEFAULT 0, // Добавлено: текущее количество участников
+    repost_time TEXT,
+    task_url TEXT,
+    image_url TEXT,
+    created_by INTEGER NOT NULL,
+    status TEXT DEFAULT 'active',
+    is_exclusive BOOLEAN DEFAULT 0, // Добавлено: эксклюзивное задание
+    min_level INTEGER DEFAULT 1, // Добавлено: минимальный уровень для доступа
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)`);
+
+// Обновите эндпоинт создания задания
+app.post('/api/tasks', upload.single('image'), (req, res) => {
+    const { 
+        title, description, price, created_by, category,
+        time_to_complete, difficulty, people_required, repost_time, 
+        task_url, is_exclusive, min_level
+    } = req.body;
+    
+    console.log('Creating task with data:', req.body);
+    
+    if (!title || !description || !price || !created_by) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    // Check admin rights
+    if (parseInt(created_by) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+    
+    const image_url = req.file ? `/uploads/${req.file.filename}` : '';
+    
+    db.run(`INSERT INTO tasks (title, description, price, created_by, category,
+                              time_to_complete, difficulty, people_required, 
+                              repost_time, task_url, image_url, is_exclusive, min_level) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                title, description, parseFloat(price), created_by, category || 'general',
+                time_to_complete || '5 минут', difficulty || 'Легкая', 
+                people_required || 1, repost_time || '1 день', task_url || '', 
+                image_url, is_exclusive ? 1 : 0, min_level || 1
+            ],
+            function(err) {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error: ' + err.message
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Task created successfully',
+            taskId: this.lastID
+        });
+    });
+});
+
+// Обновите эндпоинт получения заданий с поддержкой фильтров
+app.get('/api/tasks', (req, res) => {
+    const { search, category, task_type, user_id } = req.query;
+    let query = "SELECT * FROM tasks WHERE status = 'active'";
+    let params = [];
+
+    if (search) {
+        query += " AND (title LIKE ? OR description LIKE ?)";
+        params.push(`%${search}%`, `%${search}%`);
+    }
+
+    if (category && category !== 'all') {
+        query += " AND category = ?";
+        params.push(category);
+    }
+
+    // Фильтр по типу задания (эксклюзивные/обычные)
+    if (task_type === 'exclusive') {
+        query += " AND is_exclusive = 1";
+    } else if (task_type === 'ordinary') {
+        query += " AND is_exclusive = 0";
+    }
+
+    query += " ORDER BY created_at DESC";
+
+    db.all(query, params, (err, rows) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+
+        // Если передан user_id, проверяем уровень пользователя для эксклюзивных заданий
+        if (user_id) {
+            db.get("SELECT level FROM user_profiles WHERE user_id = ?", [user_id], (err, user) => {
+                if (err) {
+                    return res.status(500).json({
+                        success: false,
+                        error: 'Database error'
+                    });
+                }
+
+                const userLevel = user ? user.level : 1;
+                const filteredTasks = rows.filter(task => {
+                    if (task.is_exclusive && userLevel < task.min_level) {
+                        return false; // Скрываем эксклюзивные задания если уровень недостаточен
+                    }
+                    return true;
+                });
+
+                res.json({
+                    success: true,
+                    tasks: filteredTasks,
+                    userLevel: userLevel
+                });
+            });
+        } else {
+            res.json({
+                success: true,
+                tasks: rows,
+                userLevel: 1
+            });
+        }
+    });
+});
+
+// Обновите эндпоинт начала задания для учета количества людей
+app.post('/api/user/tasks/start', (req, res) => {
+    const { userId, taskId } = req.body;
+    
+    if (!userId || !taskId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    // Проверяем, не начал ли пользователь уже это задание
+    db.get("SELECT * FROM user_tasks WHERE user_id = ? AND task_id = ?", [userId, taskId], (err, existing) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        if (existing) {
+            return res.status(400).json({
+                success: false,
+                error: 'Task already started'
+            });
+        }
+
+        // Проверяем доступность задания и количество участников
+        db.get("SELECT * FROM tasks WHERE id = ?", [taskId], (err, task) => {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Database error'
+                });
+            }
+
+            if (!task) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Task not found'
+                });
+            }
+
+            // Проверяем уровень пользователя для эксклюзивных заданий
+            db.get("SELECT level FROM user_profiles WHERE user_id = ?", [userId], (err, user) => {
+                if (err) {
+                    return res.status(500).json({
+                        success: false,
+                        error: 'Database error'
+                    });
+                }
+
+                const userLevel = user ? user.level : 1;
+                if (task.is_exclusive && userLevel < task.min_level) {
+                    return res.status(403).json({
+                        success: false,
+                        error: 'Недостаточный уровень для этого задания'
+                    });
+                }
+
+                // Проверяем количество участников
+                if (task.current_people >= task.people_required) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Достигнут лимит участников для этого задания'
+                    });
+                }
+
+                // Добавляем задание пользователю
+                db.run(`INSERT INTO user_tasks (user_id, task_id, status) VALUES (?, ?, 'active')`,
+                        [userId, taskId], function(err) {
+                    if (err) {
+                        return res.status(500).json({
+                            success: false,
+                            error: 'Database error'
+                        });
+                    }
+                    
+                    // Обновляем счетчики
+                    db.run("UPDATE user_profiles SET active_tasks = active_tasks + 1 WHERE user_id = ?", [userId]);
+                    db.run("UPDATE tasks SET current_people = current_people + 1 WHERE id = ?", [taskId]);
+                    
+                    res.json({
+                        success: true,
+                        message: 'Task started successfully',
+                        userTaskId: this.lastID
+                    });
+                });
+            });
+        });
+    });
+});
+
+// Добавьте multer для обработки загрузки файлов
+const multer = require('multer');
+const path = require('path');
+
+// Настройка хранилища для загружаемых файлов
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/')
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const upload = multer({ 
+    storage: storage,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB limit
+    },
+    fileFilter: function (req, file, cb) {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed!'), false);
+        }
+    }
+});
+
+// Создайте папку uploads если её нет
+const fs = require('fs');
+if (!fs.existsSync('uploads')) {
+    fs.mkdirSync('uploads');
+}
+
+// Обслуживание статических файлов из папки uploads
+app.use('/uploads', express.static('uploads'));
+
+// Обновите эндпоинт создания поста для поддержки загрузки изображений
+app.post('/api/posts', upload.single('image'), (req, res) => {
+    const { title, content, author, authorId } = req.body;
+    
+    if (!title || !content || !author) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    // Check admin rights
+    if (parseInt(authorId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+    
+    const image_url = req.file ? `/uploads/${req.file.filename}` : null;
+    
+    db.run(`INSERT INTO posts (title, content, author, authorId, isAdmin, image_url) 
+            VALUES (?, ?, ?, ?, 1, ?)`,
+            [title, content, author, authorId, image_url],
+            function(err) {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error: ' + err.message
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Post created successfully',
+            postId: this.lastID
+        });
+    });
+});
