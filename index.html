@@ -3642,23 +3642,24 @@
                     </div>
 
                 <!-- Поддержка -->
+<!-- Поддержка -->
 <div id="admin-support-section" class="admin-section" style="display: none;">
     <h3>💬 Чаты с пользователями</h3>
     
-    <!-- Переключение между активными и архивными чатами -->
-    <div class="chat-tabs" style="margin-bottom: 15px;">
-        <button class="chat-tab-btn active" onclick="showChatTab('active')">Активные чаты</button>
-        <button class="chat-tab-btn" onclick="showChatTab('archived')">Архивные чаты</button>
-        <button class="chat-tab-btn" onclick="showChatTab('all')">Все чаты</button>
-    </div>
-    
     <!-- Статистика чатов -->
-    <div class="chat-stats" style="margin-bottom: 15px; padding: 10px; background: var(--bg-secondary); border-radius: 10px;">
+    <div class="chat-stats">
         <div style="display: flex; justify-content: space-between; font-size: 12px;">
             <span>Активные: <strong id="active-chats-count">0</strong></span>
             <span>Непрочитанные: <strong id="unread-chats-count">0</strong></span>
             <span>Всего: <strong id="total-chats-count">0</strong></span>
         </div>
+    </div>
+    
+    <!-- Переключение между активными и архивными чатами -->
+    <div class="chat-tabs">
+        <button class="chat-tab-btn active" onclick="showChatTab('active')">Активные чаты</button>
+        <button class="chat-tab-btn" onclick="showChatTab('archived')">Архивные чаты</button>
+        <button class="chat-tab-btn" onclick="showChatTab('all')">Все чаты</button>
     </div>
     
     <!-- Список активных чатов -->
@@ -3939,6 +3940,7 @@ let currentChatId = null;
 let currentAdminChat = null;
 let selectedTaskId = null;
 let allTasks = [];
+let chatUpdateInterval = null;
 
 // Улучшенная функция для отправки запросов
 async function makeRequest(url, options = {}) {
@@ -4640,9 +4642,544 @@ async function deleteTask(taskId) {
     }
 }
 
-// 🔧 ИСПРАВЛЕННАЯ СИСТЕМА ЧАТОВ
+// 🔧 ИСПРАВЛЕННАЯ СИСТЕМА ЧАТОВ ДЛЯ АДМИНА
 
-// Чат для пользователя
+// Загрузка чатов для админа
+async function loadAdminChats() {
+    if (!currentUser || !currentUser.isAdmin) return;
+    
+    try {
+        console.log('📥 Loading admin chats...');
+        const result = await makeRequest(`${API_URL}/support/chats?adminId=${ADMIN_ID}`);
+        
+        if (result.success) {
+            console.log(`✅ Loaded ${result.chats?.length || 0} active chats`);
+            displayAdminChatsList(result.chats || []);
+            
+            // Запускаем автообновление если находимся в разделе поддержки
+            if (document.getElementById('admin-support-section')?.style.display !== 'none') {
+                startChatAutoRefresh();
+            }
+        } else {
+            console.error('❌ Failed to load chats:', result.error);
+        }
+    } catch (error) {
+        console.error('❌ Error loading admin chats:', error);
+    }
+}
+
+// Загрузка всех чатов (включая архивные)
+async function loadAllAdminChats() {
+    if (!currentUser || !currentUser.isAdmin) return;
+    
+    try {
+        const result = await makeRequest(`${API_URL}/support/all-chats?adminId=${ADMIN_ID}`);
+        if (result.success) {
+            displayAllAdminChats(result.chats || []);
+        }
+    } catch (error) {
+        console.error('Error loading all chats:', error);
+    }
+}
+
+// Загрузка архивных чатов
+async function loadArchivedAdminChats() {
+    if (!currentUser || !currentUser.isAdmin) return;
+    
+    try {
+        const result = await makeRequest(`${API_URL}/support/archived-chats?adminId=${ADMIN_ID}`);
+        if (result.success) {
+            displayArchivedAdminChats(result.chats || []);
+        }
+    } catch (error) {
+        console.error('Error loading archived chats:', error);
+    }
+}
+
+// Отображение списка активных чатов
+function displayAdminChatsList(chats) {
+    const container = document.getElementById('active-chats-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!chats || chats.length === 0) {
+        container.innerHTML = `
+            <div class="no-tasks" style="text-align: center; padding: 20px;">
+                <div style="font-size: 24px; margin-bottom: 10px;">💬</div>
+                <div>Нет активных чатов</div>
+                <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
+                    Чаты появятся когда пользователи напишут в поддержку
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    // Обновляем статистику
+    updateChatsStats(chats);
+    
+    chats.forEach(chat => {
+        const chatElement = createChatElement(chat, 'active');
+        container.appendChild(chatElement);
+    });
+}
+
+// Отображение всех чатов
+function displayAllAdminChats(chats) {
+    const container = document.getElementById('all-chats-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!chats || chats.length === 0) {
+        container.innerHTML = `
+            <div class="no-tasks" style="text-align: center; padding: 20px;">
+                <div>Нет чатов</div>
+            </div>
+        `;
+        return;
+    }
+    
+    chats.forEach(chat => {
+        const chatElement = createChatElement(chat, 'all');
+        container.appendChild(chatElement);
+    });
+}
+
+// Отображение архивных чатов
+function displayArchivedAdminChats(chats) {
+    const container = document.getElementById('archived-chats-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!chats || chats.length === 0) {
+        container.innerHTML = `
+            <div class="no-tasks" style="text-align: center; padding: 20px;">
+                <div>Нет архивных чатов</div>
+            </div>
+        `;
+        return;
+    }
+    
+    chats.forEach(chat => {
+        const chatElement = createChatElement(chat, 'archived');
+        container.appendChild(chatElement);
+    });
+}
+
+// Создание элемента чата
+function createChatElement(chat, listType) {
+    const chatElement = document.createElement('div');
+    const isUnread = chat.unread_count > 0;
+    const isArchived = !chat.is_active;
+    
+    chatElement.className = `chat-item ${isUnread ? 'unread' : ''} ${isArchived ? 'archived' : ''}`;
+    chatElement.onclick = () => openAdminChatWindow(chat);
+    
+    const avatarText = chat.user_name ? chat.user_name.charAt(0).toUpperCase() : 'U';
+    const displayName = chat.user_name || `User_${chat.user_id}`;
+    const lastMessage = chat.last_message || 'Нет сообщений';
+    
+    chatElement.innerHTML = `
+        <div class="chat-avatar-small">
+            ${avatarText}
+        </div>
+        <div class="chat-info-small">
+            <div class="chat-name-small">
+                ${displayName}
+                ${isArchived ? '<span class="archived-badge">архив</span>' : ''}
+            </div>
+            <div class="chat-last-message">${lastMessage}</div>
+        </div>
+        <div class="chat-meta">
+            <div class="chat-time">${chat.moscow_time || formatPostDate(chat.last_message_time)}</div>
+            ${isUnread ? `<div class="unread-badge">${chat.unread_count}</div>` : ''}
+        </div>
+        ${listType === 'all' || listType === 'archived' ? `
+            <div class="chat-actions">
+                ${isArchived ? `
+                    <button class="chat-action-btn chat-restore-btn" onclick="event.stopPropagation(); restoreChat(${chat.id})" title="Восстановить">
+                        ↻
+                    </button>
+                ` : `
+                    <button class="chat-action-btn chat-archive-btn" onclick="event.stopPropagation(); archiveChat(${chat.id})" title="В архив">
+                        📁
+                    </button>
+                `}
+                <button class="chat-action-btn chat-delete-btn" onclick="event.stopPropagation(); deleteAdminChat(${chat.id})" title="Удалить">
+                    🗑️
+                </button>
+            </div>
+        ` : ''}
+    `;
+    
+    return chatElement;
+}
+
+// Обновление статистики чатов
+function updateChatsStats(chats) {
+    const activeChats = chats.filter(chat => chat.is_active).length;
+    const unreadChats = chats.filter(chat => chat.unread_count > 0).length;
+    const totalChats = chats.length;
+    
+    const activeCount = document.getElementById('active-chats-count');
+    const unreadCount = document.getElementById('unread-chats-count');
+    const totalCount = document.getElementById('total-chats-count');
+    
+    if (activeCount) activeCount.textContent = activeChats;
+    if (unreadCount) unreadCount.textContent = unreadChats;
+    if (totalCount) totalCount.textContent = totalChats;
+}
+
+// Переключение между вкладками чатов
+function showChatTab(tab) {
+    // Скрываем все списки чатов
+    const activeList = document.getElementById('active-chats-list');
+    const archivedList = document.getElementById('archived-chats-list');
+    const allList = document.getElementById('all-chats-list');
+    
+    if (activeList) activeList.style.display = 'none';
+    if (archivedList) archivedList.style.display = 'none';
+    if (allList) allList.style.display = 'none';
+    
+    // Убираем активный класс со всех кнопок
+    document.querySelectorAll('.chat-tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Показываем выбранный список и активируем кнопку
+    const buttons = document.querySelectorAll('.chat-tab-btn');
+    switch(tab) {
+        case 'active':
+            if (activeList) activeList.style.display = 'block';
+            buttons[0]?.classList.add('active');
+            loadAdminChats();
+            break;
+        case 'archived':
+            if (archivedList) archivedList.style.display = 'block';
+            buttons[1]?.classList.add('active');
+            loadArchivedAdminChats();
+            break;
+        case 'all':
+            if (allList) allList.style.display = 'block';
+            buttons[2]?.classList.add('active');
+            loadAllAdminChats();
+            break;
+    }
+}
+
+// Автообновление чатов
+function startChatAutoRefresh() {
+    stopChatAutoRefresh();
+    chatUpdateInterval = setInterval(() => {
+        if (currentUser && currentUser.isAdmin) {
+            const activeTab = document.querySelector('.chat-tab-btn.active');
+            if (activeTab) {
+                const tabText = activeTab.textContent.toLowerCase();
+                if (tabText.includes('активные')) {
+                    loadAdminChats();
+                } else if (tabText.includes('архивные')) {
+                    loadArchivedAdminChats();
+                } else if (tabText.includes('все')) {
+                    loadAllAdminChats();
+                }
+            }
+        }
+    }, 5000); // Обновление каждые 5 секунд
+}
+
+function stopChatAutoRefresh() {
+    if (chatUpdateInterval) {
+        clearInterval(chatUpdateInterval);
+        chatUpdateInterval = null;
+    }
+}
+
+// Открытие окна чата админа с пользователем
+async function openAdminChatWindow(chat) {
+    console.log('💬 Admin opening chat:', chat);
+    currentAdminChat = chat;
+    
+    try {
+        // Загружаем сообщения
+        const messagesResult = await makeRequest(`${API_URL}/support/chats/${chat.id}/messages`);
+        if (messagesResult.success) {
+            console.log(`📨 Loaded ${messagesResult.messages.length} messages for admin chat`);
+            
+            // Помечаем как прочитанное
+            try {
+                await makeRequest(`${API_URL}/support/chats/${chat.id}/read`, {
+                    method: 'PUT'
+                });
+                // Обновляем список чатов (убираем уведомление)
+                loadAdminChats();
+            } catch (readError) {
+                console.log('Mark as read not available');
+            }
+            
+            // Показываем окно чата
+            showAdminChatWindow(chat, messagesResult.messages);
+        } else {
+            throw new Error('Failed to load messages');
+        }
+    } catch (error) {
+        console.error('❌ Error opening admin chat:', error);
+        showNotification('Ошибка открытия чата: ' + error.message, 'error');
+    }
+}
+
+// Показать окно чата админа
+function showAdminChatWindow(chat, messages) {
+    // Создаем окно чата если не существует
+    let chatWindow = document.getElementById('admin-chat-window');
+    if (!chatWindow) {
+        createAdminChatWindow();
+        chatWindow = document.getElementById('admin-chat-window');
+    }
+    
+    // Обновляем информацию о пользователе
+    const chatUserName = document.getElementById('admin-chat-user-name');
+    const chatUserAvatar = document.getElementById('admin-chat-avatar');
+    
+    if (chatUserName) {
+        chatUserName.textContent = chat.user_name || `User_${chat.user_id}`;
+    }
+    
+    if (chatUserAvatar) {
+        chatUserAvatar.textContent = chat.user_name ? chat.user_name.charAt(0).toUpperCase() : 'U';
+    }
+    
+    // Отображаем сообщения
+    displayAdminChatMessages(messages);
+    
+    chatWindow.classList.add('active');
+}
+
+// Создание окна чата админа
+function createAdminChatWindow() {
+    const chatWindowHTML = `
+        <div class="admin-chat-window" id="admin-chat-window">
+            <div class="admin-chat-header">
+                <div class="admin-chat-user">
+                    <div class="chat-avatar-small" id="admin-chat-avatar">U</div>
+                    <div class="chat-info-small">
+                        <div class="chat-name-small" id="admin-chat-user-name">User</div>
+                        <div class="chat-status">Онлайн</div>
+                    </div>
+                </div>
+                <button class="chat-close" onclick="closeAdminChat()">×</button>
+            </div>
+            <div class="admin-chat-messages" id="admin-chat-messages">
+                <!-- Сообщения будут загружены здесь -->
+            </div>
+            <div class="admin-chat-input-container">
+                <input type="text" id="admin-chat-input" placeholder="Введите сообщение..." onkeypress="if(event.key==='Enter') sendAdminMessage()">
+                <button class="admin-chat-send" onclick="sendAdminMessage()">➤</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', chatWindowHTML);
+}
+
+// Отображение сообщений в чате админа
+function displayAdminChatMessages(messages) {
+    const container = document.getElementById('admin-chat-messages');
+    if (!container) {
+        console.error('Admin chat messages container not found!');
+        return;
+    }
+    
+    container.innerHTML = '';
+    
+    if (!messages || messages.length === 0) {
+        const welcomeMessage = document.createElement('div');
+        welcomeMessage.className = 'message message-admin';
+        welcomeMessage.innerHTML = `
+            <div class="message-text">Начните диалог с пользователем</div>
+            <div class="message-time">${new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}</div>
+        `;
+        container.appendChild(welcomeMessage);
+        return;
+    }
+    
+    messages.forEach(message => {
+        const messageElement = document.createElement('div');
+        messageElement.className = message.is_admin ? 'message message-admin' : 'message message-user';
+        
+        let messageContent = '';
+        if (message.image_url) {
+            messageContent = `
+                <div class="message-image">
+                    <img src="${message.image_url}" alt="Фото" style="max-width: 200px; border-radius: 10px;">
+                </div>
+            `;
+        } else {
+            messageContent = `<div class="message-text">${escapeHtml(message.message)}</div>`;
+        }
+        
+        messageElement.innerHTML = `
+            ${messageContent}
+            <div class="message-time">${message.moscow_time || formatPostDate(message.sent_at)}</div>
+        `;
+        container.appendChild(messageElement);
+    });
+    
+    container.scrollTop = container.scrollHeight;
+}
+
+// Отправка сообщения админом
+async function sendAdminMessage() {
+    if (!currentAdminChat || !currentUser) {
+        console.error('No active chat or user');
+        showNotification('Чат не выбран', 'error');
+        return;
+    }
+    
+    const input = document.getElementById('admin-chat-input');
+    if (!input) {
+        console.error('Admin chat input not found');
+        return;
+    }
+    
+    const message = input.value.trim();
+    
+    if (!message) {
+        showNotification('Введите сообщение', 'error');
+        return;
+    }
+    
+    try {
+        console.log(`✉️ Admin sending message to chat ${currentAdminChat.id}: ${message}`);
+        
+        const result = await makeRequest(`${API_URL}/support/chats/${currentAdminChat.id}/messages`, {
+            method: 'POST',
+            body: JSON.stringify({
+                user_id: currentUser.id,
+                user_name: 'Администратор',
+                message: message,
+                is_admin: true
+            })
+        });
+        
+        if (result.success) {
+            // Добавляем сообщение в интерфейс
+            const messagesContainer = document.getElementById('admin-chat-messages');
+            if (messagesContainer) {
+                const messageElement = document.createElement('div');
+                messageElement.className = 'message message-admin';
+                messageElement.innerHTML = `
+                    <div class="message-text">${escapeHtml(message)}</div>
+                    <div class="message-time">${new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}</div>
+                `;
+                messagesContainer.appendChild(messageElement);
+                
+                input.value = '';
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                
+                // Обновляем список чатов
+                loadAdminChats();
+                
+                console.log('✅ Admin message sent successfully');
+                showNotification('Сообщение отправлено', 'success');
+            }
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        console.error('❌ Error sending admin message:', error);
+        showNotification('Ошибка отправки сообщения: ' + error.message, 'error');
+    }
+}
+
+// Закрытие чата админа
+function closeAdminChat() {
+    const chatWindow = document.getElementById('admin-chat-window');
+    if (chatWindow) {
+        chatWindow.classList.remove('active');
+    }
+    currentAdminChat = null;
+}
+
+// Архивация чата
+async function archiveChat(chatId) {
+    if (!confirm('Переместить чат в архив?')) return;
+
+    try {
+        const result = await makeRequest(`${API_URL}/support/chats/${chatId}/archive`, {
+            method: 'PUT',
+            body: JSON.stringify({ adminId: currentUser.id })
+        });
+
+        if (result.success) {
+            showNotification('Чат перемещен в архив', 'success');
+            loadAdminChats();
+            loadAllAdminChats();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error archiving chat:', error);
+        showNotification('Ошибка архивации чата', 'error');
+    }
+}
+
+// Восстановление чата из архива
+async function restoreChat(chatId) {
+    try {
+        const result = await makeRequest(`${API_URL}/support/chats/${chatId}/restore`, {
+            method: 'PUT',
+            body: JSON.stringify({ adminId: currentUser.id })
+        });
+
+        if (result.success) {
+            showNotification('Чат восстановлен', 'success');
+            loadAdminChats();
+            loadAllAdminChats();
+            loadArchivedAdminChats();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error restoring chat:', error);
+        showNotification('Ошибка восстановления чата', 'error');
+    }
+}
+
+// Удаление чата
+async function deleteAdminChat(chatId) {
+    if (!confirm('Удалить этот чат? Все сообщения будут удалены.')) return;
+
+    try {
+        const result = await makeRequest(`${API_URL}/support/chats/${chatId}`, {
+            method: 'DELETE',
+            body: JSON.stringify({ adminId: currentUser.id })
+        });
+
+        if (result.success) {
+            showNotification('Чат удален', 'success');
+            // Обновляем все списки чатов
+            loadAdminChats();
+            loadAllAdminChats();
+            loadArchivedAdminChats();
+            
+            // Если удаленный чат был открыт - закрываем его
+            if (currentAdminChat && currentAdminChat.id === chatId) {
+                closeAdminChat();
+            }
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting chat:', error);
+        showNotification('Ошибка удаления чата', 'error');
+    }
+}
+
+// 🔧 ЧАТ ДЛЯ ПОЛЬЗОВАТЕЛЯ
+
 async function openAdminChat() {
     if (!currentUser) {
         showNotification('Пользователь не авторизован', 'error');
@@ -4698,7 +5235,7 @@ async function sendMessageToAdmin() {
     }
     
     try {
-        console.log(`✉️ Sending message to chat ${currentChatId}:`, message);
+        console.log(`✉️ User sending message to chat ${currentChatId}:`, message);
         
         const userFullName = currentUser.lastName ? 
             `${currentUser.firstName} ${currentUser.lastName}` : 
@@ -4728,12 +5265,12 @@ async function sendMessageToAdmin() {
             input.value = '';
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
             
-            // Обновляем список чатов для админа
-            if (currentUser.isAdmin) {
-                setTimeout(loadAdminChats, 500); // Небольшая задержка для обновления БД
-            }
+            showNotification('Сообщение отправлено! Администратор ответит в ближайшее время.', 'success');
             
-            showNotification('Сообщение отправлено!', 'success');
+            // Если админ онлайн, обновляем его чаты
+            if (currentUser.isAdmin) {
+                setTimeout(loadAdminChats, 1000);
+            }
         } else {
             throw new Error(result.error);
         }
@@ -4779,275 +5316,6 @@ function displayChatMessages(messages) {
 function closeChat() {
     document.getElementById('admin-chat').classList.remove('active');
     currentChatId = null;
-}
-
-// Чат для админа
-async function loadAdminChats() {
-    if (!currentUser || !currentUser.isAdmin) return;
-    
-    try {
-        console.log('📥 Loading admin chats...');
-        const result = await makeRequest(`${API_URL}/support/chats?adminId=${ADMIN_ID}`);
-        
-        if (result.success) {
-            console.log(`✅ Loaded ${result.chats?.length || 0} chats`);
-            displayAdminChatsList(result.chats || []);
-        } else {
-            console.error('❌ Failed to load chats:', result.error);
-        }
-    } catch (error) {
-        console.error('❌ Error loading admin chats:', error);
-        // Не показываем уведомление, чтобы не мешать пользователю
-    }
-}
-
-function displayAdminChatsList(chats) {
-    const container = document.getElementById('admin-chats-list');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    if (!chats || chats.length === 0) {
-        container.innerHTML = `
-            <div class="no-tasks" style="text-align: center; padding: 20px;">
-                <div style="font-size: 24px; margin-bottom: 10px;">💬</div>
-                <div>Нет активных чатов</div>
-                <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
-                    Чаты появятся когда пользователи напишут в поддержку
-                </div>
-            </div>
-        `;
-        return;
-    }
-    
-    chats.forEach(chat => {
-        const chatElement = document.createElement('div');
-        const isUnread = chat.unread_count > 0;
-        
-        chatElement.className = `chat-item ${isUnread ? 'unread' : ''}`;
-        chatElement.onclick = () => openAdminChatWindow(chat);
-        
-        chatElement.innerHTML = `
-            <div class="chat-avatar-small">
-                ${chat.user_name ? chat.user_name.charAt(0).toUpperCase() : 'U'}
-            </div>
-            <div class="chat-info-small">
-                <div class="chat-name-small">${chat.user_name || `User_${chat.user_id}`}</div>
-                <div class="chat-last-message">${chat.last_message || 'Нет сообщений'}</div>
-            </div>
-            <div class="chat-meta">
-                <div class="chat-time">${formatPostDate(chat.last_message_time)}</div>
-                ${isUnread ? `<div class="unread-badge">${chat.unread_count}</div>` : ''}
-            </div>
-        `;
-        container.appendChild(chatElement);
-    });
-}
-
-// Упрощенная функция удаления чата
-async function deleteAdminChat(chatId) {
-    if (!confirm('Удалить этот чат? Все сообщения будут удалены.')) return;
-
-    try {
-        const result = await makeRequest(`${API_URL}/support/chats/${chatId}`, {
-            method: 'DELETE',
-            body: JSON.stringify({ adminId: currentUser.id })
-        });
-
-        if (result.success) {
-            showNotification('Чат удален', 'success');
-            loadAdminChats();
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error deleting chat:', error);
-        showNotification('Ошибка удаления чата', 'error');
-    }
-}
-
-// Открытие чата админа с пользователем
-async function openAdminChatWindow(chat) {
-    console.log('💬 Admin opening chat:', chat);
-    currentAdminChat = chat;
-    
-    try {
-        // Загружаем сообщения
-        const messagesResult = await makeRequest(`${API_URL}/support/chats/${chat.id}/messages`);
-        if (messagesResult.success) {
-            console.log(`📨 Loaded ${messagesResult.messages.length} messages for admin chat`);
-            displayAdminChatMessages(messagesResult.messages);
-            
-            // Помечаем как прочитанное
-            try {
-                await makeRequest(`${API_URL}/support/chats/${chat.id}/read`, {
-                    method: 'PUT'
-                });
-                // Обновляем список чатов (убираем уведомление)
-                loadAdminChats();
-            } catch (readError) {
-                console.log('Mark as read not available');
-            }
-            
-            // Показываем окно чата
-            showAdminChatWindow(chat);
-        } else {
-            throw new Error('Failed to load messages');
-        }
-    } catch (error) {
-        console.error('❌ Error opening admin chat:', error);
-        showNotification('Ошибка открытия чата: ' + error.message, 'error');
-    }
-}
-
-function showAdminChatWindow(chat) {
-    // Создаем окно чата если не существует
-    let chatWindow = document.getElementById('admin-chat-window');
-    if (!chatWindow) {
-        createAdminChatWindow();
-        chatWindow = document.getElementById('admin-chat-window');
-    }
-    
-    // Обновляем информацию о пользователе
-    const chatUserName = document.getElementById('admin-chat-user-name');
-    const chatUserAvatar = document.getElementById('admin-chat-avatar');
-    
-    if (chatUserName) {
-        chatUserName.textContent = chat.user_name || `User_${chat.user_id}`;
-    }
-    
-    if (chatUserAvatar) {
-        chatUserAvatar.textContent = chat.user_name ? chat.user_name.charAt(0).toUpperCase() : 'U';
-    }
-    
-    chatWindow.classList.add('active');
-}
-
-function createAdminChatWindow() {
-    const chatWindowHTML = `
-        <div class="admin-chat-window" id="admin-chat-window">
-            <div class="admin-chat-header">
-                <div class="admin-chat-user">
-                    <div class="chat-avatar-small" id="admin-chat-avatar">U</div>
-                    <div class="chat-info-small">
-                        <div class="chat-name-small" id="admin-chat-user-name">User</div>
-                        <div class="chat-status">Online</div>
-                    </div>
-                </div>
-                <button class="chat-close" onclick="closeAdminChat()">×</button>
-            </div>
-            <div class="admin-chat-messages" id="admin-chat-messages">
-                <!-- Сообщения будут загружены здесь -->
-            </div>
-            <div class="admin-chat-input-container">
-                <input type="text" id="admin-chat-input" placeholder="Введите сообщение...">
-                <button class="admin-chat-send" onclick="sendAdminMessage()">➤</button>
-            </div>
-        </div>
-    `;
-    
-    document.body.insertAdjacentHTML('beforeend', chatWindowHTML);
-}
-
-function displayAdminChatMessages(messages) {
-    const container = document.getElementById('admin-chat-messages');
-    if (!container) {
-        console.error('Admin chat messages container not found!');
-        return;
-    }
-    
-    container.innerHTML = '';
-    
-    messages.forEach(message => {
-        const messageElement = document.createElement('div');
-        messageElement.className = message.is_admin ? 'message message-admin' : 'message message-user';
-        
-        let messageContent = '';
-        if (message.image_url) {
-            messageContent = `
-                <div class="message-image">
-                    <img src="${message.image_url}" alt="Фото" style="max-width: 200px; border-radius: 10px;">
-                </div>
-            `;
-        } else {
-            messageContent = `<div class="message-text">${escapeHtml(message.message)}</div>`;
-        }
-        
-        messageElement.innerHTML = `
-            ${messageContent}
-            <div class="message-time">${message.moscow_time || formatPostDate(message.sent_at)}</div>
-        `;
-        container.appendChild(messageElement);
-    });
-    
-    container.scrollTop = container.scrollHeight;
-}
-
-// Отправка сообщения админом
-async function sendAdminMessage() {
-    if (!currentAdminChat || !currentUser) {
-        console.error('No active chat or user');
-        return;
-    }
-    
-    const input = document.getElementById('admin-chat-input');
-    if (!input) {
-        console.error('Admin chat input not found');
-        return;
-    }
-    
-    const message = input.value.trim();
-    
-    if (message) {
-        try {
-            console.log(`✉️ Admin sending message to chat ${currentAdminChat.id}: ${message}`);
-            
-            const result = await makeRequest(`${API_URL}/support/chats/${currentAdminChat.id}/messages`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    user_id: currentUser.id,
-                    user_name: currentUser.firstName,
-                    message: message,
-                    is_admin: true
-                })
-            });
-            
-            if (result.success) {
-                // Добавляем сообщение в интерфейс
-                const messagesContainer = document.getElementById('admin-chat-messages');
-                if (messagesContainer) {
-                    const messageElement = document.createElement('div');
-                    messageElement.className = 'message message-admin';
-                    messageElement.innerHTML = `
-                        <div class="message-text">${escapeHtml(message)}</div>
-                        <div class="message-time">${new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}</div>
-                    `;
-                    messagesContainer.appendChild(messageElement);
-                    
-                    input.value = '';
-                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                    
-                    // Обновляем список чатов
-                    loadAdminChats();
-                    
-                    console.log('✅ Admin message sent successfully');
-                }
-            } else {
-                throw new Error(result.error);
-            }
-        } catch (error) {
-            console.error('❌ Error sending admin message:', error);
-            showNotification('Ошибка отправки сообщения: ' + error.message, 'error');
-        }
-    }
-}
-
-function closeAdminChat() {
-    const chatWindow = document.getElementById('admin-chat-window');
-    if (chatWindow) {
-        chatWindow.classList.remove('active');
-    }
-    currentAdminChat = null;
 }
 
 // 💰 СИСТЕМА ВЫВОДА СРЕДСТВ
@@ -5124,6 +5392,7 @@ function showTaskCategory(category) {
         tab.classList.remove('active');
     });
     
+    const event = window.event;
     if (event && event.currentTarget) {
         event.currentTarget.classList.add('active');
     }
@@ -5252,28 +5521,16 @@ function formatPostDate(timestamp) {
 }
 
 function showNotification(message, type = 'info') {
+    // Удаляем существующие уведомления
+    document.querySelectorAll('.notification').forEach(notification => {
+        notification.remove();
+    });
+    
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
     notification.innerHTML = `
         <div class="notification-content">${message}</div>
         <button class="notification-close" onclick="this.parentElement.remove()">×</button>
-    `;
-    
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#3b82f6'};
-        color: white;
-        padding: 12px 16px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        z-index: 10000;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        max-width: 300px;
-        animation: slideIn 0.3s ease-out;
     `;
     
     document.body.appendChild(notification);
@@ -5376,6 +5633,9 @@ window.sendAdminMessage = sendAdminMessage;
 window.closeAdminChat = closeAdminChat;
 window.submitTaskCompletion = submitTaskCompletion;
 window.deleteAdminChat = deleteAdminChat;
+window.archiveChat = archiveChat;
+window.restoreChat = restoreChat;
+window.showChatTab = showChatTab;
 </script>
 </body>
 </html>

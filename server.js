@@ -991,3 +991,74 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🔐 Admin ID: ${ADMIN_ID}`);
     console.log(`⏰ Moscow time: ${getMoscowTime()}`);
 });
+// Добавьте этот эндпоинт для получения конкретного чата
+app.get('/api/support/chats/:chatId', (req, res) => {
+    const chatId = req.params.chatId;
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.get("SELECT * FROM support_chats WHERE id = ?", [chatId], (err, chat) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        if (!chat) {
+            return res.status(404).json({
+                success: false,
+                error: 'Chat not found'
+            });
+        }
+        
+        res.json({
+            success: true,
+            chat: {
+                ...chat,
+                moscow_time: formatMoscowTimeShort(chat.last_message_time)
+            }
+        });
+    });
+});
+
+// Эндпоинт для получения всех чатов (активных и архивных)
+app.get('/api/support/all-chats', (req, res) => {
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.all(`SELECT * FROM support_chats ORDER BY last_message_time DESC`, 
+            [], (err, rows) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        // Форматируем время для каждого чата
+        const chatsWithMoscowTime = rows.map(chat => ({
+            ...chat,
+            moscow_time: formatMoscowTimeShort(chat.last_message_time)
+        }));
+        
+        res.json({
+            success: true,
+            chats: chatsWithMoscowTime
+        });
+    });
+});
