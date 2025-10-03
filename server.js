@@ -2,6 +2,8 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const path = require('path');
+const multer = require('multer');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,9 +16,36 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-
-// Serve static files
 app.use(express.static('.'));
+
+// Настройка multer для загрузки файлов
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadsDir = path.join(__dirname, 'uploads');
+        if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        cb(null, uploadsDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'screenshot-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const upload = multer({ 
+    storage: storage,
+    limits: {
+        fileSize: 10 * 1024 * 1024 // 10MB limit
+    },
+    fileFilter: function (req, file, cb) {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed!'), false);
+        }
+    }
+});
 
 // Initialize database
 const dbPath = process.env.DB_PATH || path.join(__dirname, 'database.sqlite');
@@ -89,7 +118,10 @@ function initDatabase() {
             status TEXT DEFAULT 'active',
             screenshot_url TEXT,
             started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            submitted_at DATETIME,
             completed_at DATETIME,
+            rejected_at DATETIME,
+            rejection_reason TEXT,
             FOREIGN KEY(task_id) REFERENCES tasks(id)
         )`);
 
@@ -129,6 +161,23 @@ function initDatabase() {
             details TEXT NOT NULL,
             status TEXT DEFAULT 'pending',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`);
+
+        // Task verification table
+        db.run(`CREATE TABLE IF NOT EXISTS task_verifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_task_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            task_id INTEGER NOT NULL,
+            user_name TEXT NOT NULL,
+            task_title TEXT NOT NULL,
+            task_price REAL NOT NULL,
+            screenshot_url TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            reviewed_at DATETIME,
+            reviewed_by INTEGER,
+            FOREIGN KEY(user_task_id) REFERENCES user_tasks(id)
         )`);
     });
 }
@@ -540,7 +589,7 @@ app.get('/api/user/:userId/tasks', (req, res) => {
     const { status } = req.query;
     
     let query = `
-        SELECT ut.*, t.title, t.description, t.price, t.category 
+        SELECT ut.*, t.title, t.description, t.price, t.category, t.task_url
         FROM user_tasks ut 
         JOIN tasks t ON ut.task_id = t.id 
         WHERE ut.user_id = ?
@@ -564,6 +613,273 @@ app.get('/api/user/:userId/tasks', (req, res) => {
         res.json({
             success: true,
             tasks: rows
+        });
+    });
+});
+
+// Submit task for verification
+app.post('/api/user/tasks/:userTaskId/submit', upload.single('screenshot'), (req, res) => {
+    const userTaskId = req.params.userTaskId;
+    const { userId } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing user ID'
+        });
+    }
+    
+    if (!req.file) {
+        return res.status(400).json({
+            success: false,
+            error: 'No screenshot uploaded'
+        });
+    }
+    
+    const screenshotUrl = `/uploads/${req.file.filename}`;
+    
+    // Обновляем user_task
+    db.run(`UPDATE user_tasks SET status = 'pending_review', screenshot_url = ?, submitted_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        [screenshotUrl, userTaskId], function(err) {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        // Получаем информацию о задании и пользователе для verification
+        db.get(`SELECT ut.user_id, ut.task_id, u.first_name, u.last_name, t.title, t.price 
+                FROM user_tasks ut 
+                JOIN user_profiles u ON ut.user_id = u.user_id 
+                JOIN tasks t ON ut.task_id = t.id 
+                WHERE ut.id = ?`, [userTaskId], (err, row) => {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Database error'
+                });
+            }
+            
+            // Создаем запись в task_verifications
+            const userName = `${row.first_name} ${row.last_name}`;
+            db.run(`INSERT INTO task_verifications (user_task_id, user_id, task_id, user_name, task_title, task_price, screenshot_url) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                    [userTaskId, row.user_id, row.task_id, userName, row.title, row.price, screenshotUrl],
+                    function(err) {
+                if (err) {
+                    return res.status(500).json({
+                        success: false,
+                        error: 'Database error'
+                    });
+                }
+                
+                res.json({
+                    success: true,
+                    message: 'Task submitted for review',
+                    verificationId: this.lastID
+                });
+            });
+        });
+    });
+});
+
+// Cancel task (user didn't complete it)
+app.post('/api/user/tasks/:userTaskId/cancel', (req, res) => {
+    const userTaskId = req.params.userTaskId;
+    const { userId } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing user ID'
+        });
+    }
+    
+    db.run("DELETE FROM user_tasks WHERE id = ? AND user_id = ?", [userTaskId, userId], function(err) {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        // Обновляем счетчик активных заданий
+        db.run("UPDATE user_profiles SET active_tasks = active_tasks - 1 WHERE user_id = ?", [userId]);
+        
+        res.json({
+            success: true,
+            message: 'Task cancelled successfully'
+        });
+    });
+});
+
+// Task verification endpoints for admin
+app.get('/api/admin/task-verifications', (req, res) => {
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.all(`SELECT tv.*, u.username, u.photo_url 
+            FROM task_verifications tv 
+            JOIN user_profiles u ON tv.user_id = u.user_id 
+            WHERE tv.status = 'pending' 
+            ORDER BY tv.submitted_at DESC`, 
+            [], (err, rows) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        res.json({
+            success: true,
+            verifications: rows
+        });
+    });
+});
+
+app.post('/api/admin/task-verifications/:verificationId/approve', (req, res) => {
+    const verificationId = req.params.verificationId;
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    // Получаем информацию о верификации
+    db.get("SELECT * FROM task_verifications WHERE id = ?", [verificationId], (err, verification) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        if (!verification) {
+            return res.status(404).json({
+                success: false,
+                error: 'Verification not found'
+            });
+        }
+        
+        // Обновляем статус верификации
+        db.run(`UPDATE task_verifications SET status = 'approved', reviewed_at = CURRENT_TIMESTAMP, reviewed_by = ? 
+                WHERE id = ?`, [adminId, verificationId], function(err) {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Database error'
+                });
+            }
+            
+            // Обновляем user_task
+            db.run(`UPDATE user_tasks SET status = 'completed', completed_at = CURRENT_TIMESTAMP 
+                    WHERE id = ?`, [verification.user_task_id], function(err) {
+                if (err) {
+                    return res.status(500).json({
+                        success: false,
+                        error: 'Database error'
+                    });
+                }
+                
+                // Обновляем баланс пользователя и статистику
+                db.run(`UPDATE user_profiles 
+                        SET balance = balance + ?, 
+                            tasks_completed = tasks_completed + 1,
+                            active_tasks = active_tasks - 1,
+                            experience = experience + 10
+                        WHERE user_id = ?`, 
+                        [verification.task_price, verification.user_id], function(err) {
+                    if (err) {
+                        return res.status(500).json({
+                            success: false,
+                            error: 'Database error'
+                        });
+                    }
+                    
+                    res.json({
+                        success: true,
+                        message: 'Task approved and user balance updated'
+                    });
+                });
+            });
+        });
+    });
+});
+
+app.post('/api/admin/task-verifications/:verificationId/reject', (req, res) => {
+    const verificationId = req.params.verificationId;
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    // Получаем информацию о верификации
+    db.get("SELECT * FROM task_verifications WHERE id = ?", [verificationId], (err, verification) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        if (!verification) {
+            return res.status(404).json({
+                success: false,
+                error: 'Verification not found'
+            });
+        }
+        
+        // Обновляем статус верификации
+        db.run(`UPDATE task_verifications SET status = 'rejected', reviewed_at = CURRENT_TIMESTAMP, reviewed_by = ? 
+                WHERE id = ?`, [adminId, verificationId], function(err) {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Database error'
+                });
+            }
+            
+            // Обновляем user_task
+            db.run(`UPDATE user_tasks SET status = 'rejected', rejected_at = CURRENT_TIMESTAMP 
+                    WHERE id = ?`, [verification.user_task_id], function(err) {
+                if (err) {
+                    return res.status(500).json({
+                        success: false,
+                        error: 'Database error'
+                    });
+                }
+                
+                // Обновляем счетчик активных заданий
+                db.run("UPDATE user_profiles SET active_tasks = active_tasks - 1 WHERE user_id = ?", 
+                        [verification.user_id], function(err) {
+                    if (err) {
+                        return res.status(500).json({
+                            success: false,
+                            error: 'Database error'
+                        });
+                    }
+                    
+                    res.json({
+                        success: true,
+                        message: 'Task rejected'
+                    });
+                });
+            });
         });
     });
 });
@@ -985,151 +1301,85 @@ app.post('/api/withdrawal/request', (req, res) => {
     });
 });
 
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Добавьте этот эндпоинт для получения конкретного чата
+app.get('/api/support/chats/:chatId', (req, res) => {
+    const chatId = req.params.chatId;
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.get("SELECT * FROM support_chats WHERE id = ?", [chatId], (err, chat) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        if (!chat) {
+            return res.status(404).json({
+                success: false,
+                error: 'Chat not found'
+            });
+        }
+        
+        res.json({
+            success: true,
+            chat: {
+                ...chat,
+                moscow_time: formatMoscowTimeShort(chat.last_message_time)
+            }
+        });
+    });
+});
+
+// Эндпоинт для получения всех чатов (активных и архивных)
+app.get('/api/support/all-chats', (req, res) => {
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.all(`SELECT * FROM support_chats ORDER BY last_message_time DESC`, 
+            [], (err, rows) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        // Форматируем время для каждого чата
+        const chatsWithMoscowTime = rows.map(chat => ({
+            ...chat,
+            moscow_time: formatMoscowTimeShort(chat.last_message_time)
+        }));
+        
+        res.json({
+            success: true,
+            chats: chatsWithMoscowTime
+        });
+    });
+});
+
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
     console.log(`🔐 Admin ID: ${ADMIN_ID}`);
     console.log(`⏰ Moscow time: ${getMoscowTime()}`);
-});
-// Добавьте этот эндпоинт для получения конкретного чата
-app.get('/api/support/chats/:chatId', (req, res) => {
-    const chatId = req.params.chatId;
-    const { adminId } = req.query;
-    
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied'
-        });
-    }
-
-    db.get("SELECT * FROM support_chats WHERE id = ?", [chatId], (err, chat) => {
-        if (err) {
-            console.error('Database error:', err);
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        if (!chat) {
-            return res.status(404).json({
-                success: false,
-                error: 'Chat not found'
-            });
-        }
-        
-        res.json({
-            success: true,
-            chat: {
-                ...chat,
-                moscow_time: formatMoscowTimeShort(chat.last_message_time)
-            }
-        });
-    });
-});
-
-// Эндпоинт для получения всех чатов (активных и архивных)
-app.get('/api/support/all-chats', (req, res) => {
-    const { adminId } = req.query;
-    
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied'
-        });
-    }
-
-    db.all(`SELECT * FROM support_chats ORDER BY last_message_time DESC`, 
-            [], (err, rows) => {
-        if (err) {
-            console.error('Database error:', err);
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        // Форматируем время для каждого чата
-        const chatsWithMoscowTime = rows.map(chat => ({
-            ...chat,
-            moscow_time: formatMoscowTimeShort(chat.last_message_time)
-        }));
-        
-        res.json({
-            success: true,
-            chats: chatsWithMoscowTime
-        });
-    });
-});
-// Добавьте этот эндпоинт для получения конкретного чата
-app.get('/api/support/chats/:chatId', (req, res) => {
-    const chatId = req.params.chatId;
-    const { adminId } = req.query;
-    
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied'
-        });
-    }
-
-    db.get("SELECT * FROM support_chats WHERE id = ?", [chatId], (err, chat) => {
-        if (err) {
-            console.error('Database error:', err);
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        if (!chat) {
-            return res.status(404).json({
-                success: false,
-                error: 'Chat not found'
-            });
-        }
-        
-        res.json({
-            success: true,
-            chat: {
-                ...chat,
-                moscow_time: formatMoscowTimeShort(chat.last_message_time)
-            }
-        });
-    });
-});
-
-// Эндпоинт для получения всех чатов (активных и архивных)
-app.get('/api/support/all-chats', (req, res) => {
-    const { adminId } = req.query;
-    
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied'
-        });
-    }
-
-    db.all(`SELECT * FROM support_chats ORDER BY last_message_time DESC`, 
-            [], (err, rows) => {
-        if (err) {
-            console.error('Database error:', err);
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        // Форматируем время для каждого чата
-        const chatsWithMoscowTime = rows.map(chat => ({
-            ...chat,
-            moscow_time: formatMoscowTimeShort(chat.last_message_time)
-        }));
-        
-        res.json({
-            success: true,
-            chats: chatsWithMoscowTime
-        });
-    });
+    console.log(`📁 Uploads directory: ${path.join(__dirname, 'uploads')}`);
 });

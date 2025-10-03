@@ -3263,6 +3263,358 @@
         font-size: 10px;
     }
 }
+/* Стили для системы проверки заданий */
+.confirmation-modal-content {
+    background: var(--card-bg);
+    border-radius: 20px;
+    padding: 24px;
+    width: 90%;
+    max-width: 400px;
+    border: 1px solid var(--border);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    text-align: center;
+}
+
+.confirmation-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+}
+
+.confirmation-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    background: var(--gold-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.confirmation-text {
+    font-size: 16px;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    line-height: 1.5;
+}
+
+.confirmation-buttons {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.confirmation-btn {
+    flex: 1;
+    padding: 14px 20px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.confirmation-yes {
+    background: var(--success);
+    color: white;
+}
+
+.confirmation-no {
+    background: var(--error);
+    color: white;
+}
+
+.confirmation-cancel {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+}
+
+/* Стили для загрузки скриншота */
+.screenshot-upload {
+    margin: 20px 0;
+}
+
+.screenshot-preview {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 12px;
+    margin: 16px 0;
+    display: none;
+}
+
+.upload-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.file-input {
+    display: none;
+}
+
+/* Стили для проверки заданий админом */
+.verification-list {
+    max-height: 500px;
+    overflow-y: auto;
+    margin-top: 15px;
+}
+
+.verification-item {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.verification-item:hover {
+    background: var(--bg-secondary);
+    transform: translateY(-2px);
+}
+
+.verification-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.verification-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: var(--purple-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    color: white;
+    font-weight: 600;
+    font-size: 18px;
+}
+
+.verification-user-info {
+    flex: 1;
+}
+
+.verification-user-name {
+    font-weight: 600;
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+.verification-task-title {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.verification-price {
+    background: var(--gold-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: 700;
+    font-size: 18px;
+}
+
+.verification-time {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-align: right;
+}
+
+/* Модальное окно проверки задания */
+.verification-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(5, 5, 16, 0.95);
+    z-index: 3000;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    padding: 20px;
+}
+
+.verification-modal.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.verification-modal-content {
+    background: var(--card-bg);
+    border-radius: 20px;
+    padding: 24px;
+    width: 90%;
+    max-width: 500px;
+    border: 1px solid var(--border);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.verification-modal-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.verification-modal-user {
+    display: flex;
+    align-items: center;
+    flex: 1;
+}
+
+.verification-modal-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--purple-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 16px;
+    color: white;
+    font-weight: 600;
+    font-size: 20px;
+}
+
+.verification-modal-user-info {
+    flex: 1;
+}
+
+.verification-modal-user-name {
+    font-weight: 600;
+    font-size: 18px;
+    margin-bottom: 4px;
+}
+
+.verification-modal-task {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.verification-modal-price {
+    background: var(--gold-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: 700;
+    font-size: 24px;
+}
+
+.verification-modal-screenshot {
+    width: 100%;
+    border-radius: 12px;
+    margin: 20px 0;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.verification-modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.verification-approve {
+    background: var(--success);
+    color: white;
+    border: none;
+    padding: 14px 20px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    flex: 1;
+}
+
+.verification-reject {
+    background: var(--error);
+    color: white;
+    border: none;
+    padding: 14px 20px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    flex: 1;
+}
+
+/* Стили для отклоненных заданий */
+.rejected-task {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.rejected-badge {
+    background: var(--error);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+.support-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+}
+
+/* Анимации */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .confirmation-buttons {
+        flex-direction: column;
+    }
+    
+    .verification-modal-actions {
+        flex-direction: column;
+    }
+    
+    .verification-modal-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .verification-modal-user {
+        margin-bottom: 16px;
+    }
+}
     </style>
 </head>
 <body>
@@ -3422,13 +3774,12 @@
             </div>
             
             <!-- Вкладка заданий -->
-            <div id="tasks-tab" class="tab-content tasks-tab">
-                <div class="tasks-tabs">
-                    <div class="task-tab active" onclick="showTaskCategory('new')">Новые</div>
-                    <div class="task-tab" id="confirmation-tab" onclick="showTaskCategory('confirmation')">Подтверждение</div>
-                    <div class="task-tab" onclick="showTaskCategory('completed')">Выполненные</div>
-                    <div class="task-tab" onclick="showTaskCategory('rejected')">Отклоненные</div>
-                </div>
+            <div class="tasks-tabs">
+    <div class="task-tab active" onclick="showTaskCategory('new')">Новые</div>
+    <div class="task-tab" id="confirmation-tab" onclick="showTaskCategory('confirmation')">Подтверждение</div>
+    <div class="task-tab" onclick="showTaskCategory('completed')">Выполненные</div>
+    <div class="task-tab" onclick="showTaskCategory('rejected')">Отклоненные</div>
+</div>
                 
                 <div class="search-container fade-in">
                     <div class="search-icon">🔍</div>
@@ -3866,8 +4217,87 @@
             </div>
         </div>
     </div>
+        <!-- Модальное окно подтверждения выполнения задания -->
+        <div class="modal" id="confirmation-modal">
+            <div class="confirmation-modal-content">
+                <div class="confirmation-icon">❓</div>
+                <div class="confirmation-title">Подтверждение задания</div>
+                <div class="confirmation-text" id="confirmation-task-text">Вы выполнили задание "<span id="confirmation-task-name"></span>"?</div>
+                
+                <div class="confirmation-buttons">
+                    <button class="confirmation-btn confirmation-yes" onclick="showScreenshotUpload()">Да, выполнил</button>
+                    <button class="confirmation-btn confirmation-no" onclick="showCancelConfirmation()">Нет, не выполнил</button>
+                </div>
+                
+                <button class="confirmation-btn confirmation-cancel" onclick="closeModal('confirmation-modal')">Отмена</button>
+            </div>
+        </div>
 
-    <div class="modal" id="confirmation-modal">
+        <!-- Модальное окно отмены подтверждения -->
+        <div class="modal" id="cancel-confirmation-modal">
+            <div class="confirmation-modal-content">
+                <div class="confirmation-icon">⚠️</div>
+                <div class="confirmation-title">Вы уверены?</div>
+                <div class="confirmation-text">Вы точно не выполнили это задание?</div>
+                
+                <div class="confirmation-buttons">
+                    <button class="confirmation-btn confirmation-no" onclick="cancelTask()">Не выполнил</button>
+                    <button class="confirmation-btn confirmation-yes" onclick="showScreenshotUpload()">Выполнил</button>
+                </div>
+                
+                <button class="confirmation-btn confirmation-cancel" onclick="closeModal('cancel-confirmation-modal')">Отмена</button>
+            </div>
+        </div>
+
+        <!-- Модальное окно загрузки скриншота -->
+        <div class="modal" id="screenshot-modal">
+            <div class="confirmation-modal-content">
+                <div class="confirmation-icon">📸</div>
+                <div class="confirmation-title">Отправьте скриншот</div>
+                <div class="confirmation-text">Загрузите скриншот выполнения задания для проверки администратором</div>
+                
+                <div class="screenshot-upload">
+                    <input type="file" id="screenshot-file" class="file-input" accept="image/*">
+                    <button class="upload-btn" onclick="document.getElementById('screenshot-file').click()">
+                        📁 Выбрать файл
+                    </button>
+                    <img id="screenshot-preview" class="screenshot-preview" alt="Предпросмотр скриншота">
+                    <div id="file-name" style="font-size: 14px; color: var(--text-secondary); margin-bottom: 16px;"></div>
+                </div>
+                
+                <div class="confirmation-buttons">
+                    <button class="confirmation-btn confirmation-cancel" onclick="closeModal('screenshot-modal')">Отмена</button>
+                    <button class="confirmation-btn confirmation-yes" onclick="submitScreenshot()" id="submit-screenshot-btn" disabled>Отправить на проверку</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Модальное окно проверки задания для админа -->
+        <div class="verification-modal" id="verification-modal">
+            <div class="verification-modal-content">
+                <div class="verification-modal-header">
+                    <div class="verification-modal-user">
+                        <div class="verification-modal-avatar" id="verification-user-avatar">U</div>
+                        <div class="verification-modal-user-info">
+                            <div class="verification-modal-user-name" id="verification-user-name">Пользователь</div>
+                            <div class="verification-modal-task" id="verification-task-title">Задание</div>
+                        </div>
+                    </div>
+                    <div class="verification-modal-price" id="verification-task-price">0 ₽</div>
+                </div>
+                
+                <div class="confirmation-text">Скриншот выполнения задания:</div>
+                <img id="verification-screenshot" class="verification-modal-screenshot" alt="Скриншот задания">
+                
+                <div class="verification-modal-actions">
+                    <button class="verification-reject" onclick="rejectVerification()">❌ Отклонить</button>
+                    <button class="verification-approve" onclick="approveVerification()">✅ Одобрить</button>
+                </div>
+                
+                <button class="confirmation-btn confirmation-cancel" onclick="closeModal('verification-modal')" style="margin-top: 16px; width: 100%;">Закрыть</button>
+            </div>
+        </div>
+    <!-- <div class="modal" id="confirmation-modal">
         <div class="modal-content">
             <div class="modal-header">
                 <div class="modal-title">📸 Подтверждение задания</div>
@@ -3903,7 +4333,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> -->
 
     <div class="chat-modal" id="admin-chat">
         <div class="chat-header">
@@ -5601,6 +6031,392 @@ window.addEventListener('load', function() {
         taskTabs[0].click();
     }
 });
+// Глобальные переменные для системы проверки
+let currentUserTaskId = null;
+let currentVerificationId = null;
+
+// Функции для системы проверки заданий
+
+// Показать модальное окно подтверждения выполнения
+function showTaskConfirmation(userTaskId, taskName) {
+    currentUserTaskId = userTaskId;
+    document.getElementById('confirmation-task-name').textContent = taskName;
+    document.getElementById('confirmation-modal').classList.add('active');
+}
+
+// Показать окно загрузки скриншота
+function showScreenshotUpload() {
+    closeModal('confirmation-modal');
+    closeModal('cancel-confirmation-modal');
+    
+    // Сброс формы
+    document.getElementById('screenshot-file').value = '';
+    document.getElementById('screenshot-preview').style.display = 'none';
+    document.getElementById('file-name').textContent = '';
+    document.getElementById('submit-screenshot-btn').disabled = true;
+    
+    // Настройка обработчика файла
+    document.getElementById('screenshot-file').onchange = function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            document.getElementById('file-name').textContent = file.name;
+            document.getElementById('submit-screenshot-btn').disabled = false;
+            
+            // Показать превью
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.getElementById('screenshot-preview');
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+    
+    document.getElementById('screenshot-modal').classList.add('active');
+}
+
+// Показать подтверждение отмены
+function showCancelConfirmation() {
+    closeModal('confirmation-modal');
+    document.getElementById('cancel-confirmation-modal').classList.add('active');
+}
+
+// Отправить скриншот на проверку
+async function submitScreenshot() {
+    const fileInput = document.getElementById('screenshot-file');
+    if (!fileInput.files[0]) {
+        showNotification('Выберите файл скриншота', 'error');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('screenshot', fileInput.files[0]);
+    formData.append('userId', currentUser.id);
+
+    try {
+        const response = await fetch(`${API_URL}/user/tasks/${currentUserTaskId}/submit`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showNotification('Скриншот отправлен на проверку!', 'success');
+            closeModal('screenshot-modal');
+            loadUserTasks(); // Обновить список заданий
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error submitting screenshot:', error);
+        showNotification('Ошибка отправки скриншота', 'error');
+    }
+}
+
+// Отменить задание
+async function cancelTask() {
+    if (!currentUserTaskId) return;
+
+    try {
+        const result = await makeRequest(`${API_URL}/user/tasks/${currentUserTaskId}/cancel`, {
+            method: 'POST',
+            body: JSON.stringify({
+                userId: currentUser.id
+            })
+        });
+
+        if (result.success) {
+            showNotification('Задание отменено', 'success');
+            closeModal('cancel-confirmation-modal');
+            loadUserTasks(); // Обновить список заданий
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error cancelling task:', error);
+        showNotification('Ошибка отмены задания', 'error');
+    }
+}
+
+// Загрузка заданий на проверку для админа
+async function loadTaskVerifications() {
+    if (!currentUser || !currentUser.isAdmin) return;
+
+    try {
+        const result = await makeRequest(`${API_URL}/admin/task-verifications?adminId=${ADMIN_ID}`);
+        if (result.success) {
+            displayTaskVerifications(result.verifications);
+        }
+    } catch (error) {
+        console.error('Error loading task verifications:', error);
+    }
+}
+
+// Отображение заданий на проверку
+function displayTaskVerifications(verifications) {
+    const container = document.getElementById('admin-verification-list');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!verifications || verifications.length === 0) {
+        container.innerHTML = `
+            <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
+                <div>Нет заданий на проверке</div>
+                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
+                    Все задания проверены
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    verifications.forEach(verification => {
+        const verificationElement = document.createElement('div');
+        verificationElement.className = 'verification-item';
+        verificationElement.onclick = () => openVerificationModal(verification);
+
+        const userAvatar = verification.user_name ? verification.user_name.charAt(0).toUpperCase() : 'U';
+        const submissionTime = formatPostDate(verification.submitted_at);
+
+        verificationElement.innerHTML = `
+            <div class="verification-header">
+                <div class="verification-avatar">
+                    ${userAvatar}
+                </div>
+                <div class="verification-user-info">
+                    <div class="verification-user-name">
+                        ${verification.user_name}
+                        ${verification.username ? `(@${verification.username})` : ''}
+                    </div>
+                    <div class="verification-task-title">${verification.task_title}</div>
+                </div>
+                <div class="verification-price">${verification.task_price} ₽</div>
+            </div>
+            <div class="verification-time">Отправлено: ${submissionTime}</div>
+        `;
+
+        container.appendChild(verificationElement);
+    });
+}
+
+// Открыть модальное окно проверки задания
+function openVerificationModal(verification) {
+    currentVerificationId = verification.id;
+
+    document.getElementById('verification-user-avatar').textContent = 
+        verification.user_name ? verification.user_name.charAt(0).toUpperCase() : 'U';
+    document.getElementById('verification-user-name').textContent = verification.user_name;
+    document.getElementById('verification-task-title').textContent = verification.task_title;
+    document.getElementById('verification-task-price').textContent = verification.task_price + ' ₽';
+    
+    // Загрузка скриншота
+    const screenshotImg = document.getElementById('verification-screenshot');
+    screenshotImg.src = verification.screenshot_url;
+    screenshotImg.onerror = function() {
+        this.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjMWExYTNhIi8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM4YjlkZGEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4K';
+    };
+
+    document.getElementById('verification-modal').classList.add('active');
+}
+
+// Одобрить задание
+async function approveVerification() {
+    if (!currentVerificationId) return;
+
+    try {
+        const result = await makeRequest(`${API_URL}/admin/task-verifications/${currentVerificationId}/approve`, {
+            method: 'POST',
+            body: JSON.stringify({
+                adminId: currentUser.id
+            })
+        });
+
+        if (result.success) {
+            showNotification('Задание одобрено! Баланс пользователя обновлен.', 'success');
+            closeModal('verification-modal');
+            loadTaskVerifications(); // Обновить список проверок
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error approving verification:', error);
+        showNotification('Ошибка одобрения задания', 'error');
+    }
+}
+
+// Отклонить задание
+async function rejectVerification() {
+    if (!currentVerificationId) return;
+
+    try {
+        const result = await makeRequest(`${API_URL}/admin/task-verifications/${currentVerificationId}/reject`, {
+            method: 'POST',
+            body: JSON.stringify({
+                adminId: currentUser.id
+            })
+        });
+
+        if (result.success) {
+            showNotification('Задание отклонено', 'success');
+            closeModal('verification-modal');
+            loadTaskVerifications(); // Обновить список проверок
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error rejecting verification:', error);
+        showNotification('Ошибка отклонения задания', 'error');
+    }
+}
+
+// Обновление функции отображения заданий пользователя
+function displayUserTasks(tasks, category) {
+    const container = document.getElementById(category + '-tasks');
+    if (!container) return;
+    
+    container.innerHTML = '';
+
+    if (!tasks || tasks.length === 0) {
+        container.innerHTML = `
+            <div class="no-tasks">
+                <div class="no-tasks-icon">📝</div>
+                <div>${
+                    category === 'confirmation' ? 'Нет заданий на подтверждение' : 
+                    category === 'completed' ? 'Нет выполненных заданий' :
+                    category === 'rejected' ? 'Нет отклоненных заданий' : 'Нет заданий'
+                }</div>
+            </div>
+        `;
+        return;
+    }
+
+    tasks.forEach(task => {
+        const taskElement = document.createElement('div');
+        taskElement.className = `task-card ${task.status === 'rejected' ? 'rejected-task' : ''}`;
+        
+        if (category === 'confirmation') {
+            taskElement.innerHTML = `
+                <div class="task-header">
+                    <div>
+                        <div class="task-title">${task.title}</div>
+                        <div class="task-category">${task.category}</div>
+                    </div>
+                    <div class="task-price">${task.price} ₽</div>
+                </div>
+                <div class="task-description">${task.description}</div>
+                <div class="task-footer">
+                    <div class="task-time">Ожидает подтверждения</div>
+                    <button class="task-btn" onclick="showTaskConfirmation(${task.id}, '${escapeHtml(task.title)}')">Подтвердить выполнение</button>
+                </div>
+            `;
+        } else if (category === 'completed') {
+            taskElement.innerHTML = `
+                <div class="task-header">
+                    <div>
+                        <div class="task-title">${task.title}</div>
+                        <div class="task-category">${task.category}</div>
+                    </div>
+                    <div class="task-price">${task.price} ₽</div>
+                </div>
+                <div class="task-description">${task.description}</div>
+                <div class="task-footer">
+                    <div class="task-time">Выполнено</div>
+                    <div class="task-status completed">✅</div>
+                </div>
+            `;
+        } else if (category === 'rejected') {
+            taskElement.innerHTML = `
+                <div class="task-header">
+                    <div>
+                        <div class="task-title">${task.title}</div>
+                        <div class="task-category">${task.category}</div>
+                    </div>
+                    <div class="task-price">${task.price} ₽</div>
+                </div>
+                <div class="task-description">${task.description}</div>
+                <div class="task-footer">
+                    <div class="task-time">Отклонено</div>
+                    <button class="support-btn" onclick="openAdminChat()">Написать в поддержку</button>
+                </div>
+            `;
+        }
+        
+        container.appendChild(taskElement);
+    });
+}
+
+// Обновление функции загрузки заданий пользователя
+async function loadUserTasks() {
+    if (!currentUser) return;
+    
+    try {
+        // Активные задания (на подтверждение)
+        const activeResult = await makeRequest(`${API_URL}/user/${currentUser.id}/tasks?status=active`);
+        if (activeResult.success) {
+            displayUserTasks(activeResult.tasks, 'confirmation');
+        }
+        
+        // Выполненные задания
+        const completedResult = await makeRequest(`${API_URL}/user/${currentUser.id}/tasks?status=completed`);
+        if (completedResult.success) {
+            displayUserTasks(completedResult.tasks, 'completed');
+        }
+        
+        // Отклоненные задания
+        const rejectedResult = await makeRequest(`${API_URL}/user/${currentUser.id}/tasks?status=rejected`);
+        if (rejectedResult.success) {
+            displayUserTasks(rejectedResult.tasks, 'rejected');
+        }
+        
+    } catch (error) {
+        console.error('Error loading user tasks:', error);
+    }
+}
+
+// Обновить инициализацию приложения
+function initializeApp() {
+    displayUserProfile();
+    checkAdminRights();
+    loadMainPagePosts();
+    loadTasks();
+    initializeSearch();
+    loadUserTasks();
+    
+    // Если пользователь админ, загружаем админ-данные
+    if (currentUser && currentUser.isAdmin) {
+        loadAdminChats();
+        loadAdminTasks();
+        loadTaskVerifications(); // Добавить эту строку
+    }
+}
+
+// Добавить обработчики для новых модальных окон
+document.addEventListener('DOMContentLoaded', function() {
+    // Добавляем обработчики для новых модальных окон
+    document.querySelectorAll('.modal, .verification-modal').forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.remove('active');
+            }
+        });
+    });
+});
+
+// Экспортируем новые функции
+window.showTaskConfirmation = showTaskConfirmation;
+window.showScreenshotUpload = showScreenshotUpload;
+window.showCancelConfirmation = showCancelConfirmation;
+window.submitScreenshot = submitScreenshot;
+window.cancelTask = cancelTask;
+window.loadTaskVerifications = loadTaskVerifications;
+window.openVerificationModal = openVerificationModal;
+window.approveVerification = approveVerification;
+window.rejectVerification = rejectVerification;
+
 
 // Экспортируем функции для глобального использования
 window.openAdminChat = openAdminChat;
