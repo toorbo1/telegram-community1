@@ -41,7 +41,7 @@
             color: var(--text-primary);
             min-height: 100vh;
             padding: 16px;
-            padding-bottom: 140px;
+            padding-bottom: 100px;
             line-height: 1.6;
             background-image: 
                 radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.05) 0%, transparent 25%),
@@ -3509,154 +3509,119 @@
 /* Минималистичный дизайн постов */
 .posts-feed {
     margin-top: 20px;
-    padding-bottom: 100px; /* Добавляем отступ снизу чтобы навигация не перекрывала */
 }
 
 .post-item {
-    background: transparent;
-    border-radius: 0;
-    padding: 30px 0; /* Увеличиваем отступы */
-    margin-bottom: 0;
-    border: none;
-    border-bottom: 1px solid var(--border);
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
     transition: all 0.3s ease;
-    width: 100%;
 }
 
-.post-item:last-child {
-    border-bottom: none;
+.post-item:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
 }
 
 .post-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 25px; /* Увеличиваем отступ */
+    margin-bottom: 12px;
 }
 
 .post-title {
-    font-size: 26px; /* Увеличиваем размер заголовка */
-    font-weight: 800; /* Делаем более жирным */
+    font-size: 16px;
+    font-weight: 600;
     color: var(--text-primary);
-    margin-bottom: 10px;
+    margin-bottom: 6px;
     line-height: 1.3;
-    letter-spacing: -0.3px;
 }
 
 .post-author {
-    font-size: 14px;
+    font-size: 12px;
     color: var(--text-secondary);
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+}
+
+.admin-badge {
+    background: var(--purple-gradient);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
 }
 
 .post-date {
-    font-size: 13px;
+    font-size: 11px;
     color: var(--text-secondary);
     white-space: nowrap;
-    margin-left: 15px;
+    margin-left: 10px;
 }
 
 .post-content {
     color: var(--text-primary);
-    line-height: 1.7; /* Увеличиваем межстрочный интервал */
-    margin-bottom: 25px; /* Увеличиваем отступ */
+    line-height: 1.5;
+    margin-bottom: 12px;
     white-space: pre-wrap;
     word-wrap: break-word;
-    font-size: 16px;
-}
-
-/* Красивый дизайн для фото в посте */
-.post-image-container {
-    margin: 25px 0;
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    transition: all 0.3s ease;
-}
-
-.post-image-container:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    font-size: 14px;
 }
 
 .post-image {
     width: 100%;
-    border-radius: 16px;
-    display: block;
-    max-height: 500px; /* Увеличиваем максимальную высоту */
+    border-radius: 8px;
+    margin: 10px 0;
+    max-height: 300px;
     object-fit: cover;
 }
 
 .post-footer {
     display: flex;
-    justify-content: flex-start;
+    justify-content: space-between;
     align-items: center;
-    padding-top: 25px; /* Увеличиваем отступ */
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
 }
 
 .post-actions {
     display: flex;
-    gap: 25px;
+    gap: 15px;
 }
 
-.like-btn, .dislike-btn {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
+.like-btn, .share-btn {
+    background: none;
+    border: none;
     color: var(--text-secondary);
-    font-size: 14px;
+    font-size: 13px;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 12px 24px; /* Увеличиваем padding */
-    border-radius: 25px;
+    gap: 4px;
+    padding: 6px 10px;
+    border-radius: 6px;
     transition: all 0.3s ease;
-    min-width: 90px; /* Увеличиваем минимальную ширину */
-    justify-content: center;
 }
 
-.like-btn:hover, .dislike-btn:hover {
-    background: var(--accent);
-    color: white;
-    transform: translateY(-2px);
-}
-
-.like-btn:active, .dislike-btn:active {
-    transform: scale(0.95);
-}
-
-.like-btn.active {
-    background: var(--success);
-    color: white;
-    border-color: var(--success);
-}
-
-.dislike-btn.active {
-    background: var(--error);
-    color: white;
-    border-color: var(--error);
-}
-
-.like-count, .dislike-count {
-    font-weight: 700; /* Делаем более жирным */
-    font-size: 14px;
-}
-
-.like-icon, .dislike-icon {
-    font-size: 18px; /* Увеличиваем иконки */
+.like-btn:hover, .share-btn:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
 }
 
 .loading-posts {
     text-align: center;
-    padding: 80px 20px; /* Увеличиваем отступы */
+    padding: 40px 20px;
     color: var(--text-secondary);
 }
 
 .loading-spinner {
-    font-size: 32px;
-    margin-bottom: 16px;
+    font-size: 24px;
+    margin-bottom: 12px;
     animation: spin 1s linear infinite;
 }
 
@@ -3668,12 +3633,13 @@
 /* Адаптивность для постов */
 @media (max-width: 768px) {
     .post-item {
-        padding: 25px 0;
+        padding: 14px;
+        margin-bottom: 10px;
     }
     
     .post-header {
         flex-direction: column;
-        gap: 12px; /* Увеличиваем gap */
+        gap: 8px;
     }
     
     .post-date {
@@ -3682,45 +3648,11 @@
     }
     
     .post-title {
-        font-size: 22px; /* Адаптивный размер для мобильных */
-    }
-    
-    .post-content {
         font-size: 15px;
     }
     
-    .post-actions {
-        gap: 20px; /* Увеличиваем gap */
-    }
-    
-    .like-btn, .dislike-btn {
-        padding: 10px 20px;
-        min-width: 80px;
-        font-size: 13px;
-    }
-}
-
-@media (max-width: 480px) {
-    .post-item {
-        padding: 20px 0;
-    }
-    
-    .post-title {
-        font-size: 20px;
-    }
-    
     .post-content {
-        font-size: 14px;
-    }
-    
-    .post-actions {
-        gap: 15px;
-    }
-    
-    .like-btn, .dislike-btn {
-        padding: 8px 16px;
-        min-width: 70px;
-        font-size: 12px;
+        font-size: 13px;
     }
 }
     </style>
@@ -5108,7 +5040,23 @@ async function submitTaskCompletion(taskId) {
     }
 }
 
-async function displayMainPagePosts(posts) {
+// Загрузка постов на главную
+async function loadMainPagePosts() {
+    try {
+        const result = await makeRequest(`${API_URL}/posts`);
+        
+        if (result.success && result.posts && result.posts.length > 0) {
+            displayMainPagePosts(result.posts);
+        } else {
+            hidePostsSection();
+        }
+    } catch (error) {
+        console.error('Error loading posts:', error);
+        hidePostsSection();
+    }
+}
+
+function displayMainPagePosts(posts) {
     const postsSection = document.getElementById('posts-section');
     const postsContainer = document.getElementById('posts-container');
     
@@ -5131,136 +5079,56 @@ async function displayMainPagePosts(posts) {
         return;
     }
     
-    for (const post of posts) {
-        const postElement = await createPostElement(post);
-        postsContainer.appendChild(postElement);
-    }
-}
-
-async function createPostElement(post) {
-    const postElement = document.createElement('div');
-    postElement.className = 'post-item fade-in';
-    
-    const postDate = formatPostDate(post.timestamp);
-    // Убираем LinkGold Assistant и заменяем на просто Администратор
-    const authorName = post.author === 'LinkGold Assistant' ? 'Администратор' : post.author;
-
-    // Загружаем реакции для поста
-    let likes = 0;
-    let dislikes = 0;
-    let userReaction = null;
-
-    try {
-        // Загружаем общее количество реакций
-        const reactionsResult = await makeRequest(`${API_URL}/posts/${post.id}/reactions`);
-        if (reactionsResult.success) {
-            likes = reactionsResult.likes || 0;
-            dislikes = reactionsResult.dislikes || 0;
-        }
-
-        // Загружаем реакцию текущего пользователя
-        if (currentUser) {
-            const userReactionResult = await makeRequest(`${API_URL}/posts/${post.id}/reactions/${currentUser.id}`);
-            if (userReactionResult.success) {
-                userReaction = userReactionResult.reaction;
-            }
-        }
-    } catch (error) {
-        console.log('Reactions not available yet, using default values');
-    }
-
-    const likeBtnClass = userReaction === 'like' ? 'like-btn active' : 'like-btn';
-    const dislikeBtnClass = userReaction === 'dislike' ? 'dislike-btn active' : 'dislike-btn';
-
-    postElement.innerHTML = `
-        <div class="post-header">
-            <div style="flex: 1;">
-                <div class="post-title">${escapeHtml(post.title)}</div>
-                <div class="post-author">
-                    ${escapeHtml(authorName)}
+    posts.forEach(post => {
+        const postElement = document.createElement('div');
+        postElement.className = 'post-item fade-in';
+        
+        const postDate = formatPostDate(post.timestamp);
+        const isAdmin = post.authorId === ADMIN_ID;
+        
+        postElement.innerHTML = `
+            <div class="post-header">
+                <div style="flex: 1;">
+                    <div class="post-title">${escapeHtml(post.title)}</div>
+                    <div class="post-author">
+                        ${escapeHtml(post.author || 'Администратор')}
+                    </div>
+                </div>
+                <div class="post-date">${postDate}</div>
+            </div>
+            
+            <div class="post-content">${escapeHtml(post.content)}</div>
+            
+            ${post.image_url ? `
+                <img src="${post.image_url}" alt="Изображение" class="post-image" onerror="this.style.display='none'">
+            ` : ''}
+            
+            <div class="post-footer">
+                <div class="post-actions">
+                    <button class="like-btn" onclick="handleLike(${post.id}, this)">
+                        <span class="like-icon">👍</span>
+                        <span class="like-count">${post.likes || 0}</span>
+                    </button>
+                    <button class="dislike-btn" onclick="handleDislike(${post.id}, this)">
+                        <span class="dislike-icon">👎</span>
+                        <span class="dislike-count">${post.dislikes || 0}</span>
+                    </button>
                 </div>
             </div>
-            <div class="post-date">${postDate}</div>
-        </div>
-        
-        <div class="post-content">${escapeHtml(post.content)}</div>
-        
-        ${post.image_url ? `
-            <div class="post-image-container">
-                <img src="${post.image_url}" alt="Изображение" class="post-image" onerror="this.style.display='none'">
-            </div>
-        ` : ''}
-        
-        <div class="post-footer">
-            <div class="post-actions">
-                <button class="${likeBtnClass}" onclick="handleReaction(${post.id}, 'like')">
-                    <span class="like-icon">👍</span>
-                    <span class="like-count">${likes}</span>
-                </button>
-                <button class="${dislikeBtnClass}" onclick="handleReaction(${post.id}, 'dislike')">
-                    <span class="dislike-icon">👎</span>
-                    <span class="dislike-count">${dislikes}</span>
-                </button>
-            </div>
-        </div>
-        
-        ${currentUser && currentUser.isAdmin && parseInt(currentUser.id) === ADMIN_ID ? `
-            <div style="margin-top: 15px; text-align: right;">
-                <button class="admin-task-delete" onclick="deletePost(${post.id})" style="font-size: 12px; padding: 6px 12px;">
-                    🗑️ Удалить пост
-                </button>
-            </div>
-        ` : ''}
-    `;
-    
-    return postElement;
-}
-// Функции для лайков и дизлайков
-async function handleReaction(postId, reactionType) {
-    if (!currentUser) {
-        showNotification('Войдите в систему, чтобы оценивать посты', 'error');
-        return;
-    }
-
-    try {
-        const result = await makeRequest(`${API_URL}/posts/${postId}/react`, {
-            method: 'POST',
-            body: JSON.stringify({
-                userId: currentUser.id,
-                reactionType: reactionType
-            })
-        });
-
-        if (result.success) {
-            // Обновляем счетчики на кнопках
-            const postElement = document.querySelector(`.post-item .like-btn[onclick*="${postId}"]`)?.closest('.post-item');
-            if (postElement) {
-                const likeCountElement = postElement.querySelector('.like-count');
-                const dislikeCountElement = postElement.querySelector('.dislike-count');
-                const likeBtn = postElement.querySelector('.like-btn');
-                const dislikeBtn = postElement.querySelector('.dislike-btn');
-
-                if (likeCountElement) likeCountElement.textContent = result.likes;
-                if (dislikeCountElement) dislikeCountElement.textContent = result.dislikes;
-
-                // Обновляем активные состояния
-                likeBtn.classList.remove('active');
-                dislikeBtn.classList.remove('active');
-
-                if (result.userReaction === 'like') {
-                    likeBtn.classList.add('active');
-                } else if (result.userReaction === 'dislike') {
-                    dislikeBtn.classList.add('active');
-                }
-            }
             
-            showNotification('Реакция сохранена!', 'success');
-        }
-    } catch (error) {
-        console.error('Error reacting to post:', error);
-        showNotification('Ошибка при сохранении реакции', 'error');
-    }
+            ${currentUser && currentUser.isAdmin && parseInt(currentUser.id) === ADMIN_ID ? `
+                <div style="margin-top: 15px; text-align: right;">
+                    <button class="admin-task-delete" onclick="deletePost(${post.id})" style="font-size: 12px; padding: 6px 12px;">
+                        🗑️ Удалить пост
+                    </button>
+                </div>
+            ` : ''}
+        `;
+        
+        postsContainer.appendChild(postElement);
+    });
 }
+
 function hidePostsSection() {
     const postsSection = document.getElementById('posts-section');
     if (postsSection) postsSection.style.display = 'none';
@@ -6922,8 +6790,6 @@ window.showChatTab = showChatTab;
 // Экспортируем новые функции для глобального использования
 window.handleLike = handleLike;
 window.handleDislike = handleDislike;
-// Экспортируем новые функции для глобального использования
-window.handleReaction = handleReaction;
 </script>
 </body>
 </html>
