@@ -3616,18 +3616,22 @@
     }
 }
 /* Минималистичный дизайн постов */
+.posts-feed {
+    margin-top: 20px;
+}
+
 .post-item {
     background: var(--card-bg);
     border-radius: 12px;
     padding: 16px;
     margin-bottom: 12px;
     border: 1px solid var(--border);
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
 }
 
 .post-item:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: var(--accent);
+    transform: translateY(-2px);
 }
 
 .post-header {
@@ -3641,7 +3645,7 @@
     font-size: 16px;
     font-weight: 600;
     color: var(--text-primary);
-    margin-bottom: 4px;
+    margin-bottom: 6px;
     line-height: 1.3;
 }
 
@@ -3653,25 +3657,35 @@
     gap: 6px;
 }
 
+.admin-badge {
+    background: var(--purple-gradient);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+}
+
 .post-date {
     font-size: 11px;
     color: var(--text-secondary);
-    opacity: 0.7;
+    white-space: nowrap;
+    margin-left: 10px;
 }
 
 .post-content {
     color: var(--text-primary);
     line-height: 1.5;
     margin-bottom: 12px;
-    font-size: 14px;
     white-space: pre-wrap;
     word-wrap: break-word;
+    font-size: 14px;
 }
 
 .post-image {
     width: 100%;
     border-radius: 8px;
-    margin: 8px 0;
+    margin: 10px 0;
     max-height: 300px;
     object-fit: cover;
 }
@@ -3686,21 +3700,21 @@
 
 .post-actions {
     display: flex;
-    gap: 8px;
+    gap: 15px;
 }
 
 .like-btn, .share-btn {
     background: none;
     border: none;
     color: var(--text-secondary);
-    font-size: 12px;
+    font-size: 13px;
     cursor: pointer;
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 4px 8px;
+    padding: 6px 10px;
     border-radius: 6px;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
 }
 
 .like-btn:hover, .share-btn:hover {
@@ -3708,13 +3722,47 @@
     color: var(--text-primary);
 }
 
-.admin-badge {
-    background: var(--purple-gradient);
-    color: white;
-    padding: 1px 6px;
-    border-radius: 4px;
-    font-size: 9px;
-    font-weight: 600;
+.loading-posts {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-secondary);
+}
+
+.loading-spinner {
+    font-size: 24px;
+    margin-bottom: 12px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Адаптивность для постов */
+@media (max-width: 768px) {
+    .post-item {
+        padding: 14px;
+        margin-bottom: 10px;
+    }
+    
+    .post-header {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .post-date {
+        margin-left: 0;
+        align-self: flex-start;
+    }
+    
+    .post-title {
+        font-size: 15px;
+    }
+    
+    .post-content {
+        font-size: 13px;
+    }
 }
     </style>
 </head>
@@ -3994,31 +4042,27 @@
                 </div>
                 
                 <!-- Действия профиля -->
-<div class="profile-section fade-in">
-    <div class="section-title">Действия</div>
-    <div class="profile-actions">
-        <div class="profile-action" onclick="showActionsPage()">
-            <div class="action-icon">💳</div>
-            <div class="action-text">Действия</div>
-            <div class="action-arrow">›</div>
-        </div>
-        <div class="profile-action" onclick="showWithdrawPage()">
-            <div class="action-icon">💸</div>
-            <div class="action-text">Вывод средств</div>
-            <div class="action-arrow">›</div>
-        </div>
-        <div class="profile-action" onclick="showHowItWorksPage()">
-            <div class="action-icon">❓</div>
-            <div class="action-text">Как это работает</div>
-            <div class="action-arrow">›</div>
-        </div>
-        <div class="profile-action" onclick="showAboutPage()">
-            <div class="action-icon">ℹ️</div>
-            <div class="action-text">О приложении</div>
-            <div class="action-arrow">›</div>
-        </div>
-    </div>
-</div>
+                <div class="profile-section fade-in">
+                    <div class="section-title">Действия</div>
+                    <div class="profile-actions">
+                        <div class="profile-action" onclick="showWithdrawPage()">
+                            <div class="action-icon">💳</div>
+                            <div class="action-text">Вывод средств</div>
+                            <div class="action-arrow">›</div>
+                        </div>
+                        <div class="profile-action" onclick="showHowItWorksPage()">
+                            <div class="action-icon">❓</div>
+                            <div class="action-text">Как это работает</div>
+                            <div class="action-arrow">›</div>
+                        </div>
+                        <div class="profile-action" onclick="showAboutPage()">
+                            <div class="action-icon">ℹ️</div>
+                            <div class="action-text">О приложении</div>
+                            <div class="action-arrow">›</div>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Настройки -->
                 <div class="profile-section fade-in">
                     <div class="section-title">Настройки</div>
@@ -4189,7 +4233,193 @@
                     </div>
                 </div>
             </div>
+            <!-- Страница "Вывод средств" -->
+            <div id="withdraw-page" class="page">
+                <div class="page-header">
+                    <button class="back-button" onclick="showProfileTab()">←</button>
+                    <div class="page-title">💳 Вывод средств</div>
+                </div>
 
+                <div class="card">
+                    <div class="balance-amount" id="withdraw-balance">0 ₽</div>
+                    <p class="about-text" style="text-align: center; margin-bottom: 20px;">Доступно для вывода</p>
+
+                    <div class="withdraw-info" style="background: var(--bg-secondary); padding: 15px; border-radius: 12px; margin-bottom: 20px;">
+                        <h4 style="margin-bottom: 10px;">📋 Условия вывода:</h4>
+                        <ul style="color: var(--text-secondary); font-size: 14px; padding-left: 20px;">
+                            <li>Минимальная сумма вывода: <strong>50 ₽</strong></li>
+                            <li>Вывод обрабатывается в течение <strong>24 часов</strong></li>
+                            <li>Комиссия: <strong>0%</strong> для всех способов</li>
+                            <li>Доступные методы: карты, QIWI, ЮMoney</li>
+                        </ul>
+                    </div>
+
+                    <div class="admin-form">
+                        <h3>Запрос на вывод</h3>
+                        <input type="number" class="admin-input" id="withdraw-amount" placeholder="Сумма вывода (минимум 50 ₽)" min="50">
+                        <select class="admin-input" id="withdraw-method">
+                            <option value="">Выберите способ вывода</option>
+                            <option value="card">💳 Банковская карта</option>
+                            <option value="qiwi">🟠 QIWI Кошелек</option>
+                            <option value="yoomoney">🔵 ЮMoney</option>
+                            <option value="crypto">₿ Криптовалюта (USDT)</option>
+                        </select>
+                        <input type="text" class="admin-input" id="withdraw-details" placeholder="Реквизиты для вывода">
+                        <button class="admin-submit" onclick="submitWithdraw()">Заказать выплату</button>
+                    </div>
+
+                    <div class="withdraw-history" style="margin-top: 25px;">
+                        <h4 style="margin-bottom: 15px;">📊 История выводов</h4>
+                        <div id="withdraw-history-list" style="background: var(--bg-secondary); border-radius: 12px; padding: 15px;">
+                            <div style="text-align: center; color: var(--text-secondary); font-size: 14px;">
+                                История выводов пуста
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Страница "Как это работает" -->
+            <div id="how-it-works-page" class="page">
+                <div class="page-header">
+                    <button class="back-button" onclick="showProfileTab()">←</button>
+                    <div class="page-title">❓ Как это работает</div>
+                </div>
+
+                <div class="card">
+                    <div class="workflow-steps">
+                        <div class="workflow-step" style="display: flex; align-items: flex-start; margin-bottom: 25px; padding: 15px; background: var(--bg-secondary); border-radius: 12px;">
+                            <div class="step-number" style="background: var(--accent); color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; flex-shrink: 0;">1</div>
+                            <div>
+                                <h4 style="margin-bottom: 8px;">📋 Выбирайте задания</h4>
+                                <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">
+                                    В разделе "Задания" доступны различные активности: подписки, лайки, репосты и другие задания от рекламодателей.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="workflow-step" style="display: flex; align-items: flex-start; margin-bottom: 25px; padding: 15px; background: var(--bg-secondary); border-radius: 12px;">
+                            <div class="step-number" style="background: var(--accent); color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; flex-shrink: 0;">2</div>
+                            <div>
+                                <h4 style="margin-bottom: 8px;">⚡ Выполняйте задания</h4>
+                                <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">
+                                    Следуйте инструкциям в каждом задании. Большинство заданий можно выполнить за 2-5 минут.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="workflow-step" style="display: flex; align-items: flex-start; margin-bottom: 25px; padding: 15px; background: var(--bg-secondary); border-radius: 12px;">
+                            <div class="step-number" style="background: var(--accent); color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; flex-shrink: 0;">3</div>
+                            <div>
+                                <h4 style="margin-bottom: 8px;">📸 Подтверждайте выполнение</h4>
+                                <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">
+                                    После выполнения задания отправьте скриншот для проверки. Модерация занимает до 24 часов.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="workflow-step" style="display: flex; align-items: flex-start; margin-bottom: 25px; padding: 15px; background: var(--bg-secondary); border-radius: 12px;">
+                            <div class="step-number" style="background: var(--accent); color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; flex-shrink: 0;">4</div>
+                            <div>
+                                <h4 style="margin-bottom: 8px;">💳 Выводите деньги</h4>
+                                <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">
+                                    Получайте выплаты на карту, электронные кошельки или криптовалюту. Минимальная сумма вывода - 50 рублей.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="faq-section" style="margin-top: 30px;">
+                        <h4 style="margin-bottom: 15px;">❔ Частые вопросы</h4>
+                        
+                        <div class="faq-item" style="margin-bottom: 15px; padding: 15px; background: var(--bg-secondary); border-radius: 12px;">
+                            <div class="faq-question" style="font-weight: 600; margin-bottom: 8px;">Сколько времени занимает проверка задания?</div>
+                            <div class="faq-answer" style="color: var(--text-secondary); font-size: 14px;">
+                                Обычно проверка занимает от 1 до 24 часов. В выходные дни возможно увеличение времени проверки.
+                            </div>
+                        </div>
+
+                        <div class="faq-item" style="margin-bottom: 15px; padding: 15px; background: var(--bg-secondary); border-radius: 12px;">
+                            <div class="faq-question" style="font-weight: 600; margin-bottom: 8px;">Почему задание может быть отклонено?</div>
+                            <div class="faq-answer" style="color: var(--text-secondary); font-size: 14px;">
+                                Задание отклоняется если: не выполнены все условия, предоставлен нечеткий скриншот, нарушены правила выполнения.
+                            </div>
+                        </div>
+
+                        <div class="faq-item" style="margin-bottom: 15px; padding: 15px; background: var(--bg-secondary); border-radius: 12px;">
+                            <div class="faq-question" style="font-weight: 600; margin-bottom: 8px;">Как увеличить свой заработок?</div>
+                            <div class="faq-answer" style="color: var(--text-secondary); font-size: 14px;">
+                                Регулярно выполняйте задания, приглашайте друзей по реферальной программе, повышайте уровень аккаунта.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Страница "О приложении" -->
+            <div id="about-page" class="page">
+                <div class="page-header">
+                    <button class="back-button" onclick="showProfileTab()">←</button>
+                    <div class="page-title">ℹ️ О приложении</div>
+                </div>
+
+                <div class="card">
+                    <div style="text-align: center; margin-bottom: 25px;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">💰</div>
+                        <h2 style="margin-bottom: 10px;">LinkGold</h2>
+                        <p style="color: var(--text-secondary);">Платформа для заработка на выполнении заданий</p>
+                    </div>
+
+                    <div class="app-info" style="margin-bottom: 25px;">
+                        <p style="color: var(--text-secondary); line-height: 1.6; margin-bottom: 15px;">
+                            LinkGold — это современная платформа, которая позволяет каждому пользователю монетизировать 
+                            свою активность в интернете. Мы создали прозрачную и удобную систему для заработка 
+                            на выполнении простых заданий.
+                        </p>
+                        
+                        <p style="color: var(--text-secondary); line-height: 1.6; margin-bottom: 15px;">
+                            Наша миссия — предоставить возможность дополнительного дохода для всех, 
+                            кто готов проявить активность и выполнять интересные задачи от рекламодателей.
+                        </p>
+                    </div>
+
+                    <div class="app-stats" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 25px;">
+                        <div style="background: var(--bg-secondary); padding: 15px; border-radius: 12px; text-align: center;">
+                            <div style="font-size: 24px; font-weight: 700; margin-bottom: 5px; background: var(--gold-gradient); -webkit-background-clip: text; background-clip: text; color: transparent;">10K+</div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">Пользователей</div>
+                        </div>
+                        <div style="background: var(--bg-secondary); padding: 15px; border-radius: 12px; text-align: center;">
+                            <div style="font-size: 24px; font-weight: 700; margin-bottom: 5px; background: var(--gold-gradient); -webkit-background-clip: text; background-clip: text; color: transparent;">50K+</div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">Выполненных заданий</div>
+                        </div>
+                        <div style="background: var(--bg-secondary); padding: 15px; border-radius: 12px; text-align: center;">
+                            <div style="font-size: 24px; font-weight: 700; margin-bottom: 5px; background: var(--gold-gradient); -webkit-background-clip: text; background-clip: text; color: transparent;">2M+</div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">Выплачено рублей</div>
+                        </div>
+                        <div style="background: var(--bg-secondary); padding: 15px; border-radius: 12px; text-align: center;">
+                            <div style="font-size: 24px; font-weight: 700; margin-bottom: 5px; background: var(--gold-gradient); -webkit-background-clip: text; background-clip: text; color: transparent;">99%</div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">Положительных отзывов</div>
+                        </div>
+                    </div>
+
+                    <div class="contact-info" style="background: var(--bg-secondary); padding: 20px; border-radius: 12px; text-align: center;">
+                        <h4 style="margin-bottom: 15px;">📞 Контакты</h4>
+                        <p style="color: var(--text-secondary); margin-bottom: 10px; font-size: 14px;">
+                            По всем вопросам обращайтесь в поддержку через раздел "Поддержка" в вашем профиле
+                        </p>
+                        <button class="btn btn-primary" onclick="openAdminChat()" style="margin-top: 10px;">
+                            💬 Написать в поддержку
+                        </button>
+                    </div>
+
+                    <div class="about-footer" style="text-align: center; margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--border);">
+                        <div style="color: var(--text-secondary); font-size: 12px;">
+                            LinkGold © 2024. Все права защищены.<br>
+                            Версия 1.0.0
+                        </div>
+                    </div>
+                </div>
+            </div>
             <!-- Страница вывода средств -->
             <div id="withdraw-page" class="page">
                 <div class="page-header">
@@ -4452,163 +4682,7 @@
             <button class="chat-send" onclick="sendMessageToAdmin()">➤</button>
         </div>
     </div>
-<!-- Страница "Действия" -->
-<div id="actions-page" class="page">
-    <div class="page-header">
-        <button class="back-button" onclick="showProfileTab()">←</button>
-        <div class="page-title">Действия 💳</div>
-    </div>
 
-    <div class="card">
-        <div class="about-title">История операций</div>
-        
-        <div class="profile-actions" style="margin-bottom: 20px;">
-            <div class="profile-action" onclick="showWithdrawPage()">
-                <div class="action-icon">💸</div>
-                <div class="action-text">Вывод средств</div>
-                <div class="action-arrow">›</div>
-            </div>
-            <div class="profile-action" onclick="showTasksTab()">
-                <div class="action-icon">📋</div>
-                <div class="action-text">Доступные задания</div>
-                <div class="action-arrow">›</div>
-            </div>
-        </div>
-
-        <div class="about-text">
-            <p><strong>Последние операции:</strong></p>
-            <ul style="padding-left: 20px; margin-bottom: 16px;">
-                <li>Выполнение задания "Подписка на канал" - <strong>+50 ₽</strong></li>
-                <li>Выполнение задания "Просмотр видео" - <strong>+25 ₽</strong></li>
-                <li>Реферальное вознаграждение - <strong>+15 ₽</strong></li>
-            </ul>
-            
-            <p><strong>Доступные действия:</strong></p>
-            <ul style="padding-left: 20px;">
-                <li>Выполнение заданий из раздела "Задания"</li>
-                <li>Приглашение друзей по реферальной ссылке</li>
-                <li>Вывод заработанных средств</li>
-                <li>Участие в акциях и бонусах</li>
-            </ul>
-        </div>
-    </div>
-</div>
-
-<!-- Страница "Как это работает" -->
-<div id="how-it-works-page" class="page">
-    <div class="page-header">
-        <button class="back-button" onclick="showProfileTab()">←</button>
-        <div class="page-title">Как это работает ❓</div>
-    </div>
-
-    <div class="card">
-        <div class="about-title">Как работает LinkGold</div>
-        
-        <div class="about-text">
-            <p><strong>4 простых шага к заработку:</strong></p>
-            
-            <div style="margin: 20px 0;">
-                <div style="display: flex; align-items: center; margin-bottom: 15px; padding: 12px; background: var(--bg-secondary); border-radius: 10px;">
-                    <div style="font-size: 24px; margin-right: 15px;">1️⃣</div>
-                    <div>
-                        <strong>Выбирайте задания</strong><br>
-                        <span style="font-size: 13px; color: var(--text-secondary);">Из списка доступных в вашем профиле</span>
-                    </div>
-                </div>
-                
-                <div style="display: flex; align-items: center; margin-bottom: 15px; padding: 12px; background: var(--bg-secondary); border-radius: 10px;">
-                    <div style="font-size: 24px; margin-right: 15px;">2️⃣</div>
-                    <div>
-                        <strong>Выполняйте задания</strong><br>
-                        <span style="font-size: 13px; color: var(--text-secondary);">Следуя инструкциям к каждому заданию</span>
-                    </div>
-                </div>
-                
-                <div style="display: flex; align-items: center; margin-bottom: 15px; padding: 12px; background: var(--bg-secondary); border-radius: 10px;">
-                    <div style="font-size: 24px; margin-right: 15px;">3️⃣</div>
-                    <div>
-                        <strong>Подтверждайте выполнение</strong><br>
-                        <span style="font-size: 13px; color: var(--text-secondary);">Отправляйте скриншоты для проверки</span>
-                    </div>
-                </div>
-                
-                <div style="display: flex; align-items: center; margin-bottom: 15px; padding: 12px; background: var(--bg-secondary); border-radius: 10px;">
-                    <div style="font-size: 24px; margin-right: 15px;">4️⃣</div>
-                    <div>
-                        <strong>Получайте оплату</strong><br>
-                        <span style="font-size: 13px; color: var(--text-secondary);">Средства зачисляются на ваш баланс</span>
-                    </div>
-                </div>
-            </div>
-
-            <p><strong>Часто задаваемые вопросы:</strong></p>
-            <div style="background: var(--bg-secondary); padding: 15px; border-radius: 10px; margin: 15px 0;">
-                <p><strong>❓ Сколько времени занимает проверка задания?</strong><br>
-                Обычно проверка занимает от 1 до 24 часов.</p>
-                
-                <p><strong>❓ Когда можно выводить средства?</strong><br>
-                Вывод доступен при достижении минимальной суммы в 100 рублей.</p>
-                
-                <p><strong>❓ Как увеличить заработок?</strong><br>
-                Приглашайте друзей и выполняйте задания регулярно.</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Страница "О приложении" -->
-<div id="about-page" class="page">
-    <div class="page-header">
-        <button class="back-button" onclick="showProfileTab()">←</button>
-        <div class="page-title">О приложении ℹ️</div>
-    </div>
-
-    <div class="card">
-        <div class="about-title">О LinkGold</div>
-        
-        <div class="about-text">
-            <p><strong>LinkGold</strong> — это современная платформа для заработка, которая позволяет монетизировать вашу активность в социальных сетях и интернете.</p>
-            
-            <p>Мы создали удобный и безопасный сервис, где каждый может:</p>
-            <ul style="padding-left: 20px; margin-bottom: 16px;">
-                <li>Зарабатывать на выполнении простых заданий</li>
-                <li>Получать дополнительный доход без вложений</li>
-                <li>Работать в удобное время из любого места</li>
-                <li>Развиваться вместе с нашей платформой</li>
-            </ul>
-
-            <div style="background: var(--purple-gradient); padding: 20px; border-radius: 12px; margin: 20px 0; text-align: center;">
-                <h4 style="margin-bottom: 10px;">🎯 Наша миссия</h4>
-                <p style="margin: 0; font-size: 14px;">Сделать онлайн-заработок доступным для каждого, предоставляя честные и прозрачные условия сотрудничества.</p>
-            </div>
-
-            <p><strong>Преимущества LinkGold:</strong></p>
-            <div class="about-features">
-                <div class="about-feature">
-                    <div class="feature-icon">🚀</div>
-                    <div class="feature-text">Быстрый старт</div>
-                </div>
-                <div class="about-feature">
-                    <div class="feature-icon">💎</div>
-                    <div class="feature-text">Честные условия</div>
-                </div>
-                <div class="about-feature">
-                    <div class="feature-icon">🛡️</div>
-                    <div class="feature-text">Надежная защита</div>
-                </div>
-                <div class="about-feature">
-                    <div class="feature-icon">📈</div>
-                    <div class="feature-text">Постоянный рост</div>
-                </div>
-            </div>
-
-            <div class="about-footer">
-                <p>LinkGold © 2024. Все права защищены.</p>
-                <p style="font-size: 12px; opacity: 0.7;">Версия 1.0.0</p>
-            </div>
-        </div>
-    </div>
-</div>
     <script>
 // 🔧 КОНФИГУРАЦИЯ
 const API_URL = window.location.origin + '/api';
@@ -5101,21 +5175,36 @@ function displayMainPagePosts(posts) {
     
     postsContainer.innerHTML = '';
     
+    if (!posts || posts.length === 0) {
+        postsContainer.innerHTML = `
+            <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
+                <div>Пока нет публикаций</div>
+                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
+                    Следите за обновлениями
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
     posts.forEach(post => {
         const postElement = document.createElement('div');
-        postElement.className = 'post-item';
+        postElement.className = 'post-item fade-in';
+        
+        const postDate = formatPostDate(post.timestamp);
+        const isAdmin = post.authorId === ADMIN_ID;
+        
         postElement.innerHTML = `
             <div class="post-header">
-                <div>
+                <div style="flex: 1;">
                     <div class="post-title">${escapeHtml(post.title)}</div>
                     <div class="post-author">
-                        ${post.author || 'Администратор'}
-                        ${post.authorId === ADMIN_ID ? '<span class="admin-badge">ADMIN</span>' : ''}
+                        ${escapeHtml(post.author || 'Администратор')}
+                        ${isAdmin ? '<span class="admin-badge">ADMIN</span>' : ''}
                     </div>
                 </div>
-                <div class="post-date">
-                    ${formatPostDate(post.timestamp)}
-                </div>
+                <div class="post-date">${postDate}</div>
             </div>
             
             <div class="post-content">${escapeHtml(post.content)}</div>
@@ -5126,19 +5215,20 @@ function displayMainPagePosts(posts) {
             
             <div class="post-footer">
                 <div class="post-actions">
-                    <button class="like-btn">❤️ 12</button>
-                    <button class="share-btn">↗️ Поделиться</button>
+                    <button class="like-btn">👍 Нравится</button>
+                    <button class="share-btn">🔗 Поделиться</button>
                 </div>
             </div>
             
             ${currentUser && currentUser.isAdmin && parseInt(currentUser.id) === ADMIN_ID ? `
-                <div style="margin-top: 12px; text-align: right;">
-                    <button class="admin-task-delete" onclick="deletePost(${post.id})" style="font-size: 11px; padding: 4px 8px;">
-                        🗑️ Удалить
+                <div style="margin-top: 15px; text-align: right;">
+                    <button class="admin-task-delete" onclick="deletePost(${post.id})" style="font-size: 12px; padding: 6px 12px;">
+                        🗑️ Удалить пост
                     </button>
                 </div>
             ` : ''}
         `;
+        
         postsContainer.appendChild(postElement);
     });
 }
@@ -6197,19 +6287,43 @@ function formatPostDate(timestamp) {
     if (!timestamp) return '';
     
     const date = new Date(timestamp);
+    
+    // Московское время (UTC+3)
+    const moscowTime = new Date(date.getTime() + (3 * 60 * 60 * 1000));
+    
     const now = new Date();
-    const diff = now - date;
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const postDate = new Date(moscowTime.getFullYear(), moscowTime.getMonth(), moscowTime.getDate());
     
-    if (diff < 60000) return 'только что';
-    if (diff < 3600000) return `${Math.floor(diff / 60000)} мин назад`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)} ч назад`;
+    const diffTime = now - date;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     
-    return date.toLocaleString('ru-RU', { 
-        day: '2-digit',
-        month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    if (diffDays === 0) {
+        // Сегодня
+        return `Сегодня, ${moscowTime.toLocaleTimeString('ru-RU', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            timeZone: 'Europe/Moscow'
+        })} (МСК)`;
+    } else if (diffDays === 1) {
+        // Вчера
+        return `Вчера, ${moscowTime.toLocaleTimeString('ru-RU', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            timeZone: 'Europe/Moscow'
+        })} (МСК)`;
+    } else {
+        // Раньше
+        return `${moscowTime.toLocaleDateString('ru-RU', {
+            day: 'numeric',
+            month: 'long',
+            timeZone: 'Europe/Moscow'
+        })}, ${moscowTime.toLocaleTimeString('ru-RU', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            timeZone: 'Europe/Moscow'
+        })} (МСК)`;
+    }
 }
 
 function showNotification(message, type = 'info') {
@@ -6611,31 +6725,7 @@ function displayUserTasks(tasks, category) {
         container.appendChild(taskElement);
     });
 }
-// Функции для навигации по новым страницам
-function showActionsPage() {
-    hideAllTabs();
-    document.getElementById('actions-page').classList.add('active');
-}
 
-function showHowItWorksPage() {
-    hideAllTabs();
-    document.getElementById('how-it-works-page').classList.add('active');
-}
-
-function showAboutPage() {
-    hideAllTabs();
-    document.getElementById('about-page').classList.add('active');
-}
-
-// Обновить функцию hideAllTabs для включения новых страниц
-function hideAllTabs() {
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    document.querySelectorAll('.page').forEach(page => {
-        page.classList.remove('active');
-    });
-}
 // Обновление функции загрузки заданий пользователя
 async function loadUserTasks() {
     if (!currentUser) return;
