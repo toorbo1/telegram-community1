@@ -3655,7 +3655,37 @@
         font-size: 13px;
     }
 }
+.back-button {
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-size: 24px;
+    margin-right: 12px;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
 
+.back-button:hover {
+    background: var(--bg-secondary);
+}
+
+.page-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 0 10px;
+}
+
+.page-title {
+    font-size: 24px;
+    font-weight: 700;
+    background: var(--gold-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
     </style>
 </head>
 <body>
@@ -4125,10 +4155,10 @@
                     </div>
                 </div>
             </div>
-            <!-- Страница "Вывод средств" -->
+                    <!-- Страница "Вывод средств" -->
             <div id="withdraw-page" class="page">
                 <div class="page-header">
-                    <button class="back-button" onclick="showProfileTab()">←</button>
+                    <button class="back-button" onclick="goBackToProfile()">←</button>
                     <div class="page-title">💳 Вывод средств</div>
                 </div>
 
@@ -4174,7 +4204,7 @@
             <!-- Страница "Как это работает" -->
             <div id="how-it-works-page" class="page">
                 <div class="page-header">
-                    <button class="back-button" onclick="showProfileTab()">←</button>
+                    <button class="back-button" onclick="goBackToProfile()">←</button>
                     <div class="page-title">❓ Как это работает</div>
                 </div>
 
@@ -4251,7 +4281,7 @@
             <!-- Страница "О приложении" -->
             <div id="about-page" class="page">
                 <div class="page-header">
-                    <button class="back-button" onclick="showProfileTab()">←</button>
+                    <button class="back-button" onclick="goBackToProfile()">←</button>
                     <div class="page-title">ℹ️ О приложении</div>
                 </div>
 
@@ -4312,6 +4342,7 @@
                     </div>
                 </div>
             </div>
+        </main>
             <!-- Страница вывода средств -->
             <div id="withdraw-page" class="page">
                 <div class="page-header">
@@ -6754,7 +6785,158 @@ window.openVerificationModal = openVerificationModal;
 window.approveVerification = approveVerification;
 window.rejectVerification = rejectVerification;
 
+// Функции для работы кнопок профиля
+function showWithdrawPage() {
+    hideAllTabs();
+    document.getElementById('withdraw-page').classList.add('active');
+    
+    // Обновляем баланс на странице вывода
+    const withdrawBalance = document.getElementById('withdraw-balance');
+    if (withdrawBalance) {
+        withdrawBalance.textContent = `${currentUser.balance || 0} ₽`;
+    }
+    
+    // Загружаем историю выводов
+    loadWithdrawalHistory();
+}
 
+function showHowItWorksPage() {
+    hideAllTabs();
+    document.getElementById('how-it-works-page').classList.add('active');
+}
+
+function showAboutPage() {
+    hideAllTabs();
+    document.getElementById('about-page').classList.add('active');
+}
+
+// Функция для отправки запроса на вывод
+async function submitWithdraw() {
+    if (!currentUser) {
+        showNotification('Пользователь не авторизован', 'error');
+        return;
+    }
+    
+    const amountInput = document.getElementById('withdraw-amount');
+    const methodSelect = document.getElementById('withdraw-method');
+    const detailsInput = document.getElementById('withdraw-details');
+    
+    const amount = parseFloat(amountInput.value);
+    const method = methodSelect.value;
+    const details = detailsInput.value.trim();
+    
+    // Валидация
+    if (!amount || amount <= 0) {
+        showNotification('Введите корректную сумму', 'error');
+        return;
+    }
+    
+    if (amount < 50) {
+        showNotification('Минимальная сумма вывода: 50 ₽', 'error');
+        return;
+    }
+    
+    if (amount > (currentUser.balance || 0)) {
+        showNotification('Недостаточно средств на балансе', 'error');
+        return;
+    }
+    
+    if (!method) {
+        showNotification('Выберите способ вывода', 'error');
+        return;
+    }
+    
+    if (!details) {
+        showNotification('Введите реквизиты для вывода', 'error');
+        return;
+    }
+    
+    try {
+        const result = await makeRequest(`${API_URL}/withdrawal/request`, {
+            method: 'POST',
+            body: JSON.stringify({
+                user_id: currentUser.id,
+                amount: amount,
+                method: method,
+                details: details
+            })
+        });
+
+        if (result.success) {
+            showNotification(`Запрос на вывод ${amount}₽ отправлен! Ожидайте обработки в течение 24 часов.`, 'success');
+            
+            // Очищаем форму
+            amountInput.value = '';
+            methodSelect.value = '';
+            detailsInput.value = '';
+            
+            // Обновляем баланс пользователя
+            if (currentUser.balance) {
+                currentUser.balance -= amount;
+            }
+            
+            // Обновляем отображение баланса
+            displayUserProfile();
+            
+            // Возвращаемся в профиль
+            setTimeout(() => {
+                showProfileTab();
+            }, 2000);
+            
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Ошибка при выводе средств:', error);
+        showNotification('Ошибка соединения при отправке запроса', 'error');
+    }
+}
+
+// Загрузка истории выводов
+async function loadWithdrawalHistory() {
+    if (!currentUser) return;
+    
+    try {
+        // Здесь должен быть API endpoint для получения истории выводов
+        // Покажем заглушку
+        const historyList = document.getElementById('withdraw-history-list');
+        if (historyList) {
+            historyList.innerHTML = `
+                <div style="text-align: center; color: var(--text-secondary); font-size: 14px;">
+                    <div style="font-size: 48px; margin-bottom: 10px;">📊</div>
+                    <div>История выводов пуста</div>
+                    <div style="margin-top: 8px; font-size: 12px;">
+                        Здесь будут отображаться ваши запросы на вывод
+                    </div>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки истории выводов:', error);
+    }
+}
+
+// Функция для кнопки "Назад" на страницах
+function goBackToProfile() {
+    showProfileTab();
+}
+
+// Обнови функцию hideAllTabs чтобы включала новые страницы
+function hideAllTabs() {
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelectorAll('.page').forEach(page => {
+        page.classList.remove('active');
+    });
+}
+
+// Добавь эти экспорты в конец скрипта
+window.showWithdrawPage = showWithdrawPage;
+window.showHowItWorksPage = showHowItWorksPage;
+window.showAboutPage = showAboutPage;
+window.submitWithdraw = submitWithdraw;
+window.goBackToProfile = goBackToProfile;
 // Экспортируем функции для глобального использования
 window.openAdminChat = openAdminChat;
 window.closeChat = closeChat;
