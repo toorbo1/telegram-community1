@@ -3797,7 +3797,27 @@
                         <div class="stat-value">24/7</div>
                     </div>
                 </div>
+<!-- В форме создания поста (админ-панель) -->
+<div class="image-upload-container">
+    <label class="image-upload-label">
+        <div style="font-size: 24px;">📷</div>
+        <div>Нажмите для загрузки изображения</div>
+        <input type="file" id="admin-post-image" accept="image/*" style="display: none;" 
+               onchange="previewImage(this, 'admin-post-image-preview')">
+    </label>
+    <img id="admin-post-image-preview" class="image-preview" alt="Предпросмотр">
+</div>
 
+<!-- В форме создания задания (админ-панель) -->
+<div class="image-upload-container">
+    <label class="image-upload-label">
+        <div style="font-size: 24px;">📷</div>
+        <div>Нажмите для загрузки изображения задания</div>
+        <input type="file" id="admin-task-image" accept="image/*" style="display: none;"
+               onchange="previewImage(this, 'admin-task-image-preview')">
+    </label>
+    <img id="admin-task-image-preview" class="image-preview" alt="Предпросмотр">
+</div>
                 <!-- Как работает -->
                 <div class="exchange-card fade-in" onclick="showHowItWorksPage()">
                     <div class="exchange-icon">
@@ -4752,7 +4772,12 @@ async function initializeTelegramUser() {
             }
             
             initializeApp();
-            
+            // Проверяем существование элементов предпросмотра
+console.log('Checking preview elements...');
+const postPreview = document.getElementById('admin-post-image-preview');
+const taskPreview = document.getElementById('admin-task-image-preview');
+console.log('Post preview exists:', !!postPreview);
+console.log('Task preview exists:', !!taskPreview);
         } else {
             console.log('Telegram user data not available');
             initializeTestUser();
@@ -5247,7 +5272,7 @@ async function addNewPost() {
         return;
     }
     
-    if (!currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+    if (!currentUser || !currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
         showNotification('Только администратор может публиковать посты!', 'error');
         return;
     }
@@ -5266,14 +5291,25 @@ async function addNewPost() {
             body: formData
         });
 
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
         const result = await response.json();
 
         if (result.success) {
             showNotification('Пост успешно опубликован!', 'success');
+            // Очищаем форму
             document.getElementById('admin-post-title').value = '';
             document.getElementById('admin-post-content').value = '';
             document.getElementById('admin-post-image').value = '';
-            document.getElementById('admin-post-image-preview').style.display = 'none';
+            
+            // Скрываем превью если элемент существует
+            const preview = document.getElementById('admin-post-image-preview');
+            if (preview) {
+                preview.style.display = 'none';
+            }
+            
             loadMainPagePosts();
         } else {
             showNotification('Ошибка: ' + result.error, 'error');
@@ -5281,6 +5317,71 @@ async function addNewPost() {
         
     } catch (error) {
         console.error('Error adding post:', error);
+        showNotification('Ошибка соединения: ' + error.message, 'error');
+    }
+}
+
+async function addTask() {
+    const title = document.getElementById('admin-task-title').value;
+    const description = document.getElementById('admin-task-description').value;
+    const price = document.getElementById('admin-task-price').value;
+    const imageFile = document.getElementById('admin-task-image').files[0];
+
+    if (!title || !description || !price) {
+        showNotification('Заполните обязательные поля!', 'error');
+        return;
+    }
+
+    if (!currentUser || !currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+        showNotification('Только администратор может создавать задания!', 'error');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('description', description);
+    formData.append('price', price);
+    formData.append('created_by', currentUser.id);
+    if (imageFile) {
+        formData.append('image', imageFile);
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/tasks`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+            showNotification('Задание успешно создано!', 'success');
+            
+            // Очищаем форму
+            document.getElementById('admin-task-title').value = '';
+            document.getElementById('admin-task-description').value = '';
+            document.getElementById('admin-task-price').value = '';
+            document.getElementById('admin-task-image').value = '';
+            
+            // Скрываем превью если элемент существует
+            const preview = document.getElementById('admin-task-image-preview');
+            if (preview) {
+                preview.style.display = 'none';
+            }
+            
+            loadAdminTasks();
+            loadTasks();
+            
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error creating task:', error);
         showNotification('Ошибка соединения: ' + error.message, 'error');
     }
 }
@@ -5344,6 +5445,11 @@ async function addTask() {
 function previewImage(input, previewId) {
     const file = input.files[0];
     const preview = document.getElementById(previewId);
+    
+    if (!preview) {
+        console.error('Preview element not found:', previewId);
+        return;
+    }
     
     if (file) {
         const reader = new FileReader();
