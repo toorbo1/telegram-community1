@@ -465,52 +465,11 @@ app.get('/api/admin/tasks', (req, res) => {
     });
 });
 
-// Обновите эндпоинт добавления постов
-app.post('/api/posts', upload.single('image'), (req, res) => {
-    const { title, content, author, authorId } = req.body;
-    const image_url = req.file ? `/uploads/${req.file.filename}` : null;
-    
-    if (!title || !content || !author) {
-        return res.status(400).json({
-            success: false,
-            error: 'Missing required fields'
-        });
-    }
-    
-    // Check admin rights
-    if (parseInt(authorId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied'
-        });
-    }
-    
-    db.run(`INSERT INTO posts (title, content, author, authorId, isAdmin, image_url) 
-            VALUES (?, ?, ?, ?, 1, ?)`,
-            [title, content, author, authorId, image_url],
-            function(err) {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error: ' + err.message
-            });
-        }
-        
-        res.json({
-            success: true,
-            message: 'Post created successfully',
-            postId: this.lastID
-        });
-    });
-});
-
-// Обновите эндпоинт добавления заданий
-app.post('/api/tasks', upload.single('image'), (req, res) => {
+app.post('/api/tasks', (req, res) => {
     const { 
         title, description, price, created_by, category,
-        time_to_complete, difficulty, people_required, repost_time, task_url
+        time_to_complete, difficulty, people_required, repost_time, task_url, image_url
     } = req.body;
-    const image_url = req.file ? `/uploads/${req.file.filename}` : null;
     
     console.log('Creating task with data:', req.body);
     
@@ -534,7 +493,7 @@ app.post('/api/tasks', upload.single('image'), (req, res) => {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [title, description, parseFloat(price), created_by, category || 'general',
              time_to_complete || '5 минут', difficulty || 'Легкая', 
-             people_required || 1, repost_time || '1 день', task_url || '', image_url],
+             people_required || 1, repost_time || '1 день', task_url || '', image_url || ''],
             function(err) {
         if (err) {
             console.error('Database error:', err);
