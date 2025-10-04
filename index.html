@@ -3417,7 +3417,18 @@
     margin: 20px 0;
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
 }
-
+      .btn {
+            display: block;
+            width: 200px;
+            padding: 15px;
+            margin: 10px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            text-align: center;
+            border-radius: 5px;
+            font-size: 16px;
+        }
 .verification-modal-actions {
     display: flex;
     gap: 12px;
@@ -4450,7 +4461,9 @@
                 <button class="confirmation-btn confirmation-cancel" onclick="closeModal('confirmation-modal')">Отмена</button>
             </div>
         </div>
-
+    <a href="/withdrawal" class="btn">💳 Вывод средств</a>
+    <a href="/how-it-works" class="btn">❓ Как это работает</a> 
+    <a href="/about" class="btn">ℹ️ О приложении</a>
         <!-- Модальное окно отмены подтверждения -->
         <div class="modal" id="cancel-confirmation-modal">
             <div class="confirmation-modal-content">
