@@ -3775,7 +3775,7 @@
                         Смотреть все задания
                     </button>
                 </div>
-                <!-- Секция постов на главной -->
+<!-- Секция постов на главной -->
 <div id="posts-section" class="card fade-in" style="display: none; margin-top: 20px;">
     <div class="posts-header">
         <h2 style="color: var(--text-primary); margin-bottom: 15px; text-align: center;">📢 Последние новости</h2>
@@ -3839,18 +3839,7 @@
                     </div>
                 </div>
 
-                <!-- Лента постов -->
-                <div id="posts-section" class="card fade-in" style="display: none;">
-                    <div class="posts-header">
-                        <h2>Последние посты</h2>
-                        <button onclick="loadPosts()" class="refresh-btn">Обновить</button>
-                    </div>
-                    <div id="posts-container">
-                        <div class="loading">Загрузка постов...</div>
-                    </div>
-                </div>
-            </div>
-            
+               
             <!-- Вкладка заданий -->
             <!-- Вкладка заданий -->
 <div id="tasks-tab" class="tab-content tasks-tab">
@@ -3971,6 +3960,38 @@
                 </div>
                 
              <!-- Страница "Действия" -->
+              <!-- Страница "Действия" -->
+<div id="actions-page" class="page">
+    <div class="page-header">
+        <button class="back-button" onclick="showProfileTab()">←</button>
+        <div class="page-title">Действия</div>
+    </div>
+
+    <div class="card">
+        <div class="profile-actions">
+            <div class="profile-action" onclick="showWithdrawPage()">
+                <div class="action-icon">💳</div>
+                <div class="action-text">Вывод средств</div>
+                <div class="action-arrow">›</div>
+            </div>
+            <div class="profile-action" onclick="openAdminChat()">
+                <div class="action-icon">🛟</div>
+                <div class="action-text">Поддержка</div>
+                <div class="action-arrow">›</div>
+            </div>
+            <div class="profile-action" onclick="showHowItWorksPage()">
+                <div class="action-icon">❓</div>
+                <div class="action-text">Как это работает</div>
+                <div class="action-arrow">›</div>
+            </div>
+            <div class="profile-action" onclick="showAboutPage()">
+                <div class="action-icon">ℹ️</div>
+                <div class="action-text">О приложении</div>
+                <div class="action-arrow">›</div>
+            </div>
+        </div>
+    </div>
+</div>
 <!-- Действия профиля -->
 <div class="profile-section fade-in">
     <div class="section-title">Действия</div>
@@ -3982,7 +4003,6 @@
         </div>
     </div>
 </div>
-
     <div class="card">
         <div class="profile-actions">
             <div class="profile-action" onclick="showWithdrawPage()">
@@ -6257,7 +6277,59 @@ async function loadTaskVerifications() {
         console.error('Error loading task verifications:', error);
     }
 }
+// Функции для предпросмотра изображений
+document.addEventListener('DOMContentLoaded', function() {
+    // Обработчик для изображения поста
+    const postImageInput = document.getElementById('admin-post-image');
+    if (postImageInput) {
+        postImageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const preview = document.getElementById('post-image-preview');
+            
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.innerHTML = `<img src="${e.target.result}" alt="Предпросмотр">`;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.style.display = 'none';
+            }
+        });
+    }
 
+    // Обработчик для изображения задания
+    const taskImageInput = document.getElementById('admin-task-image');
+    if (taskImageInput) {
+        taskImageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const preview = document.getElementById('task-image-preview');
+            
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.innerHTML = `<img src="${e.target.result}" alt="Предпросмотр">`;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.style.display = 'none';
+            }
+        });
+    }
+
+    // Обработчик для фото в чате
+    const chatPhotoInput = document.getElementById('chat-photo-input');
+    if (chatPhotoInput) {
+        chatPhotoInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                sendPhotoToAdmin(file);
+            }
+        });
+    }
+});
 // Отображение заданий на проверку
 function displayTaskVerifications(verifications) {
     const container = document.getElementById('admin-verification-list');
@@ -6723,6 +6795,11 @@ window.loadTaskVerifications = loadTaskVerifications;
 window.openVerificationModal = openVerificationModal;
 window.approveVerification = approveVerification;
 window.rejectVerification = rejectVerification;
+// Функция для показа страницы действий
+function showActionsPage() {
+    hideAllTabs();
+    document.getElementById('actions-page').classList.add('active');
+}
 
 
 // Экспортируем функции для глобального использования
