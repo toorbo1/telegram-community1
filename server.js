@@ -179,6 +179,16 @@ function initDatabase() {
             reviewed_by INTEGER,
             FOREIGN KEY(user_task_id) REFERENCES user_tasks(id)
         )`);
+        // Posts reactions table
+db.run(`CREATE TABLE IF NOT EXISTS post_reactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    reaction_type TEXT NOT NULL, -- 'like' or 'dislike'
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(post_id, user_id),
+    FOREIGN KEY(post_id) REFERENCES posts(id)
+)`);
     });
 }
 
@@ -1399,3 +1409,173 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`⏰ Moscow time: ${getMoscowTime()}`);
     console.log(`📁 Uploads directory: ${path.join(__dirname, 'uploads')}`);
 });
+// Posts reactions endpoints
+app.post('/api/posts/:postId/react', (req, res) => {
+    const postId = req.params.postId;
+    const { userId, reactionType } = req.body;
+
+    if (!userId || !reactionType) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+
+    // Check if post exists
+    db.get("SELECT id FROM posts WHERE id = ?", [postId], (err, post) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        if (!post) {
+            return res.status(404).json({
+                success: false,
+                error: 'Post not found'
+            });
+        }
+
+        // Check if user already reacted
+        db.get("SELECT * FROM post_reactions WHERE post_id = ? AND user_id = ?", [postId, userId], (err, existingReaction) => {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Database error'
+                });
+            }
+
+            if (existingReaction) {
+                if (existingReaction.reaction_type === reactionType) {
+                    // Remove reaction if same type
+                    db.run("DELETE FROM post_reactions WHERE post_id = ? AND user_id = ?", [postId, userId], function(err) {
+                        if (err) {
+                            return res.status(500).json({
+                                success: false,
+                                error: 'Database error'
+                            });
+                        }
+                        getReactionCounts(postId, userId, res);
+                    });
+                } else {
+                    // Update reaction if different type
+                    db.run("UPDATE post_reactions SET reaction_type = ? WHERE post_id = ? AND user_id = ?", 
+                        [reactionType, postId, userId], function(err) {
+                        if (err) {
+                            return res.status(500).json({
+                                success: false,
+                                error: 'Database error'
+                            });
+                        }
+                        getReactionCounts(postId, userId, res);
+                    });
+                }
+            } else {
+                // Add new reaction
+                db.run("INSERT INTO post_reactions (post_id, user_id, reaction_type) VALUES (?, ?, ?)", 
+                    [postId, userId, reactionType], function(err) {
+                    if (err) {
+                        return res.status(500).json({
+                            success: false,
+                            error: 'Database error'
+                        });
+                    }
+                    getReactionCounts(postId, userId, res);
+                });
+            }
+        });
+    });
+});
+
+// Get reaction counts for post
+app.get('/api/posts/:postId/reactions', (req, res) => {
+    const postId = req.params.postId;
+
+    db.all("SELECT reaction_type, COUNT(*) as count FROM post_reactions WHERE post_id = ? GROUP BY reaction_type", [postId], (err, rows) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+
+        let likes = 0;
+        let dislikes = 0;
+        
+        rows.forEach(row => {
+            if (row.reaction_type === 'like') {
+                likes = row.count;
+            } else if (row.reaction_type === 'dislike') {
+                dislikes = row.count;
+            }
+        });
+
+        res.json({
+            success: true,
+            likes: likes,
+            dislikes: dislikes
+        });
+    });
+});
+
+// Get user's reaction to post
+app.get('/api/posts/:postId/reactions/:userId', (req, res) => {
+    const postId = req.params.postId;
+    const userId = req.params.userId;
+
+    db.get("SELECT reaction_type FROM post_reactions WHERE post_id = ? AND user_id = ?", [postId, userId], (err, row) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+
+        res.json({
+            success: true,
+            reaction: row ? row.reaction_type : null
+        });
+    });
+});
+
+// Helper function to get reaction counts and user reaction
+function getReactionCounts(postId, userId, res) {
+    // Get total counts
+    db.all("SELECT reaction_type, COUNT(*) as count FROM post_reactions WHERE post_id = ? GROUP BY reaction_type", [postId], (err, rows) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+
+        let likes = 0;
+        let dislikes = 0;
+        
+        rows.forEach(row => {
+            if (row.reaction_type === 'like') {
+                likes = row.count;
+            } else if (row.reaction_type === 'dislike') {
+                dislikes = row.count;
+            }
+        });
+
+        // Get user's current reaction
+        db.get("SELECT reaction_type FROM post_reactions WHERE post_id = ? AND user_id = ?", [postId, userId], (err, userReaction) => {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Database error'
+                });
+            }
+
+            res.json({
+                success: true,
+                likes: likes,
+                dislikes: dislikes,
+                userReaction: userReaction ? userReaction.reaction_type : null
+            });
+        });
+    });
+}
