@@ -29,7 +29,7 @@ const storage = multer.diskStorage({
     },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, 'screenshot-' + uniqueSuffix + path.extname(file.originalname));
+        cb(null, 'image-' + uniqueSuffix + path.extname(file.originalname));
     }
 });
 
@@ -179,6 +179,16 @@ function initDatabase() {
             reviewed_by INTEGER,
             FOREIGN KEY(user_task_id) REFERENCES user_tasks(id)
         )`);
+
+        // Post reactions table
+        db.run(`CREATE TABLE IF NOT EXISTS post_reactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            post_id INTEGER NOT NULL,
+            reaction_type TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, post_id)
+        )`);
     });
 }
 
@@ -327,7 +337,13 @@ app.get('/api/user/:userId', (req, res) => {
 
 // Posts endpoints
 app.get('/api/posts', (req, res) => {
-    db.all("SELECT * FROM posts ORDER BY timestamp DESC", (err, rows) => {
+    db.all(`
+        SELECT p.*, 
+               (SELECT COUNT(*) FROM post_reactions WHERE post_id = p.id AND reaction_type = 'like') as likes,
+               (SELECT COUNT(*) FROM post_reactions WHERE post_id = p.id AND reaction_type = 'dislike') as dislikes
+        FROM posts p 
+        ORDER BY p.timestamp DESC
+    `, (err, rows) => {
         if (err) {
             return res.status(500).json({
                 success: false,
@@ -348,10 +364,11 @@ app.get('/api/posts', (req, res) => {
     });
 });
 
-app.post('/api/posts', (req, res) => {
-    const { title, content, author, authorId, image_url } = req.body;
+app.post('/api/posts', upload.single('image'), (req, res) => {
+    const { title, content, authorId } = req.body;
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
     
-    if (!title || !content || !author) {
+    if (!title || !content) {
         return res.status(400).json({
             success: false,
             error: 'Missing required fields'
@@ -368,7 +385,7 @@ app.post('/api/posts', (req, res) => {
     
     db.run(`INSERT INTO posts (title, content, author, authorId, isAdmin, image_url) 
             VALUES (?, ?, ?, ?, 1, ?)`,
-            [title, content, author, authorId, image_url],
+            [title, content, "Администратор", authorId, imageUrl],
             function(err) {
         if (err) {
             return res.status(500).json({
@@ -405,6 +422,111 @@ app.delete('/api/posts/:id', (req, res) => {
         res.json({
             success: true,
             message: 'Post deleted successfully'
+        });
+    });
+});
+
+// Post reactions endpoints
+app.post('/api/posts/:postId/reaction', (req, res) => {
+    const postId = req.params.postId;
+    const { userId, reactionType } = req.body;
+    
+    if (!userId || !reactionType) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    // Проверяем существующую реакцию
+    db.get("SELECT * FROM post_reactions WHERE user_id = ? AND post_id = ?", 
+           [userId, postId], (err, existingReaction) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        if (existingReaction) {
+            if (existingReaction.reaction_type === reactionType) {
+                // Удаляем реакцию если она такая же
+                db.run("DELETE FROM post_reactions WHERE user_id = ? AND post_id = ?", 
+                       [userId, postId], function(err) {
+                    if (err) {
+                        return res.status(500).json({
+                            success: false,
+                            error: 'Database error'
+                        });
+                    }
+                    updatePostReactions(postId, res);
+                });
+            } else {
+                // Меняем реакцию
+                db.run("UPDATE post_reactions SET reaction_type = ? WHERE user_id = ? AND post_id = ?", 
+                       [reactionType, userId, postId], function(err) {
+                    if (err) {
+                        return res.status(500).json({
+                            success: false,
+                            error: 'Database error'
+                        });
+                    }
+                    updatePostReactions(postId, res);
+                });
+            }
+        } else {
+            // Добавляем новую реакцию
+            db.run("INSERT INTO post_reactions (user_id, post_id, reaction_type) VALUES (?, ?, ?)", 
+                   [userId, postId, reactionType], function(err) {
+                if (err) {
+                    return res.status(500).json({
+                        success: false,
+                        error: 'Database error'
+                    });
+                }
+                updatePostReactions(postId, res);
+            });
+        }
+    });
+});
+
+// Функция для обновления счетчиков реакций
+function updatePostReactions(postId, res) {
+    db.get(`SELECT 
+            COUNT(CASE WHEN reaction_type = 'like' THEN 1 END) as likes,
+            COUNT(CASE WHEN reaction_type = 'dislike' THEN 1 END) as dislikes
+            FROM post_reactions WHERE post_id = ?`, [postId], (err, result) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        res.json({
+            success: true,
+            likes: result.likes || 0,
+            dislikes: result.dislikes || 0
+        });
+    });
+}
+
+// Эндпоинт для получения реакций пользователя
+app.get('/api/posts/:postId/user-reaction/:userId', (req, res) => {
+    const { postId, userId } = req.params;
+    
+    db.get("SELECT reaction_type FROM post_reactions WHERE user_id = ? AND post_id = ?", 
+           [userId, postId], (err, reaction) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        res.json({
+            success: true,
+            reaction: reaction ? reaction.reaction_type : null
         });
     });
 });
@@ -465,13 +587,13 @@ app.get('/api/admin/tasks', (req, res) => {
     });
 });
 
-app.post('/api/tasks', (req, res) => {
+app.post('/api/tasks', upload.single('image'), (req, res) => {
     const { 
         title, description, price, created_by, category,
-        time_to_complete, difficulty, people_required, repost_time, task_url, image_url
+        time_to_complete, difficulty, people_required, repost_time, task_url
     } = req.body;
     
-    console.log('Creating task with data:', req.body);
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
     
     if (!title || !description || !price || !created_by) {
         return res.status(400).json({
@@ -493,7 +615,7 @@ app.post('/api/tasks', (req, res) => {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [title, description, parseFloat(price), created_by, category || 'general',
              time_to_complete || '5 минут', difficulty || 'Легкая', 
-             people_required || 1, repost_time || '1 день', task_url || '', image_url || ''],
+             people_required || 1, repost_time || '1 день', task_url || '', imageUrl],
             function(err) {
         if (err) {
             console.error('Database error:', err);
@@ -1271,77 +1393,6 @@ app.get('/api/support/archived-chats', (req, res) => {
     });
 });
 
-// Withdrawal endpoints
-app.post('/api/withdrawal/request', (req, res) => {
-    const { user_id, amount, method, details } = req.body;
-    
-    if (!user_id || !amount || !method || !details) {
-        return res.status(400).json({
-            success: false,
-            error: 'Missing required fields'
-        });
-    }
-    
-    db.run(`INSERT INTO withdrawal_requests (user_id, amount, method, details) 
-            VALUES (?, ?, ?, ?)`,
-            [user_id, amount, method, details],
-            function(err) {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        res.json({
-            success: true,
-            message: 'Withdrawal request submitted successfully',
-            requestId: this.lastID
-        });
-    });
-});
-
-// Serve uploaded files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-// Добавьте этот эндпоинт для получения конкретного чата
-app.get('/api/support/chats/:chatId', (req, res) => {
-    const chatId = req.params.chatId;
-    const { adminId } = req.query;
-    
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied'
-        });
-    }
-
-    db.get("SELECT * FROM support_chats WHERE id = ?", [chatId], (err, chat) => {
-        if (err) {
-            console.error('Database error:', err);
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        if (!chat) {
-            return res.status(404).json({
-                success: false,
-                error: 'Chat not found'
-            });
-        }
-        
-        res.json({
-            success: true,
-            chat: {
-                ...chat,
-                moscow_time: formatMoscowTimeShort(chat.last_message_time)
-            }
-        });
-    });
-});
-
 // Эндпоинт для получения всех чатов (активных и архивных)
 app.get('/api/support/all-chats', (req, res) => {
     const { adminId } = req.query;
@@ -1375,7 +1426,36 @@ app.get('/api/support/all-chats', (req, res) => {
         });
     });
 });
-// В server.js добавьте эти эндпоинты если их нет:
+
+// Withdrawal endpoints
+app.post('/api/withdrawal/request', (req, res) => {
+    const { user_id, amount, method, details } = req.body;
+    
+    if (!user_id || !amount || !method || !details) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    db.run(`INSERT INTO withdrawal_requests (user_id, amount, method, details) 
+            VALUES (?, ?, ?, ?)`,
+            [user_id, amount, method, details],
+            function(err) {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Withdrawal request submitted successfully',
+            requestId: this.lastID
+        });
+    });
+});
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -1392,6 +1472,7 @@ app.use((error, req, res, next) => {
     }
     next(error);
 });
+
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
