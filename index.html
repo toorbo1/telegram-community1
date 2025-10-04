@@ -3706,7 +3706,7 @@
                 </div>
 
                 <!-- Как работает -->
-                <div class="exchange-card fade-in" onclick="showHowItWorksPage()">
+                <div class="onclick fade-in" onclick="showHowItWorksPageFromMain()">
                     <div class="exchange-icon">
                         <div class="video-container">
                             <video class="video-icon" autoplay muted loop playsinline>
@@ -6106,7 +6106,86 @@ function showHowItWorksPage() {
     hideAllTabs();
     document.getElementById('how-it-works-page').classList.add('active');
 }
+// 🔧 ИСПРАВЛЕННЫЕ ФУНКЦИИ ДЛЯ КНОПОК ПРОФИЛЯ
 
+function showAboutPage() {
+    hideAllTabs();
+    document.getElementById('about-page').classList.add('active');
+    updateNavState('profile'); // Оставляем активной вкладку профиля
+}
+
+function showHowItWorksPage() {
+    hideAllTabs();
+    document.getElementById('how-it-works-page').classList.add('active');
+    updateNavState('profile'); // Оставляем активной вкладку профиля
+}
+
+function showWithdrawPage() {
+    hideAllTabs();
+    document.getElementById('withdraw-page').classList.add('active');
+    
+    // Обновляем баланс на странице вывода
+    const withdrawBalance = document.getElementById('withdraw-balance');
+    if (withdrawBalance && currentUser) {
+        withdrawBalance.textContent = `${currentUser.balance || 0} ₽`;
+    }
+    
+    updateNavState('profile'); // Оставляем активной вкладку профиля
+}
+
+// 🔧 ДОПОЛНИТЕЛЬНОЕ ИСПРАВЛЕНИЕ ДЛЯ КНОПКИ НА ГЛАВНОЙ
+
+function showHowItWorksPageFromMain() {
+    hideAllTabs();
+    document.getElementById('how-it-works-page').classList.add('active');
+    updateNavState('main'); // Оставляем активной вкладку главной
+}
+
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ СКРЫТИЯ ВКЛАДОК
+
+function hideAllTabs() {
+    // Скрываем все основные вкладки
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Скрываем все страницы
+    document.querySelectorAll('.page').forEach(page => {
+        page.classList.remove('active');
+    });
+    
+    // Скрываем все модальные окна
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.classList.remove('active');
+    });
+}
+
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ДЛЯ КНОПКИ "КАК РАБОТАЕТ" НА ГЛАВНОЙ
+
+// В HTML коде найдите блок с классом "exchange-card" и замените его onclick:
+// Было: onclick="showHowItWorksPage()"
+// Стало: onclick="showHowItWorksPageFromMain()"
+function updateNavState(activeTab) {
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    const navItems = document.querySelectorAll('.nav-item');
+    switch(activeTab) {
+        case 'main': 
+            if (navItems[0]) navItems[0].classList.add('active'); 
+            break;
+        case 'tasks': 
+            if (navItems[1]) navItems[1].classList.add('active'); 
+            break;
+        case 'profile': 
+            if (navItems[2]) navItems[2].classList.add('active'); 
+            break;
+        case 'admin': 
+            if (navItems[3]) navItems[3].classList.add('active'); 
+            break;
+    }
+}
 function showAboutPage() {
     hideAllTabs();
     document.getElementById('about-page').classList.add('active');
