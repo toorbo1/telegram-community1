@@ -183,7 +183,37 @@ function initDatabase() {
 }
 
 const ADMIN_ID = 8036875641;
+// Upload post image
+app.post('/api/upload/post-image', upload.single('image'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({
+            success: false,
+            error: 'No image uploaded'
+        });
+    }
+    
+    const imageUrl = `/uploads/${req.file.filename}`;
+    res.json({
+        success: true,
+        imageUrl: imageUrl
+    });
+});
 
+// Upload task image
+app.post('/api/upload/task-image', upload.single('image'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({
+            success: false,
+            error: 'No image uploaded'
+        });
+    }
+    
+    const imageUrl = `/uploads/${req.file.filename}`;
+    res.json({
+        success: true,
+        imageUrl: imageUrl
+    });
+});
 // Функция для получения московского времени
 function getMoscowTime() {
     return new Date().toLocaleString("ru-RU", { timeZone: "Europe/Moscow" });
@@ -348,8 +378,9 @@ app.get('/api/posts', (req, res) => {
     });
 });
 
-app.post('/api/posts', (req, res) => {
-    const { title, content, author, authorId, image_url } = req.body;
+app.post('/api/posts', upload.single('postImage'), (req, res) => {
+    const { title, content, author, authorId } = req.body;
+    const image_url = req.file ? `/uploads/${req.file.filename}` : null;
     
     if (!title || !content || !author) {
         return res.status(400).json({

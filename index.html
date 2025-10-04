@@ -3655,11 +3655,109 @@
         font-size: 13px;
     }
 }
+/* Image Upload Styles */
+.image-upload-container {
+    margin: 15px 0;
+    padding: 15px;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
 
+.upload-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: var(--card-bg);
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.upload-label:hover {
+    border-color: var(--accent);
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.upload-icon {
+    font-size: 20px;
+}
+
+.upload-text {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.image-preview {
+    position: relative;
+    margin-top: 15px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.preview-image {
+    width: 100%;
+    max-height: 300px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.remove-image-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: var(--error);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Post and Task Image Display */
+.post-image, .task-image {
+    width: 100%;
+    border-radius: 12px;
+    margin: 15px 0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    max-height: 400px;
+    object-fit: cover;
+}
+
+.task-modal-image {
+    width: 100%;
+    border-radius: 12px;
+    margin: 15px 0;
+    max-height: 300px;
+    object-fit: cover;
+}
+
+/* Loading state */
+.upload-loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--text-secondary);
+    border-top: 2px solid var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
     </style>
 </head>
 <body>
-
     <!-- ЗАМЕНИТЬ этот блок -->
 <header class="header fade-in">
     <div class="logo" onclick="showMainTab()">
@@ -3769,7 +3867,20 @@
                         <h3>Добавить пост для всех пользователей</h3>
                         <input type="text" class="admin-input" id="post-title" placeholder="Заголовок поста">
                         <textarea class="admin-textarea" id="post-content" placeholder="Введите текст поста..."></textarea>
-                        <input type="file" class="admin-input" id="post-image" accept="image/*">
+                        
+                        <!-- Добавлено поле для загрузки изображения к посту -->
+                        <div class="image-upload-container">
+                            <label class="upload-label">
+                                <span class="upload-icon">📷</span>
+                                <span class="upload-text">Добавить изображение к посту</span>
+                                <input type="file" class="image-upload-input" id="post-image" accept="image/*" style="display: none;">
+                            </label>
+                            <div class="image-preview" id="post-image-preview" style="display: none;">
+                                <img id="post-preview-img" class="preview-image">
+                                <button type="button" class="remove-image-btn" onclick="removePostImage()">×</button>
+                            </div>
+                        </div>
+                        
                         <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
                         
                         <h3 style="margin-top: 20px;">Существующие посты</h3>
@@ -3789,7 +3900,20 @@
                         <input type="number" class="admin-input" id="task-people" placeholder="Сколько человек должно выполнить">
                         <input type="text" class="admin-input" id="task-repost" placeholder="Время повторной публикации">
                         <input type="url" class="admin-input" id="task-url" placeholder="URL задания">
-                        <input type="file" class="admin-input" id="task-image" accept="image/*">
+                        
+                        <!-- Добавлено поле для загрузки изображения к заданию -->
+                        <div class="image-upload-container">
+                            <label class="upload-label">
+                                <span class="upload-icon">📷</span>
+                                <span class="upload-text">Добавить изображение к заданию</span>
+                                <input type="file" class="image-upload-input" id="task-image" accept="image/*" style="display: none;">
+                            </label>
+                            <div class="image-preview" id="task-image-preview" style="display: none;">
+                                <img id="task-preview-img" class="preview-image">
+                                <button type="button" class="remove-image-btn" onclick="removeTaskImage()">×</button>
+                            </div>
+                        </div>
+                        
                         <button class="admin-submit" onclick="addTask()">Добавить задание</button>
                     </div>
 
@@ -3989,8 +4113,21 @@
                         <div class="admin-form">
                             <input type="text" class="admin-input" id="admin-post-title" placeholder="Заголовок поста">
                             <textarea class="admin-textarea" id="admin-post-content" placeholder="Введите текст поста..."></textarea>
-                            <input type="file" class="admin-input" id="admin-post-image" accept="image/*">
-                            <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
+                            
+                            <!-- Добавлено поле для загрузки изображения к посту -->
+                            <div class="image-upload-container">
+                                <label class="upload-label">
+                                    <span class="upload-icon">📷</span>
+                                    <span class="upload-text">Добавить изображение к посту</span>
+                                    <input type="file" class="image-upload-input" id="admin-post-image" accept="image/*" style="display: none;">
+                                </label>
+                                <div class="image-preview" id="admin-post-image-preview" style="display: none;">
+                                    <img id="admin-post-preview-img" class="preview-image">
+                                    <button type="button" class="remove-image-btn" onclick="removeAdminPostImage()">×</button>
+                                </div>
+                            </div>
+                            
+                            <button class="admin-submit" onclick="addNewPost('admin-')">Опубликовать</button>
                         </div>
                         
                         <h3 style="margin-top: 20px;">Существующие посты</h3>
@@ -4011,8 +4148,21 @@
                             <input type="number" class="admin-input" id="admin-task-people" placeholder="Сколько человек должно выполнить">
                             <input type="text" class="admin-input" id="admin-task-repost" placeholder="Время повторной публикации">
                             <input type="url" class="admin-input" id="admin-task-url" placeholder="URL задания">
-                            <input type="file" class="admin-input" id="admin-task-image" accept="image/*">
-                            <button class="admin-submit" onclick="addTask()">Добавить задание</button>
+                            
+                            <!-- Добавлено поле для загрузки изображения к заданию -->
+                            <div class="image-upload-container">
+                                <label class="upload-label">
+                                    <span class="upload-icon">📷</span>
+                                    <span class="upload-text">Добавить изображение к заданию</span>
+                                    <input type="file" class="image-upload-input" id="admin-task-image" accept="image/*" style="display: none;">
+                                </label>
+                                <div class="image-preview" id="admin-task-image-preview" style="display: none;">
+                                    <img id="admin-task-preview-img" class="preview-image">
+                                    <button type="button" class="remove-image-btn" onclick="removeAdminTaskImage()">×</button>
+                                </div>
+                            </div>
+                            
+                            <button class="admin-submit" onclick="addTask('admin-')">Добавить задание</button>
                         </div>
                     </div>
 
@@ -4697,7 +4847,7 @@ function initializeApp() {
     loadTasks();
     initializeSearch();
     loadUserTasks();
-    
+      initializeImageUploads();
     // Если пользователь админ, загружаем админ-данные
     if (currentUser && currentUser.isAdmin) {
         loadAdminChats();
@@ -4865,7 +5015,285 @@ async function loadTasks(search = '', category = 'all') {
         showNotification('Ошибка загрузки заданий', 'error');
     }
 }
+// Global variables for image management
+let postImageFile = null;
+let taskImageFile = null;
 
+// Initialize image upload functionality
+function initializeImageUploads() {
+    // Post image upload
+    const postImageInput = document.getElementById('admin-post-image');
+    if (postImageInput) {
+        postImageInput.addEventListener('change', handlePostImageSelect);
+    }
+    
+    // Task image upload
+    const taskImageInput = document.getElementById('admin-task-image');
+    if (taskImageInput) {
+        taskImageInput.addEventListener('change', handleTaskImageSelect);
+    }
+}
+
+// Handle post image selection
+function handlePostImageSelect(event) {
+    const file = event.target.files[0];
+    if (file) {
+        if (file.size > 10 * 1024 * 1024) { // 10MB limit
+            showNotification('Размер изображения не должен превышать 10MB', 'error');
+            return;
+        }
+        
+        if (!file.type.startsWith('image/')) {
+            showNotification('Пожалуйста, выберите файл изображения', 'error');
+            return;
+        }
+        
+        postImageFile = file;
+        showImagePreview(file, 'admin-post-preview-img', 'admin-post-image-preview');
+    }
+}
+
+// Handle task image selection
+function handleTaskImageSelect(event) {
+    const file = event.target.files[0];
+    if (file) {
+        if (file.size > 10 * 1024 * 1024) { // 10MB limit
+            showNotification('Размер изображения не должен превышать 10MB', 'error');
+            return;
+        }
+        
+        if (!file.type.startsWith('image/')) {
+            showNotification('Пожалуйста, выберите файл изображения', 'error');
+            return;
+        }
+        
+        taskImageFile = file;
+        showImagePreview(file, 'admin-task-preview-img', 'admin-task-image-preview');
+    }
+}
+
+// Show image preview
+function showImagePreview(file, imgId, previewId) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const previewImg = document.getElementById(imgId);
+        const previewContainer = document.getElementById(previewId);
+        
+        if (previewImg && previewContainer) {
+            previewImg.src = e.target.result;
+            previewContainer.style.display = 'block';
+        }
+    };
+    reader.readAsDataURL(file);
+}
+
+// Remove post image
+function removePostImage() {
+    postImageFile = null;
+    document.getElementById('admin-post-image').value = '';
+    document.getElementById('admin-post-image-preview').style.display = 'none';
+}
+
+// Remove task image
+function removeTaskImage() {
+    taskImageFile = null;
+    document.getElementById('admin-task-image').value = '';
+    document.getElementById('admin-task-image-preview').style.display = 'none';
+}
+
+// Upload image and return URL
+async function uploadImage(file, type) {
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    try {
+        const endpoint = type === 'post' ? '/api/upload/post-image' : '/api/upload/task-image';
+        const response = await fetch(`${API_URL}${endpoint}`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            return result.imageUrl;
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        console.error('Error uploading image:', error);
+        throw error;
+    }
+}
+
+// Updated addNewPost function with image support
+async function addNewPost(prefix = '') {
+    const title = document.getElementById(prefix + 'post-title').value;
+    const content = document.getElementById(prefix + 'post-content').value;
+    
+    if (!title || !content) {
+        showNotification('Заполните заголовок и содержание поста!', 'error');
+        return;
+    }
+    
+    let imageUrl = null;
+    
+    // Upload image if selected
+    if (postImageFile) {
+        try {
+            showNotification('Загрузка изображения...', 'info');
+            imageUrl = await uploadImage(postImageFile, 'post');
+        } catch (error) {
+            showNotification('Ошибка загрузки изображения: ' + error.message, 'error');
+            return;
+        }
+    }
+    
+    try {
+        const result = await makeRequest(`${API_URL}/posts`, {
+            method: 'POST',
+            body: JSON.stringify({
+                title: title,
+                content: content,
+                author: currentUser.firstName,
+                authorId: currentUser.id,
+                image_url: imageUrl
+            })
+        });
+
+        if (result.success) {
+            showNotification('Пост успешно опубликован!' + (imageUrl ? ' С изображением.' : ''), 'success');
+            // Reset form
+            document.getElementById(prefix + 'post-title').value = '';
+            document.getElementById(prefix + 'post-content').value = '';
+            removePostImage();
+            loadMainPagePosts();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error adding post:', error);
+        showNotification('Ошибка соединения: ' + error.message, 'error');
+    }
+}
+
+// Updated addTask function with image support
+async function addTask(prefix = '') {
+    const title = document.getElementById(prefix + 'task-title').value;
+    const description = document.getElementById(prefix + 'task-description').value;
+    const price = document.getElementById(prefix + 'task-price').value;
+
+    if (!title || !description || !price) {
+        showNotification('Заполните обязательные поля: название, описание и цена!', 'error');
+        return;
+    }
+
+    let imageUrl = null;
+    
+    // Upload image if selected
+    if (taskImageFile) {
+        try {
+            showNotification('Загрузка изображения...', 'info');
+            imageUrl = await uploadImage(taskImageFile, 'task');
+        } catch (error) {
+            showNotification('Ошибка загрузки изображения: ' + error.message, 'error');
+            return;
+        }
+    }
+
+    try {
+        const result = await makeRequest(`${API_URL}/tasks`, {
+            method: 'POST',
+            body: JSON.stringify({
+                title: title,
+                description: description,
+                price: parseFloat(price) || 0,
+                created_by: currentUser.id,
+                image_url: imageUrl,
+                category: document.getElementById(prefix + 'task-category')?.value || 'general',
+                time_to_complete: document.getElementById(prefix + 'task-time')?.value || '5 минут',
+                difficulty: document.getElementById(prefix + 'task-difficulty')?.value || 'Легкая',
+                people_required: document.getElementById(prefix + 'task-people')?.value || 1,
+                repost_time: document.getElementById(prefix + 'task-repost')?.value || '1 день',
+                task_url: document.getElementById(prefix + 'task-url')?.value || ''
+            })
+        });
+
+        if (result.success) {
+            showNotification('Задание успешно создано!' + (imageUrl ? ' С изображением.' : ''), 'success');
+            // Reset form
+            document.getElementById(prefix + 'task-title').value = '';
+            document.getElementById(prefix + 'task-description').value = '';
+            document.getElementById(prefix + 'task-price').value = '';
+            removeTaskImage();
+            
+            loadAdminTasks();
+            loadTasks();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error creating task:', error);
+        showNotification('Ошибка соединения: ' + error.message, 'error');
+    }
+}
+
+// Update post display to show images
+function displayMainPagePosts(posts) {
+    // ... existing code ...
+    
+    posts.forEach(post => {
+        // ... existing post creation code ...
+        
+        // Add image if exists
+        if (post.image_url) {
+            postElement.innerHTML += `
+                <img src="${post.image_url}" alt="Изображение поста" class="post-image" onerror="this.style.display='none'">
+            `;
+        }
+        
+        // ... rest of existing code ...
+    });
+}
+
+// Update task display to show images
+function displayTasks(tasks, category) {
+    // ... existing code ...
+    
+    tasks.forEach(task => {
+        // ... existing task creation code ...
+        
+        // Add image if exists (in task card)
+        if (task.image_url) {
+            taskElement.innerHTML += `
+                <img src="${task.image_url}" alt="Изображение задания" class="task-image" onerror="this.style.display='none'">
+            `;
+        }
+        
+        // ... rest of existing code ...
+    });
+}
+
+// Update task modal to show images
+function openTaskModal(taskId) {
+    const task = allTasks.find(t => t.id === taskId);
+    if (task) {
+        // ... existing modal setup code ...
+        
+        // Add image to modal if exists
+        if (task.image_url) {
+            const imageHTML = `
+                <div class="task-modal-image-container">
+                    <img src="${task.image_url}" alt="Изображение задания" class="task-modal-image" onerror="this.style.display='none'">
+                </div>
+            `;
+            // Insert image after description
+            document.getElementById('task-modal-description').insertAdjacentHTML('afterend', imageHTML);
+        }
+        
+        // ... rest of existing code ...
+    }
+}
 function displayTasks(tasks, category) {
     const container = document.getElementById(category + '-tasks');
     if (!container) return;
@@ -6659,7 +7087,7 @@ function initializeApp() {
     loadTasks();
     initializeSearch();
     loadUserTasks();
-    
+      initializeImageUploads();
     // Если пользователь админ, загружаем админ-данные
     if (currentUser && currentUser.isAdmin) {
         loadAdminChats();
