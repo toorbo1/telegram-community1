@@ -4702,7 +4702,6 @@ function initializeApp() {
     if (currentUser && currentUser.isAdmin) {
         loadAdminChats();
         loadAdminTasks();
-        loadTaskVerifications();
     }
 }
 
@@ -4963,10 +4962,12 @@ async function loadUserTasks() {
             displayUserTasks(completedResult.tasks, 'completed');
         }
         
-        const rejectedResult = await makeRequest(`${API_URL}/user/${currentUser.id}/tasks?status=rejected`);
-        if (rejectedResult.success) {
-            displayUserTasks(rejectedResult.tasks, 'rejected');
-        }
+        document.getElementById('rejected-tasks').innerHTML = `
+            <div class="no-tasks">
+                <div class="no-tasks-icon">📝</div>
+                <div>Нет отклоненных заданий</div>
+            </div>
+        `;
     } catch (error) {
         console.error('Error loading user tasks:', error);
     }
@@ -4982,11 +4983,7 @@ function displayUserTasks(tasks, category) {
         container.innerHTML = `
             <div class="no-tasks">
                 <div class="no-tasks-icon">📝</div>
-                <div>${
-                    category === 'confirmation' ? 'Нет заданий на подтверждение' : 
-                    category === 'completed' ? 'Нет выполненных заданий' :
-                    category === 'rejected' ? 'Нет отклоненных заданий' : 'Нет заданий'
-                }</div>
+                <div>${category === 'confirmation' ? 'Нет заданий на подтверждение' : 'Нет выполненных заданий'}</div>
             </div>
         `;
         return;
@@ -4994,7 +4991,7 @@ function displayUserTasks(tasks, category) {
 
     tasks.forEach(task => {
         const taskElement = document.createElement('div');
-        taskElement.className = `task-card ${task.status === 'rejected' ? 'rejected-task' : ''}`;
+        taskElement.className = 'task-card';
         
         if (category === 'confirmation') {
             taskElement.innerHTML = `
@@ -5008,10 +5005,10 @@ function displayUserTasks(tasks, category) {
                 <div class="task-description">${task.description}</div>
                 <div class="task-footer">
                     <div class="task-time">Ожидает подтверждения</div>
-                    <button class="task-btn" onclick="showTaskConfirmation(${task.id}, '${escapeHtml(task.title)}')">Подтвердить выполнение</button>
+                    <button class="task-btn" onclick="submitTaskCompletion(${task.id})">Подтвердить выполнение</button>
                 </div>
             `;
-        } else if (category === 'completed') {
+        } else {
             taskElement.innerHTML = `
                 <div class="task-header">
                     <div>
@@ -5024,21 +5021,6 @@ function displayUserTasks(tasks, category) {
                 <div class="task-footer">
                     <div class="task-time">Выполнено</div>
                     <div class="task-status completed">✅</div>
-                </div>
-            `;
-        } else if (category === 'rejected') {
-            taskElement.innerHTML = `
-                <div class="task-header">
-                    <div>
-                        <div class="task-title">${task.title}</div>
-                        <div class="task-category">${task.category}</div>
-                    </div>
-                    <div class="task-price">${task.price} ₽</div>
-                </div>
-                <div class="task-description">${task.description}</div>
-                <div class="task-footer">
-                    <div class="task-time">Отклонено</div>
-                    <button class="support-btn" onclick="openAdminChat()">Написать в поддержку</button>
                 </div>
             `;
         }
@@ -6060,47 +6042,7 @@ async function submitWithdraw() {
     }
 }
 
-// 📱 НАВИГАЦИЯ И СТРАНИЦЫ
-
-function hideAllTabs() {
-    // Скрываем все основные вкладки
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    
-    // Скрываем все страницы
-    document.querySelectorAll('.page').forEach(page => {
-        page.classList.remove('active');
-    });
-    
-    // Скрываем все модальные окна
-    document.querySelectorAll('.modal').forEach(modal => {
-        modal.classList.remove('active');
-    });
-}
-
-function updateNavState(activeTab) {
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    
-    const navItems = document.querySelectorAll('.nav-item');
-    switch(activeTab) {
-        case 'main': 
-            if (navItems[0]) navItems[0].classList.add('active'); 
-            break;
-        case 'tasks': 
-            if (navItems[1]) navItems[1].classList.add('active'); 
-            break;
-        case 'profile': 
-            if (navItems[2]) navItems[2].classList.add('active'); 
-            break;
-        case 'admin': 
-            if (navItems[3]) navItems[3].classList.add('active'); 
-            break;
-    }
-}
-
+// 📱 НАВИГАЦИЯ
 function showMainTab() {
     hideAllTabs();
     document.getElementById('main-tab').classList.add('active');
@@ -6134,7 +6076,7 @@ function showTaskCategory(category) {
         event.currentTarget.classList.add('active');
     }
     
-    if (category === 'confirmation' || category === 'completed' || category === 'rejected') {
+    if (category === 'confirmation' || category === 'completed') {
         loadUserTasks();
     }
 }
@@ -6160,37 +6102,23 @@ function showAdminTab() {
     showAdminSection('support');
 }
 
-// 🔧 ИСПРАВЛЕННЫЕ ФУНКЦИИ ДЛЯ КНОПОК ПРОФИЛЯ
+function showHowItWorksPage() {
+    hideAllTabs();
+    document.getElementById('how-it-works-page').classList.add('active');
+}
 
 function showAboutPage() {
     hideAllTabs();
     document.getElementById('about-page').classList.add('active');
-    updateNavState('profile');
-}
-
-function showHowItWorksPage() {
-    hideAllTabs();
-    document.getElementById('how-it-works-page').classList.add('active');
-    updateNavState('profile');
-}
-
-function showHowItWorksPageFromMain() {
-    hideAllTabs();
-    document.getElementById('how-it-works-page').classList.add('active');
-    updateNavState('main');
 }
 
 function showWithdrawPage() {
     hideAllTabs();
     document.getElementById('withdraw-page').classList.add('active');
-    
-    // Обновляем баланс на странице вывода
     const withdrawBalance = document.getElementById('withdraw-balance');
-    if (withdrawBalance && currentUser) {
+    if (withdrawBalance) {
         withdrawBalance.textContent = `${currentUser.balance || 0} ₽`;
     }
-    
-    updateNavState('profile');
 }
 
 function showAdminSection(section) {
@@ -6207,8 +6135,37 @@ function showAdminSection(section) {
         loadAdminChats();
     } else if (section === 'tasks') {
         loadAdminTasks();
-    } else if (section === 'verification') {
-        loadTaskVerifications();
+    }
+}
+
+function hideAllTabs() {
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelectorAll('.page').forEach(page => {
+        page.classList.remove('active');
+    });
+}
+
+function updateNavState(activeTab) {
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    const navItems = document.querySelectorAll('.nav-item');
+    switch(activeTab) {
+        case 'main': 
+            if (navItems[0]) navItems[0].classList.add('active'); 
+            break;
+        case 'tasks': 
+            if (navItems[1]) navItems[1].classList.add('active'); 
+            break;
+        case 'profile': 
+            if (navItems[2]) navItems[2].classList.add('active'); 
+            break;
+        case 'admin': 
+            if (navItems[3]) navItems[3].classList.add('active'); 
+            break;
     }
 }
 
@@ -6327,10 +6284,32 @@ function closeModal(modalId) {
     document.getElementById(modalId).classList.remove('active');
 }
 
-// 🔧 СИСТЕМА ПРОВЕРКИ ЗАДАНИЙ
-
+// Инициализация при загрузке
+window.addEventListener('load', function() {
+    const taskTabs = document.querySelectorAll('.task-tab');
+    taskTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const category = this.textContent.trim().toLowerCase();
+            let targetCategory = 'new';
+            
+            if (category.includes('новые')) targetCategory = 'new';
+            else if (category.includes('подтверждение')) targetCategory = 'confirmation';
+            else if (category.includes('выполненные')) targetCategory = 'completed';
+            else if (category.includes('отклоненные')) targetCategory = 'rejected';
+            
+            showTaskCategory(targetCategory);
+        });
+    });
+    
+    if (taskTabs.length > 0) {
+        taskTabs[0].click();
+    }
+});
+// Глобальные переменные для системы проверки
 let currentUserTaskId = null;
 let currentVerificationId = null;
+
+// Функции для системы проверки заданий
 
 // Показать модальное окно подтверждения выполнения
 function showTaskConfirmation(userTaskId, taskName) {
@@ -6400,7 +6379,7 @@ async function submitScreenshot() {
         if (result.success) {
             showNotification('Скриншот отправлен на проверку!', 'success');
             closeModal('screenshot-modal');
-            loadUserTasks();
+            loadUserTasks(); // Обновить список заданий
         } else {
             showNotification('Ошибка: ' + result.error, 'error');
         }
@@ -6425,7 +6404,7 @@ async function cancelTask() {
         if (result.success) {
             showNotification('Задание отменено', 'success');
             closeModal('cancel-confirmation-modal');
-            loadUserTasks();
+            loadUserTasks(); // Обновить список заданий
         } else {
             showNotification('Ошибка: ' + result.error, 'error');
         }
@@ -6533,7 +6512,7 @@ async function approveVerification() {
         if (result.success) {
             showNotification('Задание одобрено! Баланс пользователя обновлен.', 'success');
             closeModal('verification-modal');
-            loadTaskVerifications();
+            loadTaskVerifications(); // Обновить список проверок
         } else {
             showNotification('Ошибка: ' + result.error, 'error');
         }
@@ -6558,7 +6537,7 @@ async function rejectVerification() {
         if (result.success) {
             showNotification('Задание отклонено', 'success');
             closeModal('verification-modal');
-            loadTaskVerifications();
+            loadTaskVerifications(); // Обновить список проверок
         } else {
             showNotification('Ошибка: ' + result.error, 'error');
         }
@@ -6568,6 +6547,138 @@ async function rejectVerification() {
     }
 }
 
+// Обновление функции отображения заданий пользователя
+function displayUserTasks(tasks, category) {
+    const container = document.getElementById(category + '-tasks');
+    if (!container) return;
+    
+    container.innerHTML = '';
+
+    if (!tasks || tasks.length === 0) {
+        container.innerHTML = `
+            <div class="no-tasks">
+                <div class="no-tasks-icon">📝</div>
+                <div>${
+                    category === 'confirmation' ? 'Нет заданий на подтверждение' : 
+                    category === 'completed' ? 'Нет выполненных заданий' :
+                    category === 'rejected' ? 'Нет отклоненных заданий' : 'Нет заданий'
+                }</div>
+            </div>
+        `;
+        return;
+    }
+
+    tasks.forEach(task => {
+        const taskElement = document.createElement('div');
+        taskElement.className = `task-card ${task.status === 'rejected' ? 'rejected-task' : ''}`;
+        
+        if (category === 'confirmation') {
+            taskElement.innerHTML = `
+                <div class="task-header">
+                    <div>
+                        <div class="task-title">${task.title}</div>
+                        <div class="task-category">${task.category}</div>
+                    </div>
+                    <div class="task-price">${task.price} ₽</div>
+                </div>
+                <div class="task-description">${task.description}</div>
+                <div class="task-footer">
+                    <div class="task-time">Ожидает подтверждения</div>
+                    <button class="task-btn" onclick="showTaskConfirmation(${task.id}, '${escapeHtml(task.title)}')">Подтвердить выполнение</button>
+                </div>
+            `;
+        } else if (category === 'completed') {
+            taskElement.innerHTML = `
+                <div class="task-header">
+                    <div>
+                        <div class="task-title">${task.title}</div>
+                        <div class="task-category">${task.category}</div>
+                    </div>
+                    <div class="task-price">${task.price} ₽</div>
+                </div>
+                <div class="task-description">${task.description}</div>
+                <div class="task-footer">
+                    <div class="task-time">Выполнено</div>
+                    <div class="task-status completed">✅</div>
+                </div>
+            `;
+        } else if (category === 'rejected') {
+            taskElement.innerHTML = `
+                <div class="task-header">
+                    <div>
+                        <div class="task-title">${task.title}</div>
+                        <div class="task-category">${task.category}</div>
+                    </div>
+                    <div class="task-price">${task.price} ₽</div>
+                </div>
+                <div class="task-description">${task.description}</div>
+                <div class="task-footer">
+                    <div class="task-time">Отклонено</div>
+                    <button class="support-btn" onclick="openAdminChat()">Написать в поддержку</button>
+                </div>
+            `;
+        }
+        
+        container.appendChild(taskElement);
+    });
+}
+
+// Обновление функции загрузки заданий пользователя
+async function loadUserTasks() {
+    if (!currentUser) return;
+    
+    try {
+        // Активные задания (на подтверждение)
+        const activeResult = await makeRequest(`${API_URL}/user/${currentUser.id}/tasks?status=active`);
+        if (activeResult.success) {
+            displayUserTasks(activeResult.tasks, 'confirmation');
+        }
+        
+        // Выполненные задания
+        const completedResult = await makeRequest(`${API_URL}/user/${currentUser.id}/tasks?status=completed`);
+        if (completedResult.success) {
+            displayUserTasks(completedResult.tasks, 'completed');
+        }
+        
+        // Отклоненные задания
+        const rejectedResult = await makeRequest(`${API_URL}/user/${currentUser.id}/tasks?status=rejected`);
+        if (rejectedResult.success) {
+            displayUserTasks(rejectedResult.tasks, 'rejected');
+        }
+        
+    } catch (error) {
+        console.error('Error loading user tasks:', error);
+    }
+}
+
+// Обновить инициализацию приложения
+function initializeApp() {
+    displayUserProfile();
+    checkAdminRights();
+    loadMainPagePosts();
+    loadTasks();
+    initializeSearch();
+    loadUserTasks();
+    
+    // Если пользователь админ, загружаем админ-данные
+    if (currentUser && currentUser.isAdmin) {
+        loadAdminChats();
+        loadAdminTasks();
+        loadTaskVerifications(); // Добавить эту строку
+    }
+}
+
+// Добавить обработчики для новых модальных окон
+document.addEventListener('DOMContentLoaded', function() {
+    // Добавляем обработчики для новых модальных окон
+    document.querySelectorAll('.modal, .verification-modal').forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.remove('active');
+            }
+        });
+    });
+});
 // Функции для лайков и дизлайков
 async function handleLike(postId, button) {
     try {
@@ -6632,37 +6743,17 @@ async function handleDislike(postId, button) {
         }, 200);
     }
 }
+// Экспортируем новые функции
+window.showTaskConfirmation = showTaskConfirmation;
+window.showScreenshotUpload = showScreenshotUpload;
+window.showCancelConfirmation = showCancelConfirmation;
+window.submitScreenshot = submitScreenshot;
+window.cancelTask = cancelTask;
+window.loadTaskVerifications = loadTaskVerifications;
+window.openVerificationModal = openVerificationModal;
+window.approveVerification = approveVerification;
+window.rejectVerification = rejectVerification;
 
-// Инициализация при загрузке
-window.addEventListener('load', function() {
-    const taskTabs = document.querySelectorAll('.task-tab');
-    taskTabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            const category = this.textContent.trim().toLowerCase();
-            let targetCategory = 'new';
-            
-            if (category.includes('новые')) targetCategory = 'new';
-            else if (category.includes('подтверждение')) targetCategory = 'confirmation';
-            else if (category.includes('выполненные')) targetCategory = 'completed';
-            else if (category.includes('отклоненные')) targetCategory = 'rejected';
-            
-            showTaskCategory(targetCategory);
-        });
-    });
-    
-    if (taskTabs.length > 0) {
-        taskTabs[0].click();
-    }
-    
-    // Добавляем обработчики для модальных окон
-    document.querySelectorAll('.modal, .verification-modal').forEach(modal => {
-        modal.addEventListener('click', function(e) {
-            if (e.target === this) {
-                this.classList.remove('active');
-            }
-        });
-    });
-});
 
 // Экспортируем функции для глобального использования
 window.openAdminChat = openAdminChat;
@@ -6682,7 +6773,6 @@ window.showTasksTab = showTasksTab;
 window.showProfileTab = showProfileTab;
 window.showAdminTab = showAdminTab;
 window.showHowItWorksPage = showHowItWorksPage;
-window.showHowItWorksPageFromMain = showHowItWorksPageFromMain;
 window.showAboutPage = showAboutPage;
 window.showWithdrawPage = showWithdrawPage;
 window.showAdminSection = showAdminSection;
@@ -6698,17 +6788,9 @@ window.deleteAdminChat = deleteAdminChat;
 window.archiveChat = archiveChat;
 window.restoreChat = restoreChat;
 window.showChatTab = showChatTab;
+// Экспортируем новые функции для глобального использования
 window.handleLike = handleLike;
 window.handleDislike = handleDislike;
-window.showTaskConfirmation = showTaskConfirmation;
-window.showScreenshotUpload = showScreenshotUpload;
-window.showCancelConfirmation = showCancelConfirmation;
-window.submitScreenshot = submitScreenshot;
-window.cancelTask = cancelTask;
-window.loadTaskVerifications = loadTaskVerifications;
-window.openVerificationModal = openVerificationModal;
-window.approveVerification = approveVerification;
-window.rejectVerification = rejectVerification;
 </script>
 </body>
 </html>
