@@ -3686,6 +3686,17 @@
     background-clip: text;
     color: transparent;
 }
+.nav-icon img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    filter: brightness(0) invert(0.7); /* Делает иконки светлыми как эмодзи */
+    transition: all 0.3s ease;
+}
+
+.nav-item.active .nav-icon img {
+    filter: brightness(0) invert(1); /* Белые иконки для активного состояния */
+}
     </style>
 </head>
 <body>
@@ -4378,15 +4389,21 @@
 <!-- Навигация -->
 <nav class="bottom-nav">
     <div class="nav-item active" onclick="showMainTab()">
-        <div class="nav-icon">🏠</div>
+        <div class="nav-icon">
+            <img src="free-icon-home-7102764.png" alt="Главная" style="width: 24px; height: 24px;">
+        </div>
         <div class="nav-label">Главная</div>
     </div>
     <div class="nav-item" onclick="showTasksTab()">
-        <div class="nav-icon">📋</div>
+        <div class="nav-icon">
+            <img src="free-icon-task-list-4173330.png" alt="Задания" style="width: 24px; height: 24px;">
+        </div>
         <div class="nav-label">Задания</div>
     </div>
     <div class="nav-item" onclick="showProfileTab()">
-        <div class="nav-icon">👤</div>
+        <div class="nav-icon">
+            <img src="free-icon-profile-4042565.png" alt="Профиль" style="width: 24px; height: 24px;">
+        </div>
         <div class="nav-label">Профиль</div>
     </div>
     <div class="nav-item" id="admin-nav-item" onclick="showAdminTab()" style="display: none;">
