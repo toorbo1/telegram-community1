@@ -1740,116 +1740,7 @@
                 grid-template-columns: repeat(3, 1fr);
             }
         }
-        /* Стили для ленты постов на главной */
-.posts-feed {
-    margin-top: 20px;
-}
 
-.post-item {
-    background: var(--card-bg);
-    border-radius: 16px;
-    padding: 20px;
-    margin-bottom: 16px;
-    border: 1px solid var(--border);
-    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
-    backdrop-filter: blur(10px);
-    animation: fadeIn 0.6s ease-out;
-}
-
-.post-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 12px;
-}
-
-.post-title {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: 8px;
-}
-
-.post-author {
-    font-size: 12px;
-    color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.admin-badge {
-    background: var(--purple-gradient);
-    color: white;
-    padding: 2px 8px;
-    border-radius: 6px;
-    font-size: 10px;
-    font-weight: 600;
-}
-
-.post-date {
-    font-size: 11px;
-    color: var(--text-secondary);
-    opacity: 0.7;
-}
-
-.post-content {
-    color: var(--text-primary);
-    line-height: 1.5;
-    margin-bottom: 12px;
-    white-space: pre-wrap;
-}
-
-.post-image {
-    width: 100%;
-    border-radius: 12px;
-    margin: 12px 0;
-    max-height: 300px;
-    object-fit: cover;
-}
-
-.post-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-top: 12px;
-    border-top: 1px solid var(--border);
-}
-
-.post-actions {
-    display: flex;
-    gap: 12px;
-}
-
-.like-btn, .share-btn {
-    background: none;
-    border: none;
-    color: var(--text-secondary);
-    font-size: 14px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 6px 12px;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-}
-
-.like-btn:hover, .share-btn:hover {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-}
-
-.loading-posts {
-    text-align: center;
-    padding: 40px 20px;
-    color: var(--text-secondary);
-}
-
-.loading-spinner {
-    font-size: 24px;
-    margin-bottom: 12px;
-}
 /* Стили для уведомлений */
 @keyframes slideIn {
     from {
@@ -3846,10 +3737,10 @@
                         Смотреть все задания
                     </button>
                 </div>
-                <!-- Секция постов на главной -->
-<div id="posts-section" class="card fade-in" style="display: none; margin-top: 20px;">
+           <!-- Секция постов на главной -->
+<div id="posts-section" class="fade-in" style="display: none; margin-top: 20px;">
     <div class="posts-header">
-        <h2 style="color: var(--text-primary); margin-bottom: 15px; text-align: center;">📢 Последние новости</h2>
+        <h2 style="color: var(--text-primary); margin-bottom: 25px; text-align: center; font-size: 24px;">📢 Последние новости</h2>
     </div>
     <div id="posts-container">
         <!-- Посты будут загружаться здесь -->
@@ -5201,7 +5092,6 @@ function displayMainPagePosts(posts) {
                     <div class="post-title">${escapeHtml(post.title)}</div>
                     <div class="post-author">
                         ${escapeHtml(post.author || 'Администратор')}
-                        ${isAdmin ? '<span class="admin-badge">ADMIN</span>' : ''}
                     </div>
                 </div>
                 <div class="post-date">${postDate}</div>
@@ -5215,8 +5105,14 @@ function displayMainPagePosts(posts) {
             
             <div class="post-footer">
                 <div class="post-actions">
-                    <button class="like-btn">👍 Нравится</button>
-                    <button class="share-btn">🔗 Поделиться</button>
+                    <button class="like-btn" onclick="handleLike(${post.id}, this)">
+                        <span class="like-icon">👍</span>
+                        <span class="like-count">${post.likes || 0}</span>
+                    </button>
+                    <button class="dislike-btn" onclick="handleDislike(${post.id}, this)">
+                        <span class="dislike-icon">👎</span>
+                        <span class="dislike-count">${post.dislikes || 0}</span>
+                    </button>
                 </div>
             </div>
             
@@ -6782,7 +6678,70 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+// Функции для лайков и дизлайков
+async function handleLike(postId, button) {
+    try {
+        const result = await makeRequest(`${API_URL}/posts/${postId}/like`, {
+            method: 'POST',
+            body: JSON.stringify({
+                userId: currentUser.id
+            })
+        });
 
+        if (result.success) {
+            const countElement = button.querySelector('.like-count');
+            countElement.textContent = result.likes;
+            
+            // Визуальная обратная связь
+            button.style.transform = 'scale(1.1)';
+            setTimeout(() => {
+                button.style.transform = 'scale(1)';
+            }, 200);
+        }
+    } catch (error) {
+        console.error('Error liking post:', error);
+        // Локальное обновление для демонстрации
+        const countElement = button.querySelector('.like-count');
+        countElement.textContent = parseInt(countElement.textContent) + 1;
+        
+        button.style.transform = 'scale(1.1)';
+        setTimeout(() => {
+            button.style.transform = 'scale(1)';
+        }, 200);
+    }
+}
+
+async function handleDislike(postId, button) {
+    try {
+        const result = await makeRequest(`${API_URL}/posts/${postId}/dislike`, {
+            method: 'POST',
+            body: JSON.stringify({
+                userId: currentUser.id
+            })
+        });
+
+        if (result.success) {
+            const countElement = button.querySelector('.dislike-count');
+            countElement.textContent = result.dislikes;
+            
+            // Визуальная обратная связь
+            button.style.transform = 'scale(1.1)';
+            setTimeout(() => {
+                button.style.transform = 'scale(1)';
+            }, 200);
+        }
+    } catch (error) {
+        console.error('Error disliking post:', error);
+        // Локальное обновление для демонстрации
+        const countElement = button.querySelector('.dislike-count');
+        countElement.textContent = parseInt(countElement.textContent) + 1;
+        
+        button.style.transform = 'scale(1.1)';
+        setTimeout(() => {
+            button.style.transform = 'scale(1)';
+        }, 200);
+    }
+}
 // Экспортируем новые функции
 window.showTaskConfirmation = showTaskConfirmation;
 window.showScreenshotUpload = showScreenshotUpload;
@@ -6828,6 +6787,9 @@ window.deleteAdminChat = deleteAdminChat;
 window.archiveChat = archiveChat;
 window.restoreChat = restoreChat;
 window.showChatTab = showChatTab;
+// Экспортируем новые функции для глобального использования
+window.handleLike = handleLike;
+window.handleDislike = handleDislike;
 </script>
 </body>
 </html>
