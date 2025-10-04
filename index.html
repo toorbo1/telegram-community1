@@ -5447,7 +5447,49 @@ function displayArchivedAdminChats(chats) {
         container.appendChild(chatElement);
     });
 }
+// Endpoint for withdrawal
+app.get('/withdrawal', (req, res) => {
+  res.send(`
+    💳 ВЫВОД СРЕДСТВ
+    
+    Минимальная сумма вывода: 50 рублей
+    Способы вывода:
+    - Банковская карта (1-3 дня)
+    - ЮMoney (24 часа) 
+    - QIWI (24 часа)
+    - СБП (мгновенно)
+    
+    Для запроса вывода зайдите в профиль.
+  `);
+});
 
+// Endpoint for how it works
+app.get('/how-it-works', (req, res) => {
+  res.send(`
+    ❓ КАК ЭТО РАБОТАЕТ
+    
+    1. Выбираете задание из списка
+    2. Выполняете требования
+    3. Отправляете скриншот на проверку
+    4. Получаете деньги после одобрения
+    5. Выводите на карту или кошелек
+    
+    Все просто!
+  `);
+});
+
+// Endpoint for about
+app.get('/about', (req, res) => {
+  res.send(`
+    ℹ️ О ПРИЛОЖЕНИИ
+    
+    LinkGold v2.0
+    Платформа для заработка
+    Поддержка: @linkgold_support
+    
+    © 2024 LinkGold
+  `);
+});
 // Создание элемента чата
 function createChatElement(chat, listType) {
     const chatElement = document.createElement('div');
