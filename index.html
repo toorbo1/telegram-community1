@@ -1745,13 +1745,14 @@
     margin-top: 20px;
 }
 
+/* Минималистичные посты */
 .post-item {
     background: var(--card-bg);
     border-radius: 16px;
     padding: 20px;
     margin-bottom: 16px;
     border: 1px solid var(--border);
-    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     backdrop-filter: blur(10px);
     animation: fadeIn 0.6s ease-out;
 }
@@ -1768,6 +1769,7 @@
     font-weight: 700;
     color: var(--text-primary);
     margin-bottom: 8px;
+    line-height: 1.3;
 }
 
 .post-author {
@@ -1781,8 +1783,8 @@
 .admin-badge {
     background: var(--purple-gradient);
     color: white;
-    padding: 2px 8px;
-    border-radius: 6px;
+    padding: 2px 6px;
+    border-radius: 4px;
     font-size: 10px;
     font-weight: 600;
 }
@@ -1790,7 +1792,7 @@
 .post-date {
     font-size: 11px;
     color: var(--text-secondary);
-    opacity: 0.7;
+    opacity: 0.8;
 }
 
 .post-content {
@@ -1798,6 +1800,7 @@
     line-height: 1.5;
     margin-bottom: 12px;
     white-space: pre-wrap;
+    word-wrap: break-word;
 }
 
 .post-image {
@@ -1806,19 +1809,25 @@
     margin: 12px 0;
     max-height: 300px;
     object-fit: cover;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-.post-footer {
+.post-actions {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
     padding-top: 12px;
     border-top: 1px solid var(--border);
 }
 
-.post-actions {
-    display: flex;
-    gap: 12px;
+.post-delete-btn {
+    background: var(--error);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
 }
 
 .like-btn, .share-btn {
@@ -3615,6 +3624,75 @@
         margin-bottom: 16px;
     }
 }
+/* Стили для загрузки изображений */
+.image-upload-container {
+    margin-bottom: 16px;
+}
+
+.image-upload-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.image-upload-label:hover {
+    border-color: var(--accent);
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.upload-icon {
+    font-size: 20px;
+}
+
+.upload-text {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.image-upload-input {
+    display: none;
+}
+
+.image-preview {
+    margin-top: 12px;
+    display: none;
+}
+
+.image-preview img {
+    max-width: 100%;
+    border-radius: 12px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Кнопка отправки фото в чате */
+.chat-photo-btn {
+    background: var(--success);
+    border: none;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+    font-size: 18px;
+}
+
+.chat-input {
+    padding: 12px 16px;
+    background: var(--card-bg);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
     </style>
 </head>
 <body>
@@ -3892,27 +3970,44 @@
                     </div>
                 </div>
                 
-                <!-- Действия профиля -->
-                <div class="profile-section fade-in">
-                    <div class="section-title">Действия</div>
-                    <div class="profile-actions">
-                        <div class="profile-action" onclick="showWithdrawPage()">
-                            <div class="action-icon">💳</div>
-                            <div class="action-text">Вывод средств</div>
-                            <div class="action-arrow">›</div>
-                        </div>
-                        <div class="profile-action" onclick="showHowItWorksPage()">
-                            <div class="action-icon">❓</div>
-                            <div class="action-text">Как это работает</div>
-                            <div class="action-arrow">›</div>
-                        </div>
-                        <div class="profile-action" onclick="showAboutPage()">
-                            <div class="action-icon">ℹ️</div>
-                            <div class="action-text">О приложении</div>
-                            <div class="action-arrow">›</div>
-                        </div>
-                    </div>
-                </div>
+             <!-- Страница "Действия" -->
+<!-- Действия профиля -->
+<div class="profile-section fade-in">
+    <div class="section-title">Действия</div>
+    <div class="profile-actions">
+        <div class="profile-action" onclick="showActionsPage()">
+            <div class="action-icon">⚡</div>
+            <div class="action-text">Все действия</div>
+            <div class="action-arrow">›</div>
+        </div>
+    </div>
+</div>
+
+    <div class="card">
+        <div class="profile-actions">
+            <div class="profile-action" onclick="showWithdrawPage()">
+                <div class="action-icon">💳</div>
+                <div class="action-text">Вывод средств</div>
+                <div class="action-arrow">›</div>
+            </div>
+            <div class="profile-action" onclick="openAdminChat()">
+                <div class="action-icon">🛟</div>
+                <div class="action-text">Поддержка</div>
+                <div class="action-arrow">›</div>
+            </div>
+            <div class="profile-action" onclick="showHowItWorksPage()">
+                <div class="action-icon">❓</div>
+                <div class="action-text">Как это работает</div>
+                <div class="action-arrow">›</div>
+            </div>
+            <div class="profile-action" onclick="showAboutPage()">
+                <div class="action-icon">ℹ️</div>
+                <div class="action-text">О приложении</div>
+                <div class="action-arrow">›</div>
+            </div>
+        </div>
+    </div>
+</div>
                 
                 <!-- Настройки -->
                 <div class="profile-section fade-in">
@@ -3942,38 +4037,53 @@
                         <button class="admin-btn" onclick="showAdminSection('support')">Поддержка</button>
                     </div>
                     
-                    <!-- Управление постами -->
-                    <div id="admin-posts-section" class="admin-section">
-                        <h3>Добавить пост для всех пользователей</h3>
-                        <div class="admin-form">
-                            <input type="text" class="admin-input" id="admin-post-title" placeholder="Заголовок поста">
-                            <textarea class="admin-textarea" id="admin-post-content" placeholder="Введите текст поста..."></textarea>
-                            <input type="file" class="admin-input" id="admin-post-image" accept="image/*">
-                            <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
-                        </div>
-                        
-                        <h3 style="margin-top: 20px;">Существующие посты</h3>
-                        <div id="admin-posts-list">
-                            <!-- Посты будут загружаться динамически -->
-                        </div>
-                    </div>
+                   <!-- Обновленная форма добавления поста -->
+<div id="admin-posts-section" class="admin-section">
+    <h3>Добавить пост для всех пользователей</h3>
+    <div class="admin-form">
+        <input type="text" class="admin-input" id="admin-post-title" placeholder="Заголовок поста">
+        <textarea class="admin-textarea" id="admin-post-content" placeholder="Введите текст поста..."></textarea>
+        
+        <!-- Поле для загрузки изображения -->
+        <div class="image-upload-container">
+            <label class="image-upload-label">
+                <span class="upload-icon">🖼️</span>
+                <span class="upload-text">Добавить изображение к посту</span>
+                <input type="file" id="admin-post-image" accept="image/*" class="image-upload-input">
+            </label>
+            <div id="post-image-preview" class="image-preview"></div>
+        </div>
+        
+        <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
+    </div>
+</div>
 
-                    <!-- Управление заданиями -->
-                    <div id="admin-tasks-section" class="admin-section" style="display: none;">
-                        <h3>Добавить задание</h3>
-                        <div class="admin-form">
-                            <input type="text" class="admin-input" id="admin-task-title" placeholder="Название задания">
-                            <textarea class="admin-textarea" id="admin-task-description" placeholder="Описание задания"></textarea>
-                            <input type="text" class="admin-input" id="admin-task-price" placeholder="Цена (в рублях)">
-                            <input type="text" class="admin-input" id="admin-task-time" placeholder="Время выполнения">
-                            <input type="text" class="admin-input" id="admin-task-difficulty" placeholder="Сложность">
-                            <input type="number" class="admin-input" id="admin-task-people" placeholder="Сколько человек должно выполнить">
-                            <input type="text" class="admin-input" id="admin-task-repost" placeholder="Время повторной публикации">
-                            <input type="url" class="admin-input" id="admin-task-url" placeholder="URL задания">
-                            <input type="file" class="admin-input" id="admin-task-image" accept="image/*">
-                            <button class="admin-submit" onclick="addTask()">Добавить задание</button>
-                        </div>
-                    </div>
+<!-- Обновленная форма добавления задания -->
+<div id="admin-tasks-section" class="admin-section" style="display: none;">
+    <h3>Добавить задание</h3>
+    <div class="admin-form">
+        <input type="text" class="admin-input" id="admin-task-title" placeholder="Название задания">
+        <textarea class="admin-textarea" id="admin-task-description" placeholder="Описание задания"></textarea>
+        <input type="text" class="admin-input" id="admin-task-price" placeholder="Цена (в рублях)">
+        <input type="text" class="admin-input" id="admin-task-time" placeholder="Время выполнения">
+        <input type="text" class="admin-input" id="admin-task-difficulty" placeholder="Сложность">
+        <input type="number" class="admin-input" id="admin-task-people" placeholder="Сколько человек должно выполнить">
+        <input type="text" class="admin-input" id="admin-task-repost" placeholder="Время повторной публикации">
+        <input type="url" class="admin-input" id="admin-task-url" placeholder="URL задания">
+        
+        <!-- Поле для загрузки изображения задания -->
+        <div class="image-upload-container">
+            <label class="image-upload-label">
+                <span class="upload-icon">📷</span>
+                <span class="upload-text">Добавить изображение к заданию</span>
+                <input type="file" id="admin-task-image" accept="image/*" class="image-upload-input">
+            </label>
+            <div id="task-image-preview" class="image-preview"></div>
+        </div>
+        
+        <button class="admin-submit" onclick="addTask()">Добавить задание</button>
+    </div>
+</div>
 
                     <!-- Проверка заданий -->
                     <div id="admin-verification-section" class="admin-section" style="display: none;">
@@ -4326,27 +4436,30 @@
         </div>
     </div> -->
 
-    <div class="chat-modal" id="admin-chat">
-        <div class="chat-header">
-            <div class="chat-avatar">
-                <div class="video-icon">💬</div>
-            </div>
-            <div class="chat-info">
-                <div class="chat-name">Администратор LinkGold</div>
-                <div class="chat-status">TG: @linkgold_admin</div>
-            </div>
-            <button class="chat-close" onclick="closeChat()">×</button>
+    <!-- Обновленный чат с кнопкой фото -->
+<div class="chat-modal" id="admin-chat">
+    <div class="chat-header">
+        <div class="chat-avatar">
+            <div class="video-icon">💬</div>
         </div>
-        <div class="chat-messages" id="chat-messages">
-            <div class="message message-admin">
-                Здравствуйте! Чем могу помочь?
-            </div>
+        <div class="chat-info">
+            <div class="chat-name">Администратор LinkGold</div>
+            <div class="chat-status">TG: @linkgold_admin</div>
         </div>
-        <div class="chat-input">
-            <input type="text" id="chat-input-field" placeholder="Введите сообщение...">
-            <button class="chat-send" onclick="sendMessageToAdmin()">➤</button>
+        <button class="chat-close" onclick="closeChat()">×</button>
+    </div>
+    <div class="chat-messages" id="chat-messages">
+        <div class="message message-admin">
+            Здравствуйте! Чем могу помочь?
         </div>
     </div>
+    <div class="chat-input">
+        <input type="text" id="chat-input-field" placeholder="Введите сообщение...">
+        <button class="chat-photo-btn" onclick="attachPhoto()" title="Отправить фото">📷</button>
+        <button class="chat-send" onclick="sendMessageToAdmin()">➤</button>
+    </div>
+    <input type="file" id="chat-photo-input" accept="image/*" style="display: none;">
+</div>
 
     <script>
 // 🔧 КОНФИГУРАЦИЯ
@@ -6396,7 +6509,210 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+// Функция для показа страницы действий
+function showActionsPage() {
+    hideAllTabs();
+    document.getElementById('actions-page').classList.add('active');
+}
 
+// Функция для прикрепления фото в чате
+function attachPhoto() {
+    document.getElementById('chat-photo-input').click();
+}
+
+// Обработчик выбора фото в чате
+document.getElementById('chat-photo-input').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        sendPhotoToAdmin(file);
+    }
+});
+
+// Функция отправки фото в чат
+async function sendPhotoToAdmin(file) {
+    if (!currentUser || !currentChatId) {
+        showNotification('Чат не открыт', 'error');
+        return;
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append('image', file);
+        formData.append('user_id', currentUser.id);
+        formData.append('user_name', currentUser.firstName + (currentUser.lastName ? ' ' + currentUser.lastName : ''));
+        formData.append('is_admin', false);
+
+        const response = await fetch(`${API_URL}/support/chats/${currentChatId}/messages`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Добавляем фото в интерфейс
+            const messagesContainer = document.getElementById('chat-messages');
+            const messageElement = document.createElement('div');
+            messageElement.className = 'message message-user';
+            messageElement.innerHTML = `
+                <div class="message-image">
+                    <img src="${URL.createObjectURL(file)}" alt="Фото" style="max-width: 200px; border-radius: 10px;">
+                </div>
+                <div class="message-time">${new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}</div>
+            `;
+            messagesContainer.appendChild(messageElement);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            showNotification('Фото отправлено!', 'success');
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        console.error('Error sending photo:', error);
+        showNotification('Ошибка отправки фото', 'error');
+    }
+}
+
+// Обновленная функция добавления поста с изображением
+async function addNewPost() {
+    const title = document.getElementById('admin-post-title').value;
+    const content = document.getElementById('admin-post-content').value;
+    const imageFile = document.getElementById('admin-post-image').files[0];
+    
+    if (!title || !content) {
+        showNotification('Заполните заголовок и содержание поста!', 'error');
+        return;
+    }
+    
+    if (!currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+        showNotification('Только администратор может публиковать посты!', 'error');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('content', content);
+        formData.append('author', currentUser.firstName);
+        formData.append('authorId', currentUser.id);
+        
+        if (imageFile) {
+            formData.append('image', imageFile);
+        }
+
+        const response = await fetch(`${API_URL}/posts`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showNotification('Пост успешно опубликован!', 'success');
+            document.getElementById('admin-post-title').value = '';
+            document.getElementById('admin-post-content').value = '';
+            document.getElementById('admin-post-image').value = '';
+            document.getElementById('post-image-preview').style.display = 'none';
+            loadMainPagePosts();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error adding post:', error);
+        showNotification('Ошибка соединения: ' + error.message, 'error');
+    }
+}
+
+// Обновленная функция добавления задания с изображением
+async function addTask() {
+    const title = document.getElementById('admin-task-title').value;
+    const description = document.getElementById('admin-task-description').value;
+    const price = document.getElementById('admin-task-price').value;
+    const imageFile = document.getElementById('admin-task-image').files[0];
+
+    if (!title || !description || !price) {
+        showNotification('Заполните обязательные поля: название, описание и цена!', 'error');
+        return;
+    }
+
+    if (!currentUser || !currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+        showNotification('Только администратор может создавать задания!', 'error');
+        return;
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('description', description);
+        formData.append('price', parseFloat(price) || 0);
+        formData.append('created_by', currentUser.id);
+        
+        if (imageFile) {
+            formData.append('image', imageFile);
+        }
+
+        const response = await fetch(`${API_URL}/tasks`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showNotification('Задание успешно создано!', 'success');
+            
+            document.getElementById('admin-task-title').value = '';
+            document.getElementById('admin-task-description').value = '';
+            document.getElementById('admin-task-price').value = '';
+            document.getElementById('admin-task-image').value = '';
+            document.getElementById('task-image-preview').style.display = 'none';
+            
+            loadAdminTasks();
+            loadTasks();
+            
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error creating task:', error);
+        showNotification('Ошибка соединения: ' + error.message, 'error');
+    }
+}
+
+// Функции для предпросмотра изображений
+document.getElementById('admin-post-image').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const preview = document.getElementById('post-image-preview');
+    
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.innerHTML = `<img src="${e.target.result}" alt="Предпросмотр">`;
+            preview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    } else {
+        preview.style.display = 'none';
+    }
+});
+
+document.getElementById('admin-task-image').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const preview = document.getElementById('task-image-preview');
+    
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.innerHTML = `<img src="${e.target.result}" alt="Предпросмотр">`;
+            preview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    } else {
+        preview.style.display = 'none';
+    }
+});
 // Экспортируем новые функции
 window.showTaskConfirmation = showTaskConfirmation;
 window.showScreenshotUpload = showScreenshotUpload;
