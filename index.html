@@ -4339,235 +4339,28 @@
                 </div>
             </div>
         </main>
-<!-- Страница "Вывод средств" -->
-<div id="withdraw-page" class="page">
-    <div class="page-header">
-        <button class="back-button" onclick="showProfileTab()">←</button>
-        <div class="page-title">💳 Вывод средств</div>
-    </div>
-
-    <div class="card">
-        <div class="balance-amount" id="withdraw-balance">0 ₽</div>
-        <p class="about-text" style="text-align: center; margin-bottom: 20px;">Доступно для вывода</p>
-
-        <div class="withdraw-info" style="background: var(--bg-secondary); padding: 15px; border-radius: 12px; margin-bottom: 20px;">
-            <h4 style="margin-bottom: 10px;">💎 Ваша активность приносит реальный доход!</h4>
-            <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">
-                В этом разделе вы можете вывести заработанные средства на свою банковскую карту. 
-                Просто укажите реквизиты, выберите сумму и получите деньги в кратчайшие сроки.
-            </p>
+<!-- Добавьте этот блок в раздел профиля или главной страницы -->
+<div class="profile-section fade-in">
+    <div class="section-title">Информация</div>
+    <div class="profile-actions">
+        <div class="profile-action" onclick="showAboutPage()">
+            <div class="action-icon">ℹ️</div>
+            <div class="action-text">О приложении</div>
+            <div class="action-arrow">›</div>
         </div>
-
-        <div class="admin-form">
-            <h3>Запрос на вывод</h3>
-            <input type="number" class="admin-input" id="withdraw-amount" placeholder="Сумма вывода (минимум 50 ₽)" min="50">
-            <select class="admin-input" id="withdraw-method">
-                <option value="">Выберите способ вывода</option>
-                <option value="card">💳 Банковская карта</option>
-                <option value="qiwi">🟠 QIWI Кошелек</option>
-                <option value="yoomoney">🔵 ЮMoney</option>
-                <option value="crypto">₿ Криптовалюта (USDT)</option>
-            </select>
-            <input type="text" class="admin-input" id="withdraw-details" placeholder="Реквизиты для вывода">
-            
-            <div style="background: var(--bg-secondary); padding: 12px; border-radius: 10px; margin: 15px 0;">
-                <p style="font-size: 12px; color: var(--text-secondary); margin: 0;">
-                    💡 <strong>Минимальная сумма для вывода всего 50 рублей</strong><br>
-                    💰 Вывод обрабатывается в течение 1-3 рабочих дней
-                </p>
-            </div>
-            
-            <button class="admin-submit" onclick="submitWithdraw()">Заказать выплату</button>
+        <div class="profile-action" onclick="showHowItWorksPage()">
+            <div class="action-icon">❓</div>
+            <div class="action-text">Как это работает</div>
+            <div class="action-arrow">›</div>
         </div>
-
-        <div class="withdraw-history" style="margin-top: 25px;">
-            <h4 style="margin-bottom: 15px;">📊 История выводов</h4>
-            <div id="withdraw-history-list" style="background: var(--bg-secondary); border-radius: 12px; padding: 15px;">
-                <div style="text-align: center; color: var(--text-secondary); font-size: 14px;">
-                    История выводов пуста
-                </div>
-            </div>
+        <div class="profile-action" onclick="showWithdrawPage()">
+            <div class="action-icon">💳</div>
+            <div class="action-text">Вывод средств</div>
+            <div class="action-arrow">›</div>
         </div>
     </div>
 </div>
-<!-- Страница "Как это работает" -->
-<div id="how-it-works-page" class="page">
-    <div class="page-header">
-        <button class="back-button" onclick="showProfileTab()">←</button>
-        <div class="page-title">❓ Как это работает</div>
-    </div>
 
-    <div class="card">
-        <div class="workflow-steps">
-            <div class="workflow-step" style="display: flex; align-items: flex-start; margin-bottom: 25px; padding: 15px; background: var(--bg-secondary); border-radius: 12px;">
-                <div class="step-number" style="background: var(--accent); color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; flex-shrink: 0;">1</div>
-                <div>
-                    <h4 style="margin-bottom: 8px;">🎯 Выполняйте задания</h4>
-                    <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">
-                        Получайте бонусы за просмотры, покупки или участие в акциях.
-                    </p>
-                </div>
-            </div>
-
-            <div class="workflow-step" style="display: flex; align-items: flex-start; margin-bottom: 25px; padding: 15px; background: var(--bg-secondary); border-radius: 12px;">
-                <div class="step-number" style="background: var(--accent); color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; flex-shrink: 0;">2</div>
-                <div>
-                    <h4 style="margin-bottom: 8px;">💳 Добавьте карту</h4>
-                    <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">
-                        Перейдите в раздел «Вывод средств» и привяжите любую банковскую карту.
-                    </p>
-                </div>
-            </div>
-
-            <div class="workflow-step" style="display: flex; align-items: flex-start; margin-bottom: 25px; padding: 15px; background: var(--bg-secondary); border-radius: 12px;">
-                <div class="step-number" style="background: var(--accent); color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; flex-shrink: 0;">3</div>
-                <div>
-                    <h4 style="margin-bottom: 8px;">💰 Заказывайте вывод</h4>
-                    <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">
-                        Укажите желаемую сумму (от 50 ₽) и подтвердите операцию.
-                    </p>
-                </div>
-            </div>
-
-            <div class="workflow-step" style="display: flex; align-items: flex-start; margin-bottom: 25px; padding: 15px; background: var(--bg-secondary); border-radius: 12px;">
-                <div class="step-number" style="background: var(--accent); color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; flex-shrink: 0;">4</div>
-                <div>
-                    <h4 style="margin-bottom: 8px;">✅ Получайте деньги</h4>
-                    <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">
-                        Средства поступят на вашу карту в течение 1-3 рабочих дней.
-                    </p>
-                </div>
-            </div>
-        </div>
-
-        <div style="background: var(--purple-gradient); color: white; padding: 20px; border-radius: 12px; margin: 25px 0;">
-            <h4 style="margin-bottom: 10px;">🚀 Всё очень просто!</h4>
-            <ul style="font-size: 14px; line-height: 1.6; padding-left: 20px;">
-                <li><strong>Копите бонусы:</strong> Заходите в приложение, выполняйте предложенные действия</li>
-                <li><strong>Меняйте на деньги:</strong> Обменивайте бонусы на рубли в разделе вывода</li>
-                <li><strong>Получайте на карту:</strong> Быстро, безопасно и без скрытых комиссий</li>
-            </ul>
-        </div>
-
-        <div class="faq-section" style="margin-top: 30px;">
-            <h4 style="margin-bottom: 15px;">💡 Частые вопросы</h4>
-            
-            <div class="faq-item" style="margin-bottom: 15px; padding: 15px; background: var(--bg-secondary); border-radius: 12px;">
-                <div class="faq-question" style="font-weight: 600; margin-bottom: 8px;">Сколько времени занимает проверка задания?</div>
-                <div class="faq-answer" style="color: var(--text-secondary); font-size: 14px;">
-                    Обычно проверка занимает от 1 до 24 часов. В выходные дни возможно увеличение времени проверки.
-                </div>
-            </div>
-
-            <div class="faq-item" style="margin-bottom: 15px; padding: 15px; background: var(--bg-secondary); border-radius: 12px;">
-                <div class="faq-question" style="font-weight: 600; margin-bottom: 8px;">Почему задание может быть отклонено?</div>
-                <div class="faq-answer" style="color: var(--text-secondary); font-size: 14px;">
-                    Задание отклоняется если: не выполнены все условия, предоставлен нечеткий скриншот, нарушены правила выполнения.
-                </div>
-            </div>
-
-            <div class="faq-item" style="margin-bottom: 15px; padding: 15px; background: var(--bg-secondary); border-radius: 12px;">
-                <div class="faq-question" style="font-weight: 600; margin-bottom: 8px;">Как увеличить свой заработок?</div>
-                <div class="faq-answer" style="color: var(--text-secondary); font-size: 14px;">
-                    Регулярно выполняйте задания, приглашайте друзей по реферальной программе, повышайте уровень аккаунта.
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-<!-- Страница "О приложении" -->
-<div id="about-page" class="page">
-    <div class="page-header">
-        <button class="back-button" onclick="showProfileTab()">←</button>
-        <div class="page-title">ℹ️ О приложении</div>
-    </div>
-
-    <div class="card">
-        <div style="text-align: center; margin-bottom: 25px;">
-            <div style="font-size: 48px; margin-bottom: 10px;">💎</div>
-            <h2 style="margin-bottom: 10px; background: var(--gold-gradient); -webkit-background-clip: text; background-clip: text; color: transparent;">LinkGold</h2>
-            <p style="color: var(--text-secondary);">Ваш надежный помощник для заработка и получения выгодных предложений</p>
-        </div>
-
-        <div class="app-info" style="margin-bottom: 25px;">
-            <p style="color: var(--text-secondary); line-height: 1.6; margin-bottom: 15px;">
-                <strong>LinkGold</strong> — это инновационная платформа для заработка, которая позволяет каждому пользователю 
-                монетизировать свою активность в интернете. Мы создали удобный и прозрачный сервис, где вы можете 
-                выполнять интересные задания и получать за это достойное вознаграждение.
-            </p>
-            
-            <p style="color: var(--text-secondary); line-height: 1.6; margin-bottom: 15px;">
-                Мы помогаем компаниям находить свою аудиторию, а вам — получать вознаграждение за ваше внимание и действия. 
-                Наша миссия — сделать взаимовыгодное сотрудничество между брендами и пользователями простым, 
-                прозрачным и безопасным.
-            </p>
-        </div>
-
-        <div class="about-features" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 25px;">
-            <div class="about-feature" style="background: var(--bg-secondary); border-radius: 12px; padding: 15px; text-align: center;">
-                <div class="feature-icon" style="font-size: 24px; margin-bottom: 8px;">🛡️</div>
-                <div class="feature-text" style="font-size: 12px; color: var(--text-secondary);">
-                    Безопасность и конфиденциальность
-                </div>
-            </div>
-            <div class="about-feature" style="background: var(--bg-secondary); border-radius: 12px; padding: 15px; text-align: center;">
-                <div class="feature-icon" style="font-size: 24px; margin-bottom: 8px;">🚀</div>
-                <div class="feature-text" style="font-size: 12px; color: var(--text-secondary);">
-                    Простота использования
-                </div>
-            </div>
-            <div class="about-feature" style="background: var(--bg-secondary); border-radius: 12px; padding: 15px; text-align: center;">
-                <div class="feature-icon" style="font-size: 24px; margin-bottom: 8px;">💎</div>
-                <div class="feature-text" style="font-size: 12px; color: var(--text-secondary);">
-                    Прозрачность условий
-                </div>
-            </div>
-            <div class="about-feature" style="background: var(--bg-secondary); border-radius: 12px; padding: 15px; text-align: center;">
-                <div class="feature-icon" style="font-size: 24px; margin-bottom: 8px;">📈</div>
-                <div class="feature-text" style="font-size: 12px; color: var(--text-secondary);">
-                    Постоянный рост
-                </div>
-            </div>
-        </div>
-
-        <div class="app-stats" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 25px;">
-            <div style="background: var(--bg-secondary); padding: 15px; border-radius: 12px; text-align: center;">
-                <div style="font-size: 20px; font-weight: 700; margin-bottom: 5px; background: var(--gold-gradient); -webkit-background-clip: text; background-clip: text; color: transparent;">10K+</div>
-                <div style="font-size: 12px; color: var(--text-secondary);">Активных пользователей</div>
-            </div>
-            <div style="background: var(--bg-secondary); padding: 15px; border-radius: 12px; text-align: center;">
-                <div style="font-size: 20px; font-weight: 700; margin-bottom: 5px; background: var(--gold-gradient); -webkit-background-clip: text; background-clip: text; color: transparent;">50K+</div>
-                <div style="font-size: 12px; color: var(--text-secondary);">Выполненных заданий</div>
-            </div>
-            <div style="background: var(--bg-secondary); padding: 15px; border-radius: 12px; text-align: center;">
-                <div style="font-size: 20px; font-weight: 700; margin-bottom: 5px; background: var(--gold-gradient); -webkit-background-clip: text; background-clip: text; color: transparent;">2M+ ₽</div>
-                <div style="font-size: 12px; color: var(--text-secondary);">Выплачено пользователям</div>
-            </div>
-            <div style="background: var(--bg-secondary); padding: 15px; border-radius: 12px; text-align: center;">
-                <div style="font-size: 20px; font-weight: 700; margin-bottom: 5px; background: var(--gold-gradient); -webkit-background-clip: text; background-clip: text; color: transparent;">99%</div>
-                <div style="font-size: 12px; color: var(--text-secondary);">Положительных отзывов</div>
-            </div>
-        </div>
-
-        <div class="contact-info" style="background: var(--bg-secondary); padding: 20px; border-radius: 12px; text-align: center;">
-            <h4 style="margin-bottom: 15px;">📞 Нужна помощь?</h4>
-            <p style="color: var(--text-secondary); margin-bottom: 10px; font-size: 14px;">
-                По всем вопросам обращайтесь в поддержку через раздел "Поддержка" в вашем профиле. 
-                Мы всегда готовы помочь!
-            </p>
-            <button class="btn btn-primary" onclick="openAdminChat()" style="margin-top: 10px;">
-                💬 Написать в поддержку
-            </button>
-        </div>
-
-        <div class="about-footer" style="text-align: center; margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--border);">
-            <div style="color: var(--text-secondary); font-size: 12px;">
-                LinkGold © 2024. Все права защищены.<br>
-                Версия 1.0.0
-            </div>
-        </div>
-    </div>
-</div>
         <!-- Навигация -->
         <nav class="bottom-nav">
             <div class="nav-item active" onclick="showMainTab()">
@@ -4678,7 +4471,197 @@
                 <button class="confirmation-btn confirmation-cancel" onclick="closeModal('confirmation-modal')">Отмена</button>
             </div>
         </div>
+<!-- Страница "О приложении" -->
+<div id="about-page" class="page">
+    <div class="page-header">
+        <button class="back-button" onclick="showProfileTab()">←</button>
+        <div class="page-title">ℹ️ О приложении</div>
+    </div>
 
+    <div class="card">
+        <div style="text-align: center; margin-bottom: 25px;">
+            <div style="font-size: 48px; margin-bottom: 10px;">💰</div>
+            <h2 style="margin-bottom: 10px;">LinkGold</h2>
+            <p style="color: var(--text-secondary);">Платформа для заработка на выполнении заданий</p>
+        </div>
+
+        <div class="info-section">
+            <h3 style="margin-bottom: 15px;">🎯 Наша миссия</h3>
+            <p class="info-text">
+                LinkGold — это современная платформа, которая позволяет каждому пользователю монетизировать 
+                свою активность в интернете. Мы создали прозрачную и удобную систему для заработка 
+                на выполнении простых заданий.
+            </p>
+        </div>
+
+        <div class="info-section">
+            <h3 style="margin-bottom: 15px;">🚀 Преимущества</h3>
+            <div class="feature-list">
+                <div class="feature-item">
+                    <div class="feature-icon">⚡</div>
+                    <div class="feature-content">
+                        <div class="feature-title">Быстрый старт</div>
+                        <div class="feature-description">Начните зарабатывать сразу после регистрации</div>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🛡️</div>
+                    <div class="feature-content">
+                        <div class="feature-title">Надежная защита</div>
+                        <div class="feature-description">Все платежи защищены и проходят проверку</div>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">💎</div>
+                    <div class="feature-content">
+                        <div class="feature-title">Честные условия</div>
+                        <div class="feature-description">Прозрачная система выплат без скрытых комиссий</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h3 style="margin-bottom: 15px;">📞 Контакты</h3>
+            <p class="info-text">
+                По всем вопросам обращайтесь в поддержку через раздел "Поддержка" в вашем профиле
+            </p>
+            <button class="btn btn-primary" onclick="openAdminChat()" style="margin-top: 10px;">
+                💬 Написать в поддержку
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Страница "Как это работает" -->
+<div id="how-it-works-page" class="page">
+    <div class="page-header">
+        <button class="back-button" onclick="showProfileTab()">←</button>
+        <div class="page-title">❓ Как это работает</div>
+    </div>
+
+    <div class="card">
+        <div class="info-section">
+            <h3 style="margin-bottom: 20px;">📋 Процесс заработка</h3>
+            
+            <div class="feature-item">
+                <div class="step-number">1</div>
+                <div class="feature-content">
+                    <div class="feature-title">Выбирайте задания</div>
+                    <div class="feature-description">
+                        В разделе "Задания" доступны различные активности: подписки, лайки, 
+                        репосты и другие задания от рекламодателей
+                    </div>
+                </div>
+            </div>
+
+            <div class="feature-item">
+                <div class="step-number">2</div>
+                <div class="feature-content">
+                    <div class="feature-title">Выполняйте задания</div>
+                    <div class="feature-description">
+                        Следуйте инструкциям в каждом задании. Большинство заданий можно 
+                        выполнить за 2-5 минут
+                    </div>
+                </div>
+            </div>
+
+            <div class="feature-item">
+                <div class="step-number">3</div>
+                <div class="feature-content">
+                    <div class="feature-title">Подтверждайте выполнение</div>
+                    <div class="feature-description">
+                        После выполнения задания отправьте скриншот для проверки. 
+                        Модерация занимает до 24 часов
+                    </div>
+                </div>
+            </div>
+
+            <div class="feature-item">
+                <div class="step-number">4</div>
+                <div class="feature-content">
+                    <div class="feature-title">Получайте оплату</div>
+                    <div class="feature-description">
+                        После проверки задания средства автоматически начисляются 
+                        на ваш баланс
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h3 style="margin-bottom: 15px;">💡 Советы для успеха</h3>
+            <ul style="color: var(--text-secondary); padding-left: 20px;">
+                <li style="margin-bottom: 8px;">Регулярно проверяйте новые задания</li>
+                <li style="margin-bottom: 8px;">Внимательно читайте условия выполнения</li>
+                <li style="margin-bottom: 8px;">Делайте качественные скриншоты для проверки</li>
+                <li style="margin-bottom: 8px;">Приглашайте друзей по реферальной программе</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Страница "Вывод средств" -->
+<div id="withdraw-page" class="page">
+    <div class="page-header">
+        <button class="back-button" onclick="showProfileTab()">←</button>
+        <div class="page-title">💳 Вывод средств</div>
+    </div>
+
+    <div class="card">
+        <div style="text-align: center; margin-bottom: 25px;">
+            <div class="balance-amount" id="withdraw-balance">0 ₽</div>
+            <p style="color: var(--text-secondary);">Доступно для вывода</p>
+        </div>
+
+        <div class="info-section">
+            <h3 style="margin-bottom: 15px;">📋 Условия вывода</h3>
+            <div class="info-card">
+                <ul style="color: var(--text-secondary);">
+                    <li style="margin-bottom: 8px;">✅ Минимальная сумма вывода: <strong>50 ₽</strong></li>
+                    <li style="margin-bottom: 8px;">✅ Вывод обрабатывается в течение <strong>24 часов</strong></li>
+                    <li style="margin-bottom: 8px;">✅ Комиссия: <strong>0%</strong> для всех способов</li>
+                    <li style="margin-bottom: 8px;">✅ Доступные методы: карты, QIWI, ЮMoney</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h3 style="margin-bottom: 15px;">🏦 Выберите способ вывода</h3>
+            <div class="withdraw-methods">
+                <div class="method-card" onclick="selectWithdrawMethod('card')">
+                    <div class="method-icon">💳</div>
+                    <div class="method-name">Банковская карта</div>
+                    <div class="method-info">Visa, Mastercard, МИР</div>
+                </div>
+                <div class="method-card" onclick="selectWithdrawMethod('qiwi')">
+                    <div class="method-icon">🟠</div>
+                    <div class="method-name">QIWI Кошелек</div>
+                    <div class="method-info">Мгновенное зачисление</div>
+                </div>
+                <div class="method-card" onclick="selectWithdrawMethod('yoomoney')">
+                    <div class="method-icon">🔵</div>
+                    <div class="method-name">ЮMoney</div>
+                    <div class="method-info">Быстрые переводы</div>
+                </div>
+                <div class="method-card" onclick="selectWithdrawMethod('crypto')">
+                    <div class="method-icon">₿</div>
+                    <div class="method-name">Криптовалюта</div>
+                    <div class="method-info">USDT, Bitcoin</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h3 style="margin-bottom: 15px;">📝 Запрос на вывод</h3>
+            <div class="admin-form">
+                <input type="number" class="admin-input" id="withdraw-amount" placeholder="Сумма вывода (минимум 50 ₽)" min="50">
+                <input type="text" class="admin-input" id="withdraw-details" placeholder="Реквизиты для вывода">
+                <button class="admin-submit" onclick="submitWithdraw()">Заказать выплату</button>
+            </div>
+        </div>
+    </div>
+</div>
         <!-- Модальное окно отмены подтверждения -->
         <div class="modal" id="cancel-confirmation-modal">
             <div class="confirmation-modal-content">
@@ -5890,25 +5873,7 @@ function createAdminChatWindow() {
     
     document.body.insertAdjacentHTML('beforeend', chatWindowHTML);
 }
-// Функции для навигации по новым страницам
-function showHowItWorksPage() {
-    hideAllTabs();
-    document.getElementById('how-it-works-page').classList.add('active');
-}
 
-function showAboutPage() {
-    hideAllTabs();
-    document.getElementById('about-page').classList.add('active');
-}
-
-function showWithdrawPage() {
-    hideAllTabs();
-    document.getElementById('withdraw-page').classList.add('active');
-    const withdrawBalance = document.getElementById('withdraw-balance');
-    if (withdrawBalance) {
-        withdrawBalance.textContent = `${currentUser.balance || 0} ₽`;
-    }
-}
 // Отображение сообщений в чате админа
 function displayAdminChatMessages(messages) {
     const container = document.getElementById('admin-chat-messages');
@@ -6722,7 +6687,64 @@ function displayTaskVerifications(verifications) {
         container.appendChild(verificationElement);
     });
 }
+// Функция выбора способа вывода
+function selectWithdrawMethod(method) {
+    // Убираем активный класс у всех методов
+    document.querySelectorAll('.method-card').forEach(card => {
+        card.classList.remove('active');
+    });
+    
+    // Добавляем активный класс выбранному методу
+    event.currentTarget.classList.add('active');
+    
+    // Обновляем поле реквизитов в зависимости от метода
+    const detailsInput = document.getElementById('withdraw-details');
+    switch(method) {
+        case 'card':
+            detailsInput.placeholder = 'Номер карты';
+            break;
+        case 'qiwi':
+            detailsInput.placeholder = 'Номер QIWI кошелька';
+            break;
+        case 'yoomoney':
+            detailsInput.placeholder = 'Номер ЮMoney кошелька';
+            break;
+        case 'crypto':
+            detailsInput.placeholder = 'Адрес крипто-кошелька';
+            break;
+    }
+}
 
+// Функция отправки запроса на вывод
+function submitWithdraw() {
+    const amount = parseFloat(document.getElementById('withdraw-amount').value);
+    const details = document.getElementById('withdraw-details').value;
+    
+    if (!amount || amount < 50) {
+        showNotification('Минимальная сумма вывода - 50 ₽', 'error');
+        return;
+    }
+    
+    if (!details) {
+        showNotification('Введите реквизиты для вывода', 'error');
+        return;
+    }
+    
+    if (currentUser && amount > (currentUser.balance || 0)) {
+        showNotification('Недостаточно средств на балансе', 'error');
+        return;
+    }
+    
+    // Здесь будет логика отправки запроса на вывод
+    showNotification(`Запрос на вывод ${amount}₽ отправлен! Ожидайте обработки.`, 'success');
+    
+    // Очищаем поля
+    document.getElementById('withdraw-amount').value = '';
+    document.getElementById('withdraw-details').value = '';
+    
+    // Возвращаемся в профиль
+    setTimeout(() => showProfileTab(), 1500);
+}
 // Открыть модальное окно проверки задания
 function openVerificationModal(verification) {
     currentVerificationId = verification.id;
@@ -6868,7 +6890,35 @@ function displayUserTasks(tasks, category) {
         container.appendChild(taskElement);
     });
 }
+// Функции для кнопок
+function showAboutPage() {
+    hideAllTabs();
+    document.getElementById('about-page').classList.add('active');
+}
 
+function showHowItWorksPage() {
+    hideAllTabs();
+    document.getElementById('how-it-works-page').classList.add('active');
+}
+
+function showWithdrawPage() {
+    hideAllTabs();
+    document.getElementById('withdraw-page').classList.add('active');
+    // Обновляем баланс на странице вывода
+    const withdrawBalance = document.getElementById('withdraw-balance');
+    if (withdrawBalance && currentUser) {
+        withdrawBalance.textContent = `${currentUser.balance || 0} ₽`;
+    }
+}
+
+function hideAllTabs() {
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelectorAll('.page').forEach(page => {
+        page.classList.remove('active');
+    });
+}
 // Обновление функции загрузки заданий пользователя
 async function loadUserTasks() {
     if (!currentUser) return;
