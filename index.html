@@ -3907,31 +3907,32 @@
                     </div>
                 </div>
                 
-                <!-- In the profile tab, update the referral section: -->
-<div class="referral-system fade-in">
-    <div class="referral-title">⭐ Реферальная система</div>
-    
-    <div class="referral-code">
-        <div class="referral-label">Ваша реферальная ссылка</div>
-        <input type="text" id="referral-link" readonly style="width: 100%; padding: 8px; margin: 8px 0; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); text-align: center;">
-        <button class="copy-btn" onclick="copyReferralLink()">Скопировать ссылку</button>
-    </div>
-    
-    <div class="referral-stats">
-        <div class="referral-stat">
-            <div class="referral-value" id="ref-invited">0</div>
-            <div class="referral-label">Приглашено</div>
-        </div>
-        <div class="referral-stat">
-            <div class="referral-value" id="ref-earned">0 ⭐</div>
-            <div class="referral-label">Заработано звезд</div>
-        </div>
-    </div>
-    
-    <div class="referral-info">
-        💫 Приглашайте друзей и получайте <strong>15 звезд</strong> за каждого приглашенного пользователя!
-    </div>
-</div>
+                <!-- Реферальная система -->
+                <div class="referral-system fade-in">
+                    <div class="referral-title">Реферальная система</div>
+                    
+                    <div class="referral-code">
+                        <div class="referral-label">Ваша реферальная ссылка</div>
+                        <input type="text" id="referral-link" readonly style="width: 100%; padding: 8px; margin: 8px 0; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); text-align: center;">
+                        <button class="copy-btn" onclick="copyReferralLink()">Скопировать ссылку</button>
+                    </div>
+                    
+                    <div class="referral-stats">
+                        <div class="referral-stat">
+                            <div class="referral-value" id="ref-invited">0</div>
+                            <div class="referral-label">Приглашено</div>
+                        </div>
+                        <div class="referral-stat">
+                            <div class="referral-value" id="ref-earned">0 ₽</div>
+                            <div class="referral-label">Заработано</div>
+                        </div>
+                    </div>
+                    
+                    <div class="referral-info">
+                        Приглашайте друзей и получайте 10% от их заработка!
+                    </div>
+                </div>
+                
                 <!-- Действия профиля -->
                 <div class="profile-section fade-in">
                     <div class="section-title">Действия</div>
@@ -4703,138 +4704,7 @@ function initializeApp() {
         loadAdminTasks();
     }
 }
-// In displayUserProfile function, update the referral section:
-function updateReferralSystem() {
-    if (!currentUser) return;
-    
-    // Load referral code
-    loadReferralCode();
-    
-    // Load referral stats
-    loadReferralStats();
-}
 
-async function loadReferralCode() {
-    try {
-        const result = await makeRequest(`${API_URL}/user/${currentUser.id}/referral`);
-        if (result.success) {
-            const referralLink = `https://t.me/your_bot?start=ref_${result.referral_code}`;
-            const referralInput = document.getElementById('referral-link');
-            if (referralInput) referralInput.value = referralLink;
-        }
-    } catch (error) {
-        console.error('Error loading referral code:', error);
-    }
-}
-
-async function loadReferralStats() {
-    try {
-        const result = await makeRequest(`${API_URL}/user/${currentUser.id}/referral/stats`);
-        if (result.success) {
-            document.getElementById('ref-invited').textContent = result.stats.successful_referrals || 0;
-            document.getElementById('ref-earned').textContent = `${result.stats.referral_earned || 0} ⭐`;
-        }
-    } catch (error) {
-        console.error('Error loading referral stats:', error);
-    }
-}
-
-// Update copy function
-function copyReferralLink() {
-    const referralInput = document.getElementById('referral-link');
-    if (!referralInput) return;
-    
-    referralInput.select();
-    referralInput.setSelectionRange(0, 99999);
-    
-    navigator.clipboard.writeText(referralInput.value).then(() => {
-        showNotification('Реферальная ссылка скопирована!', 'success');
-    }).catch(() => {
-        document.execCommand('copy');
-        showNotification('Реферальная ссылка скопирована!', 'success');
-    });
-}
-// In displayUserProfile function:
-function displayUserProfile() {
-    if (!currentUser) return;
-
-    const firstNameElement = document.getElementById('user-first-name');
-    const usernameElement = document.getElementById('user-username');
-    const levelElement = document.getElementById('user-level');
-    const balanceElement = document.getElementById('user-balance-main');
-    
-    if (firstNameElement) {
-        const fullName = currentUser.lastName ? 
-            `${currentUser.firstName} ${currentUser.lastName}` : 
-            currentUser.firstName;
-        firstNameElement.textContent = fullName;
-    }
-    
-    if (usernameElement) usernameElement.textContent = currentUser.username;
-    if (levelElement) levelElement.textContent = currentUser.level || 0;
-    if (balanceElement) balanceElement.textContent = `${currentUser.balance || 0} ⭐`; // Changed to stars
-    
-    updateProfileStats();
-    updateReferralSystem();
-    updateLevelProgress();
-}
-
-// Update profile stats to show stars
-function updateProfileStats() {
-    if (!currentUser) return;
-    
-    const stats = document.querySelectorAll('.profile-stat .stat-value');
-    if (stats.length >= 4) {
-        stats[0].textContent = `${currentUser.balance || 0} ⭐`; // Stars instead of rubles
-        stats[1].textContent = currentUser.tasks_completed || 0;
-        stats[2].textContent = currentUser.active_tasks || 0;
-        stats[3].textContent = `${currentUser.quality_rate || 0}%`;
-    }
-}
-// In displayTasks function, update the price display:
-function displayTasks(tasks, category) {
-    const container = document.getElementById(category + '-tasks');
-    if (!container) return;
-    
-    container.innerHTML = '';
-
-    tasks.forEach(task => {
-        const taskElement = document.createElement('div');
-        taskElement.className = 'task-card fade-in';
-        taskElement.innerHTML = `
-            <div class="task-header">
-                <div>
-                    <div class="task-title">${escapeHtml(task.title)}</div>
-                    <div class="task-category">${task.category || 'Общее'}</div>
-                </div>
-                <div class="task-price">${task.price} ⭐</div> <!-- Changed to stars -->
-            </div>
-            <div class="task-description">${escapeHtml(task.description)}</div>
-            <div class="task-footer">
-                <div class="task-time">${task.time_to_complete || '5 минут'}</div>
-                <button class="task-btn" onclick="openTaskModal(${task.id})">Начать</button>
-            </div>
-        `;
-        container.appendChild(taskElement);
-    });
-}
-// In openTaskModal function:
-function openTaskModal(taskId) {
-    selectedTaskId = taskId;
-    
-    const task = allTasks.find(t => t.id === taskId);
-    if (task) {
-        document.getElementById('task-modal-title').textContent = task.title;
-        document.getElementById('task-modal-category').textContent = task.category || 'Общее';
-        document.getElementById('task-modal-price').textContent = `${task.price} ⭐`; // Stars
-        document.getElementById('task-modal-description').textContent = task.description;
-        document.getElementById('task-modal-time').textContent = task.time_to_complete || '5 минут';
-        document.getElementById('task-modal-difficulty').textContent = task.difficulty || 'Легкая';
-        document.getElementById('task-modal-available').textContent = `${task.people_required || 1} заданий`;
-        
-        document.getElementById('task-modal').classList.add('active');
-    }
-}
 // Отображение профиля пользователя
 function displayUserProfile() {
     if (!currentUser) return;
