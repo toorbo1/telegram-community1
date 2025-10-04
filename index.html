@@ -3655,17 +3655,173 @@
         font-size: 13px;
     }
 }
+/* ОБНОВЛЕННЫЕ СТИЛИ ДЛЯ ПОСТОВ И ИЗОБРАЖЕНИЙ */
+
+/* Увеличиваем заголовок */
+.post-title {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+
+/* Улучшаем отображение постов */
+.post-item {
+    background: var(--card-bg);
+    border-radius: 20px;
+    padding: 25px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Красивый дизайн для изображений */
+.post-image-container {
+    width: 100%;
+    margin: 15px 0;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    position: relative;
+}
+
+.post-image {
+    width: 100%;
+    height: auto;
+    display: block;
+    transition: transform 0.4s ease;
+}
+
+.post-image:hover {
+    transform: scale(1.02);
+}
+
+.task-image {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Стили для реакций */
+.post-reactions {
+    display: flex;
+    gap: 20px;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border);
+}
+
+.reaction-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 8px 16px;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.reaction-btn:hover {
+    background: var(--bg-secondary);
+    transform: translateY(-2px);
+}
+
+.reaction-btn.active {
+    background: var(--accent);
+    color: white;
+}
+
+.reaction-btn.like.active {
+    background: var(--success);
+}
+
+.reaction-btn.dislike.active {
+    background: var(--error);
+}
+
+.reaction-count {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+/* Увеличиваем отступ для контента */
+body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 16px;
+    padding-bottom: 120px; /* Увеличили отступ для навигации */
+    line-height: 1.6;
+    background-image: 
+        radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.05) 0%, transparent 25%),
+        radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.05) 0%, transparent 25%);
+}
+
+/* Улучшаем форму добавления поста */
+.admin-form {
+    background: var(--bg-secondary);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border);
+}
+
+.file-upload {
+    position: relative;
+    margin-bottom: 15px;
+}
+
+.file-upload-label {
+    display: block;
+    padding: 12px 16px;
+    background: var(--card-bg);
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: var(--text-secondary);
+}
+
+.file-upload-label:hover {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: white;
+}
+
+.file-upload-input {
+    position: absolute;
+    left: -9999px;
+}
+
+.image-preview {
+    margin-top: 10px;
+    max-width: 100%;
+    border-radius: 10px;
+    display: none;
+}
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <header class="header fade-in">
-            <div class="logo" onclick="showMainTab()">
-                <div class="logo-text">LinkGold</div>
-            </div>
-            <div class="slogan">Монетизируйте вашу активность</div>
-        </header>
+    <!-- ЗАМЕНИТЬ этот блок -->
+<header class="header fade-in">
+    <div class="logo" onclick="showMainTab()">
+        <div class="logo-text">LinkGold</div>
+    </div>
+    <div class="slogan">Монетизируйте вашу активность</div>
+</header>
 
         <main class="main-content">
             <!-- Вкладка главной страницы -->
@@ -3763,34 +3919,50 @@
                         <!-- Чаты будут загружаться динамически -->
                     </div>
                     
-                    <!-- Управление постами -->
-                    <div id="post-management" class="admin-form" style="display: none;">
-                        <h3>Добавить пост для всех пользователей</h3>
-                        <input type="text" class="admin-input" id="post-title" placeholder="Заголовок поста">
-                        <textarea class="admin-textarea" id="post-content" placeholder="Введите текст поста..."></textarea>
-                        <input type="file" class="admin-input" id="post-image" accept="image/*">
-                        <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
-                        
-                        <h3 style="margin-top: 20px;">Существующие посты</h3>
-                        <div id="posts-list">
-                            <!-- Посты будут загружаться динамически -->
-                        </div>
-                    </div>
+                    <!-- ЗАМЕНИТЬ блок управления постами -->
+<div id="post-management" class="admin-form" style="display: none;">
+    <h3>Добавить пост для всех пользователей</h3>
+    <input type="text" class="admin-input" id="post-title" placeholder="Заголовок поста">
+    <textarea class="admin-textarea" id="post-content" placeholder="Введите текст поста..."></textarea>
+    
+    <div class="file-upload">
+        <label class="file-upload-label" for="post-image-input">
+            📷 Загрузить изображение
+        </label>
+        <input type="file" class="file-upload-input" id="post-image-input" accept="image/*">
+        <img id="post-image-preview" class="image-preview" alt="Предпросмотр">
+    </div>
+    
+    <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
+    
+    <h3 style="margin-top: 20px;">Существующие посты</h3>
+    <div id="posts-list">
+        <!-- Посты будут загружаться динамически -->
+    </div>
+</div>
 
-                    <!-- Управление заданиями -->
-                    <div id="task-management" class="admin-form" style="display: none;">
-                        <h3>Добавить задание</h3>
-                        <input type="text" class="admin-input" id="task-title" placeholder="Название задания">
-                        <textarea class="admin-textarea" id="task-description" placeholder="Описание задания"></textarea>
-                        <input type="text" class="admin-input" id="task-price" placeholder="Цена (в рублях)">
-                        <input type="text" class="admin-input" id="task-time" placeholder="Время выполнения">
-                        <input type="text" class="admin-input" id="task-difficulty" placeholder="Сложность">
-                        <input type="number" class="admin-input" id="task-people" placeholder="Сколько человек должно выполнить">
-                        <input type="text" class="admin-input" id="task-repost" placeholder="Время повторной публикации">
-                        <input type="url" class="admin-input" id="task-url" placeholder="URL задания">
-                        <input type="file" class="admin-input" id="task-image" accept="image/*">
-                        <button class="admin-submit" onclick="addTask()">Добавить задание</button>
-                    </div>
+                   <!-- ЗАМЕНИТЬ блок управления заданиями -->
+<div id="task-management" class="admin-form" style="display: none;">
+    <h3>Добавить задание</h3>
+    <input type="text" class="admin-input" id="task-title" placeholder="Название задания">
+    <textarea class="admin-textarea" id="task-description" placeholder="Описание задания"></textarea>
+    <input type="text" class="admin-input" id="task-price" placeholder="Цена (в рублях)">
+    <input type="text" class="admin-input" id="task-time" placeholder="Время выполнения">
+    <input type="text" class="admin-input" id="task-difficulty" placeholder="Сложность">
+    <input type="number" class="admin-input" id="task-people" placeholder="Сколько человек должно выполнить">
+    <input type="text" class="admin-input" id="task-repost" placeholder="Время повторной публикации">
+    <input type="url" class="admin-input" id="task-url" placeholder="URL задания">
+    
+    <div class="file-upload">
+        <label class="file-upload-label" for="task-image-input">
+            📷 Загрузить изображение задания
+        </label>
+        <input type="file" class="file-upload-input" id="task-image-input" accept="image/*">
+        <img id="task-image-preview" class="image-preview" alt="Предпросмотр">
+    </div>
+    
+    <button class="admin-submit" onclick="addTask()">Добавить задание</button>
+</div>
 
                     <!-- Проверка заданий -->
                     <div id="task-verification" class="admin-form" style="display: none;">
@@ -4885,18 +5057,25 @@ function displayTasks(tasks, category) {
         const taskElement = document.createElement('div');
         taskElement.className = 'task-card fade-in';
         taskElement.innerHTML = `
-            <div class="task-header">
-                <div>
-                    <div class="task-title">${escapeHtml(task.title)}</div>
-                    <div class="task-category">${task.category || 'Общее'}</div>
-                </div>
-                <div class="task-price">${task.price} ₽</div>
-            </div>
-            <div class="task-description">${escapeHtml(task.description)}</div>
-            <div class="task-footer">
-                <div class="task-time">${task.time_to_complete || '5 минут'}</div>
-                <button class="task-btn" onclick="openTaskModal(${task.id})">Начать</button>
-            </div>
+            <!-- ЗАМЕНИТЬ в функции displayTasks -->
+<div class="task-card fade-in">
+    ${task.image_url ? `
+        <img src="${task.image_url}" alt="${task.title}" class="task-image" 
+             onerror="this.style.display='none'">
+    ` : ''}
+    <div class="task-header">
+        <div>
+            <div class="task-title">${escapeHtml(task.title)}</div>
+            <div class="task-category">${task.category || 'Общее'}</div>
+        </div>
+        <div class="task-price">${task.price} ₽</div>
+    </div>
+    <div class="task-description">${escapeHtml(task.description)}</div>
+    <div class="task-footer">
+        <div class="task-time">${task.time_to_complete || '5 минут'}</div>
+        <button class="task-btn" onclick="openTaskModal(${task.id})">Начать</button>
+    </div>
+</div>
         `;
         container.appendChild(taskElement);
     });
@@ -5086,44 +5265,48 @@ function displayMainPagePosts(posts) {
         const postDate = formatPostDate(post.timestamp);
         const isAdmin = post.authorId === ADMIN_ID;
         
-        postElement.innerHTML = `
-            <div class="post-header">
-                <div style="flex: 1;">
-                    <div class="post-title">${escapeHtml(post.title)}</div>
-                    <div class="post-author">
-                        ${escapeHtml(post.author || 'Администратор')}
-                    </div>
-                </div>
-                <div class="post-date">${postDate}</div>
+    // <!-- ЗАМЕНИТЬ функцию createPostElement в JavaScript или шаблон поста -->
+
+<div class="post-item fade-in">
+    <div class="post-header">
+        <div style="flex: 1;">
+            <div class="post-title">${escapeHtml(post.title)}</div>
+            <div class="post-author">
+                ${escapeHtml(post.author || 'Администратор')}
+                ${isAdmin ? '<span class="admin-badge">ADMIN</span>' : ''}
             </div>
-            
-            <div class="post-content">${escapeHtml(post.content)}</div>
-            
-            ${post.image_url ? `
-                <img src="${post.image_url}" alt="Изображение" class="post-image" onerror="this.style.display='none'">
-            ` : ''}
-            
-            <div class="post-footer">
-                <div class="post-actions">
-                    <button class="like-btn" onclick="handleLike(${post.id}, this)">
-                        <span class="like-icon">👍</span>
-                        <span class="like-count">${post.likes || 0}</span>
-                    </button>
-                    <button class="dislike-btn" onclick="handleDislike(${post.id}, this)">
-                        <span class="dislike-icon">👎</span>
-                        <span class="dislike-count">${post.dislikes || 0}</span>
-                    </button>
-                </div>
-            </div>
-            
-            ${currentUser && currentUser.isAdmin && parseInt(currentUser.id) === ADMIN_ID ? `
-                <div style="margin-top: 15px; text-align: right;">
-                    <button class="admin-task-delete" onclick="deletePost(${post.id})" style="font-size: 12px; padding: 6px 12px;">
-                        🗑️ Удалить пост
-                    </button>
-                </div>
-            ` : ''}
-        `;
+        </div>
+        <div class="post-date">${postDate}</div>
+    </div>
+    
+    <div class="post-content">${escapeHtml(post.content)}</div>
+    
+    ${post.image_url ? `
+        <div class="post-image-container">
+            <img src="${post.image_url}" alt="Изображение" class="post-image" 
+                 onerror="this.style.display='none'">
+        </div>
+    ` : ''}
+    
+    <div class="post-reactions">
+        <button class="reaction-btn like ${likeActive}" onclick="handlePostReaction(${post.id}, 'like')">
+            <span class="reaction-icon">👍</span>
+            <span class="reaction-count">${reactions.likes}</span>
+        </button>
+        <button class="reaction-btn dislike ${dislikeActive}" onclick="handlePostReaction(${post.id}, 'dislike')">
+            <span class="reaction-icon">👎</span>
+            <span class="reaction-count">${reactions.dislikes}</span>
+        </button>
+    </div>
+    
+    ${currentUser && currentUser.isAdmin && parseInt(currentUser.id) === ADMIN_ID ? `
+        <div style="margin-top: 15px; text-align: right;">
+            <button class="admin-task-delete" onclick="deletePost(${post.id})" style="font-size: 12px; padding: 6px 12px;">
+                🗑️ Удалить пост
+            </button>
+        </div>
+    ` : ''}
+</div>
         
         postsContainer.appendChild(postElement);
     });
@@ -6742,6 +6925,373 @@ async function handleDislike(postId, button) {
         }, 200);
     }
 }
+// 🔧 ОБНОВЛЕННЫЕ ФУНКЦИИ
+
+// Функции для работы с реакциями
+async function loadPostReactions(postId) {
+    try {
+        const reactionsResult = await makeRequest(`${API_URL}/posts/${postId}/reactions`);
+        const userReactionResult = await makeRequest(`${API_URL}/posts/${postId}/user-reaction/${currentUser.id}`);
+        
+        if (reactionsResult.success && userReactionResult.success) {
+            return {
+                likes: reactionsResult.reactions.likes,
+                dislikes: reactionsResult.reactions.dislikes,
+                userReaction: userReactionResult.userReaction
+            };
+        }
+    } catch (error) {
+        console.error('Error loading reactions:', error);
+    }
+    
+    return { likes: 0, dislikes: 0, userReaction: null };
+}
+
+async function handleReaction(postId, reactionType) {
+    try {
+        const result = await makeRequest(`${API_URL}/posts/${postId}/react`, {
+            method: 'POST',
+            body: JSON.stringify({
+                userId: currentUser.id,
+                reactionType: reactionType
+            })
+        });
+
+        if (result.success) {
+            return result;
+        }
+    } catch (error) {
+        console.error('Error handling reaction:', error);
+        showNotification('Ошибка при установке реакции', 'error');
+    }
+    
+    return null;
+}
+
+// Обновленная функция загрузки постов
+async function loadMainPagePosts() {
+    try {
+        const result = await makeRequest(`${API_URL}/posts`);
+        
+        if (result.success && result.posts && result.posts.length > 0) {
+            await displayMainPagePosts(result.posts);
+        } else {
+            displayNoPosts();
+        }
+    } catch (error) {
+        console.error('Error loading posts:', error);
+        displayNoPosts();
+    }
+}
+
+// Обновленная функция отображения постов
+async function displayMainPagePosts(posts) {
+    const postsSection = document.getElementById('posts-section');
+    const postsContainer = document.getElementById('posts-container');
+    
+    if (!postsContainer) return;
+    
+    postsContainer.innerHTML = '';
+    
+    // Загружаем посты асинхронно с реакциями
+    for (const post of posts) {
+        const reactions = await loadPostReactions(post.id);
+        const postElement = createPostElement(post, reactions);
+        postsContainer.appendChild(postElement);
+    }
+}
+
+function createPostElement(post, reactions) {
+    const postElement = document.createElement('div');
+    postElement.className = 'post-item fade-in';
+    
+    const postDate = formatPostDate(post.timestamp);
+    const isAdmin = post.authorId === ADMIN_ID;
+    
+    const likeActive = reactions.userReaction === 'like' ? 'active' : '';
+    const dislikeActive = reactions.userReaction === 'dislike' ? 'active' : '';
+    
+    postElement.innerHTML = `
+        <div class="post-header">
+            <div style="flex: 1;">
+                <div class="post-title">${escapeHtml(post.title)}</div>
+                <div class="post-author">
+                    ${escapeHtml(post.author || 'Администратор')}
+                    ${isAdmin ? '<span class="admin-badge">ADMIN</span>' : ''}
+                </div>
+            </div>
+            <div class="post-date">${postDate}</div>
+        </div>
+        
+        <div class="post-content">${escapeHtml(post.content)}</div>
+        
+        ${post.image_url ? `
+            <div class="post-image-container">
+                <img src="${post.image_url}" alt="Изображение" class="post-image" 
+                     onerror="this.style.display='none'">
+            </div>
+        ` : ''}
+        
+        <div class="post-reactions">
+            <button class="reaction-btn like ${likeActive}" onclick="handlePostReaction(${post.id}, 'like')">
+                <span class="reaction-icon">👍</span>
+                <span class="reaction-count">${reactions.likes}</span>
+            </button>
+            <button class="reaction-btn dislike ${dislikeActive}" onclick="handlePostReaction(${post.id}, 'dislike')">
+                <span class="reaction-icon">👎</span>
+                <span class="reaction-count">${reactions.dislikes}</span>
+            </button>
+        </div>
+        
+        ${currentUser && currentUser.isAdmin && parseInt(currentUser.id) === ADMIN_ID ? `
+            <div style="margin-top: 15px; text-align: right;">
+                <button class="admin-task-delete" onclick="deletePost(${post.id})" style="font-size: 12px; padding: 6px 12px;">
+                    🗑️ Удалить пост
+                </button>
+            </div>
+        ` : ''}
+    `;
+    
+    return postElement;
+}
+
+// Обработчик реакций
+async function handlePostReaction(postId, reactionType) {
+    if (!currentUser) {
+        showNotification('Войдите в систему для реакции', 'error');
+        return;
+    }
+    
+    const result = await handleReaction(postId, reactionType);
+    if (result) {
+        // Обновляем UI
+        const postElement = document.querySelector(`[onclick*="handlePostReaction(${postId}, 'like'"]`)?.closest('.post-item');
+        if (postElement) {
+            const likeBtn = postElement.querySelector('.reaction-btn.like');
+            const dislikeBtn = postElement.querySelector('.reaction-btn.dislike');
+            const likeCount = postElement.querySelector('.like .reaction-count');
+            const dislikeCount = postElement.querySelector('.dislike .reaction-count');
+            
+            // Обновляем счетчики
+            likeCount.textContent = result.reactions.likes;
+            dislikeCount.textContent = result.reactions.dislikes;
+            
+            // Обновляем активные состояния
+            likeBtn.classList.toggle('active', result.userReaction === 'like');
+            dislikeBtn.classList.toggle('active', result.userReaction === 'dislike');
+        }
+    }
+}
+
+function displayNoPosts() {
+    const postsContainer = document.getElementById('posts-container');
+    if (postsContainer) {
+        postsContainer.innerHTML = `
+            <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
+                <div>Пока нет публикаций</div>
+                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
+                    Следите за обновлениями
+                </div>
+            </div>
+        `;
+    }
+}
+
+// Обновленная функция добавления поста с изображением
+async function addNewPost() {
+    const title = document.getElementById('post-title').value;
+    const content = document.getElementById('post-content').value;
+    const imageInput = document.getElementById('post-image-input');
+    
+    if (!title || !content) {
+        showNotification('Заполните заголовок и содержание поста!', 'error');
+        return;
+    }
+    
+    if (!currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+        showNotification('Только администратор может публиковать посты!', 'error');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('content', content);
+    formData.append('author', currentUser.firstName);
+    formData.append('authorId', currentUser.id);
+    
+    if (imageInput.files[0]) {
+        formData.append('image', imageInput.files[0]);
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/posts`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showNotification('Пост успешно опубликован!', 'success');
+            document.getElementById('post-title').value = '';
+            document.getElementById('post-content').value = '';
+            document.getElementById('post-image-input').value = '';
+            document.getElementById('post-image-preview').style.display = 'none';
+            loadMainPagePosts();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error adding post:', error);
+        showNotification('Ошибка соединения: ' + error.message, 'error');
+    }
+}
+
+// Обновленная функция добавления задания с изображением
+async function addTask() {
+    const title = document.getElementById('task-title').value;
+    const description = document.getElementById('task-description').value;
+    const price = document.getElementById('task-price').value;
+    const imageInput = document.getElementById('task-image-input');
+
+    if (!title || !description || !price) {
+        showNotification('Заполните обязательные поля: название, описание и цена!', 'error');
+        return;
+    }
+
+    if (!currentUser || !currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+        showNotification('Только администратор может создавать задания!', 'error');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('description', description);
+    formData.append('price', parseFloat(price) || 0);
+    formData.append('created_by', currentUser.id);
+    formData.append('category', 'general');
+    
+    if (imageInput.files[0]) {
+        formData.append('image', imageInput.files[0]);
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/tasks`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showNotification('Задание успешно создано!', 'success');
+            
+            document.getElementById('task-title').value = '';
+            document.getElementById('task-description').value = '';
+            document.getElementById('task-price').value = '';
+            document.getElementById('task-image-input').value = '';
+            document.getElementById('task-image-preview').style.display = '';
+            
+            loadAdminTasks();
+            loadTasks();
+            
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error creating task:', error);
+        showNotification('Ошибка соединения: ' + error.message, 'error');
+    }
+}
+
+// Обновленная функция отображения заданий с изображениями
+function displayTasks(tasks, category) {
+    const container = document.getElementById(category + '-tasks');
+    if (!container) return;
+    
+    container.innerHTML = '';
+
+    if (!tasks || tasks.length === 0) {
+        container.innerHTML = `
+            <div class="no-tasks">
+                <div class="no-tasks-icon">📝</div>
+                <div>Заданий пока нет</div>
+            </div>
+        `;
+        return;
+    }
+
+    tasks.forEach(task => {
+        const taskElement = document.createElement('div');
+        taskElement.className = 'task-card fade-in';
+        taskElement.innerHTML = `
+            ${task.image_url ? `
+                <img src="${task.image_url}" alt="${task.title}" class="task-image" 
+                     onerror="this.style.display='none'">
+            ` : ''}
+            <div class="task-header">
+                <div>
+                    <div class="task-title">${escapeHtml(task.title)}</div>
+                    <div class="task-category">${task.category || 'Общее'}</div>
+                </div>
+                <div class="task-price">${task.price} ₽</div>
+            </div>
+            <div class="task-description">${escapeHtml(task.description)}</div>
+            <div class="task-footer">
+                <div class="task-time">${task.time_to_complete || '5 минут'}</div>
+                <button class="task-btn" onclick="openTaskModal(${task.id})">Начать</button>
+            </div>
+        `;
+        container.appendChild(taskElement);
+    });
+}
+
+// Инициализация предпросмотра изображений
+document.addEventListener('DOMContentLoaded', function() {
+    // Предпросмотр для поста
+    const postImageInput = document.getElementById('post-image-input');
+    const postImagePreview = document.getElementById('post-image-preview');
+    
+    if (postImageInput && postImagePreview) {
+        postImageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    postImagePreview.src = e.target.result;
+                    postImagePreview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+    
+    // Предпросмотр для задания
+    const taskImageInput = document.getElementById('task-image-input');
+    const taskImagePreview = document.getElementById('task-image-preview');
+    
+    if (taskImageInput && taskImagePreview) {
+        taskImageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    taskImagePreview.src = e.target.result;
+                    taskImagePreview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+});
+
+// Экспортируем новые функции
+window.handlePostReaction = handlePostReaction;
+window.addNewPost = addNewPost;
+window.addTask = addTask;
 // Экспортируем новые функции
 window.showTaskConfirmation = showTaskConfirmation;
 window.showScreenshotUpload = showScreenshotUpload;

@@ -1399,3 +1399,231 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`⏰ Moscow time: ${getMoscowTime()}`);
     console.log(`📁 Uploads directory: ${path.join(__dirname, 'uploads')}`);
 });
+// Добавьте эти эндпоинты для лайков/дизлайков в server.js
+
+// Posts reactions table
+db.run(`CREATE TABLE IF NOT EXISTS post_reactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    reaction_type TEXT NOT NULL, -- 'like' or 'dislike'
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(post_id, user_id)
+)`);
+
+// Эндпоинт для получения реакций поста
+app.get('/api/posts/:postId/reactions', (req, res) => {
+    const postId = req.params.postId;
+    
+    db.all(`SELECT reaction_type, COUNT(*) as count 
+            FROM post_reactions 
+            WHERE post_id = ? 
+            GROUP BY reaction_type`, [postId], (err, rows) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        const reactions = {
+            likes: 0,
+            dislikes: 0
+        };
+        
+        rows.forEach(row => {
+            if (row.reaction_type === 'like') {
+                reactions.likes = row.count;
+            } else if (row.reaction_type === 'dislike') {
+                reactions.dislikes = row.count;
+            }
+        });
+        
+        res.json({
+            success: true,
+            reactions: reactions
+        });
+    });
+});
+
+// Эндпоинт для получения реакции пользователя
+app.get('/api/posts/:postId/user-reaction/:userId', (req, res) => {
+    const { postId, userId } = req.params;
+    
+    db.get(`SELECT reaction_type FROM post_reactions 
+            WHERE post_id = ? AND user_id = ?`, [postId, userId], (err, row) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        res.json({
+            success: true,
+            userReaction: row ? row.reaction_type : null
+        });
+    });
+});
+
+// Эндпоинт для добавления/изменения реакции
+app.post('/api/posts/:postId/react', (req, res) => {
+    const postId = req.params.postId;
+    const { userId, reactionType } = req.body;
+    
+    if (!userId || !reactionType) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    if (!['like', 'dislike'].includes(reactionType)) {
+        return res.status(400).json({
+            success: false,
+            error: 'Invalid reaction type'
+        });
+    }
+    
+    // Удаляем предыдущую реакцию пользователя
+    db.run(`DELETE FROM post_reactions WHERE post_id = ? AND user_id = ?`, 
+           [postId, userId], function(err) {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        // Добавляем новую реакцию
+        db.run(`INSERT INTO post_reactions (post_id, user_id, reaction_type) 
+                VALUES (?, ?, ?)`, [postId, userId, reactionType], function(err) {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Database error'
+                });
+            }
+            
+            // Получаем обновленные счетчики
+            db.all(`SELECT reaction_type, COUNT(*) as count 
+                    FROM post_reactions 
+                    WHERE post_id = ? 
+                    GROUP BY reaction_type`, [postId], (err, rows) => {
+                if (err) {
+                    return res.status(500).json({
+                        success: false,
+                        error: 'Database error'
+                    });
+                }
+                
+                const reactions = {
+                    likes: 0,
+                    dislikes: 0
+                };
+                
+                rows.forEach(row => {
+                    if (row.reaction_type === 'like') {
+                        reactions.likes = row.count;
+                    } else if (row.reaction_type === 'dislike') {
+                        reactions.dislikes = row.count;
+                    }
+                });
+                
+                res.json({
+                    success: true,
+                    reactions: reactions,
+                    userReaction: reactionType
+                });
+            });
+        });
+    });
+});
+
+// Обновите эндпоинт добавления поста для поддержки загрузки изображений
+app.post('/api/posts', upload.single('image'), (req, res) => {
+    const { title, content, author, authorId } = req.body;
+    const image_url = req.file ? `/uploads/${req.file.filename}` : null;
+    
+    if (!title || !content || !author) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    // Check admin rights
+    if (parseInt(authorId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+    
+    db.run(`INSERT INTO posts (title, content, author, authorId, isAdmin, image_url) 
+            VALUES (?, ?, ?, ?, 1, ?)`,
+            [title, content, author, authorId, image_url],
+            function(err) {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error: ' + err.message
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Post created successfully',
+            postId: this.lastID
+        });
+    });
+});
+
+// Обновите эндпоинт добавления задания для поддержки загрузки изображений
+app.post('/api/tasks', upload.single('image'), (req, res) => {
+    const { 
+        title, description, price, created_by, category,
+        time_to_complete, difficulty, people_required, repost_time, task_url
+    } = req.body;
+    
+    const image_url = req.file ? `/uploads/${req.file.filename}` : null;
+    
+    console.log('Creating task with data:', req.body);
+    
+    if (!title || !description || !price || !created_by) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    // Check admin rights
+    if (parseInt(created_by) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+    
+    db.run(`INSERT INTO tasks (title, description, price, created_by, category,
+                              time_to_complete, difficulty, people_required, repost_time, task_url, image_url) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [title, description, parseFloat(price), created_by, category || 'general',
+             time_to_complete || '5 минут', difficulty || 'Легкая', 
+             people_required || 1, repost_time || '1 день', task_url || '', image_url],
+            function(err) {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error: ' + err.message
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Task created successfully',
+            taskId: this.lastID
+        });
+    });
+});
