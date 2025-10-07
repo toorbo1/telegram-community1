@@ -4178,6 +4178,119 @@
 .nav-item.active .nav-icon img {
     filter: brightness(0) invert(1); /* Белые иконки для активного состояния */
 }
+        .admin-management {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+        
+        .admin-list {
+            margin-top: 15px;
+        }
+        
+        .admin-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border);
+        }
+        
+        .admin-info {
+            flex: 1;
+        }
+        
+        .admin-username {
+            font-weight: 600;
+        }
+        
+        .admin-added {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .admin-remove {
+            background: var(--error);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .withdraw-operations {
+            margin-top: 20px;
+        }
+        
+        .operation-item {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border);
+        }
+        
+        .operation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .operation-amount {
+            font-weight: 700;
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-size: 18px;
+        }
+        
+        .operation-status {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+        
+        .status-pending {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+        }
+        
+        .status-completed {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+        
+        .operation-date {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .withdraw-instantly-btn {
+            background: var(--gold-gradient);
+            color: #000;
+            border: none;
+            padding: 16px;
+            border-radius: 14px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+            box-shadow: 0 6px 20px rgba(255, 215, 0, 0.3);
+        }
+        
+        .withdraw-instantly-btn:active {
+            transform: scale(0.95);
+        }
+
     </style>
 </head>
 <body>
@@ -4490,7 +4603,7 @@
         </div>
     </div>
 
-    <!-- Вкладка админа (отдельная) -->
+    <!-- В админ-панель добавляем управление админами -->
     <div id="admin-tab" class="tab-content">
         <div class="page-header">
             <button class="back-button" onclick="showMainTab()">←</button>
@@ -4503,7 +4616,71 @@
                 <button class="admin-btn" onclick="showAdminSection('tasks')">Управление заданиями</button>
                 <button class="admin-btn" onclick="showAdminSection('verification')">Проверка заданий</button>
                 <button class="admin-btn" onclick="showAdminSection('support')">Поддержка</button>
+                <button class="admin-btn" onclick="showAdminSection('withdrawals')">Запросы на вывод</button>
+                
+                <!-- Кнопка только для главного админа -->
+                <button class="admin-btn" id="admin-management-btn" onclick="showAdminSection('admin-management')" style="display: none;">
+                    Добавление админов
+                </button>
             </div>
+            
+            <!-- Управление админами (только для главного админа) -->
+            <div id="admin-admin-management-section" class="admin-section" style="display: none;">
+                <div class="admin-management">
+                    <h3>👥 Управление администраторами</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 15px; font-size: 14px;">
+                        Добавляйте и удаляйте администраторов системы
+                    </p>
+                    
+                    <div class="admin-form">
+                        <input type="text" class="admin-input" id="new-admin-username" placeholder="Введите юзернейм (без @)">
+                        <button class="admin-submit" onclick="addNewAdmin()">Добавить администратора</button>
+                    </div>
+                    
+                    <div class="admin-list">
+                        <h4 style="margin-bottom: 12px;">Текущие администраторы:</h4>
+                        <div id="admins-list">
+                            <!-- Список админов будет загружаться здесь -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Управление запросами на вывод -->
+            <div id="admin-withdrawals-section" class="admin-section" style="display: none;">
+                <h3>💳 Запросы на вывод средств</h3>
+                <div id="withdrawal-requests-list">
+                    <!-- Запросы на вывод будут загружаться здесь -->
+                </div>
+            </div>
+            
+            <!-- Остальные секции остаются без изменений -->
+        </div>
+    </div>
+
+    <!-- Обновленная страница вывода средств -->
+    <div id="withdraw-page" class="page">
+        <div class="page-header">
+            <button class="back-button" onclick="goBackToProfile()">←</button>
+            <div class="page-title">💳 Вывод средств</div>
+        </div>
+
+        <div class="card">
+            <div class="balance-amount" id="withdraw-balance">0 ⭐</div>
+            <p class="about-text" style="text-align: center; margin-bottom: 20px;">Доступно для вывода</p>
+
+            <button class="withdraw-instantly-btn" onclick="processWithdrawal()" id="withdraw-btn">
+                💰 Вывести средства
+            </button>
+
+            <div class="withdraw-operations">
+                <h4 style="margin-bottom: 15px;">📊 Прошлые операции</h4>
+                <div id="withdrawal-history-list">
+                    <!-- История выводов будет загружаться здесь -->
+                </div>
+            </div>
+        </div>
+    </div>
             
             <!-- Управление постами -->
             <div id="admin-posts-section" class="admin-section">
@@ -5071,22 +5248,481 @@
         <button class="chat-send" onclick="sendMessageToAdmin()">➤</button>
     </div>
 </div>
-
     <script>
-// 🔧 КОНФИГУРАЦИЯ
-const API_URL = 'https://telegram-community1-production.up.railway.app/api';
-const tg = window.Telegram.WebApp;
-const ADMIN_ID = 8036875641;
+        // 🔧 КОНФИГУРАЦИЯ
+        const API_URL = 'https://telegram-community1-production.up.railway.app/api';
+        const tg = window.Telegram.WebApp;
+        const MAIN_ADMIN_ID = 8036875641;
+        const TELEGRAM_CHANNEL = 'https://t.me/wergqervgba';
 
-// Глобальные переменные
-let currentUser = null;
-let currentChatId = null;
-let currentAdminChat = null;
-let selectedTaskId = null;
-let allTasks = [];
-let chatUpdateInterval = null;
-let currentUserTaskId = null;
-let currentVerificationId = null;
+        // Глобальные переменные
+        let currentUser = null;
+        let currentChatId = null;
+        let currentAdminChat = null;
+        let selectedTaskId = null;
+        let allTasks = [];
+        let chatUpdateInterval = null;
+        let currentUserTaskId = null;
+        let currentVerificationId = null;
+
+        // 🔧 НОВЫЕ ФУНКЦИИ ДЛЯ УПРАВЛЕНИЯ АДМИНАМИ
+
+        // Показать кнопку управления админами только главному админу
+        function setupAdminManagement() {
+            const adminManagementBtn = document.getElementById('admin-management-btn');
+            if (currentUser && parseInt(currentUser.id) === MAIN_ADMIN_ID) {
+                adminManagementBtn.style.display = 'block';
+            } else {
+                adminManagementBtn.style.display = 'none';
+            }
+        }
+
+        // Загрузить список админов
+        async function loadAdminsList() {
+            if (!currentUser || parseInt(currentUser.id) !== MAIN_ADMIN_ID) return;
+
+            try {
+                const result = await makeRequest(`${API_URL}/admins`);
+                if (result.success) {
+                    displayAdminsList(result.admins);
+                }
+            } catch (error) {
+                console.error('Error loading admins:', error);
+            }
+        }
+
+        // Отобразить список админов
+        function displayAdminsList(admins) {
+            const container = document.getElementById('admins-list');
+            if (!container) return;
+
+            container.innerHTML = '';
+
+            if (!admins || admins.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 20px;">Нет добавленных администраторов</div>';
+                return;
+            }
+
+            admins.forEach(admin => {
+                const adminElement = document.createElement('div');
+                adminElement.className = 'admin-item';
+                adminElement.innerHTML = `
+                    <div class="admin-info">
+                        <div class="admin-username">@${admin.username}</div>
+                        <div class="admin-added">Добавлен: ${formatPostDate(admin.added_at)}</div>
+                    </div>
+                    <button class="admin-remove" onclick="removeAdmin(${admin.user_id})">Удалить</button>
+                `;
+                container.appendChild(adminElement);
+            });
+        }
+
+        // Добавить нового админа
+        async function addNewAdmin() {
+            if (!currentUser || parseInt(currentUser.id) !== MAIN_ADMIN_ID) {
+                showNotification('Доступ запрещен!', 'error');
+                return;
+            }
+
+            const usernameInput = document.getElementById('new-admin-username');
+            const username = usernameInput.value.trim();
+
+            if (!username) {
+                showNotification('Введите юзернейм пользователя', 'error');
+                return;
+            }
+
+            try {
+                const result = await makeRequest(`${API_URL}/admins`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        adminId: currentUser.id,
+                        username: username
+                    })
+                });
+
+                if (result.success) {
+                    showNotification('Администратор успешно добавлен!', 'success');
+                    usernameInput.value = '';
+                    loadAdminsList();
+                } else {
+                    showNotification('Ошибка: ' + result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error adding admin:', error);
+                showNotification('Ошибка добавления администратора', 'error');
+            }
+        }
+
+        // Удалить админа
+        async function removeAdmin(userId) {
+            if (!currentUser || parseInt(currentUser.id) !== MAIN_ADMIN_ID) {
+                showNotification('Доступ запрещен!', 'error');
+                return;
+            }
+
+            if (!confirm('Вы уверены, что хотите удалить этого администратора?')) {
+                return;
+            }
+
+            try {
+                const result = await makeRequest(`${API_URL}/admins/${userId}`, {
+                    method: 'DELETE',
+                    body: JSON.stringify({
+                        adminId: currentUser.id
+                    })
+                });
+
+                if (result.success) {
+                    showNotification('Администратор удален!', 'success');
+                    loadAdminsList();
+                } else {
+                    showNotification('Ошибка: ' + result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error removing admin:', error);
+                showNotification('Ошибка удаления администратора', 'error');
+            }
+        }
+
+        // 🔧 ОБНОВЛЕННАЯ СИСТЕМА ВЫВОДА СРЕДСТВ
+
+        // Обработка вывода средств
+        async function processWithdrawal() {
+            if (!currentUser) {
+                showNotification('Пользователь не авторизован', 'error');
+                return;
+            }
+
+            const userBalance = currentUser.balance || 0;
+            
+            if (userBalance <= 0) {
+                showNotification('На балансе недостаточно средств', 'error');
+                return;
+            }
+
+            if (!confirm(`Вы уверены, что хотите вывести ${userBalance} ⭐?`)) {
+                return;
+            }
+
+            try {
+                const result = await makeRequest(`${API_URL}/withdrawal/request`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        user_id: currentUser.id,
+                        amount: userBalance,
+                        username: currentUser.username
+                    })
+                });
+
+                if (result.success) {
+                    // Обнуляем баланс пользователя
+                    currentUser.balance = 0;
+                    
+                    // Обновляем отображение баланса
+                    displayUserProfile();
+                    
+                    // Показываем уведомление
+                    showNotification(`Запрос на вывод ${userBalance}⭐ отправлен! Ожидайте обработки.`, 'success');
+                    
+                    // Обновляем историю операций
+                    loadWithdrawalHistory();
+                    
+                    // Отправляем уведомление в Telegram канал
+                    await sendWithdrawalToTelegram(currentUser.username, userBalance, result.withdrawalId);
+                    
+                } else {
+                    showNotification('Ошибка: ' + result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error processing withdrawal:', error);
+                showNotification('Ошибка обработки вывода', 'error');
+            }
+        }
+
+        // Отправка уведомления в Telegram канал
+        async function sendWithdrawalToTelegram(username, amount, withdrawalId) {
+            try {
+                const result = await makeRequest(`${API_URL}/telegram/withdrawal-notification`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        username: username,
+                        amount: amount,
+                        withdrawalId: withdrawalId
+                    })
+                });
+
+                if (result.success) {
+                    console.log('Withdrawal notification sent to Telegram channel');
+                }
+            } catch (error) {
+                console.error('Error sending Telegram notification:', error);
+                // Не показываем ошибку пользователю, так как это фоновый процесс
+            }
+        }
+
+        // Загрузка истории выводов
+        async function loadWithdrawalHistory() {
+            if (!currentUser) return;
+
+            try {
+                const result = await makeRequest(`${API_URL}/user/${currentUser.id}/withdrawal-history`);
+                if (result.success) {
+                    displayWithdrawalHistory(result.withdrawals);
+                }
+            } catch (error) {
+                console.error('Error loading withdrawal history:', error);
+            }
+        }
+
+        // Отображение истории выводов
+        function displayWithdrawalHistory(withdrawals) {
+            const container = document.getElementById('withdrawal-history-list');
+            if (!container) return;
+
+            container.innerHTML = '';
+
+            if (!withdrawals || withdrawals.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: var(--text-secondary); padding: 40px 20px;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">📊</div>
+                        <div>История выводов пуста</div>
+                    </div>
+                `;
+                return;
+            }
+
+            withdrawals.forEach(withdrawal => {
+                const operationElement = document.createElement('div');
+                operationElement.className = 'operation-item';
+                
+                const statusClass = withdrawal.status === 'completed' ? 'status-completed' : 'status-pending';
+                const statusText = withdrawal.status === 'completed' ? 'операция завершена' : 'операция осуществляется';
+                
+                operationElement.innerHTML = `
+                    <div class="operation-header">
+                        <div class="operation-amount">${withdrawal.amount} ⭐</div>
+                        <div class="operation-status ${statusClass}">${statusText}</div>
+                    </div>
+                    <div class="operation-date">${formatPostDate(withdrawal.created_at)}</div>
+                `;
+                
+                container.appendChild(operationElement);
+            });
+        }
+
+        // 🔧 ОБНОВЛЕННАЯ ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ
+
+        // Основная инициализация приложения
+        function initializeApp() {
+            displayUserProfile();
+            checkAdminRights();
+            setupAdminManagement(); // Настраиваем управление админами
+            loadMainPagePosts();
+            loadTasks();
+            initializeSearch();
+            loadUserTasks();
+            loadWithdrawalHistory(); // Загружаем историю выводов
+            
+            // Автообновление данных пользователя
+            startUserDataAutoUpdate();
+            
+            // Если пользователь админ, загружаем админ-данные
+            if (currentUser && currentUser.isAdmin) {
+                loadAdminsList();
+                loadAdminChats();
+                loadAdminTasks();
+                loadTaskVerifications();
+                loadWithdrawalRequests(); // Загружаем запросы на вывод для админа
+            }
+        }
+
+        // 🔧 НОВЫЕ ФУНКЦИИ ДЛЯ АДМИН-ПАНЕЛИ
+
+        // Загрузка запросов на вывод для админов
+        async function loadWithdrawalRequests() {
+            if (!currentUser || !currentUser.isAdmin) return;
+
+            try {
+                const result = await makeRequest(`${API_URL}/admin/withdrawal-requests?adminId=${currentUser.id}`);
+                if (result.success) {
+                    displayWithdrawalRequests(result.requests);
+                }
+            } catch (error) {
+                console.error('Error loading withdrawal requests:', error);
+            }
+        }
+
+        // Отображение запросов на вывод
+        function displayWithdrawalRequests(requests) {
+            const container = document.getElementById('withdrawal-requests-list');
+            if (!container) return;
+
+            container.innerHTML = '';
+
+            if (!requests || requests.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: var(--text-secondary); padding: 40px 20px;">
+                        <div>Нет запросов на вывод</div>
+                    </div>
+                `;
+                return;
+            }
+
+            requests.forEach(request => {
+                const requestElement = document.createElement('div');
+                requestElement.className = 'admin-task-item';
+                requestElement.innerHTML = `
+                    <div class="admin-task-header">
+                        <div class="admin-task-title">
+                            @${request.username} - ${request.amount} ⭐
+                        </div>
+                        <div class="admin-task-actions">
+                            ${request.status === 'pending' ? `
+                                <button class="admin-task-approve" onclick="completeWithdrawal(${request.id})">
+                                    ✅ Перечислил
+                                </button>
+                            ` : `
+                                <div class="operation-status status-completed">Завершено</div>
+                            `}
+                        </div>
+                    </div>
+                    <div class="admin-task-description">
+                        Запрос создан: ${formatPostDate(request.created_at)}
+                    </div>
+                `;
+                container.appendChild(requestElement);
+            });
+        }
+
+        // Подтверждение выполнения вывода
+        async function completeWithdrawal(withdrawalId) {
+            if (!currentUser || !currentUser.isAdmin) {
+                showNotification('Доступ запрещен!', 'error');
+                return;
+            }
+
+            try {
+                const result = await makeRequest(`${API_URL}/admin/withdrawal-requests/${withdrawalId}/complete`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        adminId: currentUser.id
+                    })
+                });
+
+                if (result.success) {
+                    showNotification('Вывод средств подтвержден!', 'success');
+                    loadWithdrawalRequests();
+                } else {
+                    showNotification('Ошибка: ' + result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error completing withdrawal:', error);
+                showNotification('Ошибка подтверждения вывода', 'error');
+            }
+        }
+
+        // 🔧 ОБНОВЛЕННАЯ ПРОВЕРКА ПРАВ АДМИНА
+
+        // Проверка прав администратора
+        async function checkAdminRights() {
+            const adminNavItem = document.getElementById('admin-nav-item');
+            const adminPanel = document.getElementById('admin-panel');
+            
+            if (currentUser) {
+                // Проверяем, является ли пользователь админом (главным или добавленным)
+                try {
+                    const result = await makeRequest(`${API_URL}/user/${currentUser.id}/is-admin`);
+                    if (result.success && result.isAdmin) {
+                        currentUser.isAdmin = true;
+                        if (adminNavItem) adminNavItem.style.display = 'flex';
+                        if (adminPanel) adminPanel.style.display = 'block';
+                    } else {
+                        currentUser.isAdmin = false;
+                        if (adminNavItem) adminNavItem.style.display = 'none';
+                        if (adminPanel) adminPanel.style.display = 'none';
+                    }
+                } catch (error) {
+                    console.error('Error checking admin rights:', error);
+                    // В случае ошибки используем старую логику
+                    if (parseInt(currentUser.id) === MAIN_ADMIN_ID) {
+                        currentUser.isAdmin = true;
+                        if (adminNavItem) adminNavItem.style.display = 'flex';
+                        if (adminPanel) adminPanel.style.display = 'block';
+                    } else {
+                        currentUser.isAdmin = false;
+                        if (adminNavItem) adminNavItem.style.display = 'none';
+                        if (adminPanel) adminPanel.style.display = 'none';
+                    }
+                }
+            } else {
+                if (adminNavItem) adminNavItem.style.display = 'none';
+                if (adminPanel) adminPanel.style.display = 'none';
+            }
+        }
+
+        // 🔧 ДОБАВЛЯЕМ НОВУЮ СЕКЦИЮ В АДМИН-ПАНЕЛЬ
+
+        function showAdminSection(section) {
+            // Скрываем все админ секции
+            document.querySelectorAll('.admin-section').forEach(sec => {
+                sec.style.display = 'none';
+            });
+            
+            // Показываем выбранную секцию
+            const targetSection = document.getElementById('admin-' + section + '-section');
+            if (targetSection) {
+                targetSection.style.display = 'block';
+            }
+            
+            // Загружаем данные для конкретных секций
+            if (section === 'admin-management') {
+                loadAdminsList();
+            } else if (section === 'withdrawals') {
+                loadWithdrawalRequests();
+            }
+        }
+
+        // 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ДЛЯ ОТПРАВКИ ЗАПРОСОВ
+
+        // Улучшенная функция для отправки запросов
+        async function makeRequest(url, options = {}) {
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Request failed:', error);
+                showNotification(`Ошибка соединения: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        // Инициализация при загрузке
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Initializing LinkGold app...');
+            
+            if (typeof tg !== 'undefined') {
+                tg.expand();
+                tg.ready();
+                initializeTelegramUser();
+            } else {
+                console.log('Telegram Web App context not available');
+                initializeTestUser();
+            }
+        });
+
 
 // Улучшенная функция для отправки запросов
 async function makeRequest(url, options = {}) {
@@ -5346,37 +5982,16 @@ function initializeApp() {
         loadTaskVerifications();
     }
 }
-// Обновить функцию updateReferralSystem():
+// Обновление реферальной системы
 function updateReferralSystem() {
     if (!currentUser) return;
     
-    const referralLink = `https://t.me/your_bot_username?start=ref_${currentUser.id}`;
+    const referralLink = `https://t.me/LinkGoldMoney_bot?start=ref_${currentUser.id}`;
     const referralInput = document.getElementById('referral-link');
     if (referralInput) referralInput.value = referralLink;
     
     document.getElementById('ref-invited').textContent = currentUser.referral_count || 0;
     document.getElementById('ref-earned').textContent = `${currentUser.referral_earned || 0} ⭐`;
-}
-
-// Добавить информацию о бонусе в интерфейс:
-function updateReferralSystem() {
-    if (!currentUser) return;
-    
-    const referralLink = `https://t.me/your_bot_username?start=ref_${currentUser.id}`;
-    const referralInput = document.getElementById('referral-link');
-    if (referralInput) referralInput.value = referralLink;
-    
-    document.getElementById('ref-invited').textContent = currentUser.referral_count || 0;
-    document.getElementById('ref-earned').textContent = `${currentUser.referral_earned || 0} ⭐`;
-    
-    // Обновляем текст с информацией о бонусе
-    const referralInfo = document.querySelector('.referral-info');
-    if (referralInfo) {
-        referralInfo.innerHTML = `
-            💰 <strong>15 ⭐ за каждого приглашенного друга!</strong><br>
-            Друг получает 10 ⭐ при регистрации по вашей ссылке
-        `;
-    }
 }
 
 // Обновление прогресса уровня
@@ -6322,27 +6937,23 @@ function closeChat() {
     currentChatId = null;
 }
 
-// 🔧 ЗАМЕНИТЬ существующие функции навигации на эти:
-
+// 🔧 ФУНКЦИИ НАВИГАЦИИ
 function showMainTab() {
     hideAllTabs();
     document.getElementById('main-tab').classList.add('active');
     updateNavState('main');
-    saveAppState(); // Добавлено автосохранение
 }
 
 function showTasksTab() {
     hideAllTabs();
     document.getElementById('tasks-tab').classList.add('active');
     updateNavState('tasks');
-    saveAppState(); // Добавлено автосохранение
 }
 
 function showProfileTab() {
     hideAllTabs();
     document.getElementById('profile-tab').classList.add('active');
     updateNavState('profile');
-    saveAppState(); // Добавлено автосохранение
 }
 
 function showAdminTab() {
@@ -6353,7 +6964,6 @@ function showAdminTab() {
     hideAllTabs();
     document.getElementById('admin-tab').classList.add('active');
     updateNavState('admin');
-    saveAppState(); // Добавлено автосохранение
 }
 
 function showWithdrawPage() {
@@ -6365,45 +6975,53 @@ function showWithdrawPage() {
     if (withdrawBalance && currentUser) {
         withdrawBalance.textContent = `${currentUser.balance || 0} ⭐`;
     }
-    saveAppState(); // Добавлено автосохранение
 }
 
 function showHowItWorksPage() {
     hideAllTabs();
     document.getElementById('how-it-works-page').classList.add('active');
-    saveAppState(); // Добавлено автосохранение
 }
 
 function showAboutPage() {
     hideAllTabs();
     document.getElementById('about-page').classList.add('active');
-    saveAppState(); // Добавлено автосохранение
 }
 
 function goBackToProfile() {
     showProfileTab();
-    saveAppState(); // Добавлено автосохранение
 }
 
-// 🔧 ТАКЖЕ ОБНОВИТЬ функции чатов для автосохранения:
-
-function closeChat() {
-    document.getElementById('admin-chat').classList.remove('active');
-    currentChatId = null;
-    saveAppState(); // Добавлено автосохранение
+function hideAllTabs() {
+    // Скрываем все вкладки и страницы
+    const allElements = document.querySelectorAll('.tab-content, .page');
+    allElements.forEach(element => {
+        element.classList.remove('active');
+    });
 }
 
-function closeAdminChat() {
-    const chatWindow = document.getElementById('admin-chat-window');
-    if (chatWindow) {
-        chatWindow.classList.remove('active');
+function updateNavState(activeTab) {
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    const navItems = document.querySelectorAll('.nav-item');
+    switch(activeTab) {
+        case 'main': 
+            if (navItems[0]) navItems[0].classList.add('active'); 
+            break;
+        case 'tasks': 
+            if (navItems[1]) navItems[1].classList.add('active'); 
+            break;
+        case 'profile': 
+            if (navItems[2]) navItems[2].classList.add('active'); 
+            break;
+        case 'admin': 
+            if (navItems[3]) navItems[3].classList.add('active'); 
+            break;
     }
-    currentAdminChat = null;
-    saveAppState(); // Добавлено автосохранение
 }
 
-// 🔧 И функции админ-панели:
-
+// АДМИН ФУНКЦИИ
 function showAdminSection(section) {
     // Скрываем все админ секции
     document.querySelectorAll('.admin-section').forEach(sec => {
@@ -6415,27 +7033,22 @@ function showAdminSection(section) {
     if (targetSection) {
         targetSection.style.display = 'block';
     }
-    saveAppState(); // Добавлено автосохранение
 }
 
 function showAdminChats() {
     showAdminSection('support');
-    saveAppState(); // Добавлено автосохранение
 }
 
 function showPostManagement() {
     showAdminSection('posts');
-    saveAppState(); // Добавлено автосохранение
 }
 
 function showTaskManagement() {
     showAdminSection('tasks');
-    saveAppState(); // Добавлено автосохранение
 }
 
 function showTaskVerification() {
     showAdminSection('verification');
-    saveAppState(); // Добавлено автосохранение
 }
 
 // 🎨 ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
@@ -7381,201 +7994,7 @@ if (result.success) {
     playMoneySound(); // Воспроизводим звук
     // ... остальной код
 }
-// 🔧 СИСТЕМА СОХРАНЕНИЯ СОСТОЯНИЯ
-function saveAppState() {
-    if (!currentUser) return;
-    
-    const state = {
-        userId: currentUser.id,
-        activeTab: getCurrentActiveTab(),
-        currentChatId: currentChatId,
-        currentAdminChat: currentAdminChat,
-        lastUpdate: Date.now()
-    };
-    
-    localStorage.setItem(`linkgold_state_${currentUser.id}`, JSON.stringify(state));
-    console.log('💾 Состояние приложения сохранено');
-}
 
-function loadAppState() {
-    if (!currentUser) return null;
-    
-    try {
-        const saved = localStorage.getItem(`linkgold_state_${currentUser.id}`);
-        if (saved) {
-            const state = JSON.parse(saved);
-            console.log('💾 Загружено сохраненное состояние:', state);
-            return state;
-        }
-    } catch (error) {
-        console.error('Ошибка загрузки состояния:', error);
-    }
-    return null;
-}
-
-function getCurrentActiveTab() {
-    if (document.getElementById('main-tab').classList.contains('active')) return 'main';
-    if (document.getElementById('tasks-tab').classList.contains('active')) return 'tasks';
-    if (document.getElementById('profile-tab').classList.contains('active')) return 'profile';
-    if (document.getElementById('admin-tab').classList.contains('active')) return 'admin';
-    return 'main';
-}
-
-function applySavedState(state) {
-    if (!state) return;
-    
-    // Восстанавливаем активную вкладку
-    setTimeout(() => {
-        switch(state.activeTab) {
-            case 'main': showMainTab(); break;
-            case 'tasks': showTasksTab(); break;
-            case 'profile': showProfileTab(); break;
-            case 'admin': showAdminTab(); break;
-        }
-        
-        // Восстанавливаем чат если он был открыт
-        if (state.currentChatId) {
-            currentChatId = state.currentChatId;
-            // Загружаем сообщения чата
-            loadChatMessages(state.currentChatId);
-        }
-        
-        // Восстанавливаем админ-чат если он был открыт
-        if (state.currentAdminChat && currentUser.isAdmin) {
-            currentAdminChat = state.currentAdminChat;
-            openAdminChatWindow(state.currentAdminChat);
-        }
-    }, 1000);
-}
-
-// 🔧 АВТОСОХРАНЕНИЕ ПРИ ИЗМЕНЕНИЯХ
-function setupAutoSave() {
-    // Сохраняем при смене вкладок
-    const originalShowMainTab = window.showMainTab;
-    window.showMainTab = function() {
-        originalShowMainTab();
-        setTimeout(saveAppState, 100);
-    };
-    
-    const originalShowTasksTab = window.showTasksTab;
-    window.showTasksTab = function() {
-        originalShowTasksTab();
-        setTimeout(saveAppState, 100);
-    };
-    
-    const originalShowProfileTab = window.showProfileTab;
-    window.showProfileTab = function() {
-        originalShowProfileTab();
-        setTimeout(saveAppState, 100);
-    };
-    
-    const originalShowAdminTab = window.showAdminTab;
-    window.showAdminTab = function() {
-        originalShowAdminTab();
-        setTimeout(saveAppState, 100);
-    };
-    
-    // Сохраняем при действиях с чатами
-    const originalOpenAdminChat = window.openAdminChat;
-    window.openAdminChat = function() {
-        originalOpenAdminChat();
-        setTimeout(saveAppState, 500);
-    };
-    
-    const originalCloseChat = window.closeChat;
-    window.closeChat = function() {
-        originalCloseChat();
-        setTimeout(saveAppState, 100);
-    };
-    
-    // Сохраняем перед закрытием страницы
-    window.addEventListener('beforeunload', saveAppState);
-    
-    // Автосохранение каждые 30 секунд
-    setInterval(saveAppState, 30000);
-}
-
-// Обновить функцию initializeApp():
-function initializeApp() {
-    console.log('Initializing LinkGold app...');
-    
-    if (typeof tg !== 'undefined') {
-        tg.expand();
-        tg.ready();
-        initializeTelegramUser();
-    } else {
-        console.log('Telegram Web App context not available');
-        initializeTestUser();
-    }
-    
-    // НАСТРАИВАЕМ АВТОСОХРАНЕНИЕ
-    setupAutoSave();
-}
-
-// Обновить функцию initializeTelegramUser():
-async function initializeTelegramUser() {
-    try {
-        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-            const tgUser = tg.initDataUnsafe.user;
-            
-            currentUser = {
-                id: tgUser.id,
-                firstName: tgUser.first_name || 'Пользователь',
-                lastName: tgUser.last_name || '',
-                username: tgUser.username || `user_${tgUser.id}`,
-                photoUrl: tgUser.photo_url || '',
-                isAdmin: parseInt(tgUser.id) === ADMIN_ID
-            };
-            
-            // ЗАГРУЖАЕМ СОХРАНЕННОЕ СОСТОЯНИЕ ПЕРЕД АУТЕНТИФИКАЦИЕЙ
-            const savedState = loadAppState();
-            
-            // Аутентифицируем пользователя на сервере
-            try {
-                const authResult = await makeRequest(`${API_URL}/user/auth`, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        user: currentUser
-                    })
-                });
-                
-                if (authResult.success) {
-                    Object.assign(currentUser, authResult.user);
-                }
-            } catch (authError) {
-                console.log('Auth endpoint not available, continuing with basic user data');
-            }
-            
-            initializeApp();
-            
-            // ПРИМЕНЯЕМ СОХРАНЕННОЕ СОСТОЯНИЕ ПОСЛЕ ИНИЦИАЛИЗАЦИИ
-            if (savedState) {
-                applySavedState(savedState);
-            }
-            
-        } else {
-            console.log('Telegram user data not available');
-            initializeTestUser();
-        }
-    } catch (error) {
-        console.error('Error initializing Telegram user:', error);
-        initializeTestUser();
-    }
-}
-
-// 🔧 ФУНКЦИЯ ДЛЯ ЗАГРУЗКИ СООБЩЕНИЙ ЧАТА
-async function loadChatMessages(chatId) {
-    if (!chatId) return;
-    
-    try {
-        const messagesResult = await makeRequest(`${API_URL}/support/chats/${chatId}/messages`);
-        if (messagesResult.success) {
-            displayChatMessages(messagesResult.messages);
-        }
-    } catch (error) {
-        console.error('Error loading chat messages:', error);
-    }
-}
 </script>
 </body>
 </html>
