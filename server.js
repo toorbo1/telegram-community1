@@ -4,7 +4,6 @@ const cors = require('cors');
 const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
-const TelegramBot = require('node-telegram-bot-api');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -565,7 +564,7 @@ app.post('/api/admin/withdrawal-requests/:requestId/complete', (req, res) => {
     });
 });
 
-// 🔧 ENDPOINT ДЛЯ УВЕДОМЛЕНИЙ В TELEGRAM
+// 🔧 ENDPOINT ДЛЯ УВЕДОМЛЕНИЙ В TELEGRAM (заглушка)
 app.post('/api/telegram/withdrawal-notification', (req, res) => {
     const { username, amount, withdrawalId } = req.body;
     
