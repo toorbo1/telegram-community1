@@ -359,7 +359,90 @@ app.get('/api/health', (req, res) => {
         timestamp: getMoscowTime()
     });
 });
+// Эндпоинт для начисления приветственного бонуса
+app.post('/api/user/bonus/welcome', (req, res) => {
+    const { userId, amount = 5 } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing user ID'
+        });
+    }
 
+    db.run(`UPDATE user_profiles 
+            SET balance = balance + ?, 
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = ?`, 
+            [amount, userId], function(err) {
+        if (err) {
+            console.error('❌ Ошибка начисления бонуса:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        if (this.changes === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            });
+        }
+        
+        console.log(`✅ Начислен приветственный бонус ${amount}⭐ пользователю ${userId}`);
+        
+        res.json({
+            success: true,
+            message: `Бонус ${amount}⭐ начислен`,
+            amount: amount
+        });
+    });
+});
+
+// Эндпоинт для начисления реферального бонуса
+app.post('/api/user/bonus/referral', (req, res) => {
+    const { userId, referredId, amount = 15 } = req.body;
+    
+    if (!userId || !referredId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+
+    // Начисляем бонус пригласившему
+    db.run(`UPDATE user_profiles 
+            SET balance = balance + ?,
+                referral_count = referral_count + 1,
+                referral_earned = referral_earned + ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = ?`, 
+            [amount, amount, userId], function(err) {
+        if (err) {
+            console.error('❌ Ошибка начисления реферального бонуса:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        if (this.changes === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            });
+        }
+        
+        console.log(`✅ Начислен реферальный бонус ${amount}⭐ пользователю ${userId} за приглашение ${referredId}`);
+        
+        res.json({
+            success: true,
+            message: `Реферальный бонус ${amount}⭐ начислен`,
+            amount: amount
+        });
+    });
+});
 // User profile endpoints
 app.post('/api/user/auth', (req, res) => {
     const { user } = req.body;
