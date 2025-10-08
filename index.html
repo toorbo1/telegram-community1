@@ -4459,7 +4459,6 @@
         <small>Звёзды начисляются мгновенно после регистрации друга</small>
     </div>
 </div> 
-
         <!-- Действия профиля -->
         <div class="profile-section fade-in">
             <div class="section-title">Действия</div>
@@ -7336,38 +7335,7 @@ async function archiveChat(chatId) {
         showNotification('Ошибка архивации чата', 'error');
     }
 }
-// Функция для воспроизведения звука при начислении бонуса
-function playBonusSound() {
-    try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        // Веселый звук для бонуса
-        oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
-        oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.1); // E5
-        oscillator.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.2); // G5
-        
-        oscillator.type = 'sine';
-        
-        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-        
-        oscillator.start(aContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.5);
-    } catch (error) {
-        console.log('Audio not supported');
-    }
-}
 
-// Используем в activateReferral при успешной активации
-if (result.success) {
-    playBonusSound();
-    // ... остальной код
-}
 // Восстановление чата из архива
 async function restoreChat(chatId) {
     try {
