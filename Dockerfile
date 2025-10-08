@@ -5,8 +5,8 @@ WORKDIR /app
 # Копируем package.json
 COPY package*.json ./
 
-# Устанавливаем зависимости (без dev зависимостей)
-RUN npm install --production
+# Устанавливаем зависимости
+RUN npm install
 
 # Копируем исходный код
 COPY . .

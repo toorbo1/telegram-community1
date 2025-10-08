@@ -4353,19 +4353,21 @@
             <div class="exchange-text">О заработке и выводе средств</div>
         </div>
 
-        <!-- Размещение поста -->
-        <div class="post-promo fade-in">
-            <div class="post-icon">
-                <div class="video-container video-large">
-                    <video class="video-icon" autoplay muted loop playsinline>
-                        <source src="post-video-Picsart-BackgroundRemover.mp4" type="video/mp4">
-                    </video>
-                </div>
-            </div>
-            <div class="post-title">Разместите пост</div>
-            <div class="post-description">Рекламируйте в нашем канале и получайте охват аудитории</div>
-            <button class="btn btn-primary btn-full" onclick="showPrices()">Разместить</button>
-        </div>
+ <!-- Управление постами в админ-панели -->
+<div id="admin-posts-section" class="admin-section">
+    <h3>📝 Управление постами</h3>
+    <div class="admin-form">
+        <input type="text" class="admin-input" id="admin-post-title" placeholder="Заголовок поста">
+        <textarea class="admin-textarea" id="admin-post-content" placeholder="Введите текст поста..."></textarea>
+        <input type="file" class="admin-input" id="admin-post-image" accept="image/*">
+        <button class="admin-submit" onclick="addNewPost()">Опубликовать пост</button>
+    </div>
+    
+    <h3 style="margin-top: 20px;">📋 Существующие посты</h3>
+    <div id="admin-posts-list">
+        <!-- Посты будут загружаться динамически -->
+    </div>
+</div>
 
         <!-- Кнопка перехода к заданиям -->
         <div class="tasks-button-container fade-in">
@@ -5065,6 +5067,8 @@
         </div>
         <div class="nav-label">Профиль</div>
     </div>
+    <!-- Админ панель будет показана только для админов через JavaScript -->
+</nav>
     <div class="nav-item" id="admin-nav-item" onclick="showAdminTab()" style="display: none;">
         <div class="nav-icon">⚙️</div>
         <div class="nav-label">Админ</div>
@@ -5249,142 +5253,358 @@
     </div>
 </div>
     <script>
-        // 🔧 КОНФИГУРАЦИЯ
-        const API_URL = 'https://telegram-community1-production.up.railway.app/api';
-        const tg = window.Telegram.WebApp;
-        const MAIN_ADMIN_ID = 8036875641;
-        const TELEGRAM_CHANNEL = 'https://t.me/wergqervgba';
+// 🔧 КОНФИГУРАЦИЯ
+const API_URL = window.location.origin + '/api'; // Автоматическое определение URL
+const tg = window.Telegram.WebApp;
+const MAIN_ADMIN_ID = 8036875641;
 
-        // Глобальные переменные
-        let currentUser = null;
-        let currentChatId = null;
-        let currentAdminChat = null;
-        let selectedTaskId = null;
-        let allTasks = [];
-        let chatUpdateInterval = null;
-        let currentUserTaskId = null;
-        let currentVerificationId = null;
+// Глобальные переменные
+let currentUser = null;
+let currentChatId = null;
+let currentAdminChat = null;
+let selectedTaskId = null;
+let allTasks = [];
+let chatUpdateInterval = null;
+let currentUserTaskId = null;
+let currentVerificationId = null;
 
-        // 🔧 НОВЫЕ ФУНКЦИИ ДЛЯ УПРАВЛЕНИЯ АДМИНАМИ
+// Улучшенная функция для отправки запросов
+async function makeRequest(url, options = {}) {
+    const fullUrl = url.startsWith('http') ? url : `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+    
+    try {
+        console.log(`🔄 Making request to: ${fullUrl}`);
+        const response = await fetch(fullUrl, {
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            },
+            ...options
+        });
 
-        // Показать кнопку управления админами только главному админу
-        function setupAdminManagement() {
-            const adminManagementBtn = document.getElementById('admin-management-btn');
-            if (currentUser && parseInt(currentUser.id) === MAIN_ADMIN_ID) {
-                adminManagementBtn.style.display = 'block';
-            } else {
-                adminManagementBtn.style.display = 'none';
-            }
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        // Загрузить список админов
-        async function loadAdminsList() {
-            if (!currentUser || parseInt(currentUser.id) !== MAIN_ADMIN_ID) return;
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('❌ Request failed:', error);
+        showNotification(`Ошибка соединения: ${error.message}`, 'error');
+        throw error;
+    }
+}
 
+// Инициализация пользователя Telegram
+async function initializeTelegramUser() {
+    try {
+        if (typeof tg !== 'undefined' && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            const tgUser = tg.initDataUnsafe.user;
+            
+            console.log('🔐 Telegram user detected:', tgUser);
+            
+            currentUser = {
+                id: tgUser.id,
+                firstName: tgUser.first_name || 'Пользователь',
+                lastName: tgUser.last_name || '',
+                username: tgUser.username || `user_${tgUser.id}`,
+                photoUrl: tgUser.photo_url || '',
+                isAdmin: false // Временно, будет обновлено после проверки
+            };
+            
+            // Аутентифицируем пользователя на сервере
             try {
-                const result = await makeRequest(`${API_URL}/admins`);
-                if (result.success) {
-                    displayAdminsList(result.admins);
-                }
-            } catch (error) {
-                console.error('Error loading admins:', error);
-            }
-        }
-
-        // Отобразить список админов
-        function displayAdminsList(admins) {
-            const container = document.getElementById('admins-list');
-            if (!container) return;
-
-            container.innerHTML = '';
-
-            if (!admins || admins.length === 0) {
-                container.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 20px;">Нет добавленных администраторов</div>';
-                return;
-            }
-
-            admins.forEach(admin => {
-                const adminElement = document.createElement('div');
-                adminElement.className = 'admin-item';
-                adminElement.innerHTML = `
-                    <div class="admin-info">
-                        <div class="admin-username">@${admin.username}</div>
-                        <div class="admin-added">Добавлен: ${formatPostDate(admin.added_at)}</div>
-                    </div>
-                    <button class="admin-remove" onclick="removeAdmin(${admin.user_id})">Удалить</button>
-                `;
-                container.appendChild(adminElement);
-            });
-        }
-
-        // Добавить нового админа
-        async function addNewAdmin() {
-            if (!currentUser || parseInt(currentUser.id) !== MAIN_ADMIN_ID) {
-                showNotification('Доступ запрещен!', 'error');
-                return;
-            }
-
-            const usernameInput = document.getElementById('new-admin-username');
-            const username = usernameInput.value.trim();
-
-            if (!username) {
-                showNotification('Введите юзернейм пользователя', 'error');
-                return;
-            }
-
-            try {
-                const result = await makeRequest(`${API_URL}/admins`, {
+                const authResult = await makeRequest('/user/auth', {
                     method: 'POST',
                     body: JSON.stringify({
-                        adminId: currentUser.id,
-                        username: username
+                        user: currentUser
                     })
                 });
-
-                if (result.success) {
-                    showNotification('Администратор успешно добавлен!', 'success');
-                    usernameInput.value = '';
-                    loadAdminsList();
+                
+                if (authResult.success) {
+                    console.log('✅ User authenticated successfully');
+                    Object.assign(currentUser, authResult.user);
+                    
+                    // Проверяем права администратора
+                    await checkAdminRights();
                 } else {
-                    showNotification('Ошибка: ' + result.error, 'error');
+                    console.error('❌ Auth failed:', authResult.error);
                 }
-            } catch (error) {
-                console.error('Error adding admin:', error);
-                showNotification('Ошибка добавления администратора', 'error');
+            } catch (authError) {
+                console.error('❌ Auth endpoint error:', authError);
+                // Продолжаем с базовыми данными пользователя
+                await checkAdminRights();
             }
+            
+            initializeApp();
+            
+        } else {
+            console.log('ℹ️ Telegram user data not available, using test mode');
+            initializeTestUser();
         }
+    } catch (error) {
+        console.error('❌ Error initializing Telegram user:', error);
+        initializeTestUser();
+    }
+}
 
-        // Удалить админа
-        async function removeAdmin(userId) {
-            if (!currentUser || parseInt(currentUser.id) !== MAIN_ADMIN_ID) {
-                showNotification('Доступ запрещен!', 'error');
-                return;
-            }
-
-            if (!confirm('Вы уверены, что хотите удалить этого администратора?')) {
-                return;
-            }
-
-            try {
-                const result = await makeRequest(`${API_URL}/admins/${userId}`, {
-                    method: 'DELETE',
-                    body: JSON.stringify({
-                        adminId: currentUser.id
-                    })
-                });
-
-                if (result.success) {
-                    showNotification('Администратор удален!', 'success');
-                    loadAdminsList();
-                } else {
-                    showNotification('Ошибка: ' + result.error, 'error');
-                }
-            } catch (error) {
-                console.error('Error removing admin:', error);
-                showNotification('Ошибка удаления администратора', 'error');
-            }
+// Проверка прав администратора
+async function checkAdminRights() {
+    if (!currentUser) return;
+    
+    try {
+        const result = await makeRequest(`/user/${currentUser.id}/is-admin`);
+        if (result.success) {
+            currentUser.isAdmin = result.isAdmin;
+            updateAdminUI();
         }
+    } catch (error) {
+        console.error('❌ Error checking admin rights:', error);
+        // Резервная проверка для главного админа
+        if (parseInt(currentUser.id) === MAIN_ADMIN_ID) {
+            currentUser.isAdmin = true;
+            updateAdminUI();
+        }
+    }
+}
 
+// Обновление UI для администратора
+function updateAdminUI() {
+    const adminNavItem = document.getElementById('admin-nav-item');
+    const adminPanel = document.getElementById('admin-panel');
+    
+    if (currentUser && currentUser.isAdmin) {
+        console.log('👑 User is admin, showing admin features');
+        if (adminNavItem) adminNavItem.style.display = 'flex';
+        if (adminPanel) adminPanel.style.display = 'block';
+    } else {
+        console.log('👤 User is not admin, hiding admin features');
+        if (adminNavItem) adminNavItem.style.display = 'none';
+        if (adminPanel) adminPanel.style.display = 'none';
+    }
+}
+
+// Функция для тестирования (без Telegram)
+function initializeTestUser() {
+    currentUser = {
+        id: 123456789,
+        firstName: 'Тестовый',
+        lastName: 'Пользователь',
+        username: 'test_user',
+        isAdmin: false,
+        balance: 150,
+        level: 1,
+        tasks_completed: 5,
+        active_tasks: 2,
+        quality_rate: 95,
+        referral_count: 3,
+        referral_earned: 450
+    };
+    
+    // Для тестирования админ-панели, раскомментируйте:
+    // currentUser.id = MAIN_ADMIN_ID;
+    // currentUser.isAdmin = true;
+    
+    initializeApp();
+}
+
+// Основная инициализация приложения
+function initializeApp() {
+    console.log('🚀 Initializing LinkGold app...');
+    
+    displayUserProfile();
+    updateAdminUI(); // Обновляем UI админа
+    loadMainPagePosts();
+    loadTasks();
+    initializeSearch();
+    loadUserTasks();
+    
+    // Автообновление данных пользователя
+    startUserDataAutoUpdate();
+    
+    // Если пользователь админ, загружаем админ-данные
+    if (currentUser && currentUser.isAdmin) {
+        loadAdminsList();
+        loadAdminChats();
+        loadAdminTasks();
+        loadTaskVerifications();
+        loadWithdrawalRequests();
+    }
+}
+
+// Автоматическое обновление данных пользователя
+function startUserDataAutoUpdate() {
+    setInterval(() => {
+        if (currentUser) {
+            updateUserData();
+        }
+    }, 30000); // Каждые 30 секунд
+}
+
+// Обновление данных пользователя
+async function updateUserData() {
+    if (!currentUser) return;
+    
+    try {
+        const result = await makeRequest(`/user/${currentUser.id}`);
+        if (result.success) {
+            // Сохраняем isAdmin перед обновлением
+            const wasAdmin = currentUser.isAdmin;
+            
+            // Обновляем текущего пользователя
+            currentUser = { ...currentUser, ...result.profile };
+            
+            // Восстанавливаем права админа
+            currentUser.isAdmin = wasAdmin;
+            
+            // Обновляем отображение
+            displayUserProfile();
+            
+            console.log('✅ User data updated');
+        }
+    } catch (error) {
+        console.error('❌ Error updating user data:', error);
+    }
+}
+
+// 🔧 НОВЫЕ ФУНКЦИИ ДЛЯ УПРАВЛЕНИЯ АДМИНАМИ
+
+// Загрузить список админов
+async function loadAdminsList() {
+    if (!currentUser || !currentUser.isAdmin) return;
+
+    try {
+        const result = await makeRequest(`/admins?adminId=${currentUser.id}`);
+        if (result.success) {
+            displayAdminsList(result.admins);
+        }
+    } catch (error) {
+        console.error('❌ Error loading admins:', error);
+    }
+}
+
+// Отобразить список админов
+function displayAdminsList(admins) {
+    const container = document.getElementById('admins-list');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!admins || admins.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 20px;">Нет добавленных администраторов</div>';
+        return;
+    }
+
+    admins.forEach(admin => {
+        const adminElement = document.createElement('div');
+        adminElement.className = 'admin-item';
+        adminElement.innerHTML = `
+            <div class="admin-info">
+                <div class="admin-username">@${admin.username}</div>
+                <div class="admin-added">Добавлен: ${formatPostDate(admin.added_at)}</div>
+            </div>
+            ${admin.user_id !== MAIN_ADMIN_ID ? `
+                <button class="admin-remove" onclick="removeAdmin(${admin.user_id})">Удалить</button>
+            ` : '<div style="color: var(--text-secondary); font-size: 12px;">Главный админ</div>'}
+        `;
+        container.appendChild(adminElement);
+    });
+}
+
+// Добавить нового админа
+async function addNewAdmin() {
+    if (!currentUser || !currentUser.isAdmin) {
+        showNotification('Доступ запрещен!', 'error');
+        return;
+    }
+
+    const usernameInput = document.getElementById('new-admin-username');
+    const username = usernameInput.value.trim();
+
+    if (!username) {
+        showNotification('Введите юзернейм пользователя', 'error');
+        return;
+    }
+
+    try {
+        const result = await makeRequest('/admins', {
+            method: 'POST',
+            body: JSON.stringify({
+                adminId: currentUser.id,
+                username: username
+            })
+        });
+
+        if (result.success) {
+            showNotification('Администратор успешно добавлен!', 'success');
+            usernameInput.value = '';
+            loadAdminsList();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('❌ Error adding admin:', error);
+        showNotification('Ошибка добавления администратора', 'error');
+    }
+}
+
+// Удалить админа
+async function removeAdmin(userId) {
+    if (!currentUser || !currentUser.isAdmin) {
+        showNotification('Доступ запрещен!', 'error');
+        return;
+    }
+
+    if (!confirm('Вы уверены, что хотите удалить этого администратора?')) {
+        return;
+    }
+
+    try {
+        const result = await makeRequest(`/admins/${userId}`, {
+            method: 'DELETE',
+            body: JSON.stringify({
+                adminId: currentUser.id
+            })
+        });
+
+        if (result.success) {
+            showNotification('Администратор удален!', 'success');
+            loadAdminsList();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('❌ Error removing admin:', error);
+        showNotification('Ошибка удаления администратора', 'error');
+    }
+}
+
+// Инициализация при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📱 LinkGold app loading...');
+    
+    // Проверяем доступность API
+    checkAPIHealth();
+    
+    if (typeof tg !== 'undefined') {
+        tg.expand();
+        tg.ready();
+        initializeTelegramUser();
+    } else {
+        console.log('ℹ️ Telegram Web App context not available');
+        initializeTestUser();
+    }
+});
+
+// Проверка здоровья API
+async function checkAPIHealth() {
+    try {
+        const result = await makeRequest('/health');
+        console.log('🏥 API Health:', result);
+    } catch (error) {
+        console.error('❌ API Health check failed:', error);
+    }
+}
         // 🔧 ОБНОВЛЕННАЯ СИСТЕМА ВЫВОДА СРЕДСТВ
 
         // Обработка вывода средств
