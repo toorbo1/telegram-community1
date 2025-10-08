@@ -244,6 +244,274 @@ app.get('/api/health', (req, res) => {
     });
 });
 
+// ========== НОВЫЕ ЭНДПОИНТЫ ДЛЯ АДМИН-ПАНЕЛИ ==========
+
+// Эндпоинт для проверки прав администратора
+app.get('/api/user/:userId/is-admin', (req, res) => {
+    const userId = req.params.userId;
+    
+    db.get("SELECT * FROM admins WHERE user_id = ?", [userId], (err, admin) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        const isAdmin = !!admin || parseInt(userId) === MAIN_ADMIN_ID;
+        
+        res.json({
+            success: true,
+            isAdmin: isAdmin
+        });
+    });
+});
+
+// Эндпоинт для получения всех администраторов
+app.get('/api/admins', (req, res) => {
+    const { adminId } = req.query;
+    
+    // Check admin rights
+    db.get("SELECT * FROM admins WHERE user_id = ?", [adminId], (err, admin) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        if (!admin && parseInt(adminId) !== MAIN_ADMIN_ID) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied'
+            });
+        }
+
+        db.all("SELECT * FROM admins ORDER BY added_at DESC", (err, rows) => {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Database error'
+                });
+            }
+            
+            res.json({
+                success: true,
+                admins: rows
+            });
+        });
+    });
+});
+
+// Эндпоинт для добавления администратора
+app.post('/api/admins', (req, res) => {
+    const { adminId, username } = req.body;
+    
+    // Check admin rights - только главный админ может добавлять других админов
+    if (parseInt(adminId) !== MAIN_ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied. Only main admin can add administrators.'
+        });
+    }
+    
+    if (!username) {
+        return res.status(400).json({
+            success: false,
+            error: 'Username is required'
+        });
+    }
+    
+    // Здесь должна быть логика для получения user_id по username
+    // Пока что используем временное решение
+    const newAdminId = Math.floor(Math.random() * 1000000000); // Временный ID
+    
+    db.run(`INSERT OR IGNORE INTO admins (user_id, username, added_by) 
+            VALUES (?, ?, ?)`, 
+            [newAdminId, username, adminId],
+            function(err) {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error: ' + err.message
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Administrator added successfully',
+            adminId: newAdminId
+        });
+    });
+});
+
+// Эндпоинт для удаления администратора
+app.delete('/api/admins/:userId', (req, res) => {
+    const { adminId } = req.body;
+    const userIdToDelete = req.params.userId;
+    
+    // Check admin rights - только главный админ может удалять админов
+    if (parseInt(adminId) !== MAIN_ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied. Only main admin can remove administrators.'
+        });
+    }
+    
+    // Нельзя удалить главного админа
+    if (parseInt(userIdToDelete) === MAIN_ADMIN_ID) {
+        return res.status(400).json({
+            success: false,
+            error: 'Cannot remove main administrator'
+        });
+    }
+    
+    db.run("DELETE FROM admins WHERE user_id = ?", [userIdToDelete], function(err) {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Administrator removed successfully'
+        });
+    });
+});
+
+// Эндпоинт для запросов на вывод средств
+app.post('/api/withdrawal/request', (req, res) => {
+    const { user_id, amount, username } = req.body;
+    
+    if (!user_id || !amount || !username) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    db.run(`INSERT INTO withdrawal_requests (user_id, username, amount, status) 
+            VALUES (?, ?, ?, 'pending')`,
+            [user_id, username, parseFloat(amount)],
+            function(err) {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error: ' + err.message
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Withdrawal request submitted successfully',
+            withdrawalId: this.lastID
+        });
+    });
+});
+
+// Эндпоинт для получения истории выводов пользователя
+app.get('/api/user/:userId/withdrawal-history', (req, res) => {
+    const userId = req.params.userId;
+    
+    db.all(`SELECT * FROM withdrawal_requests 
+            WHERE user_id = ? 
+            ORDER BY created_at DESC 
+            LIMIT 10`,
+            [userId], (err, rows) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        res.json({
+            success: true,
+            withdrawals: rows
+        });
+    });
+});
+
+// Эндпоинт для получения запросов на вывод для админа
+app.get('/api/admin/withdrawal-requests', (req, res) => {
+    const { adminId } = req.query;
+    
+    // Check admin rights
+    db.get("SELECT * FROM admins WHERE user_id = ?", [adminId], (err, admin) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        if (!admin && parseInt(adminId) !== MAIN_ADMIN_ID) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied'
+            });
+        }
+
+        db.all(`SELECT * FROM withdrawal_requests 
+                ORDER BY created_at DESC`,
+                [], (err, rows) => {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Database error'
+                });
+            }
+            
+            res.json({
+                success: true,
+                requests: rows
+            });
+        });
+    });
+});
+
+// Эндпоинт для завершения запроса на вывод
+app.post('/api/admin/withdrawal-requests/:requestId/complete', (req, res) => {
+    const requestId = req.params.requestId;
+    const { adminId } = req.body;
+    
+    // Check admin rights
+    db.get("SELECT * FROM admins WHERE user_id = ?", [adminId], (err, admin) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        if (!admin && parseInt(adminId) !== MAIN_ADMIN_ID) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied'
+            });
+        }
+
+        db.run(`UPDATE withdrawal_requests 
+                SET status = 'completed', completed_at = CURRENT_TIMESTAMP, completed_by = ?
+                WHERE id = ?`,
+                [adminId, requestId], function(err) {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Database error'
+                });
+            }
+            
+            res.json({
+                success: true,
+                message: 'Withdrawal request completed successfully'
+            });
+        });
+    });
+});
+
 // User profile endpoints
 app.post('/api/user/auth', (req, res) => {
     const { user } = req.body;
