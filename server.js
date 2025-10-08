@@ -370,7 +370,7 @@ app.post('/api/user/auth', (req, res) => {
         });
     }
     
- // Сначала проверяем, есть ли пользователь в базе и является ли он админом
+// Сначала проверяем, есть ли пользователь в базе и является ли он админом
 db.get("SELECT * FROM user_profiles WHERE user_id = ?", [user.id], (err, existingUser) => {
     if (err) {
         console.error('Database error:', err);
@@ -462,7 +462,121 @@ app.get('/api/user/:userId', (req, res) => {
         });
     });
 });
+// Эндпоинты для управления админами
+app.get('/api/admin/admins', (req, res) => {
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
 
+    db.all("SELECT user_id, username, first_name, last_name, is_admin FROM user_profiles WHERE is_admin = 1 OR user_id = ?", [ADMIN_ID], (err, rows) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        res.json({
+            success: true,
+            admins: rows
+        });
+    });
+});
+
+app.post('/api/admin/admins', (req, res) => {
+    const { adminId, username } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    if (!username) {
+        return res.status(400).json({
+            success: false,
+            error: 'Username is required'
+        });
+    }
+
+    // Ищем пользователя по username
+    db.get("SELECT * FROM user_profiles WHERE username = ?", [username], (err, user) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            });
+        }
+
+        // Делаем пользователя админом
+        db.run("UPDATE user_profiles SET is_admin = 1 WHERE user_id = ?", [user.user_id], function(err) {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Database error'
+                });
+            }
+
+            res.json({
+                success: true,
+                message: 'User promoted to admin successfully',
+                admin: {
+                    user_id: user.user_id,
+                    username: user.username,
+                    first_name: user.first_name,
+                    last_name: user.last_name
+                }
+            });
+        });
+    });
+});
+
+app.delete('/api/admin/admins/:userId', (req, res) => {
+    const { adminId } = req.body;
+    const userId = req.params.userId;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    // Не позволяем удалить главного админа
+    if (parseInt(userId) === ADMIN_ID) {
+        return res.status(400).json({
+            success: false,
+            error: 'Cannot remove main admin'
+        });
+    }
+
+    db.run("UPDATE user_profiles SET is_admin = 0 WHERE user_id = ?", [userId], function(err) {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Admin removed successfully'
+        });
+    });
+});
 // Posts endpoints
 app.get('/api/posts', (req, res) => {
     db.all("SELECT * FROM posts ORDER BY timestamp DESC", (err, rows) => {
