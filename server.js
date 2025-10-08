@@ -1,13 +1,160 @@
 const express = require('express');
+const TelegramBot = require('node-telegram-bot-api');
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
-
+// В начале server.js
+require('./bot');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ... ваш существующий код ...
+
+// ==================== TELEGRAM BOT ====================
+console.log('🤖 Initializing Telegram Bot...');
+
+const BOT_TOKEN = process.env.BOT_TOKEN || '8206130580:AAG91R9Bnp2pYG0z9v1eRJmH8oZvThsN9eA';
+const SITE_URL = process.env.SITE_URL || `https://${process.env.RAILWAY_STATIC_URL || 'localhost:' + PORT}`;
+
+let bot;
+
+function initializeBot() {
+    try {
+        console.log('🔧 Creating bot instance...');
+        bot = new TelegramBot(BOT_TOKEN, { 
+            polling: true,
+            request: {
+                timeout: 60000,
+                agentOptions: {
+                    keepAlive: true,
+                    family: 4
+                }
+            }
+        });
+
+        console.log('✅ Bot instance created');
+
+        // Команда /start
+        bot.onText(/\/start/, (msg) => {
+            console.log(`📨 Received /start from user ${msg.chat.id}`);
+            const chatId = msg.chat.id;
+            
+            const keyboard = {
+                inline_keyboard: [
+                    [{ text: "🌐 Открыть LinkGold", web_app: { url: SITE_URL } }],
+                    [{ text: "📢 Наш канал", url: "https://t.me/LinkGoldChannel" }],
+                    [{ text: "💬 Поддержка", url: "https://t.me/LinkGoldSupport" }]
+                ]
+            };
+
+            const text = `🚀 **LinkGold - Биржа заданий и заработок!** 🌟
+
+**Добро пожаловать!**
+
+📊 **Что вы можете делать:**
+• Выполнять задания от брендов
+• Зарабатывать на своей активности
+• Получать стабильный доход
+
+🏢 **Для бизнеса:**
+• Находить авторов для рекламы
+• Размещать задания
+• Увеличивать охват аудитории
+
+**Преимущества:**
+✅ Прозрачная система расчетов
+✅ Быстрый вывод средств
+✅ Поддержка 24/7
+
+Нажмите кнопку ниже, чтобы начать! 🎯`;
+
+            bot.sendMessage(chatId, text, {
+                parse_mode: 'Markdown',
+                reply_markup: keyboard
+            }).then(() => {
+                console.log(`✅ Welcome message sent to ${chatId}`);
+            }).catch(error => {
+                console.error(`❌ Error sending message to ${chatId}:`, error);
+            });
+        });
+
+        // Команда /site
+        bot.onText(/\/site/, (msg) => {
+            const chatId = msg.chat.id;
+            const keyboard = {
+                inline_keyboard: [
+                    [{ text: "🚀 Открыть платформу", web_app: { url: SITE_URL } }]
+                ]
+            };
+
+            bot.sendMessage(chatId, "Нажмите кнопку ниже, чтобы открыть платформу LinkGold! 💰", {
+                reply_markup: keyboard
+            });
+        });
+
+        // Обработка ошибок
+        bot.on('error', (error) => {
+            console.error('🤖 Bot error:', error);
+        });
+
+        bot.on('polling_error', (error) => {
+            console.error('🤖 Polling error:', error);
+        });
+
+        console.log('✅ Bot handlers registered');
+
+        // Проверка соединения
+        bot.getMe().then((botInfo) => {
+            console.log(`✅ Bot is running as @${botInfo.username}`);
+            console.log(`✅ Bot ID: ${botInfo.id}`);
+            console.log(`✅ Bot name: ${botInfo.first_name}`);
+        }).catch(error => {
+            console.error('❌ Bot getMe error:', error);
+        });
+
+    } catch (error) {
+        console.error('❌ Error initializing bot:', error);
+    }
+}
+
+// Инициализируем бота
+initializeBot();
+
+// Эндпоинт для проверки статуса бота
+app.get('/api/bot/status', (req, res) => {
+    const status = {
+        botRunning: !!bot,
+        timestamp: new Date().toISOString(),
+        siteUrl: SITE_URL
+    };
+    
+    if (bot) {
+        bot.getMe().then(botInfo => {
+            status.botInfo = {
+                username: botInfo.username,
+                id: botInfo.id,
+                name: botInfo.first_name
+            };
+            res.json({ success: true, status });
+        }).catch(error => {
+            status.error = error.message;
+            res.json({ success: false, status });
+        });
+    } else {
+        res.json({ success: false, status: { ...status, error: 'Bot not initialized' } });
+    }
+});
+
+// ... остальной ваш код server.js ...
+
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`🤖 Bot token: ${BOT_TOKEN ? 'SET' : 'MISSING'}`);
+    console.log(`🌐 Site URL: ${SITE_URL}`);
+    console.log(`📊 Bot status: http://localhost:${PORT}/api/bot/status`);
+});
 // Middleware
 app.use(cors({
     origin: '*',
