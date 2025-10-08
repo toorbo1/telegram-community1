@@ -4,7 +4,252 @@ const cors = require('cors');
 const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
 
+
+
+// Middleware
+app.use(cors());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.static('.'));
+
+// Простое хранилище в памяти вместо SQLite
+const userProfiles = new Map();
+const posts = [];
+const tasks = [];
+const supportChats = new Map();
+
+// Инициализация тестовых данных
+function initTestData() {
+    // Тестовый пользователь
+    userProfiles.set(8036875641, {
+        user_id: 8036875641,
+        username: 'admin',
+        first_name: 'Администратор',
+        last_name: '',
+        photo_url: '',
+        balance: 1000,
+        level: 10,
+        experience: 1000,
+        tasks_completed: 50,
+        active_tasks: 5,
+        quality_rate: 95,
+        referral_count: 25,
+        referral_earned: 1500,
+        isAdmin: true
+    });
+
+    // Тестовые посты
+    posts.push({
+        id: 1,
+        title: 'Добро пожаловать в LinkGold! 🚀',
+        content: 'Мы рады приветствовать вас на нашей платформе для заработка. Начинайте выполнять задания и зарабатывайте вместе с нами!',
+        author: 'Администратор',
+        authorId: 8036875641,
+        timestamp: new Date().toISOString()
+    });
+
+    // Тестовые задания
+    tasks.push({
+        id: 1,
+        title: 'Подписка на канал',
+        description: 'Подпишитесь на наш канал и получите вознаграждение',
+        category: 'subscribe',
+        price: 10,
+        time_to_complete: '2 минуты',
+        difficulty: 'Легкая',
+        people_required: 100,
+        status: 'active'
+    });
+}
+
+// Health check
+app.get('/api/health', (req, res) => {
+    res.json({ 
+        status: 'OK', 
+        message: 'LinkGold API is running!',
+        timestamp: new Date().toISOString()
+    });
+});
+
+// User endpoints
+app.post('/api/user/auth', (req, res) => {
+    const { user } = req.body;
+    
+    if (!user) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    const userProfile = {
+        user_id: user.id,
+        username: user.username || `user_${user.id}`,
+        first_name: user.first_name || 'Пользователь',
+        last_name: user.last_name || '',
+        photo_url: user.photo_url || '',
+        balance: 0,
+        level: 0,
+        experience: 0,
+        tasks_completed: 0,
+        active_tasks: 0,
+        quality_rate: 100,
+        referral_count: 0,
+        referral_earned: 0,
+        isAdmin: parseInt(user.id) === 8036875641
+    };
+    
+    // Сохраняем или обновляем профиль
+    userProfiles.set(user.id, userProfile);
+    
+    res.json({
+        success: true,
+        user: userProfile
+    });
+});
+
+app.get('/api/user/:userId', (req, res) => {
+    const userId = parseInt(req.params.userId);
+    const profile = userProfiles.get(userId);
+    
+    if (!profile) {
+        return res.status(404).json({
+            success: false,
+            error: 'User not found'
+        });
+    }
+    
+    res.json({
+        success: true,
+        profile: profile
+    });
+});
+
+// Bonus endpoints
+app.post('/api/user/bonus/welcome', (req, res) => {
+    const { userId, amount = 5 } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing user ID'
+        });
+    }
+
+    const profile = userProfiles.get(userId);
+    if (profile) {
+        profile.balance += amount;
+        userProfiles.set(userId, profile);
+        
+        console.log(`✅ Начислен бонус ${amount}⭐ пользователю ${userId}`);
+        
+        res.json({
+            success: true,
+            message: `Бонус ${amount}⭐ начислен`,
+            amount: amount
+        });
+    } else {
+        res.status(404).json({
+            success: false,
+            error: 'User not found'
+        });
+    }
+});
+
+app.post('/api/user/bonus/referral', (req, res) => {
+    const { userId, referredId, amount = 15 } = req.body;
+    
+    if (!userId || !referredId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+
+    const profile = userProfiles.get(userId);
+    if (profile) {
+        profile.balance += amount;
+        profile.referral_count += 1;
+        profile.referral_earned += amount;
+        userProfiles.set(userId, profile);
+        
+        console.log(`✅ Начислен реферальный бонус ${amount}⭐ пользователю ${userId} за приглашение ${referredId}`);
+        
+        res.json({
+            success: true,
+            message: `Реферальный бонус ${amount}⭐ начислен`,
+            amount: amount
+        });
+    } else {
+        res.status(404).json({
+            success: false,
+            error: 'User not found'
+        });
+    }
+});
+
+// Posts endpoints
+app.get('/api/posts', (req, res) => {
+    res.json({
+        success: true,
+        posts: posts
+    });
+});
+
+app.post('/api/posts', (req, res) => {
+    const { title, content, author, authorId } = req.body;
+    
+    if (!title || !content || !author) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    const newPost = {
+        id: posts.length + 1,
+        title,
+        content,
+        author,
+        authorId,
+        timestamp: new Date().toISOString()
+    };
+    
+    posts.push(newPost);
+    
+    res.json({
+        success: true,
+        message: 'Post created successfully',
+        postId: newPost.id
+    });
+});
+
+// Tasks endpoints
+app.get('/api/tasks', (req, res) => {
+    res.json({
+        success: true,
+        tasks: tasks
+    });
+});
+
+// Serve the main page
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Инициализируем тестовые данные
+initTestData();
+
+// Запуск сервера
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+    console.log(`🔐 Admin ID: 8036875641`);
+});
 const app = express();
 const PORT = process.env.PORT || 3000;
 
