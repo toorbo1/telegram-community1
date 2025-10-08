@@ -3,7 +3,7 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
 // Токен бота - замените на ваш
-const BOT_TOKEN = 'YOUR_BOT_TOKEN_HERE';
+const BOT_TOKEN = '8206130580:AAG91R9Bnp2pYG0z9v1eRJmH8oZvThsN9eA';
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
 // База данных для отслеживания бонусов
