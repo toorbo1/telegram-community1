@@ -4429,36 +4429,32 @@
             </div>
         </div>
         
-       <div class="referral-system fade-in">
-    <div class="referral-title">💎 Реферальная система</div>
-    
-    <div class="referral-code">
-        <div class="referral-label">Ваша реферальная ссылка</div>
-        <input type="text" id="referral-link" readonly style="width: 100%; padding: 8px; margin: 8px 0; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); text-align: center; font-size: 12px;">
-        <button class="copy-btn" onclick="copyReferralLink()">📋 Скопировать ссылку</button>
-    </div>
-    
-    <div class="referral-stats">
-        <div class="referral-stat">
-            <div class="referral-value" id="ref-invited">0</div>
-            <div class="referral-label">Приглашено</div>
+        <!-- Реферальная система -->
+        <div class="referral-system fade-in">
+            <div class="referral-title">Реферальная система</div>
+            
+            <div class="referral-code">
+                <div class="referral-label">Ваша реферальная ссылка</div>
+                <input type="text" id="referral-link" readonly style="width: 100%; padding: 8px; margin: 8px 0; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); text-align: center;">
+                <button class="copy-btn" onclick="copyReferralLink()">Скопировать ссылку</button>
+            </div>
+            
+            <div class="referral-stats">
+                <div class="referral-stat">
+                    <div class="referral-value" id="ref-invited">0</div>
+                    <div class="referral-label">Приглашено</div>
+                </div>
+                <div class="referral-stat">
+                    <div class="referral-value" id="ref-earned">0 ⭐</div>
+                    <div class="referral-label">Заработано</div>
+                </div>
+            </div>
+            
+            <div class="referral-info">
+                Приглашайте друзей и получайте 10% от их заработка!
+            </div>
         </div>
-        <div class="referral-stat">
-            <div class="referral-value" id="ref-earned">0 ⭐</div>
-            <div class="referral-label">Заработано</div>
-        </div>
-        <div class="referral-stat">
-            <div class="referral-value">15 ⭐</div>
-            <div class="referral-label">За друга</div>
-        </div>
-    </div>
-    
-    <div class="referral-info">
-        💡 Приглашайте друзей по ссылке и получайте <strong>15 звёзд</strong> за каждого!
-        <br>
-        <small>Звёзды начисляются мгновенно после регистрации друга</small>
-    </div>
-</div> 
+        
         <!-- Действия профиля -->
         <div class="profile-section fade-in">
             <div class="section-title">Действия</div>
@@ -5129,7 +5125,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// В функции initializeTelegramUser добавим проверку реферального параметра
+// Инициализация пользователя Telegram
 async function initializeTelegramUser() {
     try {
         if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
@@ -5143,12 +5139,6 @@ async function initializeTelegramUser() {
                 photoUrl: tgUser.photo_url || '',
                 isAdmin: parseInt(tgUser.id) === ADMIN_ID
             };
-            
-            // Проверяем реферальный параметр в start_param
-            if (tg.startParam && tg.startParam.startsWith('ref_')) {
-                console.log('Обнаружена реферальная ссылка:', tg.startParam);
-                await activateReferral(tg.startParam);
-            }
             
             // Аутентифицируем пользователя на сервере
             try {
@@ -5175,35 +5165,6 @@ async function initializeTelegramUser() {
     } catch (error) {
         console.error('Error initializing Telegram user:', error);
         initializeTestUser();
-    }
-}
-
-// Функция для активации реферальной ссылки
-async function activateReferral(referralCode) {
-    if (!currentUser) return;
-    
-    try {
-        console.log('Активируем реферальную ссылку:', referralCode);
-        
-        const result = await makeRequest(`${API_URL}/user/referral/activate`, {
-            method: 'POST',
-            body: JSON.stringify({
-                userId: currentUser.id,
-                referrerCode: referralCode
-            })
-        });
-        
-        if (result.success) {
-            console.log('✅ Реферальная ссылка активирована!');
-            showNotification(`🎉 Реферальный код активирован! Получено ${result.bonus} звёзд`, 'success');
-            
-            // Обновляем данные пользователя
-            await updateUserData();
-        } else {
-            console.log('Реферальная ссылка не активирована:', result.error);
-        }
-    } catch (error) {
-        console.error('Ошибка активации реферальной ссылки:', error);
     }
 }
 async function updateUserData() {
@@ -5280,7 +5241,7 @@ function initializeTestUser() {
     initializeApp();
 }
 
-// В функцию initializeApp добавим проверку и показ уведомления о реферальной системе
+// Основная инициализация приложения
 function initializeApp() {
     displayUserProfile();
     checkAdminRights();
@@ -5289,18 +5250,6 @@ function initializeApp() {
     initializeSearch();
     loadUserTasks();
     
-    // Показываем уведомление о реферальной системе при первом входе
-    const referralShown = localStorage.getItem('referralInfoShown');
-    if (!referralShown) {
-        setTimeout(() => {
-            showNotification(
-                '💎 Приглашайте друзей и получайте 15 звёзд за каждого! Ваша ссылка в разделе "Профиль"',
-                'success'
-            );
-            localStorage.setItem('referralInfoShown', 'true');
-        }, 2000);
-    }
-    
     // Если пользователь админ, загружаем админ-данные
     if (currentUser && currentUser.isAdmin) {
         loadAdminChats();
@@ -5308,13 +5257,6 @@ function initializeApp() {
         loadTaskVerifications();
     }
 }
-    // Если пользователь админ, загружаем админ-данные
-    if (currentUser && currentUser.isAdmin) {
-        loadAdminChats();
-        loadAdminTasks();
-        loadTaskVerifications();
-    }
-
 
 // Отображение профиля пользователя
 function displayUserProfile() {
@@ -5404,26 +5346,15 @@ function initializeApp() {
     }
 }
 // Обновление реферальной системы
-async function updateReferralSystem() {
+function updateReferralSystem() {
     if (!currentUser) return;
     
     const referralLink = `https://t.me/LinkGoldMoney_bot?start=ref_${currentUser.id}`;
     const referralInput = document.getElementById('referral-link');
     if (referralInput) referralInput.value = referralLink;
     
-    try {
-        // Загружаем актуальную статистику
-        const statsResult = await makeRequest(`${API_URL}/user/${currentUser.id}/referral-stats`);
-        if (statsResult.success) {
-            document.getElementById('ref-invited').textContent = statsResult.stats.activated_referrals || 0;
-            document.getElementById('ref-earned').textContent = `${(statsResult.stats.activated_referrals || 0) * 15} ⭐`;
-        }
-    } catch (error) {
-        console.error('Error loading referral stats:', error);
-        // Используем данные из профиля как запасной вариант
-        document.getElementById('ref-invited').textContent = currentUser.referral_count || 0;
-        document.getElementById('ref-earned').textContent = `${currentUser.referral_earned || 0} ⭐`;
-    }
+    document.getElementById('ref-invited').textContent = currentUser.referral_count || 0;
+    document.getElementById('ref-earned').textContent = `${currentUser.referral_earned || 0} ⭐`;
 }
 
 // Обновление прогресса уровня
