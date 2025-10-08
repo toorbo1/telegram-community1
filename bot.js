@@ -3,8 +3,8 @@ const axios = require('axios');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-const BOT_TOKEN = 'YOUR_BOT_TOKEN_HERE';
-const API_URL = 'https://your-domain.com/api'; // URL вашего сервера
+const BOT_TOKEN = '8206130580:AAG91R9Bnp2pYG0z9v1eRJmH8oZvThsN9eA';
+const API_URL = 'https://telegram-community1-production.up.railway.app/api'; // URL вашего сервера
 const ADMIN_ID = 8036875641;
 
 const bot = new Telegraf(BOT_TOKEN);
