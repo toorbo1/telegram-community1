@@ -2,11 +2,14 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# Устанавливаем системные зависимости для sqlite3
+RUN apk add --no-cache python3 make g++
+
 # Копируем package.json
 COPY package*.json ./
 
 # Устанавливаем зависимости
-RUN npm install
+RUN npm install --production --legacy-peer-deps
 
 # Копируем исходный код
 COPY . .
