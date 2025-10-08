@@ -186,6 +186,121 @@ function initDatabase() {
             reviewed_by INTEGER,
             FOREIGN KEY(user_task_id) REFERENCES user_tasks(id)
         )`);
+        // Добавим в initDatabase() новую таблицу
+db.run(`CREATE TABLE IF NOT EXISTS referrals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    referrer_id INTEGER NOT NULL,
+    referred_id INTEGER NOT NULL UNIQUE,
+    activated BOOLEAN DEFAULT 0,
+    bonus_paid BOOLEAN DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(referrer_id) REFERENCES user_profiles(user_id),
+    FOREIGN KEY(referred_id) REFERENCES user_profiles(user_id)
+)`);
+
+// Эндпоинт для активации реферальной ссылки
+app.post('/api/user/referral/activate', (req, res) => {
+    const { userId, referrerCode } = req.body;
+    
+    if (!userId || !referrerCode) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    // Извлекаем referrer_id из кода
+    const referrerId = referrerCode.replace('ref_', '');
+    
+    // Проверяем, что пользователь не активировал рефералку ранее
+    db.get("SELECT * FROM referrals WHERE referred_id = ?", [userId], (err, existing) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        if (existing) {
+            return res.status(400).json({
+                success: false,
+                error: 'Реферальный код уже активирован'
+            });
+        }
+        
+        // Проверяем, что referrer существует
+        db.get("SELECT * FROM user_profiles WHERE user_id = ?", [referrerId], (err, referrer) => {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Database error'
+                });
+            }
+            
+            if (!referrer) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Реферальный код не найден'
+                });
+            }
+            
+            // Создаем запись о реферале
+            db.run(`INSERT INTO referrals (referrer_id, referred_id, activated) 
+                    VALUES (?, ?, 1)`, [referrerId, userId], function(err) {
+                if (err) {
+                    return res.status(500).json({
+                        success: false,
+                        error: 'Database error'
+                    });
+                }
+                
+                // Начисляем 15 звёзд пригласившему
+                db.run(`UPDATE user_profiles 
+                        SET balance = balance + 15, 
+                            referral_count = referral_count + 1,
+                            referral_earned = referral_earned + 15,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE user_id = ?`, [referrerId], function(err) {
+                    if (err) {
+                        console.error('Error updating referrer balance:', err);
+                    } else {
+                        console.log(`Начислено 15 звёзд пользователю ${referrerId} за приглашение ${userId}`);
+                    }
+                });
+                
+                res.json({
+                    success: true,
+                    message: 'Реферальный код активирован! Вам начислено 15 звёзд.',
+                    bonus: 15
+                });
+            });
+        });
+    });
+});
+
+// Эндпоинт для получения реферальной статистики
+app.get('/api/user/:userId/referral-stats', (req, res) => {
+    const userId = req.params.userId;
+    
+    db.get(`SELECT 
+                COUNT(*) as total_referrals,
+                SUM(CASE WHEN activated = 1 THEN 1 ELSE 0 END) as activated_referrals,
+                SUM(CASE WHEN bonus_paid = 1 THEN 1 ELSE 0 END) as paid_referrals
+            FROM referrals 
+            WHERE referrer_id = ?`, [userId], (err, stats) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        res.json({
+            success: true,
+            stats: stats || { total_referrals: 0, activated_referrals: 0, paid_referrals: 0 }
+        });
+    });
+});
     });
 }
 
