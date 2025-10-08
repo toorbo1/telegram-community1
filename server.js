@@ -2,7 +2,6 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const path = require('path');
-const multer = require('multer');
 const fs = require('fs');
 
 const app = express();
@@ -18,35 +17,6 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static('.'));
 
-// Настройка multer для загрузки файлов
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        const uploadsDir = path.join(__dirname, 'uploads');
-        if (!fs.existsSync(uploadsDir)) {
-            fs.mkdirSync(uploadsDir, { recursive: true });
-        }
-        cb(null, uploadsDir);
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, 'screenshot-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
-
-const upload = multer({ 
-    storage: storage,
-    limits: {
-        fileSize: 10 * 1024 * 1024 // 10MB limit
-    },
-    fileFilter: function (req, file, cb) {
-        if (file.mimetype.startsWith('image/')) {
-            cb(null, true);
-        } else {
-            cb(new Error('Only image files are allowed!'), false);
-        }
-    }
-});
-
 // Путь к базе данных
 const dbPath = path.join(__dirname, 'database.db');
 
@@ -58,11 +28,6 @@ const db = new sqlite3.Database(dbPath, (err) => {
     }
     console.log('✅ Подключено к SQLite базе данных');
     initDatabase();
-});
-
-// Обработка ошибок базы данных
-db.on('error', (err) => {
-    console.error('❌ Ошибка базы данных:', err);
 });
 
 // Константы
@@ -191,7 +156,7 @@ function initDatabase() {
             FOREIGN KEY(user_task_id) REFERENCES user_tasks(id)
         )`);
 
-        // 🔧 НОВАЯ ТАБЛИЦА: Администраторы системы
+        // Администраторы системы
         db.run(`CREATE TABLE IF NOT EXISTS admins (
             user_id INTEGER PRIMARY KEY,
             username TEXT NOT NULL,
@@ -225,365 +190,15 @@ function formatMoscowTime(timestamp) {
     });
 }
 
-// Функция для форматирования времени в коротком формате (для чатов)
-function formatMoscowTimeShort(timestamp) {
-    if (!timestamp) return '';
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now - date;
-    
-    // Если сообщение сегодняшнее - показываем только время
-    if (diff < 24 * 60 * 60 * 1000 && date.getDate() === now.getDate()) {
-        return date.toLocaleString("ru-RU", { 
-            timeZone: "Europe/Moscow",
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    }
-    
-    // Иначе показываем дату и время
-    return date.toLocaleString("ru-RU", { 
-        timeZone: "Europe/Moscow",
-        day: '2-digit',
-        month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-}
-
-// 🔧 НОВЫЕ ENDPOINTS ДЛЯ УПРАВЛЕНИЯ АДМИНАМИ
-
-// Проверка, является ли пользователь администратором
-app.get('/api/user/:userId/is-admin', (req, res) => {
-    const userId = req.params.userId;
-    
-    db.get("SELECT * FROM admins WHERE user_id = ?", [userId], (err, admin) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        res.json({
-            success: true,
-            isAdmin: !!admin || parseInt(userId) === MAIN_ADMIN_ID
-        });
+// Health check
+app.get('/api/health', (req, res) => {
+    res.json({ 
+        status: 'OK', 
+        message: 'LinkGold API is running!',
+        timestamp: getMoscowTime(),
+        features: ['admin-management', 'withdrawal-system', 'persistent-data']
     });
 });
-
-// Получить список всех админов (только для главного админа)
-app.get('/api/admins', (req, res) => {
-    const { adminId } = req.query;
-    
-    if (parseInt(adminId) !== MAIN_ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied'
-        });
-    }
-
-    db.all("SELECT * FROM admins WHERE user_id != ? ORDER BY added_at DESC", [MAIN_ADMIN_ID], (err, rows) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        res.json({
-            success: true,
-            admins: rows
-        });
-    });
-});
-
-// Добавить нового админа (только для главного админа)
-app.post('/api/admins', (req, res) => {
-    const { adminId, username } = req.body;
-    
-    if (parseInt(adminId) !== MAIN_ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied'
-        });
-    }
-
-    if (!username) {
-        return res.status(400).json({
-            success: false,
-            error: 'Username is required'
-        });
-    }
-
-    // Находим пользователя по username
-    db.get("SELECT user_id, username FROM user_profiles WHERE username = ?", [username], (err, user) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                error: 'User not found'
-            });
-        }
-
-        // Проверяем, не является ли уже админом
-        db.get("SELECT * FROM admins WHERE user_id = ?", [user.user_id], (err, existingAdmin) => {
-            if (err) {
-                return res.status(500).json({
-                    success: false,
-                    error: 'Database error'
-                });
-            }
-            
-            if (existingAdmin) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'User is already an admin'
-                });
-            }
-
-            // Добавляем пользователя как админа
-            db.run("INSERT INTO admins (user_id, username, added_by) VALUES (?, ?, ?)",
-                [user.user_id, user.username, adminId], function(err) {
-                if (err) {
-                    return res.status(500).json({
-                        success: false,
-                        error: 'Database error'
-                    });
-                }
-                
-                res.json({
-                    success: true,
-                    message: 'Admin added successfully'
-                });
-            });
-        });
-    });
-});
-
-// Удалить админа (только для главного админа)
-app.delete('/api/admins/:userId', (req, res) => {
-    const { adminId } = req.body;
-    const userId = req.params.userId;
-    
-    if (parseInt(adminId) !== MAIN_ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied'
-        });
-    }
-
-    db.run("DELETE FROM admins WHERE user_id = ?", [userId], function(err) {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        res.json({
-            success: true,
-            message: 'Admin deleted successfully'
-        });
-    });
-});
-
-// 🔧 ОБНОВЛЕННЫЕ ENDPOINTS ДЛЯ ВЫВОДА СРЕДСТВ
-
-// Создание запроса на вывод
-app.post('/api/withdrawal/request', (req, res) => {
-    const { user_id, amount, username } = req.body;
-    
-    if (!user_id || !amount || !username) {
-        return res.status(400).json({
-            success: false,
-            error: 'Missing required fields'
-        });
-    }
-
-    db.serialize(() => {
-        // Проверяем баланс пользователя
-        db.get("SELECT balance FROM user_profiles WHERE user_id = ?", [user_id], (err, user) => {
-            if (err) {
-                return res.status(500).json({
-                    success: false,
-                    error: 'Database error'
-                });
-            }
-            
-            if (!user || user.balance < amount) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Insufficient balance'
-                });
-            }
-
-            // Обнуляем баланс пользователя
-            db.run("UPDATE user_profiles SET balance = 0 WHERE user_id = ?", [user_id], function(err) {
-                if (err) {
-                    return res.status(500).json({
-                        success: false,
-                        error: 'Database error'
-                    });
-                }
-
-                // Создаем запрос на вывод
-                db.run(`INSERT INTO withdrawal_requests (user_id, username, amount) 
-                        VALUES (?, ?, ?)`,
-                        [user_id, username, amount], function(err) {
-                    if (err) {
-                        return res.status(500).json({
-                            success: false,
-                            error: 'Database error'
-                        });
-                    }
-                    
-                    const withdrawalId = this.lastID;
-                    
-                    res.json({
-                        success: true,
-                        message: 'Withdrawal request created successfully',
-                        withdrawalId: withdrawalId
-                    });
-                });
-            });
-        });
-    });
-});
-
-// Получить историю выводов пользователя
-app.get('/api/user/:userId/withdrawal-history', (req, res) => {
-    const userId = req.params.userId;
-    
-    db.all(`SELECT * FROM withdrawal_requests 
-            WHERE user_id = ? 
-            ORDER BY created_at DESC`, 
-            [userId], (err, rows) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        res.json({
-            success: true,
-            withdrawals: rows
-        });
-    });
-});
-
-// 🔧 НОВЫЕ ENDPOINTS ДЛЯ АДМИН-УПРАВЛЕНИЯ ВЫВОДАМИ
-
-// Получить все запросы на вывод (для админов)
-app.get('/api/admin/withdrawal-requests', (req, res) => {
-    const { adminId } = req.query;
-    
-    // Проверяем права админа
-    db.get("SELECT * FROM admins WHERE user_id = ?", [adminId], (err, admin) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        if (!admin && parseInt(adminId) !== MAIN_ADMIN_ID) {
-            return res.status(403).json({
-                success: false,
-                error: 'Access denied'
-            });
-        }
-
-        db.all(`SELECT wr.*, up.first_name, up.last_name 
-                FROM withdrawal_requests wr
-                LEFT JOIN user_profiles up ON wr.user_id = up.user_id
-                ORDER BY wr.created_at DESC`, 
-                [], (err, rows) => {
-            if (err) {
-                return res.status(500).json({
-                    success: false,
-                    error: 'Database error'
-                });
-            }
-            
-            res.json({
-                success: true,
-                requests: rows
-            });
-        });
-    });
-});
-
-// Подтвердить выполнение вывода
-app.post('/api/admin/withdrawal-requests/:requestId/complete', (req, res) => {
-    const requestId = req.params.requestId;
-    const { adminId } = req.body;
-    
-    // Проверяем права админа
-    db.get("SELECT * FROM admins WHERE user_id = ?", [adminId], (err, admin) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        if (!admin && parseInt(adminId) !== MAIN_ADMIN_ID) {
-            return res.status(403).json({
-                success: false,
-                error: 'Access denied'
-            });
-        }
-
-        // Обновляем статус запроса на вывод
-        db.run(`UPDATE withdrawal_requests 
-                SET status = 'completed', 
-                    completed_at = CURRENT_TIMESTAMP,
-                    completed_by = ?
-                WHERE id = ?`,
-                [adminId, requestId], function(err) {
-            if (err) {
-                return res.status(500).json({
-                    success: false,
-                    error: 'Database error'
-                });
-            }
-            
-            res.json({
-                success: true,
-                message: 'Withdrawal request completed'
-            });
-        });
-    });
-});
-
-// 🔧 ENDPOINT ДЛЯ УВЕДОМЛЕНИЙ В TELEGRAM (заглушка)
-app.post('/api/telegram/withdrawal-notification', (req, res) => {
-    const { username, amount, withdrawalId } = req.body;
-    
-    console.log(`📢 Withdrawal notification: User @${username} requested ${amount}⭐ (ID: ${withdrawalId})`);
-    console.log(`💬 Send this to Telegram channel: https://t.me/wergqervgba`);
-    console.log(`Message: "Пользователь @${username} запросил вывод ${amount}⭐. ID запроса: ${withdrawalId}"`);
-    console.log(`Add button: "✅ Перечислил" with callback: complete_withdrawal_${withdrawalId}`);
-    
-    // В реальной реализации здесь будет код для отправки сообщения в Telegram канал
-    // с использованием Telegram Bot API
-    
-    res.json({
-        success: true,
-        message: 'Notification processed',
-        telegram_message: `Пользователь @${username} запросил вывод ${amount}⭐. ID: ${withdrawalId}`
-    });
-});
-
-// 🔧 ОБНОВЛЕННЫЕ ENDPOINTS АУТЕНТИФИКАЦИИ
 
 // User profile endpoints
 app.post('/api/user/auth', (req, res) => {
@@ -1893,7 +1508,6 @@ app.use((error, req, res, next) => {
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Основной маршрут для HTML
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
@@ -1903,7 +1517,4 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
     console.log(`🔐 Main Admin ID: ${MAIN_ADMIN_ID}`);
     console.log(`⏰ Moscow time: ${getMoscowTime()}`);
-    console.log(`💳 Withdrawal channel: https://t.me/wergqervgba`);
-    console.log(`📁 Uploads directory: ${path.join(__dirname, 'uploads')}`);
-    console.log(`💾 Database file: ${dbPath}`);
 });
