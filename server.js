@@ -3,9 +3,42 @@ const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const multer = require('multer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Настройка multer для загрузки файлов
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadsDir = path.join(__dirname, 'uploads');
+    // Создаем папку uploads если не существует
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    cb(null, uploadsDir);
+  },
+  filename: function (req, file, cb) {
+    // Генерируем уникальное имя файла
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'screenshot-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB лимит
+  },
+  fileFilter: function (req, file, cb) {
+    // Проверяем что файл - изображение
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Только изображения разрешены!'), false);
+    }
+  }
+});
 
 // Middleware
 app.use(cors({
@@ -190,6 +223,17 @@ function formatMoscowTime(timestamp) {
     });
 }
 
+// Функция для короткого форматирования времени
+function formatMoscowTimeShort(timestamp) {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    return date.toLocaleString("ru-RU", { 
+        timeZone: "Europe/Moscow",
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({ 
@@ -299,8 +343,6 @@ app.get('/api/user/:userId', (req, res) => {
         });
     });
 });
-
-// 🔧 СУЩЕСТВУЮЩИЕ ENDPOINTS (сохраняются)
 
 // Posts endpoints
 app.get('/api/posts', (req, res) => {
@@ -642,7 +684,7 @@ app.get('/api/user/:userId/tasks', (req, res) => {
     });
 });
 
-// Submit task for verification
+// Submit task for verification - ИСПРАВЛЕННЫЙ ЭНДПОИНТ
 app.post('/api/user/tasks/:userTaskId/submit', upload.single('screenshot'), (req, res) => {
     const userTaskId = req.params.userTaskId;
     const { userId } = req.body;
@@ -1482,17 +1524,14 @@ app.get('/api/support/chats/:chatId', (req, res) => {
     });
 });
 
-// Health check
-app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'OK', 
-        message: 'LinkGold API is running!',
-        timestamp: getMoscowTime(),
-        features: ['admin-management', 'withdrawal-system', 'persistent-data']
-    });
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Добавьте обработку ошибок для multer
+// Обработка ошибок multer
 app.use((error, req, res, next) => {
     if (error instanceof multer.MulterError) {
         if (error.code === 'LIMIT_FILE_SIZE') {
@@ -1503,13 +1542,6 @@ app.use((error, req, res, next) => {
         }
     }
     next(error);
-});
-
-// Serve uploaded files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(PORT, '0.0.0.0', () => {
