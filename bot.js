@@ -61,7 +61,7 @@ function sendWelcomeMessage(chatId, firstName, userId, startPayload = null) {
                     web_app: { url: "https://telegram-community1-production.up.railway.app/" } // ЗАМЕНИТЕ НА ВАШ САЙТ
                 }],
                 [{
-                    text: "📢 ПОДПИСАТЬСЯ НА КАНАЛ",
+                    text: "📢 ПОДПИСАТЬСЯ НА КАНАЛ ",
                     url: "https://t.me/LinkGoldChannel"
                 }]
             ]
