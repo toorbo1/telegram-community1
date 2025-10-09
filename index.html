@@ -4367,7 +4367,118 @@
                 <!-- Посты будут загружаться здесь -->
             </div>
         </div>
+<!-- Вкладка админа -->
+<div id="admin-tab" class="tab-content">
+    <div class="page-header">
+        <button class="back-button" onclick="showMainTab()">←</button>
+        <div class="page-title">Панель администратора</div>
+    </div>
 
+    <div class="admin-panel">
+        <div class="admin-buttons">
+            <button class="admin-btn" onclick="showAdminSection('admins')" id="add-admins-btn-tab">Управление админами</button>
+            <button class="admin-btn" onclick="showAdminSection('posts')">Управление постами</button>
+            <button class="admin-btn" onclick="showAdminSection('tasks')">Управление заданиями</button>
+            <button class="admin-btn" onclick="showAdminSection('verification')">Проверка заданий</button>
+            <button class="admin-btn" onclick="showAdminSection('support')">Поддержка</button>
+        </div>
+
+        <!-- Управление админами -->
+        <div id="admin-admins-section" class="admin-section">
+            <h3>Управление администраторами</h3>
+            
+            <div class="admin-form">
+                <h4>Добавить администратора</h4>
+                <input type="text" class="admin-input" id="admin-username-tab" placeholder="Введите юзернейм (без @)">
+                <button class="admin-submit" onclick="addAdminFromTab()">Добавить админа</button>
+            </div>
+            
+            <div class="admin-list" style="margin-top: 20px;">
+                <h4>Текущие администраторы</h4>
+                <div id="admins-list-tab">
+                    <!-- Список админов будет загружен здесь -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Управление постами -->
+        <div id="admin-posts-section" class="admin-section" style="display: none;">
+            <h3>Добавить пост для всех пользователей</h3>
+            <div class="admin-form">
+                <input type="text" class="admin-input" id="admin-post-title" placeholder="Заголовок поста">
+                <textarea class="admin-textarea" id="admin-post-content" placeholder="Введите текст поста..."></textarea>
+                <input type="file" class="admin-input" id="admin-post-image" accept="image/*">
+                <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
+            </div>
+            
+            <h3 style="margin-top: 20px;">Существующие посты</h3>
+            <div id="admin-posts-list">
+                <!-- Посты будут загружаться динамически -->
+            </div>
+        </div>
+
+        <!-- Управление заданиями -->
+        <div id="admin-tasks-section" class="admin-section" style="display: none;">
+            <h3>Добавить задание</h3>
+            <div class="admin-form">
+                <input type="text" class="admin-input" id="admin-task-title" placeholder="Название задания">
+                <textarea class="admin-textarea" id="admin-task-description" placeholder="Описание задания"></textarea>
+                <input type="text" class="admin-input" id="admin-task-price" placeholder="Цена (в рублях)">
+                <input type="text" class="admin-input" id="admin-task-time" placeholder="Время выполнения">
+                <input type="text" class="admin-input" id="admin-task-difficulty" placeholder="Сложность">
+                <input type="number" class="admin-input" id="admin-task-people" placeholder="Сколько человек должно выполнить">
+                <input type="text" class="admin-input" id="admin-task-repost" placeholder="Время повторной публикации">
+                <input type="url" class="admin-input" id="admin-task-url" placeholder="URL задания">
+                <input type="file" class="admin-input" id="admin-task-image" accept="image/*">
+                <button class="admin-submit" onclick="addTask()">Добавить задание</button>
+            </div>
+            
+            <h3 style="margin-top: 20px;">Существующие задания</h3>
+            <div id="admin-tasks-list">
+                <!-- Задания будут загружаться динамически -->
+            </div>
+        </div>
+
+        <!-- Проверка заданий -->
+        <div id="admin-verification-section" class="admin-section" style="display: none;">
+            <h3>Задания на проверке</h3>
+            <div id="admin-verification-list">
+                <!-- Задания на проверке будут загружаться динамически -->
+            </div>
+        </div>
+
+        <!-- Поддержка -->
+        <div id="admin-support-section" class="admin-section" style="display: none;">
+            <h3>💬 Чаты с пользователями</h3>
+            
+            <div class="chat-tabs" style="margin-bottom: 15px;">
+                <button class="chat-tab-btn active" onclick="showChatTab('active')">Активные чаты</button>
+                <button class="chat-tab-btn" onclick="showChatTab('archived')">Архивные чаты</button>
+                <button class="chat-tab-btn" onclick="showChatTab('all')">Все чаты</button>
+            </div>
+            
+            <div class="chat-stats" style="margin-bottom: 15px; padding: 10px; background: var(--bg-secondary); border-radius: 10px;">
+                <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                    <span>Активные: <strong id="active-chats-count">0</strong></span>
+                    <span>Непрочитанные: <strong id="unread-chats-count">0</strong></span>
+                    <span>Всего: <strong id="total-chats-count">0</strong></span>
+                </div>
+            </div>
+            
+            <div id="active-chats-list" class="admin-chat-list">
+                <!-- Активные чаты будут загружены здесь -->
+            </div>
+            
+            <div id="archived-chats-list" class="admin-chat-list" style="display: none;">
+                <!-- Архивные чаты будут загружены здесь -->
+            </div>
+            
+            <div id="all-chats-list" class="admin-chat-list" style="display: none;">
+                <!-- Все чаты будут загружены здесь -->
+            </div>
+        </div>
+    </div>
+</div>
         <!-- Лента постов -->
         <div id="posts-section" class="card fade-in" style="display: none;">
             <div class="posts-header">
@@ -4384,7 +4495,7 @@
     <div id="tasks-tab" class="tab-content tasks-tab">
         <div class="tasks-tabs">
             <div class="task-tab active" onclick="showTaskCategory('new')">Новые</div>
-            <div class="task-tab" id="confirmation-tab" onclick="showTaskCategory('confirmation')">Подтверждение </div>
+            <div class="task-tab" id="confirmation-tab" onclick="showTaskCategory('confirmation')">Подтверждение</div>
             <div class="task-tab" onclick="showTaskCategory('completed')">Выполненные</div>
             <div class="task-tab" onclick="showTaskCategory('rejected')">Отклоненные</div>
         </div>
