@@ -65,7 +65,7 @@ db.on('error', (err) => {
     console.error('❌ Ошибка базы данных:', err);
 });
 
-// Initialize database tables
+// Initialize database   tables
 function initDatabase() {
     db.serialize(() => {
        // User profiles table
@@ -339,7 +339,33 @@ app.post('/api/admin/admins', (req, res) => {
         });
     });
 });
+// Функция для инициализации главного администратора
+function initMainAdmin() {
+    const mainAdmin = {
+        user_id: ADMIN_ID,
+        username: 'linkgold_admin',
+        first_name: 'LinkGold',
+        last_name: 'Admin',
+        is_admin: 1,
+        balance: 0,
+        level: 10
+    };
+    
+    db.run(`INSERT OR REPLACE INTO user_profiles 
+            (user_id, username, first_name, last_name, is_admin, balance, level) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [mainAdmin.user_id, mainAdmin.username, mainAdmin.first_name, 
+             mainAdmin.last_name, mainAdmin.is_admin, mainAdmin.balance, mainAdmin.level],
+            function(err) {
+        if (err) {
+            console.error('❌ Error initializing main admin:', err);
+        } else {
+            console.log('✅ Main admin initialized successfully');
+        }
+    });
+}
 
+// Вызовите эту функцию после создания таблиц в initDatabase()
 app.delete('/api/admin/admins/:userId', (req, res) => {
     const { adminId } = req.body;
     const userId = req.params.userId;

@@ -4367,6 +4367,7 @@
                 <!-- Посты будут загружаться здесь -->
             </div>
         </div>
+<!-- Вкладка админа -->
 <div id="admin-tab" class="tab-content">
     <div class="page-header">
         <button class="back-button" onclick="showMainTab()">←</button>
@@ -4375,7 +4376,6 @@
 
     <div class="admin-panel">
         <div class="admin-buttons">
-            <!-- ДОБАВЬТЕ ЭТУ КНОПКУ -->
             <button class="admin-btn" onclick="showAdminSection('admins')" id="add-admins-btn-tab">Управление админами</button>
             <button class="admin-btn" onclick="showAdminSection('posts')">Управление постами</button>
             <button class="admin-btn" onclick="showAdminSection('tasks')">Управление заданиями</button>
@@ -4384,7 +4384,7 @@
         </div>
 
         <!-- Управление админами -->
-        <div id="admin-admins-section" class="admin-section" style="display: none;">
+        <div id="admin-admins-section" class="admin-section">
             <h3>Управление администраторами</h3>
             
             <div class="admin-form">
@@ -4401,59 +4401,84 @@
             </div>
         </div>
 
-        <!-- Управление постами (по умолчанию видимо) -->
-        <div id="admin-posts-section" class="admin-section">
+        <!-- Управление постами -->
+        <div id="admin-posts-section" class="admin-section" style="display: none;">
             <h3>Добавить пост для всех пользователей</h3>
-            <!-- ... остальной код постов ... -->
-        </div>
-
-        <!-- Остальные секции ... -->
-    </div>
-</div>    
-            <!-- Чаты с пользователями -->
-            <div id="admin-chats-container" class="admin-chats-container" style="display: none;">
-                <button class="chat-photo-btn" onclick="sendPhotoToAdmin()" title="Отправить фото">📷</button>
-                <!-- Чаты будут загружаться динамически -->
+            <div class="admin-form">
+                <input type="text" class="admin-input" id="admin-post-title" placeholder="Заголовок поста">
+                <textarea class="admin-textarea" id="admin-post-content" placeholder="Введите текст поста..."></textarea>
+                <input type="file" class="admin-input" id="admin-post-image" accept="image/*">
+                <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
             </div>
             
-            <!-- Управление постами -->
-            <div id="post-management" class="admin-form" style="display: none;">
-                <h3>Добавить пост для всех пользователей</h3>
-                <input type="text" class="admin-input" id="post-title" placeholder="Заголовок поста">
-                <textarea class="admin-textarea" id="post-content" placeholder="Введите текст поста..."></textarea>
-                <input type="file" class="admin-input" id="post-image" accept="image/*">
-                <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
-                
-                <h3 style="margin-top: 20px;">Существующие посты</h3>
-                <div id="posts-list">
-                    <!-- Посты будут загружаться динамически -->
-                </div>
-            </div>
-
-            <!-- Управление заданиями -->
-            <div id="task-management" class="admin-form" style="display: none;">
-                <h3>Добавить задание</h3>
-                <input type="text" class="admin-input" id="task-title" placeholder="Название задания">
-                <textarea class="admin-textarea" id="task-description" placeholder="Описание задания"></textarea>
-                <input type="text" class="admin-input" id="task-price" placeholder="Цена (в рублях)">
-                <input type="text" class="admin-input" id="task-time" placeholder="Время выполнения">
-                <input type="text" class="admin-input" id="task-difficulty" placeholder="Сложность">
-                <input type="number" class="admin-input" id="task-people" placeholder="Сколько человек должно выполнить">
-                <input type="text" class="admin-input" id="task-repost" placeholder="Время повторной публикации">
-                <input type="url" class="admin-input" id="task-url" placeholder="URL задания">
-                <input type="file" class="admin-input" id="task-image" accept="image/*">
-                <button class="admin-submit" onclick="addTask()">Добавить задание</button>
-            </div>
-
-            <!-- Проверка заданий -->
-            <div id="task-verification" class="admin-form" style="display: none;">
-                <h3>Задания на проверке</h3>
-                <div id="verification-list">
-                    <!-- Задания на проверке будут загружаться динамически -->
-                </div>
+            <h3 style="margin-top: 20px;">Существующие посты</h3>
+            <div id="admin-posts-list">
+                <!-- Посты будут загружаться динамически -->
             </div>
         </div>
 
+        <!-- Управление заданиями -->
+        <div id="admin-tasks-section" class="admin-section" style="display: none;">
+            <h3>Добавить задание</h3>
+            <div class="admin-form">
+                <input type="text" class="admin-input" id="admin-task-title" placeholder="Название задания">
+                <textarea class="admin-textarea" id="admin-task-description" placeholder="Описание задания"></textarea>
+                <input type="text" class="admin-input" id="admin-task-price" placeholder="Цена (в рублях)">
+                <input type="text" class="admin-input" id="admin-task-time" placeholder="Время выполнения">
+                <input type="text" class="admin-input" id="admin-task-difficulty" placeholder="Сложность">
+                <input type="number" class="admin-input" id="admin-task-people" placeholder="Сколько человек должно выполнить">
+                <input type="text" class="admin-input" id="admin-task-repost" placeholder="Время повторной публикации">
+                <input type="url" class="admin-input" id="admin-task-url" placeholder="URL задания">
+                <input type="file" class="admin-input" id="admin-task-image" accept="image/*">
+                <button class="admin-submit" onclick="addTask()">Добавить задание</button>
+            </div>
+            
+            <h3 style="margin-top: 20px;">Существующие задания</h3>
+            <div id="admin-tasks-list">
+                <!-- Задания будут загружаться динамически -->
+            </div>
+        </div>
+
+        <!-- Проверка заданий -->
+        <div id="admin-verification-section" class="admin-section" style="display: none;">
+            <h3>Задания на проверке</h3>
+            <div id="admin-verification-list">
+                <!-- Задания на проверке будут загружаться динамически -->
+            </div>
+        </div>
+
+        <!-- Поддержка -->
+        <div id="admin-support-section" class="admin-section" style="display: none;">
+            <h3>💬 Чаты с пользователями</h3>
+            
+            <div class="chat-tabs" style="margin-bottom: 15px;">
+                <button class="chat-tab-btn active" onclick="showChatTab('active')">Активные чаты</button>
+                <button class="chat-tab-btn" onclick="showChatTab('archived')">Архивные чаты</button>
+                <button class="chat-tab-btn" onclick="showChatTab('all')">Все чаты</button>
+            </div>
+            
+            <div class="chat-stats" style="margin-bottom: 15px; padding: 10px; background: var(--bg-secondary); border-radius: 10px;">
+                <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                    <span>Активные: <strong id="active-chats-count">0</strong></span>
+                    <span>Непрочитанные: <strong id="unread-chats-count">0</strong></span>
+                    <span>Всего: <strong id="total-chats-count">0</strong></span>
+                </div>
+            </div>
+            
+            <div id="active-chats-list" class="admin-chat-list">
+                <!-- Активные чаты будут загружены здесь -->
+            </div>
+            
+            <div id="archived-chats-list" class="admin-chat-list" style="display: none;">
+                <!-- Архивные чаты будут загружены здесь -->
+            </div>
+            
+            <div id="all-chats-list" class="admin-chat-list" style="display: none;">
+                <!-- Все чаты будут загружены здесь -->
+            </div>
+        </div>
+    </div>
+</div>
         <!-- Лента постов -->
         <div id="posts-section" class="card fade-in" style="display: none;">
             <div class="posts-header">
@@ -4619,14 +4644,9 @@
         </div>
     </div>
 
-        <!-- Вкладка админа (отдельная) -->
-    <div id="admin-tab" class="tab-content">
-        <div class="page-header">
-            <button class="back-button" onclick="showMainTab()">←</button>
-            <div class="page-title">Панель администратора</div>
-        </div>
 
-       <div id="admin-tab" class="tab-content">
+ <!-- Вкладка админа -->
+<div id="admin-tab" class="tab-content">
     <div class="page-header">
         <button class="back-button" onclick="showMainTab()">←</button>
         <div class="page-title">Панель администратора</div>
@@ -4634,7 +4654,6 @@
 
     <div class="admin-panel">
         <div class="admin-buttons">
-            <!-- ДОБАВЬТЕ ЭТУ КНОПКУ -->
             <button class="admin-btn" onclick="showAdminSection('admins')" id="add-admins-btn-tab">Управление админами</button>
             <button class="admin-btn" onclick="showAdminSection('posts')">Управление постами</button>
             <button class="admin-btn" onclick="showAdminSection('tasks')">Управление заданиями</button>
@@ -4643,7 +4662,7 @@
         </div>
 
         <!-- Управление админами -->
-        <div id="admin-admins-section" class="admin-section" style="display: none;">
+        <div id="admin-admins-section" class="admin-section">
             <h3>Управление администраторами</h3>
             
             <div class="admin-form">
@@ -4660,96 +4679,84 @@
             </div>
         </div>
 
-        <!-- Управление постами (по умолчанию видимо) -->
-        <div id="admin-posts-section" class="admin-section">
+        <!-- Управление постами -->
+        <div id="admin-posts-section" class="admin-section" style="display: none;">
             <h3>Добавить пост для всех пользователей</h3>
-            <!-- ... остальной код постов ... -->
+            <div class="admin-form">
+                <input type="text" class="admin-input" id="admin-post-title" placeholder="Заголовок поста">
+                <textarea class="admin-textarea" id="admin-post-content" placeholder="Введите текст поста..."></textarea>
+                <input type="file" class="admin-input" id="admin-post-image" accept="image/*">
+                <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
+            </div>
+            
+            <h3 style="margin-top: 20px;">Существующие посты</h3>
+            <div id="admin-posts-list">
+                <!-- Посты будут загружаться динамически -->
+            </div>
         </div>
 
-        <!-- Остальные секции ... -->
+        <!-- Управление заданиями -->
+        <div id="admin-tasks-section" class="admin-section" style="display: none;">
+            <h3>Добавить задание</h3>
+            <div class="admin-form">
+                <input type="text" class="admin-input" id="admin-task-title" placeholder="Название задания">
+                <textarea class="admin-textarea" id="admin-task-description" placeholder="Описание задания"></textarea>
+                <input type="text" class="admin-input" id="admin-task-price" placeholder="Цена (в рублях)">
+                <input type="text" class="admin-input" id="admin-task-time" placeholder="Время выполнения">
+                <input type="text" class="admin-input" id="admin-task-difficulty" placeholder="Сложность">
+                <input type="number" class="admin-input" id="admin-task-people" placeholder="Сколько человек должно выполнить">
+                <input type="text" class="admin-input" id="admin-task-repost" placeholder="Время повторной публикации">
+                <input type="url" class="admin-input" id="admin-task-url" placeholder="URL задания">
+                <input type="file" class="admin-input" id="admin-task-image" accept="image/*">
+                <button class="admin-submit" onclick="addTask()">Добавить задание</button>
+            </div>
+            
+            <h3 style="margin-top: 20px;">Существующие задания</h3>
+            <div id="admin-tasks-list">
+                <!-- Задания будут загружаться динамически -->
+            </div>
+        </div>
+
+        <!-- Проверка заданий -->
+        <div id="admin-verification-section" class="admin-section" style="display: none;">
+            <h3>Задания на проверке</h3>
+            <div id="admin-verification-list">
+                <!-- Задания на проверке будут загружаться динамически -->
+            </div>
+        </div>
+
+        <!-- Поддержка -->
+        <div id="admin-support-section" class="admin-section" style="display: none;">
+            <h3>💬 Чаты с пользователями</h3>
+            
+            <div class="chat-tabs" style="margin-bottom: 15px;">
+                <button class="chat-tab-btn active" onclick="showChatTab('active')">Активные чаты</button>
+                <button class="chat-tab-btn" onclick="showChatTab('archived')">Архивные чаты</button>
+                <button class="chat-tab-btn" onclick="showChatTab('all')">Все чаты</button>
+            </div>
+            
+            <div class="chat-stats" style="margin-bottom: 15px; padding: 10px; background: var(--bg-secondary); border-radius: 10px;">
+                <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                    <span>Активные: <strong id="active-chats-count">0</strong></span>
+                    <span>Непрочитанные: <strong id="unread-chats-count">0</strong></span>
+                    <span>Всего: <strong id="total-chats-count">0</strong></span>
+                </div>
+            </div>
+            
+            <div id="active-chats-list" class="admin-chat-list">
+                <!-- Активные чаты будут загружены здесь -->
+            </div>
+            
+            <div id="archived-chats-list" class="admin-chat-list" style="display: none;">
+                <!-- Архивные чаты будут загружены здесь -->
+            </div>
+            
+            <div id="all-chats-list" class="admin-chat-list" style="display: none;">
+                <!-- Все чаты будут загружены здесь -->
+            </div>
+        </div>
     </div>
 </div>
-            <!-- Управление постами -->
-            <div id="admin-posts-section" class="admin-section">
-                <h3>Добавить пост для всех пользователей</h3>
-                <div class="admin-form">
-                    <input type="text" class="admin-input" id="admin-post-title" placeholder="Заголовок поста">
-                    <textarea class="admin-textarea" id="admin-post-content" placeholder="Введите текст поста..."></textarea>
-                    <input type="file" class="admin-input" id="admin-post-image" accept="image/*">
-                    <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
-                </div>
-                
-                <h3 style="margin-top: 20px;">Существующие посты</h3>
-                <div id="admin-posts-list">
-                    <!-- Посты будут загружаться динамически -->
-                </div>
-            </div>
-
-            <!-- УДАЛИТЕ ДУБЛИРУЮЩИЕСЯ СЕКЦИИ УПРАВЛЕНИЯ АДМИНАМИ -->
-            
-            <!-- Управление заданиями -->
-            <div id="admin-tasks-section" class="admin-section" style="display: none;">
-                <h3>Добавить задание</h3>
-                <div class="admin-form">
-                    <input type="text" class="admin-input" id="admin-task-title" placeholder="Название задания">
-                    <textarea class="admin-textarea" id="admin-task-description" placeholder="Описание задания"></textarea>
-                    <input type="text" class="admin-input" id="admin-task-price" placeholder="Цена (в рублях)">
-                    <input type="text" class="admin-input" id="admin-task-time" placeholder="Время выполнения">
-                    <input type="text" class="admin-input" id="admin-task-difficulty" placeholder="Сложность">
-                    <input type="number" class="admin-input" id="admin-task-people" placeholder="Сколько человек должно выполнить">
-                    <input type="text" class="admin-input" id="admin-task-repost" placeholder="Время повторной публикации">
-                    <input type="url" class="admin-input" id="admin-task-url" placeholder="URL задания">
-                    <input type="file" class="admin-input" id="admin-task-image" accept="image/*">
-                    <button class="admin-submit" onclick="addTask()">Добавить задание</button>
-                </div>
-            </div>
-
-            <!-- Проверка заданий -->
-            <div id="admin-verification-section" class="admin-section" style="display: none;">
-                <h3>Задания на проверке</h3>
-                <div id="admin-verification-list">
-                    <!-- Задания на проверке будут загружаться динамически -->
-                </div>
-            </div>
-
-            <!-- Поддержка -->
-            <div id="admin-support-section" class="admin-section" style="display: none;">
-                <h3>💬 Чаты с пользователями</h3>
-                
-                <!-- Переключение между активными и архивными чатами -->
-                <div class="chat-tabs" style="margin-bottom: 15px;">
-                    <button class="chat-tab-btn active" onclick="showChatTab('active')">Активные чаты</button>
-                    <button class="chat-tab-btn" onclick="showChatTab('archived')">Архивные чаты</button>
-                    <button class="chat-tab-btn" onclick="showChatTab('all')">Все чаты</button>
-                </div>
-                
-                <!-- Статистика чатов -->
-                <div class="chat-stats" style="margin-bottom: 15px; padding: 10px; background: var(--bg-secondary); border-radius: 10px;">
-                    <div style="display: flex; justify-content: space-between; font-size: 12px;">
-                        <span>Активные: <strong id="active-chats-count">0</strong></span>
-                        <span>Непрочитанные: <strong id="unread-chats-count">0</strong></span>
-                        <span>Всего: <strong id="total-chats-count">0</strong></span>
-                    </div>
-                </div>
-                
-                <!-- Список активных чатов -->
-                <div id="active-chats-list" class="admin-chat-list">
-                    <!-- Активные чаты будут загружены здесь -->
-                </div>
-                
-                <!-- Список архивных чатов -->
-                <div id="archived-chats-list" class="admin-chat-list" style="display: none;">
-                    <!-- Архивные чаты будут загружены здесь -->
-                </div>
-                
-                <!-- Список всех чатов -->
-                <div id="all-chats-list" class="admin-chat-list" style="display: none;">
-                    <!-- Все чаты будут загружены здесь -->
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Страница "Как работает" -->
     <div id="how-it-works-page" class="page">
         <div class="page-header">
@@ -7798,39 +7805,165 @@ function showAdminTab() {
     }, 100);
 }
 
+// Функция для показа админ-секций
 function showAdminSection(section) {
     console.log('🔄 Showing admin section:', section);
     
     // Скрываем все админ секции
-    const allSections = document.querySelectorAll('.admin-section');
-    console.log('📋 Found sections:', allSections.length);
-    
-    allSections.forEach(sec => {
-        console.log('❌ Hiding section:', sec.id);
-        sec.style.display = 'none';
+    const sections = ['admins', 'posts', 'tasks', 'verification', 'support'];
+    sections.forEach(sec => {
+        const sectionElement = document.getElementById(`admin-${sec}-section`);
+        if (sectionElement) {
+            sectionElement.style.display = 'none';
+        }
     });
     
     // Показываем выбранную секцию
-    const targetSection = document.getElementById('admin-' + section + '-section');
+    const targetSection = document.getElementById(`admin-${section}-section`);
     if (targetSection) {
-        console.log('✅ Showing section:', targetSection.id);
         targetSection.style.display = 'block';
+        console.log('✅ Showing section:', targetSection.id);
         
-        // Если открываем секцию админов и мы главный админ - загружаем список
-        if (section === 'admins' && currentUser && currentUser.isMainAdmin) {
-            console.log('👑 Loading admins list for main admin');
-            loadAdmins();
-        } else if (section === 'admins') {
-            console.log('⚠️ User is not main admin, cannot load admins');
+        // Загружаем данные для секции
+        switch(section) {
+            case 'admins':
+                if (currentUser && currentUser.isMainAdmin) {
+                    loadAdmins();
+                }
+                break;
+            case 'posts':
+                loadAdminPosts();
+                break;
+            case 'tasks':
+                loadAdminTasks();
+                break;
+            case 'verification':
+                loadTaskVerifications();
+                break;
+            case 'support':
+                showChatTab('active');
+                break;
+        }
+    }
+}
+
+// Функция для загрузки постов админа
+async function loadAdminPosts() {
+    if (!currentUser || !currentUser.isAdmin) return;
+    
+    try {
+        const result = await makeRequest(`${API_URL}/posts`);
+        if (result.success) {
+            displayAdminPosts(result.posts);
+        }
+    } catch (error) {
+        console.error('Error loading admin posts:', error);
+    }
+}
+
+function displayAdminPosts(posts) {
+    const container = document.getElementById('admin-posts-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!posts || posts.length === 0) {
+        container.innerHTML = '<div class="no-tasks">Нет постов</div>';
+        return;
+    }
+    
+    posts.forEach(post => {
+        const postElement = document.createElement('div');
+        postElement.className = 'admin-list-item';
+        postElement.innerHTML = `
+            <div class="admin-list-header">
+                <div class="admin-list-name">${escapeHtml(post.title)}</div>
+                <div class="admin-list-info">${formatPostDate(post.timestamp)}</div>
+            </div>
+            <div style="margin-top: 8px; color: var(--text-secondary); font-size: 14px;">
+                ${escapeHtml(post.content.substring(0, 100))}...
+            </div>
+            <div style="text-align: right; margin-top: 10px;">
+                <button class="admin-task-delete" onclick="deletePost(${post.id})">🗑️ Удалить</button>
+            </div>
+        `;
+        container.appendChild(postElement);
+    });
+}
+
+// Обновите функцию showAdminTab
+function showAdminTab() {
+    if (!currentUser || !currentUser.isAdmin) {
+        showNotification('Доступ запрещен!', 'error');
+        return;
+    }
+    
+    console.log('🔄 Opening admin tab, user:', {
+        id: currentUser.id,
+        isAdmin: currentUser.isAdmin,
+        isMainAdmin: currentUser.isMainAdmin
+    });
+    
+    hideAllTabs();
+    document.getElementById('admin-tab').classList.add('active');
+    updateNavState('admin');
+    
+    // Показываем первую секцию по умолчанию
+    setTimeout(() => {
+        showAdminSection('admins');
+    }, 100);
+}
+
+// Функция для переключения вкладок чатов
+function showChatTab(tab) {
+    // Скрываем все списки чатов
+    const activeList = document.getElementById('active-chats-list');
+    const archivedList = document.getElementById('archived-chats-list');
+    const allList = document.getElementById('all-chats-list');
+    
+    if (activeList) activeList.style.display = 'none';
+    if (archivedList) archivedList.style.display = 'none';
+    if (allList) allList.style.display = 'none';
+    
+    // Убираем активный класс со всех кнопок
+    document.querySelectorAll('.chat-tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Показываем выбранный список и активируем кнопку
+    const buttons = document.querySelectorAll('.chat-tab-btn');
+    switch(tab) {
+        case 'active':
+            if (activeList) activeList.style.display = 'block';
+            buttons[0]?.classList.add('active');
+            loadAdminChats();
+            break;
+        case 'archived':
+            if (archivedList) archivedList.style.display = 'block';
+            buttons[1]?.classList.add('active');
+            loadArchivedAdminChats();
+            break;
+        case 'all':
+            if (allList) allList.style.display = 'block';
+            buttons[2]?.classList.add('active');
+            loadAllAdminChats();
+            break;
+    }
+}
+
+// Упрощенная функция проверки прав админа
+function checkAdminRights() {
+    const adminNavItem = document.getElementById('admin-nav-item');
+    
+    if (currentUser && currentUser.isAdmin) {
+        if (adminNavItem) {
+            adminNavItem.style.display = 'flex';
+            console.log('✅ Admin nav item shown');
         }
     } else {
-        console.error('❌ Section not found:', 'admin-' + section + '-section');
-        
-        // Показываем первую доступную секцию как fallback
-        const firstSection = document.querySelector('.admin-section');
-        if (firstSection) {
-            console.log('🔄 Falling back to first section:', firstSection.id);
-            firstSection.style.display = 'block';
+        if (adminNavItem) {
+            adminNavItem.style.display = 'none';
+            console.log('❌ Admin nav item hidden');
         }
     }
 }
