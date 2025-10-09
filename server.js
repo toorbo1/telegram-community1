@@ -65,8 +65,6 @@ db.on('error', (err) => {
     console.error('❌ Ошибка базы данных:', err);
 });
 
-const ADMIN_ID = 8036875641;
-
 // Initialize database tables
 function initDatabase() {
     db.serialize(() => {
@@ -85,8 +83,6 @@ function initDatabase() {
             quality_rate REAL DEFAULT 100,
             referral_count INTEGER DEFAULT 0,
             referral_earned REAL DEFAULT 0,
-            is_admin BOOLEAN DEFAULT 0,
-            is_main_admin BOOLEAN DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`);
@@ -190,33 +186,10 @@ function initDatabase() {
             reviewed_by INTEGER,
             FOREIGN KEY(user_task_id) REFERENCES user_tasks(id)
         )`);
-
-        // Убедимся, что главный админ существует
-        db.get("SELECT * FROM user_profiles WHERE user_id = ?", [ADMIN_ID], (err, row) => {
-            if (err) {
-                console.error('Error checking main admin:', err);
-                return;
-            }
-            
-            if (!row) {
-                console.log('Creating main admin user...');
-                db.run(`INSERT INTO user_profiles (user_id, username, first_name, last_name, is_admin, is_main_admin) 
-                        VALUES (?, ?, ?, ?, 1, 1)`,
-                        [ADMIN_ID, 'linkgold_admin', 'LinkGold', 'Admin'], function(err) {
-                    if (err) {
-                        console.error('Error creating main admin:', err);
-                    } else {
-                        console.log('Main admin created successfully');
-                    }
-                });
-            } else {
-                // Обновляем существующего пользователя до главного админа
-                db.run("UPDATE user_profiles SET is_admin = 1, is_main_admin = 1 WHERE user_id = ?", [ADMIN_ID]);
-                console.log('Main admin verified');
-            }
-        });
     });
 }
+
+const ADMIN_ID = 8036875641;
 
 // Функция для получения московского времени
 function getMoscowTime() {
@@ -271,7 +244,6 @@ app.get('/api/health', (req, res) => {
         timestamp: getMoscowTime()
     });
 });
-
 // Эндпоинты для управления админами
 app.get('/api/admin/admins', (req, res) => {
     const { adminId } = req.query;
@@ -283,9 +255,8 @@ app.get('/api/admin/admins', (req, res) => {
         });
     }
 
-    db.all("SELECT user_id, username, first_name, last_name, is_admin, is_main_admin FROM user_profiles WHERE is_admin = 1", [], (err, rows) => {
+    db.all("SELECT user_id, username, first_name, last_name, is_admin FROM user_profiles WHERE is_admin = 1 OR user_id = ?", [ADMIN_ID], (err, rows) => {
         if (err) {
-            console.error('Database error:', err);
             return res.status(500).json({
                 success: false,
                 error: 'Database error'
@@ -317,10 +288,8 @@ app.post('/api/admin/admins', (req, res) => {
     }
 
     // Ищем пользователя по username
-    const cleanUsername = username.replace('@', ''); // Убираем @ если есть
-    db.get("SELECT * FROM user_profiles WHERE username = ?", [cleanUsername], (err, user) => {
+    db.get("SELECT * FROM user_profiles WHERE username = ?", [username], (err, user) => {
         if (err) {
-            console.error('Database error:', err);
             return res.status(500).json({
                 success: false,
                 error: 'Database error'
@@ -334,18 +303,9 @@ app.post('/api/admin/admins', (req, res) => {
             });
         }
 
-        // Проверяем, не является ли пользователь уже админом
-        if (user.is_admin) {
-            return res.status(400).json({
-                success: false,
-                error: 'User is already an admin'
-            });
-        }
-
         // Делаем пользователя админом
         db.run("UPDATE user_profiles SET is_admin = 1 WHERE user_id = ?", [user.user_id], function(err) {
             if (err) {
-                console.error('Database error:', err);
                 return res.status(500).json({
                     success: false,
                     error: 'Database error'
@@ -387,7 +347,6 @@ app.delete('/api/admin/admins/:userId', (req, res) => {
 
     db.run("UPDATE user_profiles SET is_admin = 0 WHERE user_id = ?", [userId], function(err) {
         if (err) {
-            console.error('Database error:', err);
             return res.status(500).json({
                 success: false,
                 error: 'Database error'
@@ -400,7 +359,6 @@ app.delete('/api/admin/admins/:userId', (req, res) => {
         });
     });
 });
-
 // User profile endpoints
 app.post('/api/user/auth', (req, res) => {
     const { user } = req.body;
@@ -412,7 +370,18 @@ app.post('/api/user/auth', (req, res) => {
         });
     }
     
+// Сначала проверяем, есть ли пользователь в базе и является ли он админом
+db.get("SELECT * FROM user_profiles WHERE user_id = ?", [user.id], (err, existingUser) => {
+    if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({
+            success: false,
+            error: 'Database error'
+        });
+    }
+    
     const isMainAdmin = parseInt(user.id) === ADMIN_ID;
+    const isAdmin = isMainAdmin || (existingUser && existingUser.is_admin);
     
     const userProfile = {
         user_id: user.id,
@@ -420,12 +389,20 @@ app.post('/api/user/auth', (req, res) => {
         first_name: user.first_name || 'Пользователь',
         last_name: user.last_name || '',
         photo_url: user.photo_url || '',
-        isAdmin: false,
+        isAdmin: isAdmin,
         isMainAdmin: isMainAdmin
     };
     
-    // Сначала проверяем существующего пользователя
-    db.get("SELECT * FROM user_profiles WHERE user_id = ?", [user.id], (err, existingUser) => {
+    // Остальной код остается прежним...
+});
+    
+    // Сохраняем или обновляем профиль пользователя
+    db.run(`INSERT OR REPLACE INTO user_profiles 
+            (user_id, username, first_name, last_name, photo_url, updated_at) 
+            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+            [userProfile.user_id, userProfile.username, userProfile.first_name, 
+             userProfile.last_name, userProfile.photo_url],
+            function(err) {
         if (err) {
             console.error('Database error:', err);
             return res.status(500).json({
@@ -434,39 +411,18 @@ app.post('/api/user/auth', (req, res) => {
             });
         }
         
-        // Определяем, является ли пользователь админом
-        if (existingUser) {
-            userProfile.isAdmin = Boolean(existingUser.is_admin) || isMainAdmin;
-        } else {
-            userProfile.isAdmin = isMainAdmin;
-        }
-        
-        // Сохраняем или обновляем профиль пользователя
-        db.run(`INSERT OR REPLACE INTO user_profiles 
-                (user_id, username, first_name, last_name, photo_url, is_admin, is_main_admin, updated_at) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
-                [userProfile.user_id, userProfile.username, userProfile.first_name, 
-                 userProfile.last_name, userProfile.photo_url, userProfile.isAdmin ? 1 : 0, isMainAdmin ? 1 : 0],
-                function(err) {
+        // Получаем полный профиль пользователя
+        db.get("SELECT * FROM user_profiles WHERE user_id = ?", [userProfile.user_id], (err, profile) => {
             if (err) {
-                console.error('Database error:', err);
                 return res.status(500).json({
                     success: false,
                     error: 'Database error'
                 });
             }
             
-            // Получаем полный профиль пользователя
-            db.get("SELECT * FROM user_profiles WHERE user_id = ?", [userProfile.user_id], (err, profile) => {
-                if (err) {
-                    console.error('Database error:', err);
-                    return res.status(500).json({
-                        success: false,
-                        error: 'Database error'
-                    });
-                }
-                
-                const responseUser = {
+            res.json({
+                success: true,
+                user: {
                     ...userProfile,
                     balance: profile.balance || 0,
                     level: profile.level || 0,
@@ -476,12 +432,7 @@ app.post('/api/user/auth', (req, res) => {
                     quality_rate: profile.quality_rate || 0,
                     referral_count: profile.referral_count || 0,
                     referral_earned: profile.referral_earned || 0
-                };
-                
-                res.json({
-                    success: true,
-                    user: responseUser
-                });
+                }
             });
         });
     });
@@ -492,7 +443,6 @@ app.get('/api/user/:userId', (req, res) => {
     
     db.get("SELECT * FROM user_profiles WHERE user_id = ?", [userId], (err, profile) => {
         if (err) {
-            console.error('Database error:', err);
             return res.status(500).json({
                 success: false,
                 error: 'Database error'
@@ -512,12 +462,19 @@ app.get('/api/user/:userId', (req, res) => {
         });
     });
 });
+// Эндпоинты для управления админами
+app.get('/api/admin/admins', (req, res) => {
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
 
-// Posts endpoints
-app.get('/api/posts', (req, res) => {
-    db.all("SELECT * FROM posts ORDER BY timestamp DESC", (err, rows) => {
+    db.all("SELECT user_id, username, first_name, last_name, is_admin FROM user_profiles WHERE is_admin = 1 OR user_id = ?", [ADMIN_ID], (err, rows) => {
         if (err) {
-            console.error('Database error:', err);
             return res.status(500).json({
                 success: false,
                 error: 'Database error'
@@ -526,7 +483,119 @@ app.get('/api/posts', (req, res) => {
         
         res.json({
             success: true,
-            posts: rows
+            admins: rows
+        });
+    });
+});
+
+app.post('/api/admin/admins', (req, res) => {
+    const { adminId, username } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    if (!username) {
+        return res.status(400).json({
+            success: false,
+            error: 'Username is required'
+        });
+    }
+
+    // Ищем пользователя по username
+    db.get("SELECT * FROM user_profiles WHERE username = ?", [username], (err, user) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            });
+        }
+
+        // Делаем пользователя админом
+        db.run("UPDATE user_profiles SET is_admin = 1 WHERE user_id = ?", [user.user_id], function(err) {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Database error'
+                });
+            }
+
+            res.json({
+                success: true,
+                message: 'User promoted to admin successfully',
+                admin: {
+                    user_id: user.user_id,
+                    username: user.username,
+                    first_name: user.first_name,
+                    last_name: user.last_name
+                }
+            });
+        });
+    });
+});
+
+app.delete('/api/admin/admins/:userId', (req, res) => {
+    const { adminId } = req.body;
+    const userId = req.params.userId;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    // Не позволяем удалить главного админа
+    if (parseInt(userId) === ADMIN_ID) {
+        return res.status(400).json({
+            success: false,
+            error: 'Cannot remove main admin'
+        });
+    }
+
+    db.run("UPDATE user_profiles SET is_admin = 0 WHERE user_id = ?", [userId], function(err) {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Admin removed successfully'
+        });
+    });
+});
+// Posts endpoints
+app.get('/api/posts', (req, res) => {
+    db.all("SELECT * FROM posts ORDER BY timestamp DESC", (err, rows) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        // Форматируем время для каждого поста
+        const postsWithMoscowTime = rows.map(post => ({
+            ...post,
+            moscow_time: formatMoscowTime(post.timestamp)
+        }));
+        
+        res.json({
+            success: true,
+            posts: postsWithMoscowTime
         });
     });
 });
@@ -554,7 +623,6 @@ app.post('/api/posts', (req, res) => {
             [title, content, author, authorId, image_url],
             function(err) {
         if (err) {
-            console.error('Database error:', err);
             return res.status(500).json({
                 success: false,
                 error: 'Database error: ' + err.message
@@ -581,7 +649,6 @@ app.delete('/api/posts/:id', (req, res) => {
 
     db.run("DELETE FROM posts WHERE id = ?", [req.params.id], function(err) {
         if (err) {
-            console.error('Database error:', err);
             return res.status(500).json({
                 success: false,
                 error: 'Database error'
@@ -614,7 +681,6 @@ app.get('/api/tasks', (req, res) => {
 
     db.all(query, params, (err, rows) => {
         if (err) {
-            console.error('Database error:', err);
             return res.status(500).json({
                 success: false,
                 error: 'Database error'
@@ -639,7 +705,6 @@ app.get('/api/admin/tasks', (req, res) => {
 
     db.all("SELECT * FROM tasks ORDER BY created_at DESC", (err, rows) => {
         if (err) {
-            console.error('Database error:', err);
             return res.status(500).json({
                 success: false,
                 error: 'Database error'
@@ -710,7 +775,6 @@ app.delete('/api/tasks/:id', (req, res) => {
 
     db.run("DELETE FROM tasks WHERE id = ?", [req.params.id], function(err) {
         if (err) {
-            console.error('Database error:', err);
             return res.status(500).json({
                 success: false,
                 error: 'Database error'
@@ -737,7 +801,6 @@ app.post('/api/user/tasks/start', (req, res) => {
     // Проверяем, не начал ли пользователь уже это задание
     db.get("SELECT * FROM user_tasks WHERE user_id = ? AND task_id = ?", [userId, taskId], (err, existing) => {
         if (err) {
-            console.error('Database error:', err);
             return res.status(500).json({
                 success: false,
                 error: 'Database error'
@@ -755,7 +818,6 @@ app.post('/api/user/tasks/start', (req, res) => {
         db.run(`INSERT INTO user_tasks (user_id, task_id, status) VALUES (?, ?, 'active')`,
                 [userId, taskId], function(err) {
             if (err) {
-                console.error('Database error:', err);
                 return res.status(500).json({
                     success: false,
                     error: 'Database error'
@@ -795,7 +857,6 @@ app.get('/api/user/:userId/tasks', (req, res) => {
     
     db.all(query, params, (err, rows) => {
         if (err) {
-            console.error('Database error:', err);
             return res.status(500).json({
                 success: false,
                 error: 'Database error'
@@ -833,7 +894,6 @@ app.post('/api/user/tasks/:userTaskId/submit', upload.single('screenshot'), (req
     db.run(`UPDATE user_tasks SET status = 'pending_review', screenshot_url = ?, submitted_at = CURRENT_TIMESTAMP WHERE id = ?`,
         [screenshotUrl, userTaskId], function(err) {
         if (err) {
-            console.error('Database error:', err);
             return res.status(500).json({
                 success: false,
                 error: 'Database error'
@@ -847,7 +907,6 @@ app.post('/api/user/tasks/:userTaskId/submit', upload.single('screenshot'), (req
                 JOIN tasks t ON ut.task_id = t.id 
                 WHERE ut.id = ?`, [userTaskId], (err, row) => {
             if (err) {
-                console.error('Database error:', err);
                 return res.status(500).json({
                     success: false,
                     error: 'Database error'
@@ -861,7 +920,6 @@ app.post('/api/user/tasks/:userTaskId/submit', upload.single('screenshot'), (req
                     [userTaskId, row.user_id, row.task_id, userName, row.title, row.price, screenshotUrl],
                     function(err) {
                 if (err) {
-                    console.error('Database error:', err);
                     return res.status(500).json({
                         success: false,
                         error: 'Database error'
@@ -892,7 +950,6 @@ app.post('/api/user/tasks/:userTaskId/cancel', (req, res) => {
     
     db.run("DELETE FROM user_tasks WHERE id = ? AND user_id = ?", [userTaskId, userId], function(err) {
         if (err) {
-            console.error('Database error:', err);
             return res.status(500).json({
                 success: false,
                 error: 'Database error'
@@ -927,7 +984,6 @@ app.get('/api/admin/task-verifications', (req, res) => {
             ORDER BY tv.submitted_at DESC`, 
             [], (err, rows) => {
         if (err) {
-            console.error('Database error:', err);
             return res.status(500).json({
                 success: false,
                 error: 'Database error'
@@ -948,7 +1004,7 @@ app.post('/api/admin/task-verifications/:verificationId/approve', (req, res) => 
     if (parseInt(adminId) !== ADMIN_ID) {
         return res.status(403).json({
             success: false,
-            error: 'Access denied'
+            error: 'Доступ запрещен'
         });
     }
 
@@ -956,46 +1012,57 @@ app.post('/api/admin/task-verifications/:verificationId/approve', (req, res) => 
     if (!verificationId || !adminId) {
         return res.status(400).json({
             success: false,
-            error: 'Missing required parameters'
+            error: 'Отсутствуют обязательные параметры'
         });
     }
 
-    console.log(`Approving verification: ${verificationId}`);
+    console.log(`🔍 Начинаем одобрение верификации: ${verificationId}`);
 
     db.serialize(() => {
         // Получаем информацию о верификации
         db.get("SELECT * FROM task_verifications WHERE id = ?", [verificationId], (err, verification) => {
             if (err) {
-                console.error('Database error:', err);
+                console.error('❌ Ошибка базы данных:', err);
                 return res.status(500).json({
                     success: false,
-                    error: 'Database error'
+                    error: 'Ошибка базы данных'
                 });
             }
             
             if (!verification) {
+                console.error('❌ Верификация не найдена:', verificationId);
                 return res.status(404).json({
                     success: false,
-                    error: 'Verification not found'
+                    error: 'Верификация не найдена'
                 });
             }
+            
+            console.log(`📋 Найдена верификация:`, verification);
             
             // Проверяем, что задание еще не обработано
             if (verification.status !== 'pending') {
                 return res.status(400).json({
                     success: false,
-                    error: `Task already processed. Status: ${verification.status}`
+                    error: `Задание уже обработано. Статус: ${verification.status}`
                 });
             }
 
+            // Проверяем сумму
+            if (!verification.task_price || verification.task_price <= 0) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Неверная сумма задания'
+                });
+            }
+            
             // Обновляем статус верификации
             db.run(`UPDATE task_verifications SET status = 'approved', reviewed_at = CURRENT_TIMESTAMP, reviewed_by = ? 
                     WHERE id = ?`, [adminId, verificationId], function(err) {
                 if (err) {
-                    console.error('Database error:', err);
+                    console.error('❌ Ошибка обновления верификации:', err);
                     return res.status(500).json({
                         success: false,
-                        error: 'Database error updating verification'
+                        error: 'Ошибка обновления статуса верификации'
                     });
                 }
                 
@@ -1003,10 +1070,10 @@ app.post('/api/admin/task-verifications/:verificationId/approve', (req, res) => 
                 db.run(`UPDATE user_tasks SET status = 'completed', completed_at = CURRENT_TIMESTAMP 
                         WHERE id = ?`, [verification.user_task_id], function(err) {
                     if (err) {
-                        console.error('Database error:', err);
+                        console.error('❌ Ошибка обновления user_task:', err);
                         return res.status(500).json({
                             success: false,
-                            error: 'Database error updating user task'
+                            error: 'Ошибка обновления задания пользователя'
                         });
                     }
                     
@@ -1020,18 +1087,18 @@ app.post('/api/admin/task-verifications/:verificationId/approve', (req, res) => 
                             WHERE user_id = ?`, 
                             [verification.task_price, verification.user_id], function(err) {
                         if (err) {
-                            console.error('Database error:', err);
+                            console.error('❌ Ошибка обновления баланса:', err);
                             return res.status(500).json({
                                 success: false,
-                                error: 'Database error updating user balance'
+                                error: 'Ошибка обновления баланса пользователя'
                             });
                         }
                         
-                        console.log(`User ${verification.user_id} received ${verification.task_price} for task ${verification.task_id}`);
+                        console.log(`✅ Пользователь ${verification.user_id} получил ${verification.task_price} ★ за задание ${verification.task_id}`);
                         
                         res.json({
                             success: true,
-                            message: 'Task approved and user balance updated',
+                            message: 'Задание одобрено и баланс пользователя обновлен',
                             amountAdded: verification.task_price
                         });
                     });
@@ -1048,14 +1115,13 @@ app.post('/api/admin/task-verifications/:verificationId/reject', (req, res) => {
     if (parseInt(adminId) !== ADMIN_ID) {
         return res.status(403).json({
             success: false,
-            error: 'Access denied'
+            error: 'Доступ запрещен'
         });
     }
 
     db.run(`UPDATE task_verifications SET status = 'rejected', reviewed_at = CURRENT_TIMESTAMP, reviewed_by = ? 
             WHERE id = ?`, [adminId, verificationId], function(err) {
         if (err) {
-            console.error('Database error:', err);
             return res.status(500).json({
                 success: false,
                 error: 'Database error'
@@ -1065,7 +1131,6 @@ app.post('/api/admin/task-verifications/:verificationId/reject', (req, res) => {
         // Обновляем user_task
         db.get("SELECT user_task_id FROM task_verifications WHERE id = ?", [verificationId], (err, row) => {
             if (err) {
-                console.error('Database error:', err);
                 return res.status(500).json({
                     success: false,
                     error: 'Database error'
@@ -1106,6 +1171,365 @@ app.get('/api/support/chats', (req, res) => {
             });
         }
         
+        // Форматируем время для каждого чата
+        const chatsWithMoscowTime = rows.map(chat => ({
+            ...chat,
+            moscow_time: formatMoscowTimeShort(chat.last_message_time)
+        }));
+        
+        res.json({
+            success: true,
+            chats: chatsWithMoscowTime
+        });
+    });
+});
+
+// Получение или создание чата для пользователя
+app.get('/api/support/user-chat/:userId', (req, res) => {
+    const userId = req.params.userId;
+    
+    console.log(`🔍 Getting user chat for user ID: ${userId}`);
+
+    // Сначала проверяем существующий чат
+    db.get("SELECT * FROM support_chats WHERE user_id = ?", [userId], (err, chat) => {
+        if (err) {
+            console.error('❌ Database error:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error: ' + err.message
+            });
+        }
+
+        if (chat) {
+            console.log(`✅ Found existing chat: ${chat.id}`);
+            // Форматируем время для чата
+            res.json({
+                success: true,
+                chat: {
+                    ...chat,
+                    moscow_time: formatMoscowTimeShort(chat.last_message_time)
+                }
+            });
+        } else {
+            console.log(`📝 Creating new chat for user: ${userId}`);
+            
+            // Создаем новый чат
+            const userName = `User_${userId}`;
+            const userUsername = `user_${userId}`;
+            
+            db.run(`INSERT INTO support_chats (user_id, user_name, user_username, last_message, last_message_time) 
+                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+                    [userId, userName, userUsername, 'Чат создан'], function(err) {
+                if (err) {
+                    console.error('❌ Error creating chat:', err);
+                    return res.status(500).json({
+                        success: false,
+                        error: 'Database error: ' + err.message
+                    });
+                }
+                
+                const newChatId = this.lastID;
+                console.log(`✅ Created new chat with ID: ${newChatId}`);
+                
+                // Получаем созданный чат
+                db.get("SELECT * FROM support_chats WHERE id = ?", [newChatId], (err, newChat) => {
+                    if (err) {
+                        console.error('❌ Error fetching new chat:', err);
+                        return res.status(500).json({
+                            success: false,
+                            error: 'Database error: ' + err.message
+                        });
+                    }
+                    
+                    // Создаем приветственное сообщение от админа
+                    db.run(`INSERT INTO support_messages (chat_id, user_id, user_name, message, is_admin, is_read) 
+                            VALUES (?, ?, ?, ?, 1, 1)`,
+                            [newChatId, ADMIN_ID, 'Администратор LinkGold', 'Здравствуйте! Чем могу помочь?'], function(err) {
+                        if (err) {
+                            console.error('❌ Error creating welcome message:', err);
+                        } else {
+                            console.log(`✅ Created welcome message for chat ${newChatId}`);
+                        }
+                    });
+                    
+                    res.json({
+                        success: true,
+                        chat: {
+                            ...newChat,
+                            moscow_time: formatMoscowTimeShort(newChat.last_message_time)
+                        }
+                    });
+                });
+            });
+        }
+    });
+});
+
+// Получение сообщений чата
+app.get('/api/support/chats/:chatId/messages', (req, res) => {
+    const chatId = req.params.chatId;
+    
+    console.log(`📨 Loading messages for chat ${chatId}`);
+    
+    db.all("SELECT * FROM support_messages WHERE chat_id = ? ORDER BY sent_at ASC", [chatId], (err, rows) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+
+        // Форматируем время для каждого сообщения
+        const messagesWithMoscowTime = rows.map(message => ({
+            ...message,
+            moscow_time: formatMoscowTimeShort(message.sent_at)
+        }));
+
+        console.log(`✅ Loaded ${messagesWithMoscowTime.length} messages for chat ${chatId}`);
+        
+        res.json({
+            success: true,
+            messages: messagesWithMoscowTime
+        });
+    });
+});
+
+app.post('/api/support/chats/:chatId/messages', (req, res) => {
+    const chatId = req.params.chatId;
+    const { user_id, user_name, message, image_url, is_admin } = req.body;
+
+    if (!message && !image_url) {
+        return res.status(400).json({
+            success: false,
+            error: 'Message or image is required'
+        });
+    }
+
+    console.log(`💬 Saving message for chat ${chatId}:`, { 
+        user_id, user_name, 
+        message: message ? message.substring(0, 50) + '...' : 'IMAGE', 
+        is_admin 
+    });
+
+    // Для сообщений от пользователей - получаем актуальные данные из профиля
+    if (!is_admin) {
+        db.get("SELECT first_name, last_name, username FROM user_profiles WHERE user_id = ?", [user_id], (err, userProfile) => {
+            if (err) {
+                console.error('Error fetching user profile:', err);
+                // Продолжаем с исходными данными если ошибка
+                saveMessage(chatId, user_id, user_name, message, image_url, is_admin, res);
+            } else if (userProfile) {
+                // Используем актуальные данные из профиля
+                const actualUserName = userProfile.first_name + (userProfile.last_name ? ' ' + userProfile.last_name : '');
+                const actualUserUsername = userProfile.username;
+                
+                console.log(`Using actual user data: ${actualUserName} (@${actualUserUsername})`);
+                
+                // Обновляем имя в чате если оно изменилось
+                db.run("UPDATE support_chats SET user_name = ?, user_username = ? WHERE user_id = ?", 
+                    [actualUserName, actualUserUsername, user_id]);
+                
+                saveMessage(chatId, user_id, actualUserName, message, image_url, is_admin, res);
+            } else {
+                // Профиль не найден, используем исходные данные
+                saveMessage(chatId, user_id, user_name, message, image_url, is_admin, res);
+            }
+        });
+    } else {
+        // Для админа используем исходные данные
+        saveMessage(chatId, user_id, user_name, message, image_url, is_admin, res);
+    }
+});
+
+// Вынесенная функция сохранения сообщения
+function saveMessage(chatId, user_id, user_name, message, image_url, is_admin, res) {
+    db.run(`INSERT INTO support_messages (chat_id, user_id, user_name, message, image_url, is_admin) 
+            VALUES (?, ?, ?, ?, ?, ?)`,
+            [chatId, user_id, user_name, message, image_url, is_admin],
+            function(err) {
+        if (err) {
+            console.error('❌ Error saving message:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error: ' + err.message
+            });
+        }
+
+        // Update chat last message and time
+        const displayMessage = message || '📷 Фото';
+        let updateQuery;
+        let updateParams;
+
+        if (is_admin) {
+            // Сообщение от админа - сбрасываем счетчик непрочитанных
+            updateQuery = `UPDATE support_chats SET last_message = ?, last_message_time = CURRENT_TIMESTAMP, unread_count = 0 WHERE id = ?`;
+            updateParams = [displayMessage, chatId];
+        } else {
+            // Сообщение от пользователя - увеличиваем счетчик непрочитанных
+            updateQuery = `UPDATE support_chats SET last_message = ?, last_message_time = CURRENT_TIMESTAMP, unread_count = unread_count + 1 WHERE id = ?`;
+            updateParams = [displayMessage, chatId];
+        }
+        
+        db.run(updateQuery, updateParams, function(updateErr) {
+            if (updateErr) {
+                console.error('❌ Error updating chat:', updateErr);
+            } else {
+                console.log(`✅ Chat ${chatId} updated successfully`);
+            }
+        });
+
+        res.json({
+            success: true,
+            message: 'Message sent',
+            messageId: this.lastID
+        });
+    });
+}
+
+app.put('/api/support/chats/:chatId/read', (req, res) => {
+    const chatId = req.params.chatId;
+
+    db.run("UPDATE support_chats SET unread_count = 0 WHERE id = ?", [chatId], function(err) {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        // Also mark messages as read
+        db.run("UPDATE support_messages SET is_read = 1 WHERE chat_id = ? AND is_admin = 0", [chatId]);
+        
+        res.json({
+            success: true,
+            message: 'Chat marked as read'
+        });
+    });
+});
+
+// Эндпоинт для удаления чата админом
+app.delete('/api/support/chats/:chatId', (req, res) => {
+    const chatId = req.params.chatId;
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    console.log(`🗑️ Admin ${adminId} deleting chat ${chatId}`);
+
+    // Сначала удаляем все сообщения в чате
+    db.run("DELETE FROM support_messages WHERE chat_id = ?", [chatId], function(err) {
+        if (err) {
+            console.error('❌ Error deleting messages:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        console.log(`✅ Deleted ${this.changes} messages from chat ${chatId}`);
+        
+        // Затем удаляем сам чат
+        db.run("DELETE FROM support_chats WHERE id = ?", [chatId], function(chatErr) {
+            if (chatErr) {
+                console.error('❌ Error deleting chat:', chatErr);
+                return res.status(500).json({
+                    success: false,
+                    error: 'Database error'
+                });
+            }
+            
+            console.log(`✅ Chat ${chatId} deleted successfully`);
+            
+            res.json({
+                success: true,
+                message: 'Chat deleted successfully',
+                deletedMessages: this.changes
+            });
+        });
+    });
+});
+
+// Эндпоинт для архивации чата (альтернатива удалению)
+app.put('/api/support/chats/:chatId/archive', (req, res) => {
+    const chatId = req.params.chatId;
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.run("UPDATE support_chats SET is_active = 0 WHERE id = ?", [chatId], function(err) {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Chat archived successfully'
+        });
+    });
+});
+
+// Эндпоинт для восстановления чата из архива
+app.put('/api/support/chats/:chatId/restore', (req, res) => {
+    const chatId = req.params.chatId;
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.run("UPDATE support_chats SET is_active = 1 WHERE id = ?", [chatId], function(err) {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Chat restored successfully'
+        });
+    });
+});
+
+// Эндпоинт для получения архивных чатов
+app.get('/api/support/archived-chats', (req, res) => {
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.all(`SELECT * FROM support_chats WHERE is_active = 0 ORDER BY last_message_time DESC`, 
+            [], (err, rows) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
         res.json({
             success: true,
             chats: rows
@@ -1113,8 +1537,123 @@ app.get('/api/support/chats', (req, res) => {
     });
 });
 
+// Эндпоинт для получения всех чатов
+app.get('/api/support/all-chats', (req, res) => {
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.all(`SELECT * FROM support_chats ORDER BY last_message_time DESC`, 
+            [], (err, rows) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        // Форматируем время для каждого чата
+        const chatsWithMoscowTime = rows.map(chat => ({
+            ...chat,
+            moscow_time: formatMoscowTimeShort(chat.last_message_time)
+        }));
+        
+        res.json({
+            success: true,
+            chats: chatsWithMoscowTime
+        });
+    });
+});
+
+// Withdrawal endpoints
+app.post('/api/withdrawal/request', (req, res) => {
+    const { user_id, amount, method, details } = req.body;
+    
+    if (!user_id || !amount || !method || !details) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    db.run(`INSERT INTO withdrawal_requests (user_id, amount, method, details) 
+            VALUES (?, ?, ?, ?)`,
+            [user_id, amount, method, details],
+            function(err) {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Withdrawal request submitted successfully',
+            requestId: this.lastID
+        });
+    });
+});
+
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Добавьте этот эндпоинт для получения конкретного чата
+app.get('/api/support/chats/:chatId', (req, res) => {
+    const chatId = req.params.chatId;
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    db.get("SELECT * FROM support_chats WHERE id = ?", [chatId], (err, chat) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        if (!chat) {
+            return res.status(404).json({
+                success: false,
+                error: 'Chat not found'
+            });
+        }
+        
+        res.json({
+            success: true,
+            chat: {
+                ...chat,
+                moscow_time: formatMoscowTimeShort(chat.last_message_time)
+            }
+        });
+    });
+});
+
+// Добавьте обработку ошибок для multer
+app.use((error, req, res, next) => {
+    if (error instanceof multer.MulterError) {
+        if (error.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({
+                success: false,
+                error: 'File too large. Maximum size is 10MB.'
+            });
+        }
+    }
+    next(error);
+});
 
 // Основной маршрут для HTML
 app.get('/', (req, res) => {
