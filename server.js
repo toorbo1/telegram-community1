@@ -244,26 +244,32 @@ app.get('/api/health', (req, res) => {
         timestamp: getMoscowTime()
     });
 });
-// Эндпоинты для управления админами
+// 🔧 ЭНДПОИНТЫ ДЛЯ УПРАВЛЕНИЯ АДМИНАМИ
 app.get('/api/admin/admins', (req, res) => {
     const { adminId } = req.query;
     
+    console.log('🔍 GET /api/admin/admins called with adminId:', adminId);
+    
     // Проверяем, что запрос от главного админа
     if (parseInt(adminId) !== ADMIN_ID) {
+        console.log('❌ Access denied for adminId:', adminId);
         return res.status(403).json({
             success: false,
             error: 'Access denied. Only main admin can manage admins.'
         });
     }
 
-    db.all("SELECT user_id, username, first_name, last_name FROM user_profiles WHERE is_admin = 1", (err, rows) => {
+    // Получаем всех админов
+    db.all("SELECT user_id, username, first_name, last_name, is_admin FROM user_profiles WHERE is_admin = 1", (err, rows) => {
         if (err) {
+            console.error('❌ Database error in /api/admin/admins:', err);
             return res.status(500).json({
                 success: false,
-                error: 'Database error'
+                error: 'Database error: ' + err.message
             });
         }
         
+        console.log(`✅ Found ${rows.length} admins`);
         res.json({
             success: true,
             admins: rows
@@ -273,6 +279,8 @@ app.get('/api/admin/admins', (req, res) => {
 
 app.post('/api/admin/admins', (req, res) => {
     const { adminId, username } = req.body;
+    
+    console.log('🔍 POST /api/admin/admins called with:', { adminId, username });
     
     // Проверяем, что запрос от главного админа
     if (parseInt(adminId) !== ADMIN_ID) {
@@ -289,19 +297,23 @@ app.post('/api/admin/admins', (req, res) => {
         });
     }
 
-    // Ищем пользователя по username
-    db.get("SELECT * FROM user_profiles WHERE username = ?", [username], (err, user) => {
+    // Ищем пользователя по username (без @)
+    const cleanUsername = username.replace('@', '');
+    
+    db.get("SELECT * FROM user_profiles WHERE username = ?", [cleanUsername], (err, user) => {
         if (err) {
+            console.error('❌ Database error searching user:', err);
             return res.status(500).json({
                 success: false,
-                error: 'Database error'
+                error: 'Database error: ' + err.message
             });
         }
 
         if (!user) {
+            console.log('❌ User not found with username:', cleanUsername);
             return res.status(404).json({
                 success: false,
-                error: 'User not found'
+                error: 'Пользователь с таким юзернеймом не найден'
             });
         }
 
@@ -309,22 +321,25 @@ app.post('/api/admin/admins', (req, res) => {
         if (user.is_admin) {
             return res.status(400).json({
                 success: false,
-                error: 'User is already an admin'
+                error: 'Пользователь уже является администратором'
             });
         }
 
         // Делаем пользователя админом
         db.run("UPDATE user_profiles SET is_admin = 1 WHERE user_id = ?", [user.user_id], function(err) {
             if (err) {
+                console.error('❌ Error updating user to admin:', err);
                 return res.status(500).json({
                     success: false,
-                    error: 'Database error'
+                    error: 'Database error: ' + err.message
                 });
             }
 
+            console.log(`✅ User ${user.user_id} promoted to admin`);
+            
             res.json({
                 success: true,
-                message: 'User promoted to admin successfully',
+                message: 'Пользователь успешно добавлен как администратор!',
                 admin: {
                     user_id: user.user_id,
                     username: user.username,
@@ -340,6 +355,8 @@ app.delete('/api/admin/admins/:userId', (req, res) => {
     const { adminId } = req.body;
     const userId = req.params.userId;
     
+    console.log('🔍 DELETE /api/admin/admins called with:', { adminId, userId });
+    
     // Проверяем, что запрос от главного админа
     if (parseInt(adminId) !== ADMIN_ID) {
         return res.status(403).json({
@@ -352,25 +369,34 @@ app.delete('/api/admin/admins/:userId', (req, res) => {
     if (parseInt(userId) === ADMIN_ID) {
         return res.status(400).json({
             success: false,
-            error: 'Cannot remove main admin'
+            error: 'Нельзя удалить главного администратора'
         });
     }
 
     db.run("UPDATE user_profiles SET is_admin = 0 WHERE user_id = ?", [userId], function(err) {
         if (err) {
+            console.error('❌ Error removing admin:', err);
             return res.status(500).json({
                 success: false,
-                error: 'Database error'
+                error: 'Database error: ' + err.message
             });
         }
 
+        if (this.changes === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Администратор не найден'
+            });
+        }
+
+        console.log(`✅ Admin ${userId} removed`);
+        
         res.json({
             success: true,
-            message: 'Admin removed successfully'
+            message: 'Администратор успешно удален!'
         });
     });
 });
-// User profile endpoints
 app.post('/api/user/auth', (req, res) => {
     const { user } = req.body;
     
@@ -381,69 +407,75 @@ app.post('/api/user/auth', (req, res) => {
         });
     }
     
-// Сначала проверяем, есть ли пользователь в базе и является ли он админом
-db.get("SELECT * FROM user_profiles WHERE user_id = ?", [user.id], (err, existingUser) => {
-    if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({
-            success: false,
-            error: 'Database error'
-        });
-    }
+    console.log('🔐 User auth request for:', user.id, user.username);
     
-    const isMainAdmin = parseInt(user.id) === ADMIN_ID;
-    const isAdmin = isMainAdmin || (existingUser && existingUser.is_admin);
-    
-    const userProfile = {
-        user_id: user.id,
-        username: user.username || `user_${user.id}`,
-        first_name: user.first_name || 'Пользователь',
-        last_name: user.last_name || '',
-        photo_url: user.photo_url || '',
-        isAdmin: isAdmin,
-        isMainAdmin: isMainAdmin
-    };
-    
-    // Остальной код остается прежним...
-});
-    
-    // Сохраняем или обновляем профиль пользователя
-    db.run(`INSERT OR REPLACE INTO user_profiles 
-            (user_id, username, first_name, last_name, photo_url, updated_at) 
-            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
-            [userProfile.user_id, userProfile.username, userProfile.first_name, 
-             userProfile.last_name, userProfile.photo_url],
-            function(err) {
+    // Сначала проверяем, есть ли пользователь в базе и является ли он админом
+    db.get("SELECT * FROM user_profiles WHERE user_id = ?", [user.id], (err, existingUser) => {
         if (err) {
-            console.error('Database error:', err);
+            console.error('❌ Database error checking user:', err);
             return res.status(500).json({
                 success: false,
                 error: 'Database error'
             });
         }
         
-        // Получаем полный профиль пользователя
-        db.get("SELECT * FROM user_profiles WHERE user_id = ?", [userProfile.user_id], (err, profile) => {
+        const isMainAdmin = parseInt(user.id) === ADMIN_ID;
+        const isAdmin = isMainAdmin || (existingUser && existingUser.is_admin === 1);
+        
+        console.log(`👤 User ${user.id} admin status:`, { isAdmin, isMainAdmin, existingUser: existingUser?.is_admin });
+        
+        const userProfile = {
+            user_id: user.id,
+            username: user.username || `user_${user.id}`,
+            first_name: user.first_name || 'Пользователь',
+            last_name: user.last_name || '',
+            photo_url: user.photo_url || '',
+            isAdmin: isAdmin,
+            isMainAdmin: isMainAdmin
+        };
+        
+        // Сохраняем или обновляем профиль пользователя
+        db.run(`INSERT OR REPLACE INTO user_profiles 
+                (user_id, username, first_name, last_name, photo_url, is_admin, updated_at) 
+                VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+                [userProfile.user_id, userProfile.username, userProfile.first_name, 
+                 userProfile.last_name, userProfile.photo_url, isAdmin ? 1 : 0],
+                function(err) {
             if (err) {
+                console.error('❌ Database error saving user:', err);
                 return res.status(500).json({
                     success: false,
                     error: 'Database error'
                 });
             }
             
-            res.json({
-                success: true,
-                user: {
-                    ...userProfile,
-                    balance: profile.balance || 0,
-                    level: profile.level || 0,
-                    experience: profile.experience || 0,
-                    tasks_completed: profile.tasks_completed || 0,
-                    active_tasks: profile.active_tasks || 0,
-                    quality_rate: profile.quality_rate || 0,
-                    referral_count: profile.referral_count || 0,
-                    referral_earned: profile.referral_earned || 0
+            // Получаем полный профиль пользователя
+            db.get("SELECT * FROM user_profiles WHERE user_id = ?", [userProfile.user_id], (err, profile) => {
+                if (err) {
+                    console.error('❌ Database error fetching profile:', err);
+                    return res.status(500).json({
+                        success: false,
+                        error: 'Database error'
+                    });
                 }
+                
+                const responseData = {
+                    success: true,
+                    user: {
+                        ...userProfile,
+                        balance: profile?.balance || 0,
+                        level: profile?.level || 0,
+                        experience: profile?.experience || 0,
+                        tasks_completed: profile?.tasks_completed || 0,
+                        active_tasks: profile?.active_tasks || 0,
+                        quality_rate: profile?.quality_rate || 0,
+                        referral_count: profile?.referral_count || 0,
+                        referral_earned: profile?.referral_earned || 0
+                    }
+                };
+                
+                console.log(`✅ User ${user.id} authenticated successfully`);
+                res.json(responseData);
             });
         });
     });
@@ -473,121 +505,7 @@ app.get('/api/user/:userId', (req, res) => {
         });
     });
 });
-// Эндпоинты для управления админами
-app.get('/api/admin/admins', (req, res) => {
-    const { adminId } = req.query;
-    
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied'
-        });
-    }
 
-    db.all("SELECT user_id, username, first_name, last_name, is_admin FROM user_profiles WHERE is_admin = 1 OR user_id = ?", [ADMIN_ID], (err, rows) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-        
-        res.json({
-            success: true,
-            admins: rows
-        });
-    });
-});
-
-app.post('/api/admin/admins', (req, res) => {
-    const { adminId, username } = req.body;
-    
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied'
-        });
-    }
-
-    if (!username) {
-        return res.status(400).json({
-            success: false,
-            error: 'Username is required'
-        });
-    }
-
-    // Ищем пользователя по username
-    db.get("SELECT * FROM user_profiles WHERE username = ?", [username], (err, user) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                error: 'User not found'
-            });
-        }
-
-        // Делаем пользователя админом
-        db.run("UPDATE user_profiles SET is_admin = 1 WHERE user_id = ?", [user.user_id], function(err) {
-            if (err) {
-                return res.status(500).json({
-                    success: false,
-                    error: 'Database error'
-                });
-            }
-
-            res.json({
-                success: true,
-                message: 'User promoted to admin successfully',
-                admin: {
-                    user_id: user.user_id,
-                    username: user.username,
-                    first_name: user.first_name,
-                    last_name: user.last_name
-                }
-            });
-        });
-    });
-});
-
-app.delete('/api/admin/admins/:userId', (req, res) => {
-    const { adminId } = req.body;
-    const userId = req.params.userId;
-    
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied'
-        });
-    }
-
-    // Не позволяем удалить главного админа
-    if (parseInt(userId) === ADMIN_ID) {
-        return res.status(400).json({
-            success: false,
-            error: 'Cannot remove main admin'
-        });
-    }
-
-    db.run("UPDATE user_profiles SET is_admin = 0 WHERE user_id = ?", [userId], function(err) {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                error: 'Database error'
-            });
-        }
-
-        res.json({
-            success: true,
-            message: 'Admin removed successfully'
-        });
-    });
-});
 // Posts endpoints
 app.get('/api/posts', (req, res) => {
     db.all("SELECT * FROM posts ORDER BY timestamp DESC", (err, rows) => {

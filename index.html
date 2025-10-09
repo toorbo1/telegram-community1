@@ -5817,54 +5817,25 @@ function displayTasks(tasks, category) {
 }
 // 🔧 ФУНКЦИИ ДЛЯ УПРАВЛЕНИЯ АДМИНАМИ
 async function loadAdmins() {
-    if (!currentUser || !currentUser.isMainAdmin) return;
-    
-    try {
-        const result = await makeRequest(`${API_URL}/admin/admins?adminId=${ADMIN_ID}`);
-        if (result.success) {
-            displayAdminsTab(result.admins);
-        }
-    } catch (error) {
-        console.error('Error loading admins:', error);
-        showNotification('Ошибка загрузки списка админов', 'error');
-    }
-}
-
-function displayAdminsTab(admins) {
-    const container = document.getElementById('admins-list-tab');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    if (!admins || admins.length === 0) {
-        container.innerHTML = '<div class="no-tasks">Нет администраторов</div>';
+    if (!currentUser || !currentUser.isMainAdmin) {
+        console.log('❌ User not authorized to load admins');
         return;
     }
     
-    admins.forEach(admin => {
-        const adminElement = document.createElement('div');
-        adminElement.className = 'admin-list-item';
+    try {
+        console.log('🔄 Loading admins...');
+        const result = await makeRequest(`${API_URL}/admin/admins?adminId=${ADMIN_ID}`);
         
-        const isMainAdmin = parseInt(admin.user_id) === ADMIN_ID;
-        
-        adminElement.innerHTML = `
-            <div class="admin-list-header">
-                <div class="admin-list-name">
-                    ${admin.first_name} ${admin.last_name || ''}
-                    ${isMainAdmin ? ' <span style="color: var(--gold);">(Главный админ)</span>' : ''}
-                </div>
-                <div class="admin-list-info">
-                    @${admin.username} | ID: ${admin.user_id}
-                </div>
-            </div>
-            ${!isMainAdmin ? `
-                <div style="text-align: right; margin-top: 10px;">
-                    <button class="admin-task-delete" onclick="removeAdmin(${admin.user_id})">🗑️ Удалить</button>
-                </div>
-            ` : ''}
-        `;
-        container.appendChild(adminElement);
-    });
+        if (result.success) {
+            console.log(`✅ Loaded ${result.admins.length} admins`);
+            displayAdminsTab(result.admins);
+        } else {
+            showNotification('Ошибка загрузки списка админов: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('❌ Error loading admins:', error);
+        showNotification('Ошибка загрузки списка админов', 'error');
+    }
 }
 
 async function addAdminFromTab() {
@@ -5883,6 +5854,7 @@ async function addAdminFromTab() {
     }
     
     try {
+        console.log('🔄 Adding admin:', username);
         const result = await makeRequest(`${API_URL}/admin/admins`, {
             method: 'POST',
             body: JSON.stringify({
@@ -5899,8 +5871,8 @@ async function addAdminFromTab() {
             showNotification('Ошибка: ' + result.error, 'error');
         }
     } catch (error) {
-        console.error('Error adding admin:', error);
-        showNotification('Ошибка добавления администратора', 'error');
+        console.error('❌ Error adding admin:', error);
+        showNotification('Ошибка добавления администратора: ' + error.message, 'error');
     }
 }
 
@@ -5920,6 +5892,7 @@ async function removeAdmin(userId) {
     }
     
     try {
+        console.log('🔄 Removing admin:', userId);
         const result = await makeRequest(`${API_URL}/admin/admins/${userId}`, {
             method: 'DELETE',
             body: JSON.stringify({
@@ -5934,11 +5907,10 @@ async function removeAdmin(userId) {
             showNotification('Ошибка: ' + result.error, 'error');
         }
     } catch (error) {
-        console.error('Error removing admin:', error);
-        showNotification('Ошибка удаления администратора', 'error');
+        console.error('❌ Error removing admin:', error);
+        showNotification('Ошибка удаления администратора: ' + error.message, 'error');
     }
 }
-
 // Обновите функцию checkAdminRights
 function checkAdminRights() {
     const adminNavItem = document.getElementById('admin-nav-item');
