@@ -147,7 +147,48 @@
             height: 100%;
             object-fit: cover;
         }
+.admin-section {
+    margin-top: 20px;
+    padding: 20px;
+    background: var(--card-bg);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+}
 
+.admin-form {
+    margin-bottom: 20px;
+}
+
+.admin-input {
+    width: 100%;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    color: var(--text-primary);
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.admin-submit {
+    background: var(--success);
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+}
+
+.admin-list-item {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border);
+}
         .stats-grid {
             display: flex;
             gap: 12px;
@@ -4326,34 +4367,49 @@
                 <!-- Посты будут загружаться здесь -->
             </div>
         </div>
+<div id="admin-tab" class="tab-content">
+    <div class="page-header">
+        <button class="back-button" onclick="showMainTab()">←</button>
+        <div class="page-title">Панель администратора</div>
+    </div>
 
-<div class="admin-panel">
-    <div class="admin-buttons">
-        <button class="admin-btn" onclick="showAdminSection('admins')" id="add-admins-btn-tab">Управление админами</button>
-        <button class="admin-btn" onclick="showAdminSection('posts')">Управление постами</button>
-        <button class="admin-btn" onclick="showAdminSection('tasks')">Управление заданиями</button>
-        <button class="admin-btn" onclick="showAdminSection('verification')">Проверка заданий</button>
-        <button class="admin-btn" onclick="showAdminSection('support')">Поддержка</button>
-    </div>
-    
-<!-- Управление админами -->
-<div id="admin-admins-section" class="admin-section" style="display: none;">
-    <h3>Управление администраторами</h3>
-    
-    <div class="admin-form">
-        <h4>Добавить администратора</h4>
-        <input type="text" class="admin-input" id="admin-username-tab" placeholder="Введите юзернейм (без @)">
-        <button class="admin-submit" onclick="addAdminFromTab()">Добавить админа</button>
-    </div>
-    
-    <div class="admin-list" style="margin-top: 20px;">
-        <h4>Текущие администраторы</h4>
-        <div id="admins-list-tab">
-            <!-- Список админов будет загружен здесь -->
+    <div class="admin-panel">
+        <div class="admin-buttons">
+            <!-- ДОБАВЬТЕ ЭТУ КНОПКУ -->
+            <button class="admin-btn" onclick="showAdminSection('admins')" id="add-admins-btn-tab">Управление админами</button>
+            <button class="admin-btn" onclick="showAdminSection('posts')">Управление постами</button>
+            <button class="admin-btn" onclick="showAdminSection('tasks')">Управление заданиями</button>
+            <button class="admin-btn" onclick="showAdminSection('verification')">Проверка заданий</button>
+            <button class="admin-btn" onclick="showAdminSection('support')">Поддержка</button>
         </div>
-    </div>
-</div>
+
+        <!-- Управление админами -->
+        <div id="admin-admins-section" class="admin-section" style="display: none;">
+            <h3>Управление администраторами</h3>
             
+            <div class="admin-form">
+                <h4>Добавить администратора</h4>
+                <input type="text" class="admin-input" id="admin-username-tab" placeholder="Введите юзернейм (без @)">
+                <button class="admin-submit" onclick="addAdminFromTab()">Добавить админа</button>
+            </div>
+            
+            <div class="admin-list" style="margin-top: 20px;">
+                <h4>Текущие администраторы</h4>
+                <div id="admins-list-tab">
+                    <!-- Список админов будет загружен здесь -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Управление постами (по умолчанию видимо) -->
+        <div id="admin-posts-section" class="admin-section">
+            <h3>Добавить пост для всех пользователей</h3>
+            <!-- ... остальной код постов ... -->
+        </div>
+
+        <!-- Остальные секции ... -->
+    </div>
+</div>    
             <!-- Чаты с пользователями -->
             <div id="admin-chats-container" class="admin-chats-container" style="display: none;">
                 <button class="chat-photo-btn" onclick="sendPhotoToAdmin()" title="Отправить фото">📷</button>
@@ -4570,34 +4626,49 @@
             <div class="page-title">Панель администратора</div>
         </div>
 
-        <div class="admin-panel">
-            <div class="admin-buttons">
-                <!-- ДОБАВЬТЕ ЭТУ КНОПКУ -->
-                <button class="admin-btn" onclick="showAdminSection('admins')" id="add-admins-btn-tab">Управление админами</button>
-                <button class="admin-btn" onclick="showAdminSection('posts')">Управление постами</button>
-                <button class="admin-btn" onclick="showAdminSection('tasks')">Управление заданиями</button>
-                <button class="admin-btn" onclick="showAdminSection('verification')">Проверка заданий</button>
-                <button class="admin-btn" onclick="showAdminSection('support')">Поддержка</button>
-            </div>
+       <div id="admin-tab" class="tab-content">
+    <div class="page-header">
+        <button class="back-button" onclick="showMainTab()">←</button>
+        <div class="page-title">Панель администратора</div>
+    </div>
 
-            <!-- Управление админами -->
-            <div id="admin-admins-section" class="admin-section" style="display: none;">
-                <h3>Управление администраторами</h3>
-                
-                <div class="admin-form">
-                    <h4>Добавить администратора</h4>
-                    <input type="text" class="admin-input" id="admin-username-tab" placeholder="Введите юзернейм (без @)">
-                    <button class="admin-submit" onclick="addAdminFromTab()">Добавить админа</button>
-                </div>
-                
-                <div class="admin-list" style="margin-top: 20px;">
-                    <h4>Текущие администраторы</h4>
-                    <div id="admins-list-tab">
-                        <!-- Список админов будет загружен здесь -->
-                    </div>
+    <div class="admin-panel">
+        <div class="admin-buttons">
+            <!-- ДОБАВЬТЕ ЭТУ КНОПКУ -->
+            <button class="admin-btn" onclick="showAdminSection('admins')" id="add-admins-btn-tab">Управление админами</button>
+            <button class="admin-btn" onclick="showAdminSection('posts')">Управление постами</button>
+            <button class="admin-btn" onclick="showAdminSection('tasks')">Управление заданиями</button>
+            <button class="admin-btn" onclick="showAdminSection('verification')">Проверка заданий</button>
+            <button class="admin-btn" onclick="showAdminSection('support')">Поддержка</button>
+        </div>
+
+        <!-- Управление админами -->
+        <div id="admin-admins-section" class="admin-section" style="display: none;">
+            <h3>Управление администраторами</h3>
+            
+            <div class="admin-form">
+                <h4>Добавить администратора</h4>
+                <input type="text" class="admin-input" id="admin-username-tab" placeholder="Введите юзернейм (без @)">
+                <button class="admin-submit" onclick="addAdminFromTab()">Добавить админа</button>
+            </div>
+            
+            <div class="admin-list" style="margin-top: 20px;">
+                <h4>Текущие администраторы</h4>
+                <div id="admins-list-tab">
+                    <!-- Список админов будет загружен здесь -->
                 </div>
             </div>
+        </div>
 
+        <!-- Управление постами (по умолчанию видимо) -->
+        <div id="admin-posts-section" class="admin-section">
+            <h3>Добавить пост для всех пользователей</h3>
+            <!-- ... остальной код постов ... -->
+        </div>
+
+        <!-- Остальные секции ... -->
+    </div>
+</div>
             <!-- Управление постами -->
             <div id="admin-posts-section" class="admin-section">
                 <h3>Добавить пост для всех пользователей</h3>
@@ -7705,29 +7776,91 @@ function checkAdminRights() {
         if (adminPanel) adminPanel.style.display = 'none';
     }
 }
+function showAdminTab() {
+    if (!currentUser || !currentUser.isAdmin) {
+        showNotification('Доступ запрещен!', 'error');
+        return;
+    }
+    
+    console.log('🔄 Opening admin tab, user:', {
+        id: currentUser.id,
+        isAdmin: currentUser.isAdmin,
+        isMainAdmin: currentUser.isMainAdmin
+    });
+    
+    hideAllTabs();
+    document.getElementById('admin-tab').classList.add('active');
+    updateNavState('admin');
+    
+    // Показываем отладочную информацию
+    setTimeout(() => {
+        debugAdminSections();
+    }, 100);
+}
 
 function showAdminSection(section) {
     console.log('🔄 Showing admin section:', section);
     
     // Скрываем все админ секции
-    document.querySelectorAll('.admin-section').forEach(sec => {
+    const allSections = document.querySelectorAll('.admin-section');
+    console.log('📋 Found sections:', allSections.length);
+    
+    allSections.forEach(sec => {
+        console.log('❌ Hiding section:', sec.id);
         sec.style.display = 'none';
     });
     
     // Показываем выбранную секцию
     const targetSection = document.getElementById('admin-' + section + '-section');
     if (targetSection) {
+        console.log('✅ Showing section:', targetSection.id);
         targetSection.style.display = 'block';
-        console.log('✅ Section displayed:', targetSection.id);
         
         // Если открываем секцию админов и мы главный админ - загружаем список
         if (section === 'admins' && currentUser && currentUser.isMainAdmin) {
+            console.log('👑 Loading admins list for main admin');
             loadAdmins();
+        } else if (section === 'admins') {
+            console.log('⚠️ User is not main admin, cannot load admins');
         }
     } else {
         console.error('❌ Section not found:', 'admin-' + section + '-section');
+        
+        // Показываем первую доступную секцию как fallback
+        const firstSection = document.querySelector('.admin-section');
+        if (firstSection) {
+            console.log('🔄 Falling back to first section:', firstSection.id);
+            firstSection.style.display = 'block';
+        }
     }
 }
+function debugAdminSections() {
+    console.log('=== DEBUG ADMIN SECTIONS ===');
+    console.log('Current User:', currentUser);
+    console.log('Is Admin:', currentUser?.isAdmin);
+    console.log('Is Main Admin:', currentUser?.isMainAdmin);
+    
+    const sections = document.querySelectorAll('.admin-section');
+    sections.forEach(section => {
+        console.log(`Section ${section.id}:`, {
+            display: section.style.display,
+            exists: !!section
+        });
+    });
+    
+    const buttons = document.querySelectorAll('.admin-btn');
+    buttons.forEach(btn => {
+        console.log(`Button "${btn.textContent}":`, {
+            onclick: btn.getAttribute('onclick'),
+            visible: btn.offsetParent !== null
+        });
+    });
+    
+    console.log('=== END DEBUG ===');
+}
+
+// Вызовите эту функцию в консоли браузера для отладки
+window.debugAdminSections = debugAdminSections;
 </script>
 </body>
 </html>
