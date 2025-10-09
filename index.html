@@ -4207,6 +4207,33 @@
     color: var(--text-secondary);
     font-size: 14px;
 }
+.admin-list-item {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border);
+}
+
+.admin-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.admin-list-name {
+    font-weight: 600;
+    font-size: 16px;
+    flex: 1;
+}
+
+.admin-list-info {
+    color: var(--text-secondary);
+    font-size: 14px;
+    text-align: right;
+    min-width: 150px;
+}
     </style>
 </head>
 <body>
@@ -4300,36 +4327,34 @@
             </div>
         </div>
 
-       <!-- Панель администратора (только для главного админа) -->
-<div id="admin-panel" class="admin-panel fade-in" style="display: none;">
-    <div class="admin-title">Панель администратора</div>
+<div class="admin-panel">
     <div class="admin-buttons">
-        <button class="admin-btn" onclick="showAdminSection('admins')" id="add-admins-btn" style="display: none;">Добавление админов</button>
-        <button class="admin-btn" onclick="showAdminChats()">Чаты с пользователями</button>
-        <button class="admin-btn" onclick="showPostManagement()">Управление постами</button>
-        <button class="admin-btn" onclick="showTaskManagement()">Управление заданиями</button>
-        <button class="admin-btn" onclick="showTaskVerification()">Проверка заданий</button>
+        <button class="admin-btn" onclick="showAdminSection('admins')" id="add-admins-btn-tab">Управление админами</button>
+        <button class="admin-btn" onclick="showAdminSection('posts')">Управление постами</button>
+        <button class="admin-btn" onclick="showAdminSection('tasks')">Управление заданиями</button>
+        <button class="admin-btn" onclick="showAdminSection('verification')">Проверка заданий</button>
+        <button class="admin-btn" onclick="showAdminSection('support')">Поддержка</button>
     </div>
     
-    <!-- Добавление админов -->
+    <!-- Управление админами -->
     <div id="admin-admins-section" class="admin-section" style="display: none;">
         <h3>Управление администраторами</h3>
         
         <div class="admin-form">
             <h4>Добавить администратора</h4>
-            <input type="text" class="admin-input" id="admin-username" placeholder="Введите юзернейм (без @)">
-            <button class="admin-submit" onclick="addAdmin()">Добавить админа</button>
+            <input type="text" class="admin-input" id="admin-username-tab" placeholder="Введите юзернейм (без @)">
+            <button class="admin-submit" onclick="addAdminFromTab()">Добавить админа</button>
         </div>
         
         <div class="admin-list" style="margin-top: 20px;">
             <h4>Текущие администраторы</h4>
-            <div id="admins-list">
+            <div id="admins-list-tab">
                 <!-- Список админов будет загружен здесь -->
             </div>
         </div>
     </div>
     
-    <!-- Остальные секции админ-панели... -->
+    <!-- Остальные секции... -->
 </div>
             
             <!-- Чаты с пользователями -->
@@ -4541,7 +4566,7 @@
         </div>
     </div>
 
-    <!-- Вкладка админа (отдельная) -->
+        <!-- Вкладка админа (отдельная) -->
     <div id="admin-tab" class="tab-content">
         <div class="page-header">
             <button class="back-button" onclick="showMainTab()">←</button>
@@ -4550,29 +4575,32 @@
 
         <div class="admin-panel">
             <div class="admin-buttons">
+                <!-- ДОБАВЬТЕ ЭТУ КНОПКУ -->
+                <button class="admin-btn" onclick="showAdminSection('admins')" id="add-admins-btn-tab">Управление админами</button>
                 <button class="admin-btn" onclick="showAdminSection('posts')">Управление постами</button>
                 <button class="admin-btn" onclick="showAdminSection('tasks')">Управление заданиями</button>
                 <button class="admin-btn" onclick="showAdminSection('verification')">Проверка заданий</button>
                 <button class="admin-btn" onclick="showAdminSection('support')">Поддержка</button>
-                
             </div>
-            <!-- Добавьте новую секцию для управления админами -->
-<div id="admin-admins-section" class="admin-section" style="display: none;">
-    <h3>Управление администраторами</h3>
-    
-    <div class="admin-form">
-        <h4>Добавить администратора</h4>
-        <input type="text" class="admin-input" id="admin-username" placeholder="Введите юзернейм (без @)">
-        <button class="admin-submit" onclick="addAdmin()">Добавить админа</button>
-    </div>
-    
-    <div class="admin-list" style="margin-top: 20px;">
-        <h4>Текущие администраторы</h4>
-        <div id="admins-list">
-            <!-- Список админов будет загружен здесь -->
-        </div>
-    </div>
-</div>
+
+            <!-- Управление админами -->
+            <div id="admin-admins-section" class="admin-section" style="display: none;">
+                <h3>Управление администраторами</h3>
+                
+                <div class="admin-form">
+                    <h4>Добавить администратора</h4>
+                    <input type="text" class="admin-input" id="admin-username-tab" placeholder="Введите юзернейм (без @)">
+                    <button class="admin-submit" onclick="addAdminFromTab()">Добавить админа</button>
+                </div>
+                
+                <div class="admin-list" style="margin-top: 20px;">
+                    <h4>Текущие администраторы</h4>
+                    <div id="admins-list-tab">
+                        <!-- Список админов будет загружен здесь -->
+                    </div>
+                </div>
+            </div>
+
             <!-- Управление постами -->
             <div id="admin-posts-section" class="admin-section">
                 <h3>Добавить пост для всех пользователей</h3>
@@ -4588,23 +4616,9 @@
                     <!-- Посты будут загружаться динамически -->
                 </div>
             </div>
-<!-- Добавьте новую секцию для управления админами -->
-<div id="admin-admins-section" class="admin-section" style="display: none;">
-    <h3>Управление администраторами</h3>
-    
-    <div class="admin-form">
-        <h4>Добавить администратора</h4>
-        <input type="text" class="admin-input" id="admin-username" placeholder="Введите юзернейм (без @)">
-        <button class="admin-submit" onclick="addAdmin()">Добавить админа</button>
-    </div>
-    
-    <div class="admin-list" style="margin-top: 20px;">
-        <h4>Текущие администраторы</h4>
-        <div id="admins-list">
-            <!-- Список админов будет загружен здесь -->
-        </div>
-    </div>
-</div>
+
+            <!-- УДАЛИТЕ ДУБЛИРУЮЩИЕСЯ СЕКЦИИ УПРАВЛЕНИЯ АДМИНАМИ -->
+            
             <!-- Управление заданиями -->
             <div id="admin-tasks-section" class="admin-section" style="display: none;">
                 <h3>Добавить задание</h3>
@@ -7525,7 +7539,418 @@ function displayAdminChatMessages(messages) {
     
     container.scrollTop = container.scrollHeight;
 }
+// Функции для управления админами
+async function loadAdmins() {
+    if (!currentUser || !currentUser.isMainAdmin) return;
+    
+    try {
+        const result = await makeRequest(`${API_URL}/admin/admins?adminId=${ADMIN_ID}`);
+        if (result.success) {
+            displayAdmins(result.admins);
+            displayAdminsTab(result.admins);
+        }
+    } catch (error) {
+        console.error('Error loading admins:', error);
+        showNotification('Ошибка загрузки списка админов', 'error');
+    }
+}
 
+function displayAdmins(admins) {
+    const container = document.getElementById('admins-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!admins || admins.length === 0) {
+        container.innerHTML = '<div class="no-tasks">Нет администраторов</div>';
+        return;
+    }
+    
+    admins.forEach(admin => {
+        const adminElement = document.createElement('div');
+        adminElement.className = 'admin-list-item';
+        
+        const isMainAdmin = parseInt(admin.user_id) === ADMIN_ID;
+        
+        adminElement.innerHTML = `
+            <div class="admin-list-header">
+                <div class="admin-list-name">
+                    ${admin.first_name} ${admin.last_name || ''}
+                    ${isMainAdmin ? ' <span style="color: var(--gold);">(Главный админ)</span>' : ''}
+                </div>
+                <div class="admin-list-info">
+                    @${admin.username} | ID: ${admin.user_id}
+                </div>
+            </div>
+            ${!isMainAdmin ? `
+                <div style="text-align: right; margin-top: 10px;">
+                    <button class="admin-task-delete" onclick="removeAdmin(${admin.user_id})">🗑️ Удалить</button>
+                </div>
+            ` : ''}
+        `;
+        container.appendChild(adminElement);
+    });
+}
+
+function displayAdminsTab(admins) {
+    const container = document.getElementById('admins-list-tab');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!admins || admins.length === 0) {
+        container.innerHTML = '<div class="no-tasks">Нет администраторов</div>';
+        return;
+    }
+    
+    admins.forEach(admin => {
+        const adminElement = document.createElement('div');
+        adminElement.className = 'admin-list-item';
+        
+        const isMainAdmin = parseInt(admin.user_id) === ADMIN_ID;
+        
+        adminElement.innerHTML = `
+            <div class="admin-list-header">
+                <div class="admin-list-name">
+                    ${admin.first_name} ${admin.last_name || ''}
+                    ${isMainAdmin ? ' <span style="color: var(--gold);">(Главный админ)</span>' : ''}
+                </div>
+                <div class="admin-list-info">
+                    @${admin.username} | ID: ${admin.user_id}
+                </div>
+            </div>
+            ${!isMainAdmin ? `
+                <div style="text-align: right; margin-top: 10px;">
+                    <button class="admin-task-delete" onclick="removeAdmin(${admin.user_id})">🗑️ Удалить</button>
+                </div>
+            ` : ''}
+        `;
+        container.appendChild(adminElement);
+    });
+}
+
+async function addAdmin() {
+    const usernameInput = document.getElementById('admin-username');
+    const username = usernameInput.value.trim();
+    
+    if (!username) {
+        showNotification('Введите юзернейм пользователя', 'error');
+        return;
+    }
+    
+    if (!currentUser || !currentUser.isMainAdmin) {
+        showNotification('Доступ запрещен', 'error');
+        return;
+    }
+    
+    try {
+        const result = await makeRequest(`${API_URL}/admin/admins`, {
+            method: 'POST',
+            body: JSON.stringify({
+                adminId: currentUser.id,
+                username: username
+            })
+        });
+        
+        if (result.success) {
+            showNotification('Пользователь успешно добавлен как администратор!', 'success');
+            usernameInput.value = '';
+            loadAdmins();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error adding admin:', error);
+        showNotification('Ошибка добавления администратора', 'error');
+    }
+}
+
+async function addAdminFromTab() {
+    const usernameInput = document.getElementById('admin-username-tab');
+    const username = usernameInput.value.trim();
+    
+    if (!username) {
+        showNotification('Введите юзернейм пользователя', 'error');
+        return;
+    }
+    
+    if (!currentUser || !currentUser.isMainAdmin) {
+        showNotification('Доступ запрещен', 'error');
+        return;
+    }
+    
+    try {
+        const result = await makeRequest(`${API_URL}/admin/admins`, {
+            method: 'POST',
+            body: JSON.stringify({
+                adminId: currentUser.id,
+                username: username
+            })
+        });
+        
+        if (result.success) {
+            showNotification('Пользователь успешно добавлен как администратор!', 'success');
+            usernameInput.value = '';
+            loadAdmins();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error adding admin:', error);
+        showNotification('Ошибка добавления администратора', 'error');
+    }
+}
+
+async function removeAdmin(userId) {
+    if (!confirm('Вы уверены, что хотите удалить этого администратора?')) return;
+    
+    if (!currentUser || !currentUser.isMainAdmin) {
+        showNotification('Доступ запрещен', 'error');
+        return;
+    }
+    
+    try {
+        const result = await makeRequest(`${API_URL}/admin/admins/${userId}`, {
+            method: 'DELETE',
+            body: JSON.stringify({
+                adminId: currentUser.id
+            })
+        });
+        
+        if (result.success) {
+            showNotification('Администратор успешно удален!', 'success');
+            loadAdmins();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error removing admin:', error);
+        showNotification('Ошибка удаления администратора', 'error');
+    }
+}
+// Функции для управления админами
+async function loadAdmins() {
+    if (!currentUser || !currentUser.isMainAdmin) return;
+    
+    try {
+        const result = await makeRequest(`${API_URL}/admin/admins?adminId=${ADMIN_ID}`);
+        if (result.success) {
+            displayAdminsTab(result.admins);
+        }
+    } catch (error) {
+        console.error('Error loading admins:', error);
+        showNotification('Ошибка загрузки списка админов', 'error');
+    }
+}
+
+function displayAdminsTab(admins) {
+    const container = document.getElementById('admins-list-tab');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!admins || admins.length === 0) {
+        container.innerHTML = '<div class="no-tasks">Нет администраторов</div>';
+        return;
+    }
+    
+    admins.forEach(admin => {
+        const adminElement = document.createElement('div');
+        adminElement.className = 'admin-list-item';
+        
+        const isMainAdmin = parseInt(admin.user_id) === ADMIN_ID;
+        
+        adminElement.innerHTML = `
+            <div class="admin-list-header">
+                <div class="admin-list-name">
+                    ${admin.first_name} ${admin.last_name || ''}
+                    ${isMainAdmin ? ' <span style="color: var(--gold);">(Главный админ)</span>' : ''}
+                </div>
+                <div class="admin-list-info">
+                    @${admin.username} | ID: ${admin.user_id}
+                </div>
+            </div>
+            ${!isMainAdmin ? `
+                <div style="text-align: right; margin-top: 10px;">
+                    <button class="admin-task-delete" onclick="removeAdmin(${admin.user_id})">🗑️ Удалить</button>
+                </div>
+            ` : ''}
+        `;
+        container.appendChild(adminElement);
+    });
+}
+
+async function addAdminFromTab() {
+    const usernameInput = document.getElementById('admin-username-tab');
+    const username = usernameInput.value.trim();
+    
+    if (!username) {
+        showNotification('Введите юзернейм пользователя', 'error');
+        return;
+    }
+    
+    if (!currentUser || !currentUser.isMainAdmin) {
+        showNotification('Доступ запрещен', 'error');
+        return;
+    }
+    
+    try {
+        const result = await makeRequest(`${API_URL}/admin/admins`, {
+            method: 'POST',
+            body: JSON.stringify({
+                adminId: currentUser.id,
+                username: username
+            })
+        });
+        
+        if (result.success) {
+            showNotification('Пользователь успешно добавлен как администратор!', 'success');
+            usernameInput.value = '';
+            loadAdmins();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error adding admin:', error);
+        showNotification('Ошибка добавления администратора', 'error');
+    }
+}
+
+async function removeAdmin(userId) {
+    if (!confirm('Вы уверены, что хотите удалить этого администратора?')) return;
+    
+    if (!currentUser || !currentUser.isMainAdmin) {
+        showNotification('Доступ запрещен', 'error');
+        return;
+    }
+    
+    try {
+        const result = await makeRequest(`${API_URL}/admin/admins/${userId}`, {
+            method: 'DELETE',
+            body: JSON.stringify({
+                adminId: currentUser.id
+            })
+        });
+        
+        if (result.success) {
+            showNotification('Администратор успешно удален!', 'success');
+            loadAdmins();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error removing admin:', error);
+        showNotification('Ошибка удаления администратора', 'error');
+    }
+}
+
+// Обновите функцию checkAdminRights
+function checkAdminRights() {
+    const adminNavItem = document.getElementById('admin-nav-item');
+    const adminPanel = document.getElementById('admin-panel');
+    const addAdminsBtnTab = document.getElementById('add-admins-btn-tab');
+    
+    if (currentUser && currentUser.isAdmin) {
+        if (adminNavItem) adminNavItem.style.display = 'flex';
+        if (adminPanel) adminPanel.style.display = 'block';
+        
+        // Показываем кнопку добавления админов только главному админу
+        if (addAdminsBtnTab) {
+            addAdminsBtnTab.style.display = currentUser.isMainAdmin ? 'block' : 'none';
+        }
+    } else {
+        if (adminNavItem) adminNavItem.style.display = 'none';
+        if (adminPanel) adminPanel.style.display = 'none';
+    }
+}
+
+// Обновите функцию showAdminSection
+function showAdminSection(section) {
+    // Скрываем все админ секции
+    document.querySelectorAll('.admin-section').forEach(sec => {
+        sec.style.display = 'none';
+    });
+    
+    // Показываем выбранную секцию
+    const targetSection = document.getElementById('admin-' + section + '-section');
+    if (targetSection) {
+        targetSection.style.display = 'block';
+        
+        // Если открываем секцию админов и мы главный админ - загружаем список
+        if (section === 'admins' && currentUser && currentUser.isMainAdmin) {
+            loadAdmins();
+        }
+    }
+}
+// Обновите функцию checkAdminRights
+function checkAdminRights() {
+    const adminNavItem = document.getElementById('admin-nav-item');
+    const adminPanel = document.getElementById('admin-panel');
+    const addAdminsBtn = document.getElementById('add-admins-btn');
+    const addAdminsBtnTab = document.getElementById('add-admins-btn-tab');
+    
+    if (currentUser && currentUser.isAdmin) {
+        if (adminNavItem) adminNavItem.style.display = 'flex';
+        if (adminPanel) adminPanel.style.display = 'block';
+        
+        // Показываем кнопку добавления админов только главному админу
+        if (addAdminsBtn) {
+            addAdminsBtn.style.display = currentUser.isMainAdmin ? 'block' : 'none';
+        }
+        if (addAdminsBtnTab) {
+            addAdminsBtnTab.style.display = currentUser.isMainAdmin ? 'block' : 'none';
+        }
+    } else {
+        if (adminNavItem) adminNavItem.style.display = 'none';
+        if (adminPanel) adminPanel.style.display = 'none';
+    }
+}
+
+// Обновите функцию showAdminSection для обеих панелей
+function showAdminSection(section) {
+    // Скрываем все админ секции в обеих панелях
+    document.querySelectorAll('.admin-section').forEach(sec => {
+        sec.style.display = 'none';
+    });
+    
+    // Показываем выбранную секцию в активной панели
+    let targetSection = null;
+    
+    // Проверяем, какая панель активна
+    if (document.getElementById('admin-tab').classList.contains('active')) {
+        // Активна вкладка админа
+        targetSection = document.getElementById('admin-' + section + '-section');
+    } else {
+        // Активна главная вкладка с админ-панелью
+        targetSection = document.getElementById('admin-' + section + '-section');
+    }
+    
+    if (targetSection) {
+        targetSection.style.display = 'block';
+        
+        // Если открываем секцию админов и мы главный админ - загружаем список
+        if (section === 'admins' && currentUser && currentUser.isMainAdmin) {
+            loadAdmins();
+        }
+    }
+}
+
+// Функции для показа конкретных секций (для обратной совместимости)
+function showAdminChats() {
+    showAdminSection('support');
+}
+
+function showPostManagement() {
+    showAdminSection('posts');
+}
+
+function showTaskManagement() {
+    showAdminSection('tasks');
+}
+
+function showTaskVerification() {
+    showAdminSection('verification');
+}
 // Отправка сообщения админом
 async function sendAdminMessage() {
     if (!currentAdminChat || !currentUser) {
