@@ -4336,25 +4336,22 @@
         <button class="admin-btn" onclick="showAdminSection('support')">Поддержка</button>
     </div>
     
-    <!-- Управление админами -->
-    <div id="admin-admins-section" class="admin-section" style="display: none;">
-        <h3>Управление администраторами</h3>
-        
-        <div class="admin-form">
-            <h4>Добавить администратора</h4>
-            <input type="text" class="admin-input" id="admin-username-tab" placeholder="Введите юзернейм (без @)">
-            <button class="admin-submit" onclick="addAdminFromTab()">Добавить админа</button>
-        </div>
-        
-        <div class="admin-list" style="margin-top: 20px;">
-            <h4>Текущие администраторы</h4>
-            <div id="admins-list-tab">
-                <!-- Список админов будет загружен здесь -->
-            </div>
-        </div>
+<!-- Управление админами -->
+<div id="admin-admins-section" class="admin-section" style="display: none;">
+    <h3>Управление администраторами</h3>
+    
+    <div class="admin-form">
+        <h4>Добавить администратора</h4>
+        <input type="text" class="admin-input" id="admin-username-tab" placeholder="Введите юзернейм (без @)">
+        <button class="admin-submit" onclick="addAdminFromTab()">Добавить админа</button>
     </div>
     
-    <!-- Остальные секции... -->
+    <div class="admin-list" style="margin-top: 20px;">
+        <h4>Текущие администраторы</h4>
+        <div id="admins-list-tab">
+            <!-- Список админов будет загружен здесь -->
+        </div>
+    </div>
 </div>
             
             <!-- Чаты с пользователями -->
@@ -5824,7 +5821,7 @@ async function loadAdmins() {
     
     try {
         console.log('🔄 Loading admins...');
-        const result = await makeRequest(`${API_URL}/admin/admins?adminId=${ADMIN_ID}`);
+        const result = await makeRequest(`${API_URL}/admin/admins?adminId=${currentUser.id}`);
         
         if (result.success) {
             console.log(`✅ Loaded ${result.admins.length} admins`);
@@ -5834,12 +5831,57 @@ async function loadAdmins() {
         }
     } catch (error) {
         console.error('❌ Error loading admins:', error);
-        showNotification('Ошибка загрузки списка админов', 'error');
+        showNotification('Ошибка загрузки списка админов: ' + error.message, 'error');
     }
+}
+
+function displayAdminsTab(admins) {
+    const container = document.getElementById('admins-list-tab');
+    if (!container) {
+        console.error('❌ admins-list-tab container not found');
+        return;
+    }
+    
+    container.innerHTML = '';
+    
+    if (!admins || admins.length === 0) {
+        container.innerHTML = '<div class="no-tasks">Нет администраторов</div>';
+        return;
+    }
+    
+    admins.forEach(admin => {
+        const adminElement = document.createElement('div');
+        adminElement.className = 'admin-list-item';
+        
+        const isMainAdmin = parseInt(admin.user_id) === ADMIN_ID;
+        
+        adminElement.innerHTML = `
+            <div class="admin-list-header">
+                <div class="admin-list-name">
+                    ${admin.first_name} ${admin.last_name || ''}
+                    ${isMainAdmin ? ' <span style="color: var(--gold);">(Главный админ)</span>' : ''}
+                </div>
+                <div class="admin-list-info">
+                    @${admin.username} | ID: ${admin.user_id}
+                </div>
+            </div>
+            ${!isMainAdmin ? `
+                <div style="text-align: right; margin-top: 10px;">
+                    <button class="admin-task-delete" onclick="removeAdmin(${admin.user_id})">🗑️ Удалить</button>
+                </div>
+            ` : ''}
+        `;
+        container.appendChild(adminElement);
+    });
 }
 
 async function addAdminFromTab() {
     const usernameInput = document.getElementById('admin-username-tab');
+    if (!usernameInput) {
+        showNotification('Элемент ввода не найден', 'error');
+        return;
+    }
+    
     const username = usernameInput.value.trim();
     
     if (!username) {
@@ -7349,497 +7391,6 @@ function showAdminChatWindow(chat, messages) {
     
     chatWindow.classList.add('active');
 }
-// Функции для управления админами
-async function loadAdmins() {
-    if (!currentUser || !currentUser.isMainAdmin) return;
-    
-    try {
-        const result = await makeRequest(`${API_URL}/admin/admins?adminId=${ADMIN_ID}`);
-        if (result.success) {
-            displayAdmins(result.admins);
-        }
-    } catch (error) {
-        console.error('Error loading admins:', error);
-        showNotification('Ошибка загрузки списка админов', 'error');
-    }
-}
-
-function displayAdmins(admins) {
-    const container = document.getElementById('admins-list');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    if (!admins || admins.length === 0) {
-        container.innerHTML = '<div class="no-tasks">Нет администраторов</div>';
-        return;
-    }
-    
-    admins.forEach(admin => {
-        const adminElement = document.createElement('div');
-        adminElement.className = 'admin-task-item';
-        
-        const isMainAdmin = parseInt(admin.user_id) === ADMIN_ID;
-        
-        adminElement.innerHTML = `
-            <div class="admin-task-header">
-                <div class="admin-task-title">
-                    ${admin.first_name} ${admin.last_name || ''}
-                    ${isMainAdmin ? ' <span style="color: var(--gold);">(Главный админ)</span>' : ''}
-                </div>
-                <div class="admin-task-actions">
-                    ${!isMainAdmin ? `
-                        <button class="admin-task-delete" onclick="removeAdmin(${admin.user_id})">🗑️ Удалить</button>
-                    ` : ''}
-                </div>
-            </div>
-            <div class="admin-task-description">
-                @${admin.username} | ID: ${admin.user_id}
-            </div>
-        `;
-        container.appendChild(adminElement);
-    });
-}
-
-async function addAdmin() {
-    const usernameInput = document.getElementById('admin-username');
-    const username = usernameInput.value.trim();
-    
-    if (!username) {
-        showNotification('Введите юзернейм пользователя', 'error');
-        return;
-    }
-    
-    if (!currentUser || !currentUser.isMainAdmin) {
-        showNotification('Доступ запрещен', 'error');
-        return;
-    }
-    
-    try {
-        const result = await makeRequest(`${API_URL}/admin/admins`, {
-            method: 'POST',
-            body: JSON.stringify({
-                adminId: currentUser.id,
-                username: username
-            })
-        });
-        
-        if (result.success) {
-            showNotification('Пользователь успешно добавлен как администратор!', 'success');
-            usernameInput.value = '';
-            loadAdmins();
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error adding admin:', error);
-        showNotification('Ошибка добавления администратора', 'error');
-    }
-}
-
-async function removeAdmin(userId) {
-    if (!confirm('Вы уверены, что хотите удалить этого администратора?')) return;
-    
-    if (!currentUser || !currentUser.isMainAdmin) {
-        showNotification('Доступ запрещен', 'error');
-        return;
-    }
-    
-    try {
-        const result = await makeRequest(`${API_URL}/admin/admins/${userId}`, {
-            method: 'DELETE',
-            body: JSON.stringify({
-                adminId: currentUser.id
-            })
-        });
-        
-        if (result.success) {
-            showNotification('Администратор успешно удален!', 'success');
-            loadAdmins();
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error removing admin:', error);
-        showNotification('Ошибка удаления администратора', 'error');
-    }
-}
-// Создание окна чата админа
-function createAdminChatWindow() {
-    const chatWindowHTML = `
-        <div class="admin-chat-window" id="admin-chat-window">
-            <div class="admin-chat-header">
-                <div class="admin-chat-user">
-                    <div class="chat-avatar-small" id="admin-chat-avatar">U</div>
-                    <div class="chat-info-small">
-                        <div class="chat-name-small" id="admin-chat-user-name">User</div>
-                        <div class="chat-status">Онлайн</div>
-                    </div>
-                </div>
-                <button class="chat-close" onclick="closeAdminChat()">×</button>
-            </div>
-            <div class="admin-chat-messages" id="admin-chat-messages">
-                <!-- Сообщения будут загружены здесь -->
-            </div>
-            <div class="admin-chat-input-container">
-                <input type="text" id="admin-chat-input" placeholder="Введите сообщение..." onkeypress="if(event.key==='Enter') sendAdminMessage()">
-                <button class="admin-chat-send" onclick="sendAdminMessage()">➤</button>
-            </div>
-        </div>
-    `;
-    
-    document.body.insertAdjacentHTML('beforeend', chatWindowHTML);
-}
-
-// Отображение сообщений в чате админа
-function displayAdminChatMessages(messages) {
-    const container = document.getElementById('admin-chat-messages');
-    if (!container) {
-        console.error('Admin chat messages container not found!');
-        return;
-    }
-    
-    container.innerHTML = '';
-    
-    if (!messages || messages.length === 0) {
-        const welcomeMessage = document.createElement('div');
-        welcomeMessage.className = 'message message-admin';
-        welcomeMessage.innerHTML = `
-            <div class="message-text">Начните диалог с пользователем</div>
-            <div class="message-time">${new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}</div>
-        `;
-        container.appendChild(welcomeMessage);
-        return;
-    }
-    
-    messages.forEach(message => {
-        const messageElement = document.createElement('div');
-        messageElement.className = message.is_admin ? 'message message-admin' : 'message message-user';
-        
-        let messageContent = '';
-        if (message.image_url) {
-            messageContent = `
-                <div class="message-image">
-                    <img src="${message.image_url}" alt="Фото" style="max-width: 200px; border-radius: 10px;">
-                </div>
-            `;
-        } else {
-            messageContent = `<div class="message-text">${escapeHtml(message.message)}</div>`;
-        }
-        
-        messageElement.innerHTML = `
-            ${messageContent}
-            <div class="message-time">${message.moscow_time || formatPostDate(message.sent_at)}</div>
-        `;
-        container.appendChild(messageElement);
-    });
-    
-    container.scrollTop = container.scrollHeight;
-}
-// Функции для управления админами
-async function loadAdmins() {
-    if (!currentUser || !currentUser.isMainAdmin) return;
-    
-    try {
-        const result = await makeRequest(`${API_URL}/admin/admins?adminId=${ADMIN_ID}`);
-        if (result.success) {
-            displayAdmins(result.admins);
-            displayAdminsTab(result.admins);
-        }
-    } catch (error) {
-        console.error('Error loading admins:', error);
-        showNotification('Ошибка загрузки списка админов', 'error');
-    }
-}
-
-function displayAdmins(admins) {
-    const container = document.getElementById('admins-list');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    if (!admins || admins.length === 0) {
-        container.innerHTML = '<div class="no-tasks">Нет администраторов</div>';
-        return;
-    }
-    
-    admins.forEach(admin => {
-        const adminElement = document.createElement('div');
-        adminElement.className = 'admin-list-item';
-        
-        const isMainAdmin = parseInt(admin.user_id) === ADMIN_ID;
-        
-        adminElement.innerHTML = `
-            <div class="admin-list-header">
-                <div class="admin-list-name">
-                    ${admin.first_name} ${admin.last_name || ''}
-                    ${isMainAdmin ? ' <span style="color: var(--gold);">(Главный админ)</span>' : ''}
-                </div>
-                <div class="admin-list-info">
-                    @${admin.username} | ID: ${admin.user_id}
-                </div>
-            </div>
-            ${!isMainAdmin ? `
-                <div style="text-align: right; margin-top: 10px;">
-                    <button class="admin-task-delete" onclick="removeAdmin(${admin.user_id})">🗑️ Удалить</button>
-                </div>
-            ` : ''}
-        `;
-        container.appendChild(adminElement);
-    });
-}
-
-function displayAdminsTab(admins) {
-    const container = document.getElementById('admins-list-tab');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    if (!admins || admins.length === 0) {
-        container.innerHTML = '<div class="no-tasks">Нет администраторов</div>';
-        return;
-    }
-    
-    admins.forEach(admin => {
-        const adminElement = document.createElement('div');
-        adminElement.className = 'admin-list-item';
-        
-        const isMainAdmin = parseInt(admin.user_id) === ADMIN_ID;
-        
-        adminElement.innerHTML = `
-            <div class="admin-list-header">
-                <div class="admin-list-name">
-                    ${admin.first_name} ${admin.last_name || ''}
-                    ${isMainAdmin ? ' <span style="color: var(--gold);">(Главный админ)</span>' : ''}
-                </div>
-                <div class="admin-list-info">
-                    @${admin.username} | ID: ${admin.user_id}
-                </div>
-            </div>
-            ${!isMainAdmin ? `
-                <div style="text-align: right; margin-top: 10px;">
-                    <button class="admin-task-delete" onclick="removeAdmin(${admin.user_id})">🗑️ Удалить</button>
-                </div>
-            ` : ''}
-        `;
-        container.appendChild(adminElement);
-    });
-}
-
-async function addAdmin() {
-    const usernameInput = document.getElementById('admin-username');
-    const username = usernameInput.value.trim();
-    
-    if (!username) {
-        showNotification('Введите юзернейм пользователя', 'error');
-        return;
-    }
-    
-    if (!currentUser || !currentUser.isMainAdmin) {
-        showNotification('Доступ запрещен', 'error');
-        return;
-    }
-    
-    try {
-        const result = await makeRequest(`${API_URL}/admin/admins`, {
-            method: 'POST',
-            body: JSON.stringify({
-                adminId: currentUser.id,
-                username: username
-            })
-        });
-        
-        if (result.success) {
-            showNotification('Пользователь успешно добавлен как администратор!', 'success');
-            usernameInput.value = '';
-            loadAdmins();
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error adding admin:', error);
-        showNotification('Ошибка добавления администратора', 'error');
-    }
-}
-
-async function addAdminFromTab() {
-    const usernameInput = document.getElementById('admin-username-tab');
-    const username = usernameInput.value.trim();
-    
-    if (!username) {
-        showNotification('Введите юзернейм пользователя', 'error');
-        return;
-    }
-    
-    if (!currentUser || !currentUser.isMainAdmin) {
-        showNotification('Доступ запрещен', 'error');
-        return;
-    }
-    
-    try {
-        const result = await makeRequest(`${API_URL}/admin/admins`, {
-            method: 'POST',
-            body: JSON.stringify({
-                adminId: currentUser.id,
-                username: username
-            })
-        });
-        
-        if (result.success) {
-            showNotification('Пользователь успешно добавлен как администратор!', 'success');
-            usernameInput.value = '';
-            loadAdmins();
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error adding admin:', error);
-        showNotification('Ошибка добавления администратора', 'error');
-    }
-}
-
-async function removeAdmin(userId) {
-    if (!confirm('Вы уверены, что хотите удалить этого администратора?')) return;
-    
-    if (!currentUser || !currentUser.isMainAdmin) {
-        showNotification('Доступ запрещен', 'error');
-        return;
-    }
-    
-    try {
-        const result = await makeRequest(`${API_URL}/admin/admins/${userId}`, {
-            method: 'DELETE',
-            body: JSON.stringify({
-                adminId: currentUser.id
-            })
-        });
-        
-        if (result.success) {
-            showNotification('Администратор успешно удален!', 'success');
-            loadAdmins();
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error removing admin:', error);
-        showNotification('Ошибка удаления администратора', 'error');
-    }
-}
-// Функции для управления админами
-async function loadAdmins() {
-    if (!currentUser || !currentUser.isMainAdmin) return;
-    
-    try {
-        const result = await makeRequest(`${API_URL}/admin/admins?adminId=${ADMIN_ID}`);
-        if (result.success) {
-            displayAdminsTab(result.admins);
-        }
-    } catch (error) {
-        console.error('Error loading admins:', error);
-        showNotification('Ошибка загрузки списка админов', 'error');
-    }
-}
-
-function displayAdminsTab(admins) {
-    const container = document.getElementById('admins-list-tab');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    if (!admins || admins.length === 0) {
-        container.innerHTML = '<div class="no-tasks">Нет администраторов</div>';
-        return;
-    }
-    
-    admins.forEach(admin => {
-        const adminElement = document.createElement('div');
-        adminElement.className = 'admin-list-item';
-        
-        const isMainAdmin = parseInt(admin.user_id) === ADMIN_ID;
-        
-        adminElement.innerHTML = `
-            <div class="admin-list-header">
-                <div class="admin-list-name">
-                    ${admin.first_name} ${admin.last_name || ''}
-                    ${isMainAdmin ? ' <span style="color: var(--gold);">(Главный админ)</span>' : ''}
-                </div>
-                <div class="admin-list-info">
-                    @${admin.username} | ID: ${admin.user_id}
-                </div>
-            </div>
-            ${!isMainAdmin ? `
-                <div style="text-align: right; margin-top: 10px;">
-                    <button class="admin-task-delete" onclick="removeAdmin(${admin.user_id})">🗑️ Удалить</button>
-                </div>
-            ` : ''}
-        `;
-        container.appendChild(adminElement);
-    });
-}
-
-async function addAdminFromTab() {
-    const usernameInput = document.getElementById('admin-username-tab');
-    const username = usernameInput.value.trim();
-    
-    if (!username) {
-        showNotification('Введите юзернейм пользователя', 'error');
-        return;
-    }
-    
-    if (!currentUser || !currentUser.isMainAdmin) {
-        showNotification('Доступ запрещен', 'error');
-        return;
-    }
-    
-    try {
-        const result = await makeRequest(`${API_URL}/admin/admins`, {
-            method: 'POST',
-            body: JSON.stringify({
-                adminId: currentUser.id,
-                username: username
-            })
-        });
-        
-        if (result.success) {
-            showNotification('Пользователь успешно добавлен как администратор!', 'success');
-            usernameInput.value = '';
-            loadAdmins();
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error adding admin:', error);
-        showNotification('Ошибка добавления администратора', 'error');
-    }
-}
-
-async function removeAdmin(userId) {
-    if (!confirm('Вы уверены, что хотите удалить этого администратора?')) return;
-    
-    if (!currentUser || !currentUser.isMainAdmin) {
-        showNotification('Доступ запрещен', 'error');
-        return;
-    }
-    
-    try {
-        const result = await makeRequest(`${API_URL}/admin/admins/${userId}`, {
-            method: 'DELETE',
-            body: JSON.stringify({
-                adminId: currentUser.id
-            })
-        });
-        
-        if (result.success) {
-            showNotification('Администратор успешно удален!', 'success');
-            loadAdmins();
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error removing admin:', error);
-        showNotification('Ошибка удаления администратора', 'error');
-    }
-}
 
 // Обновите функцию checkAdminRights
 function checkAdminRights() {
@@ -8134,121 +7685,6 @@ if (result.success) {
     playMoneySound(); // Воспроизводим звук
     // ... остальной код
 }
-// Функции для управления админами
-async function loadAdmins() {
-    if (!currentUser || !currentUser.isMainAdmin) return;
-    
-    try {
-        const result = await makeRequest(`${API_URL}/admin/admins?adminId=${ADMIN_ID}`);
-        if (result.success) {
-            displayAdmins(result.admins);
-        }
-    } catch (error) {
-        console.error('Error loading admins:', error);
-        showNotification('Ошибка загрузки списка админов', 'error');
-    }
-}
-
-function displayAdmins(admins) {
-    const container = document.getElementById('admins-list');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    if (!admins || admins.length === 0) {
-        container.innerHTML = '<div class="no-tasks">Нет администраторов</div>';
-        return;
-    }
-    
-    admins.forEach(admin => {
-        const adminElement = document.createElement('div');
-        adminElement.className = 'admin-list-item';
-        
-        const isMainAdmin = parseInt(admin.user_id) === ADMIN_ID;
-        
-        adminElement.innerHTML = `
-            <div class="admin-list-header">
-                <div class="admin-list-name">
-                    ${admin.first_name} ${admin.last_name || ''}
-                    ${isMainAdmin ? ' <span style="color: var(--gold);">(Главный админ)</span>' : ''}
-                </div>
-                <div class="admin-list-info">
-                    @${admin.username} | ID: ${admin.user_id}
-                </div>
-            </div>
-            ${!isMainAdmin ? `
-                <div style="text-align: right; margin-top: 10px;">
-                    <button class="admin-task-delete" onclick="removeAdmin(${admin.user_id})">🗑️ Удалить</button>
-                </div>
-            ` : ''}
-        `;
-        container.appendChild(adminElement);
-    });
-}
-
-async function addAdmin() {
-    const usernameInput = document.getElementById('admin-username');
-    const username = usernameInput.value.trim();
-    
-    if (!username) {
-        showNotification('Введите юзернейм пользователя', 'error');
-        return;
-    }
-    
-    if (!currentUser || !currentUser.isMainAdmin) {
-        showNotification('Доступ запрещен', 'error');
-        return;
-    }
-    
-    try {
-        const result = await makeRequest(`${API_URL}/admin/admins`, {
-            method: 'POST',
-            body: JSON.stringify({
-                adminId: currentUser.id,
-                username: username
-            })
-        });
-        
-        if (result.success) {
-            showNotification('Пользователь успешно добавлен как администратор!', 'success');
-            usernameInput.value = '';
-            loadAdmins();
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error adding admin:', error);
-        showNotification('Ошибка добавления администратора', 'error');
-    }
-}
-
-async function removeAdmin(userId) {
-    if (!confirm('Вы уверены, что хотите удалить этого администратора?')) return;
-    
-    if (!currentUser || !currentUser.isMainAdmin) {
-        showNotification('Доступ запрещен', 'error');
-        return;
-    }
-    
-    try {
-        const result = await makeRequest(`${API_URL}/admin/admins/${userId}`, {
-            method: 'DELETE',
-            body: JSON.stringify({
-                adminId: currentUser.id
-            })
-        });
-        
-        if (result.success) {
-            showNotification('Администратор успешно удален!', 'success');
-            loadAdmins();
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error removing admin:', error);
-        showNotification('Ошибка удаления администратора', 'error');
-    }
-}
 
 // Обновите функцию checkAdminRights
 function checkAdminRights() {
@@ -8270,8 +7706,9 @@ function checkAdminRights() {
     }
 }
 
-// Обновите функцию showAdminSection
 function showAdminSection(section) {
+    console.log('🔄 Showing admin section:', section);
+    
     // Скрываем все админ секции
     document.querySelectorAll('.admin-section').forEach(sec => {
         sec.style.display = 'none';
@@ -8281,11 +7718,14 @@ function showAdminSection(section) {
     const targetSection = document.getElementById('admin-' + section + '-section');
     if (targetSection) {
         targetSection.style.display = 'block';
+        console.log('✅ Section displayed:', targetSection.id);
         
         // Если открываем секцию админов и мы главный админ - загружаем список
         if (section === 'admins' && currentUser && currentUser.isMainAdmin) {
             loadAdmins();
         }
+    } else {
+        console.error('❌ Section not found:', 'admin-' + section + '-section');
     }
 }
 </script>

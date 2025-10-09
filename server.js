@@ -68,24 +68,25 @@ db.on('error', (err) => {
 // Initialize database tables
 function initDatabase() {
     db.serialize(() => {
-        // User profiles table
-        db.run(`CREATE TABLE IF NOT EXISTS user_profiles (
-            user_id INTEGER PRIMARY KEY,
-            username TEXT,
-            first_name TEXT,
-            last_name TEXT,
-            photo_url TEXT,
-            balance REAL DEFAULT 0,
-            level INTEGER DEFAULT 0,
-            experience INTEGER DEFAULT 0,
-            tasks_completed INTEGER DEFAULT 0,
-            active_tasks INTEGER DEFAULT 0,
-            quality_rate REAL DEFAULT 100,
-            referral_count INTEGER DEFAULT 0,
-            referral_earned REAL DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )`);
+       // User profiles table
+db.run(`CREATE TABLE IF NOT EXISTS user_profiles (
+    user_id INTEGER PRIMARY KEY,
+    username TEXT,
+    first_name TEXT,
+    last_name TEXT,
+    photo_url TEXT,
+    balance REAL DEFAULT 0,
+    level INTEGER DEFAULT 0,
+    experience INTEGER DEFAULT 0,
+    tasks_completed INTEGER DEFAULT 0,
+    active_tasks INTEGER DEFAULT 0,
+    quality_rate REAL DEFAULT 100,
+    referral_count INTEGER DEFAULT 0,
+    referral_earned REAL DEFAULT 0,
+    is_admin BOOLEAN DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)`);
 
         // Posts table
         db.run(`CREATE TABLE IF NOT EXISTS posts (
@@ -251,7 +252,7 @@ app.get('/api/admin/admins', (req, res) => {
     console.log('🔍 GET /api/admin/admins called with adminId:', adminId);
     
     // Проверяем, что запрос от главного админа
-    if (parseInt(adminId) !== ADMIN_ID) {
+    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
         console.log('❌ Access denied for adminId:', adminId);
         return res.status(403).json({
             success: false,
@@ -260,19 +261,19 @@ app.get('/api/admin/admins', (req, res) => {
     }
 
     // Получаем всех админов
-    db.all("SELECT user_id, username, first_name, last_name, is_admin FROM user_profiles WHERE is_admin = 1", (err, rows) => {
+    db.all("SELECT user_id, username, first_name, last_name FROM user_profiles WHERE is_admin = 1", (err, rows) => {
         if (err) {
             console.error('❌ Database error in /api/admin/admins:', err);
             return res.status(500).json({
                 success: false,
-                error: 'Database error: ' + err.message
+                error: 'Database error'
             });
         }
         
         console.log(`✅ Found ${rows.length} admins`);
         res.json({
             success: true,
-            admins: rows
+            admins: rows || []
         });
     });
 });
@@ -283,7 +284,7 @@ app.post('/api/admin/admins', (req, res) => {
     console.log('🔍 POST /api/admin/admins called with:', { adminId, username });
     
     // Проверяем, что запрос от главного админа
-    if (parseInt(adminId) !== ADMIN_ID) {
+    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
         return res.status(403).json({
             success: false,
             error: 'Access denied. Only main admin can add admins.'
@@ -298,55 +299,43 @@ app.post('/api/admin/admins', (req, res) => {
     }
 
     // Ищем пользователя по username (без @)
-    const cleanUsername = username.replace('@', '');
+    const cleanUsername = username.replace('@', '').trim();
     
-    db.get("SELECT * FROM user_profiles WHERE username = ?", [cleanUsername], (err, user) => {
+    // Сначала создаем пользователя если его нет
+    const userProfile = {
+        user_id: Date.now(), // Временный ID, будет обновлен при реальной регистрации
+        username: cleanUsername,
+        first_name: cleanUsername,
+        last_name: '',
+        is_admin: 0
+    };
+    
+    // Вставляем или обновляем пользователя
+    db.run(`INSERT OR REPLACE INTO user_profiles 
+            (user_id, username, first_name, last_name, is_admin, updated_at) 
+            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+            [userProfile.user_id, userProfile.username, userProfile.first_name, 
+             userProfile.last_name, 1], // Сразу делаем админом
+            function(err) {
         if (err) {
-            console.error('❌ Database error searching user:', err);
+            console.error('❌ Error creating admin user:', err);
             return res.status(500).json({
                 success: false,
-                error: 'Database error: ' + err.message
+                error: 'Database error'
             });
         }
 
-        if (!user) {
-            console.log('❌ User not found with username:', cleanUsername);
-            return res.status(404).json({
-                success: false,
-                error: 'Пользователь с таким юзернеймом не найден'
-            });
-        }
-
-        // Проверяем, не является ли пользователь уже админом
-        if (user.is_admin) {
-            return res.status(400).json({
-                success: false,
-                error: 'Пользователь уже является администратором'
-            });
-        }
-
-        // Делаем пользователя админом
-        db.run("UPDATE user_profiles SET is_admin = 1 WHERE user_id = ?", [user.user_id], function(err) {
-            if (err) {
-                console.error('❌ Error updating user to admin:', err);
-                return res.status(500).json({
-                    success: false,
-                    error: 'Database error: ' + err.message
-                });
+        console.log(`✅ User ${cleanUsername} promoted to admin`);
+        
+        res.json({
+            success: true,
+            message: 'Пользователь успешно добавлен как администратор!',
+            admin: {
+                user_id: userProfile.user_id,
+                username: userProfile.username,
+                first_name: userProfile.first_name,
+                last_name: userProfile.last_name
             }
-
-            console.log(`✅ User ${user.user_id} promoted to admin`);
-            
-            res.json({
-                success: true,
-                message: 'Пользователь успешно добавлен как администратор!',
-                admin: {
-                    user_id: user.user_id,
-                    username: user.username,
-                    first_name: user.first_name,
-                    last_name: user.last_name
-                }
-            });
         });
     });
 });
@@ -358,7 +347,7 @@ app.delete('/api/admin/admins/:userId', (req, res) => {
     console.log('🔍 DELETE /api/admin/admins called with:', { adminId, userId });
     
     // Проверяем, что запрос от главного админа
-    if (parseInt(adminId) !== ADMIN_ID) {
+    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
         return res.status(403).json({
             success: false,
             error: 'Access denied. Only main admin can remove admins.'
@@ -378,14 +367,7 @@ app.delete('/api/admin/admins/:userId', (req, res) => {
             console.error('❌ Error removing admin:', err);
             return res.status(500).json({
                 success: false,
-                error: 'Database error: ' + err.message
-            });
-        }
-
-        if (this.changes === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'Администратор не найден'
+                error: 'Database error'
             });
         }
 
