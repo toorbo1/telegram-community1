@@ -248,14 +248,15 @@ app.get('/api/health', (req, res) => {
 app.get('/api/admin/admins', (req, res) => {
     const { adminId } = req.query;
     
+    // Проверяем, что запрос от главного админа
     if (parseInt(adminId) !== ADMIN_ID) {
         return res.status(403).json({
             success: false,
-            error: 'Access denied'
+            error: 'Access denied. Only main admin can manage admins.'
         });
     }
 
-    db.all("SELECT user_id, username, first_name, last_name, is_admin FROM user_profiles WHERE is_admin = 1 OR user_id = ?", [ADMIN_ID], (err, rows) => {
+    db.all("SELECT user_id, username, first_name, last_name FROM user_profiles WHERE is_admin = 1", (err, rows) => {
         if (err) {
             return res.status(500).json({
                 success: false,
@@ -273,10 +274,11 @@ app.get('/api/admin/admins', (req, res) => {
 app.post('/api/admin/admins', (req, res) => {
     const { adminId, username } = req.body;
     
+    // Проверяем, что запрос от главного админа
     if (parseInt(adminId) !== ADMIN_ID) {
         return res.status(403).json({
             success: false,
-            error: 'Access denied'
+            error: 'Access denied. Only main admin can add admins.'
         });
     }
 
@@ -300,6 +302,14 @@ app.post('/api/admin/admins', (req, res) => {
             return res.status(404).json({
                 success: false,
                 error: 'User not found'
+            });
+        }
+
+        // Проверяем, не является ли пользователь уже админом
+        if (user.is_admin) {
+            return res.status(400).json({
+                success: false,
+                error: 'User is already an admin'
             });
         }
 
@@ -330,10 +340,11 @@ app.delete('/api/admin/admins/:userId', (req, res) => {
     const { adminId } = req.body;
     const userId = req.params.userId;
     
+    // Проверяем, что запрос от главного админа
     if (parseInt(adminId) !== ADMIN_ID) {
         return res.status(403).json({
             success: false,
-            error: 'Access denied'
+            error: 'Access denied. Only main admin can remove admins.'
         });
     }
 
