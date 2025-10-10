@@ -18,7 +18,120 @@
             transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             -webkit-tap-highlight-color: transparent;
         }
+/* Image Upload Styles */
+.image-upload-container {
+    margin-bottom: 20px;
+}
 
+.upload-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.upload-area {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: var(--bg-secondary);
+}
+
+.upload-area:hover {
+    border-color: var(--accent);
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.upload-area.dragover {
+    border-color: var(--accent);
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.upload-placeholder {
+    color: var(--text-secondary);
+}
+
+.upload-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+}
+
+.upload-text {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.upload-subtext {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+.image-preview {
+    margin-top: 15px;
+    text-align: center;
+}
+
+.preview-image {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.remove-image-btn {
+    background: var(--error);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.remove-image-btn:hover {
+    background: #dc2626;
+    transform: translateY(-2px);
+}
+
+/* Enhanced Post and Task Display */
+.post-with-image, .task-with-image {
+    position: relative;
+}
+
+.post-image, .task-image {
+    width: 100%;
+    border-radius: 12px;
+    margin: 15px 0;
+    max-height: 400px;
+    object-fit: cover;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.admin-post-item, .admin-task-item {
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.admin-post-item:hover, .admin-task-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+}
+
+.thumbnail-image {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    object-fit: cover;
+    margin-right: 15px;
+    border: 2px solid var(--border);
+}
         :root {
             --bg-primary: #050510;
             --bg-secondary: #0a0a1a;
@@ -4275,6 +4388,84 @@
     text-align: right;
     min-width: 150px;
 }
+/* Стили для новой страницы вывода средств */
+.withdraw-hero {
+    text-align: center;
+    padding: 30px 20px;
+    background: var(--card-bg);
+    border-radius: 20px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border);
+}
+
+.withdraw-balance {
+    font-size: 48px;
+    font-weight: 800;
+    margin: 20px 0;
+    background: var(--gold-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.withdraw-btn {
+    background: var(--gold-gradient);
+    color: #000;
+    border: none;
+    padding: 16px 32px;
+    border-radius: 16px;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.3);
+    width: 100%;
+    max-width: 200px;
+    margin: 10px auto 0;
+    transition: all 0.3s ease;
+}
+
+.withdraw-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(255, 215, 0, 0.4);
+}
+
+.withdraw-btn:active {
+    transform: translateY(0);
+}
+
+.withdraw-btn:disabled {
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.withdraw-history {
+    margin-top: 25px;
+}
+
+.withdraw-operation-item {
+    transition: all 0.3s ease;
+}
+
+.withdraw-operation-item:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .withdraw-balance {
+        font-size: 36px;
+    }
+    
+    .withdraw-btn {
+        padding: 14px 24px;
+        font-size: 16px;
+        max-width: 180px;
+    }
+}
     </style>
 </head>
 <body>
@@ -4401,43 +4592,75 @@
             </div>
         </div>
 
-        <!-- Управление постами -->
         <div id="admin-posts-section" class="admin-section" style="display: none;">
-            <h3>Добавить пост для всех пользователей</h3>
-            <div class="admin-form">
-                <input type="text" class="admin-input" id="admin-post-title" placeholder="Заголовок поста">
-                <textarea class="admin-textarea" id="admin-post-content" placeholder="Введите текст поста..."></textarea>
-                <input type="file" class="admin-input" id="admin-post-image" accept="image/*">
-                <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
+    <h3>Добавить пост для всех пользователей</h3>
+    <div class="admin-form">
+        <input type="text" class="admin-input" id="admin-post-title" placeholder="Заголовок поста">
+        <textarea class="admin-textarea" id="admin-post-content" placeholder="Введите текст поста..."></textarea>
+        
+        <!-- Image Upload Section -->
+        <div class="image-upload-container">
+            <label class="upload-label">📷 Изображение поста (опционально)</label>
+            <div class="upload-area" id="post-upload-area">
+                <div class="upload-placeholder">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Перетащите изображение сюда или нажмите для выбора</div>
+                    <div class="upload-subtext">PNG, JPG до 5MB</div>
+                </div>
+                <input type="file" class="file-input" id="admin-post-image" accept="image/*" hidden>
             </div>
-            
-            <h3 style="margin-top: 20px;">Существующие посты</h3>
-            <div id="admin-posts-list">
-                <!-- Посты будут загружаться динамически -->
+            <div class="image-preview" id="post-image-preview" style="display: none;">
+                <img id="post-preview-img" class="preview-image">
+                <button type="button" class="remove-image-btn" onclick="removePostImage()">🗑️ Удалить</button>
             </div>
         </div>
+        
+        <button class="admin-submit" onclick="addNewPost()">📤 Опубликовать пост</button>
+    </div>
+    
+    <h3 style="margin-top: 20px;">Существующие посты</h3>
+    <div id="admin-posts-list">
+        <!-- Посты будут загружаться динамически -->
+    </div>
+</div>
 
-        <!-- Управление заданиями -->
-        <div id="admin-tasks-section" class="admin-section" style="display: none;">
-            <h3>Добавить задание</h3>
-            <div class="admin-form">
-                <input type="text" class="admin-input" id="admin-task-title" placeholder="Название задания">
-                <textarea class="admin-textarea" id="admin-task-description" placeholder="Описание задания"></textarea>
-                <input type="text" class="admin-input" id="admin-task-price" placeholder="Цена (в рублях)">
-                <input type="text" class="admin-input" id="admin-task-time" placeholder="Время выполнения">
-                <input type="text" class="admin-input" id="admin-task-difficulty" placeholder="Сложность">
-                <input type="number" class="admin-input" id="admin-task-people" placeholder="Сколько человек должно выполнить">
-                <input type="text" class="admin-input" id="admin-task-repost" placeholder="Время повторной публикации">
-                <input type="url" class="admin-input" id="admin-task-url" placeholder="URL задания">
-                <input type="file" class="admin-input" id="admin-task-image" accept="image/*">
-                <button class="admin-submit" onclick="addTask()">Добавить задание</button>
+       <div id="admin-tasks-section" class="admin-section" style="display: none;">
+    <h3>Добавить задание</h3>
+    <div class="admin-form">
+        <input type="text" class="admin-input" id="admin-task-title" placeholder="Название задания">
+        <textarea class="admin-textarea" id="admin-task-description" placeholder="Описание задания"></textarea>
+        <input type="text" class="admin-input" id="admin-task-price" placeholder="Цена (в рублях)">
+        <input type="text" class="admin-input" id="admin-task-time" placeholder="Время выполнения">
+        <input type="text" class="admin-input" id="admin-task-difficulty" placeholder="Сложность">
+        <input type="number" class="admin-input" id="admin-task-people" placeholder="Сколько человек должно выполнить">
+        <input type="text" class="admin-input" id="admin-task-repost" placeholder="Время повторной публикации">
+        <input type="url" class="admin-input" id="admin-task-url" placeholder="URL задания">
+        
+        <!-- Image Upload for Tasks -->
+        <div class="image-upload-container">
+            <label class="upload-label">📷 Изображение задания (опционально)</label>
+            <div class="upload-area" id="task-upload-area">
+                <div class="upload-placeholder">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Перетащите изображение сюда или нажмите для выбора</div>
+                    <div class="upload-subtext">PNG, JPG до 5MB</div>
+                </div>
+                <input type="file" class="file-input" id="admin-task-image" accept="image/*" hidden>
             </div>
-            
-            <h3 style="margin-top: 20px;">Существующие задания</h3>
-            <div id="admin-tasks-list">
-                <!-- Задания будут загружаться динамически -->
+            <div class="image-preview" id="task-image-preview" style="display: none;">
+                <img id="task-preview-img" class="preview-image">
+                <button type="button" class="remove-image-btn" onclick="removeTaskImage()">🗑️ Удалить</button>
             </div>
         </div>
+        
+        <button class="admin-submit" onclick="addTask()">🎯 Добавить задание</button>
+    </div>
+    
+    <h3 style="margin-top: 20px;">Существующие задания</h3>
+    <div id="admin-tasks-list">
+        <!-- Задания будут загружаться динамически -->
+    </div>
+</div>
 
         <!-- Проверка заданий -->
         <div id="admin-verification-section" class="admin-section" style="display: none;">
@@ -4614,10 +4837,10 @@
             <div class="section-title">Действия</div>
             <div class="profile-actions">
                 <div class="profile-action" onclick="showWithdrawPage()">
-                    <div class="action-icon">💳</div>
-                    <div class="action-text">Вывод средств</div>
-                    <div class="action-arrow">›</div>
-                </div>
+    <div class="action-icon">💎</div>
+    <div class="action-text">Вывод звезд</div>
+    <div class="action-arrow">›</div>
+</div>
                 <div class="profile-action" onclick="showHowItWorksPage()">
                     <div class="action-icon">❓</div>
                     <div class="action-text">Как это работает</div>
@@ -4679,43 +4902,74 @@
             </div>
         </div>
 
-        <!-- Управление постами -->
-        <div id="admin-posts-section" class="admin-section" style="display: none;">
-            <h3>Добавить пост для всех пользователей</h3>
-            <div class="admin-form">
-                <input type="text" class="admin-input" id="admin-post-title" placeholder="Заголовок поста">
-                <textarea class="admin-textarea" id="admin-post-content" placeholder="Введите текст поста..."></textarea>
-                <input type="file" class="admin-input" id="admin-post-image" accept="image/*">
-                <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
+     <div id="admin-posts-section" class="admin-section" style="display: none;">
+    <h3>Добавить пост для всех пользователей</h3>
+    <div class="admin-form">
+        <input type="text" class="admin-input" id="admin-post-title" placeholder="Заголовок поста">
+        <textarea class="admin-textarea" id="admin-post-content" placeholder="Введите текст поста..."></textarea>
+        
+        <!-- Image Upload Section -->
+        <div class="image-upload-container">
+            <label class="upload-label">📷 Изображение поста (опционально)</label>
+            <div class="upload-area" id="post-upload-area">
+                <div class="upload-placeholder">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Перетащите изображение сюда или нажмите для выбора</div>
+                    <div class="upload-subtext">PNG, JPG до 5MB</div>
+                </div>
+                <input type="file" class="file-input" id="admin-post-image" accept="image/*" hidden>
             </div>
-            
-            <h3 style="margin-top: 20px;">Существующие посты</h3>
-            <div id="admin-posts-list">
-                <!-- Посты будут загружаться динамически -->
-            </div>
-        </div>
-
-        <!-- Управление заданиями -->
-        <div id="admin-tasks-section" class="admin-section" style="display: none;">
-            <h3>Добавить задание</h3>
-            <div class="admin-form">
-                <input type="text" class="admin-input" id="admin-task-title" placeholder="Название задания">
-                <textarea class="admin-textarea" id="admin-task-description" placeholder="Описание задания"></textarea>
-                <input type="text" class="admin-input" id="admin-task-price" placeholder="Цена (в рублях)">
-                <input type="text" class="admin-input" id="admin-task-time" placeholder="Время выполнения">
-                <input type="text" class="admin-input" id="admin-task-difficulty" placeholder="Сложность">
-                <input type="number" class="admin-input" id="admin-task-people" placeholder="Сколько человек должно выполнить">
-                <input type="text" class="admin-input" id="admin-task-repost" placeholder="Время повторной публикации">
-                <input type="url" class="admin-input" id="admin-task-url" placeholder="URL задания">
-                <input type="file" class="admin-input" id="admin-task-image" accept="image/*">
-                <button class="admin-submit" onclick="addTask()">Добавить задание</button>
-            </div>
-            
-            <h3 style="margin-top: 20px;">Существующие задания</h3>
-            <div id="admin-tasks-list">
-                <!-- Задания будут загружаться динамически -->
+            <div class="image-preview" id="post-image-preview" style="display: none;">
+                <img id="post-preview-img" class="preview-image">
+                <button type="button" class="remove-image-btn" onclick="removePostImage()">🗑️ Удалить</button>
             </div>
         </div>
+        
+        <button class="admin-submit" onclick="addNewPost()">📤 Опубликовать пост</button>
+    </div>
+    
+    <h3 style="margin-top: 20px;">Существующие посты</h3>
+    <div id="admin-posts-list">
+        <!-- Посты будут загружаться динамически -->
+    </div>
+</div>
+      <div id="admin-tasks-section" class="admin-section" style="display: none;">
+    <h3>Добавить задание</h3>
+    <div class="admin-form">
+        <input type="text" class="admin-input" id="admin-task-title" placeholder="Название задания">
+        <textarea class="admin-textarea" id="admin-task-description" placeholder="Описание задания"></textarea>
+        <input type="text" class="admin-input" id="admin-task-price" placeholder="Цена (в рублях)">
+        <input type="text" class="admin-input" id="admin-task-time" placeholder="Время выполнения">
+        <input type="text" class="admin-input" id="admin-task-difficulty" placeholder="Сложность">
+        <input type="number" class="admin-input" id="admin-task-people" placeholder="Сколько человек должно выполнить">
+        <input type="text" class="admin-input" id="admin-task-repost" placeholder="Время повторной публикации">
+        <input type="url" class="admin-input" id="admin-task-url" placeholder="URL задания">
+        
+        <!-- Image Upload for Tasks -->
+        <div class="image-upload-container">
+            <label class="upload-label">📷 Изображение задания (опционально)</label>
+            <div class="upload-area" id="task-upload-area">
+                <div class="upload-placeholder">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Перетащите изображение сюда или нажмите для выбора</div>
+                    <div class="upload-subtext">PNG, JPG до 5MB</div>
+                </div>
+                <input type="file" class="file-input" id="admin-task-image" accept="image/*" hidden>
+            </div>
+            <div class="image-preview" id="task-image-preview" style="display: none;">
+                <img id="task-preview-img" class="preview-image">
+                <button type="button" class="remove-image-btn" onclick="removeTaskImage()">🗑️ Удалить</button>
+            </div>
+        </div>
+        
+        <button class="admin-submit" onclick="addTask()">🎯 Добавить задание</button>
+    </div>
+    
+    <h3 style="margin-top: 20px;">Существующие задания</h3>
+    <div id="admin-tasks-list">
+        <!-- Задания будут загружаться динамически -->
+    </div>
+</div>
 
         <!-- Проверка заданий -->
         <div id="admin-verification-section" class="admin-section" style="display: none;">
@@ -4824,51 +5078,32 @@
         </div>
     </div>
 
-    <!-- Страница "Вывод средств" -->
-    <div id="withdraw-page" class="page">
-        <div class="page-header">
-            <button class="back-button" onclick="goBackToProfile()">←</button>
-            <div class="page-title">💳 Вывод средств</div>
+    <!-- НОВАЯ СЕКЦИЯ ВЫВОДА СРЕДСТВ -->
+<div id="withdraw-page" class="page">
+    <div class="page-header">
+        <button class="back-button" onclick="showProfileTab()">←</button>
+        <div class="page-title">💎 Вывод звезд</div>
+    </div>
+
+    <div class="card">
+        <!-- Счет пользователя -->
+        <div class="withdraw-hero">
+            <div class="stat-label">Счет пользователя в звёздах</div>
+            <div class="withdraw-balance" id="withdraw-balance-display">0 ⭐</div>
+            <button class="withdraw-btn" onclick="processWithdrawal()">Вывести</button>
         </div>
 
-        <div class="card">
-            <div class="balance-amount" id="withdraw-balance">0 ⭐</div>
-            <p class="about-text" style="text-align: center; margin-bottom: 20px;">Доступно для вывода</p>
-
-            <div class="withdraw-info" style="background: var(--bg-secondary); padding: 15px; border-radius: 12px; margin-bottom: 20px;">
-                <h4 style="margin-bottom: 10px;">📋 Условия вывода:</h4>
-                <ul style="color: var(--text-secondary); font-size: 14px; padding-left: 20px;">
-                    <li>Минимальная сумма вывода: <strong>50 ⭐</strong></li>
-                    <li>Вывод обрабатывается в течение <strong>24 часов</strong></li>
-                    <li>Комиссия: <strong>0%</strong> для всех способов</li>
-                    <li>Доступные методы: карты, QIWI, ЮMoney</li>
-                </ul>
-            </div>
-
-            <div class="admin-form">
-                <h3>Запрос на вывод</h3>
-                <input type="number" class="admin-input" id="withdraw-amount" placeholder="Сумма вывода (минимум 50 ⭐)" min="50">
-                <select class="admin-input" id="withdraw-method">
-                    <option value="">Выберите способ вывода</option>
-                    <option value="card">💳 Банковская карта</option>
-                    <option value="qiwi">🟠 QIWI Кошелек</option>
-                    <option value="yoomoney">🔵 ЮMoney</option>
-                    <option value="crypto">₿ Криптовалюта (USDT)</option>
-                </select>
-                <input type="text" class="admin-input" id="withdraw-details" placeholder="Реквизиты для вывода">
-                <button class="admin-submit" onclick="submitWithdraw()">Заказать выплату</button>
-            </div>
-
-            <div class="withdraw-history" style="margin-top: 25px;">
-                <h4 style="margin-bottom: 15px;">📊 История выводов</h4>
-                <div id="withdraw-history-list" style="background: var(--bg-secondary); border-radius: 12px; padding: 15px;">
-                    <div style="text-align: center; color: var(--text-secondary); font-size: 14px;">
-                        История выводов пуста
-                    </div>
+        <!-- Прошлые операции -->
+        <div class="withdraw-history">
+            <h4 style="margin-bottom: 15px; color: var(--text-primary);">📊 Прошлые операции</h4>
+            <div id="withdraw-history-list">
+                <div style="text-align: center; color: var(--text-secondary); font-size: 14px; padding: 40px 20px;">
+                    Нет операций
                 </div>
             </div>
         </div>
     </div>
+</div>
 
     <!-- Страница "Как это работает" -->
     <div id="how-it-works-page" class="page">
@@ -5013,33 +5248,6 @@
         </div>
     </div>
 
-    <!-- Страница вывода средств -->
-    <div id="withdraw-page" class="page">
-        <div class="page-header">
-            <button class="back-button" onclick="showProfileTab()">←</button>
-            <div class="page-title">Вывод средств</div>
-        </div>
-
-        <div class="card">
-            <div class="balance-amount" id="withdraw-balance">0 ⭐</div>
-            <p class="about-text" style="text-align: center; margin-bottom: 20px;">Доступно для вывода</p>
-
-            <div class="admin-form">
-                <h3>Запрос на вывод</h3>
-                <input type="number" class="admin-input" id="withdraw-amount" placeholder="Сумма вывода">
-                <select class="admin-input" id="withdraw-method">
-                    <option value="">Выберите способ вывода</option>
-                    <option value="card">Банковская карта</option>
-                    <option value="qiwi">QIWI Кошелек</option>
-                    <option value="yoomoney">ЮMoney</option>
-                    <option value="crypto">Криптовалюта</option>
-                </select>
-                <input type="text" class="admin-input" id="withdraw-details" placeholder="Реквизиты для вывода">
-                <button class="admin-submit" onclick="submitWithdraw()">Заказать выплату</button>
-            </div>
-        </div>
-    </div>
-</main>
 
 <!-- Навигация -->
 <nav class="bottom-nav">
@@ -5244,6 +5452,40 @@
         <button class="chat-send" onclick="sendMessageToAdmin()">➤</button>
     </div>
 </div>
+<!-- Добавьте эту секцию в index.html после существующего кода -->
+
+<!-- Страница вывода средств -->
+<div id="withdraw-page" class="page">
+    <div class="page-header">
+        <button class="back-button" onclick="showProfileTab()">←</button>
+        <div class="page-title">💎 Вывод звезд</div>
+    </div>
+
+    <div class="card">
+        <div class="withdraw-hero">
+            <div class="withdraw-balance" id="withdraw-balance-display">150 ⭐</div>
+            <div class="withdraw-subtitle">Ваш текущий баланс</div>
+            <button class="withdraw-btn" onclick="processWithdrawal()">Вывести средства</button>
+        </div>
+
+        <div class="withdraw-info">
+            <h4>📋 Условия вывода:</h4>
+            <ul>
+                <li>Минимальная сумма вывода: <strong>150 ⭐</strong></li>
+                <li>Вывод обрабатывается в течение <strong>24 часов</strong></li>
+                <li>После вывода баланс обнуляется</li>
+                <li>Статус вывода можно отслеживать в истории операций</li>
+            </ul>
+        </div>
+
+        <div class="withdraw-history">
+            <h4>📊 История операций</h4>
+            <div id="withdraw-history-list">
+                <!-- История операций будет загружена здесь -->
+            </div>
+        </div>
+    </div>
+</div>
     <script>
 // 🔧 КОНФИГУРАЦИЯ
 const API_URL = 'https://telegram-community1-production.up.railway.app/api';
@@ -5408,7 +5650,7 @@ async function approveVerification() {
         showNotification('Сетевая ошибка при одобрении задания', 'error');
     }
 }
-// Функция для тестирования (без Telegram)
+
 function initializeTestUser() {
     currentUser = {
         id: 123456789,
@@ -5416,7 +5658,7 @@ function initializeTestUser() {
         lastName: 'Иванов',
         username: 'alexey_test',
         isAdmin: false,
-        balance: 150,
+        balance: 0, // ИЗМЕНИТЬ С 150 НА 0
         level: 1,
         tasks_completed: 5,
         active_tasks: 2,
@@ -5426,8 +5668,6 @@ function initializeTestUser() {
     };
     initializeApp();
 }
-
-// Основная инициализация приложения
 function initializeApp() {
     displayUserProfile();
     checkAdminRights();
@@ -5436,6 +5676,11 @@ function initializeApp() {
     initializeSearch();
     loadUserTasks();
     
+    // Initialize image upload functionality
+    initImageUpload();
+    
+    // ... rest of your initialization code
+
     // Если пользователь админ, загружаем админ-данные
     if (currentUser && currentUser.isAdmin) {
         loadAdminChats();
@@ -5794,7 +6039,284 @@ async function loadUserTasks() {
         console.error('Error loading user tasks:', error);
     }
 }
+// 🔧 ФУНКЦИИ ДЛЯ ВЫВОДА СРЕДСТВ
 
+// Функция для показа страницы вывода
+function showWithdrawPage() {
+    hideAllTabs();
+    document.getElementById('withdraw-page').classList.add('active');
+    
+    // Обновляем баланс
+    updateWithdrawBalance();
+    
+    // Загружаем историю операций
+    loadWithdrawHistory();
+}
+
+// Обновление баланса на странице вывода
+function updateWithdrawBalance() {
+    if (!currentUser) return;
+    
+    const balanceElement = document.getElementById('withdraw-balance-display');
+    if (balanceElement) {
+        balanceElement.textContent = `${currentUser.balance || 150} ⭐`;
+    }
+}
+
+// Процесс вывода средств
+async function processWithdrawal() {
+    if (!currentUser) {
+        showNotification('Пользователь не авторизован', 'error');
+        return;
+    }
+    
+    const userBalance = currentUser.balance || 150;
+    
+    if (userBalance < 150) {
+        showNotification('Минимальная сумма для вывода: 150 ⭐', 'error');
+        return;
+    }
+    
+    if (!confirm(`Вы уверены, что хотите вывести ${userBalance} ⭐? После вывода баланс будет обнулен.`)) {
+        return;
+    }
+    
+    try {
+        showNotification('Отправляем запрос на вывод...', 'info');
+        
+        const result = await makeRequest(`${API_URL}/withdrawal/request`, {
+            method: 'POST',
+            body: JSON.stringify({
+                user_id: currentUser.id,
+                amount: userBalance
+            })
+        });
+
+        if (result.success) {
+            // Обновляем баланс пользователя
+            currentUser.balance = 0;
+            
+            // Обновляем отображение
+            displayUserProfile();
+            updateWithdrawBalance();
+            
+            // Добавляем операцию в историю
+            addWithdrawalOperationToHistory({
+                id: result.operationId,
+                amount: userBalance,
+                status: 'processing',
+                created_at: new Date().toISOString()
+            });
+            
+            showNotification(`Запрос на вывод ${userBalance}⭐ отправлен! Уведомление отправлено администратору.`, 'success');
+            
+        } else {
+            showNotification('Ошибка при выводе: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Ошибка при выводе средств:', error);
+        showNotification('Ошибка соединения при выводе средств', 'error');
+    }
+}
+
+// Загрузка истории выводов
+async function loadWithdrawHistory() {
+    if (!currentUser) return;
+    
+    try {
+        const result = await makeRequest(`${API_URL}/withdrawal/history/${currentUser.id}`);
+        if (result.success) {
+            displayWithdrawHistory(result.operations);
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки истории выводов:', error);
+    }
+}
+
+// Отображение истории выводов
+function displayWithdrawHistory(operations) {
+    const container = document.getElementById('withdraw-history-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!operations || operations.length === 0) {
+        container.innerHTML = `
+            <div class="no-tasks" style="text-align: center; padding: 20px;">
+                <div style="font-size: 48px; margin-bottom: 10px;">📝</div>
+                <div>История операций пуста</div>
+            </div>
+        `;
+        return;
+    }
+    
+    operations.forEach(operation => {
+        const operationElement = document.createElement('div');
+        operationElement.className = 'withdraw-operation-item';
+        operationElement.style.cssText = `
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border);
+        `;
+        
+        const statusText = operation.status === 'completed' ? '✅ Операция завершена' : 
+                          operation.status === 'processing' ? '🔄 Операция осуществляется' : 
+                          '❌ Ошибка';
+        
+        const statusColor = operation.status === 'completed' ? 'var(--success)' : 
+                           operation.status === 'processing' ? 'var(--warning)' : 
+                           'var(--error)';
+        
+        operationElement.innerHTML = `
+            <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 8px;">
+                <div style="font-weight: 600; font-size: 16px;">${operation.amount} ⭐</div>
+                <div style="color: ${statusColor}; font-size: 14px; font-weight: 600;">${statusText}</div>
+            </div>
+            <div style="display: flex; justify-content: between; font-size: 12px; color: var(--text-secondary);">
+                <div>ID: ${operation.id}</div>
+                <div>${new Date(operation.created_at).toLocaleDateString('ru-RU')}</div>
+            </div>
+        `;
+        
+        container.appendChild(operationElement);
+    });
+}
+
+// Добавление операции в историю
+function addWithdrawalOperationToHistory(operation) {
+    const container = document.getElementById('withdraw-history-list');
+    if (!container) return;
+    
+    // Если контейнер пустой, очищаем сообщение "пусто"
+    if (container.querySelector('.no-tasks')) {
+        container.innerHTML = '';
+    }
+    
+    const operationElement = document.createElement('div');
+    operationElement.className = 'withdraw-operation-item';
+    operationElement.style.cssText = `
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 10px;
+        border: 1px solid var(--border);
+    `;
+    
+    const statusText = operation.status === 'completed' ? '✅ Операция завершена' : 
+                      operation.status === 'processing' ? '🔄 Операция осуществляется' : 
+                      '❌ Ошибка';
+    
+    const statusColor = operation.status === 'completed' ? 'var(--success)' : 
+                       operation.status === 'processing' ? 'var(--warning)' : 
+                       'var(--error)';
+    
+    operationElement.innerHTML = `
+        <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 8px;">
+            <div style="font-weight: 600; font-size: 16px;">${operation.amount} ⭐</div>
+            <div style="color: ${statusColor}; font-size: 14px; font-weight: 600;">${statusText}</div>
+        </div>
+        <div style="display: flex; justify-content: between; font-size: 12px; color: var(--text-secondary);">
+            <div>ID: ${operation.id}</div>
+            <div>${new Date(operation.created_at).toLocaleDateString('ru-RU')}</div>
+        </div>
+    `;
+    
+    // Добавляем в начало списка
+    container.insertBefore(operationElement, container.firstChild);
+}
+
+// 🔧 УЛУЧШЕНИЯ ДЛЯ СОХРАНЕНИЯ СОСТОЯНИЯ
+
+// Функция для сохранения состояния в localStorage
+function saveAppState() {
+    if (!currentUser) return;
+    
+    const state = {
+        user: currentUser,
+        lastUpdate: Date.now()
+    };
+    
+    localStorage.setItem('linkgold_app_state', JSON.stringify(state));
+    console.log('💾 Состояние приложения сохранено');
+}
+
+// Функция для загрузки состояния из localStorage
+function loadAppState() {
+    try {
+        const savedState = localStorage.getItem('linkgold_app_state');
+        if (savedState) {
+            const state = JSON.parse(savedState);
+            
+            // Проверяем, не устарели ли данные (больше 1 часа)
+            if (Date.now() - state.lastUpdate < 3600000) {
+                currentUser = state.user;
+                console.log('💾 Состояние приложения восстановлено');
+                return true;
+            }
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки состояния:', error);
+    }
+    return false;
+}
+
+// Обновляем функцию initializeApp
+function initializeApp() {
+    // Пытаемся загрузить сохраненное состояние
+    const stateLoaded = loadAppState();
+    
+    displayUserProfile();
+    checkAdminRights();
+    loadMainPagePosts();
+    loadTasks();
+    initializeSearch();
+    loadUserTasks();
+    
+    // Если состояние не загружено, загружаем свежие данные
+    if (!stateLoaded && currentUser) {
+        updateUserData();
+    }
+    
+    // Запускаем автообновление данных
+    startUserDataAutoUpdate();
+    
+    // Если пользователь админ, загружаем админ-данные
+    if (currentUser && currentUser.isAdmin) {
+        loadAdminChats();
+        loadAdminTasks();
+        loadTaskVerifications();
+    }
+}
+
+// Обновляем функцию updateUserData для сохранения состояния
+async function updateUserData() {
+    if (!currentUser) return;
+    
+    try {
+        const result = await makeRequest(`${API_URL}/user/${currentUser.id}`);
+        if (result.success) {
+            // Обновляем текущего пользователя
+            currentUser = { ...currentUser, ...result.profile };
+            
+            // Обновляем отображение во всех местах
+            displayUserProfile();
+            
+            // Сохраняем состояние
+            saveAppState();
+            
+            console.log('✅ Данные пользователя обновлены и сохранены');
+        }
+    } catch (error) {
+        console.error('Ошибка обновления данных пользователя:', error);
+    }
+}
+
+// 🔧 ЭКСПОРТ НОВЫХ ФУНКЦИЙ
+window.showWithdrawPage = showWithdrawPage;
+window.processWithdrawal = processWithdrawal;
+window.loadWithdrawHistory = loadWithdrawHistory;
 // Инициализация поиска заданий
 function initializeSearch() {
     const searchInput = document.getElementById('task-search');
@@ -5873,6 +6395,7 @@ function displayTasks(tasks, category) {
     tasks.forEach(task => {
         const taskElement = document.createElement('div');
         taskElement.className = 'task-card fade-in';
+        
         taskElement.innerHTML = `
             <div class="task-header">
                 <div>
@@ -5881,6 +6404,11 @@ function displayTasks(tasks, category) {
                 </div>
                 <div class="task-price">${task.price} ⭐</div>
             </div>
+            
+            ${task.image_url ? `
+                <img src="${task.image_url}" alt="Изображение задания" class="task-image" onerror="this.style.display='none'">
+            ` : ''}
+            
             <div class="task-description">${escapeHtml(task.description)}</div>
             <div class="task-footer">
                 <div class="task-time">${task.time_to_complete || '5 минут'}</div>
@@ -6348,10 +6876,10 @@ async function rejectVerification() {
     }
 }
 
-// 🔧 АДМИН-ФУНКЦИИ
 async function addNewPost() {
     const title = document.getElementById('admin-post-title').value;
     const content = document.getElementById('admin-post-content').value;
+    const imageFile = document.getElementById('admin-post-image').files[0];
     
     if (!title || !content) {
         showNotification('Заполните заголовок и содержание поста!', 'error');
@@ -6364,21 +6892,31 @@ async function addNewPost() {
     }
     
     try {
-        const result = await makeRequest(`${API_URL}/posts`, {
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('content', content);
+        formData.append('author', currentUser.firstName);
+        formData.append('authorId', currentUser.id);
+        
+        if (imageFile) {
+            formData.append('image', imageFile);
+        }
+
+        const response = await fetch(`${API_URL}/posts`, {
             method: 'POST',
-            body: JSON.stringify({
-                title: title,
-                content: content,
-                author: currentUser.firstName,
-                authorId: currentUser.id
-            })
+            body: formData
         });
 
+        const result = await response.json();
+
         if (result.success) {
-            showNotification('Пост успешно опубликован!', 'success');
+            showNotification('📝 Пост успешно опубликован!', 'success');
+            // Reset form
             document.getElementById('admin-post-title').value = '';
             document.getElementById('admin-post-content').value = '';
+            removePostImage();
             loadMainPagePosts();
+            loadAdminPosts();
         } else {
             showNotification('Ошибка: ' + result.error, 'error');
         }
@@ -6393,6 +6931,7 @@ async function addTask() {
     const title = document.getElementById('admin-task-title').value;
     const description = document.getElementById('admin-task-description').value;
     const price = document.getElementById('admin-task-price').value;
+    const imageFile = document.getElementById('admin-task-image').files[0];
 
     if (!title || !description || !price) {
         showNotification('Заполните обязательные поля: название, описание и цена!', 'error');
@@ -6405,22 +6944,46 @@ async function addTask() {
     }
 
     try {
-        const result = await makeRequest(`${API_URL}/tasks`, {
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('description', description);
+        formData.append('price', parseFloat(price) || 0);
+        formData.append('created_by', currentUser.id);
+        
+        // Optional fields
+        const time = document.getElementById('admin-task-time').value;
+        const difficulty = document.getElementById('admin-task-difficulty').value;
+        const people = document.getElementById('admin-task-people').value;
+        const repost = document.getElementById('admin-task-repost').value;
+        const url = document.getElementById('admin-task-url').value;
+        
+        if (time) formData.append('time_to_complete', time);
+        if (difficulty) formData.append('difficulty', difficulty);
+        if (people) formData.append('people_required', people);
+        if (repost) formData.append('repost_time', repost);
+        if (url) formData.append('task_url', url);
+        if (imageFile) formData.append('image', imageFile);
+
+        const response = await fetch(`${API_URL}/tasks`, {
             method: 'POST',
-            body: JSON.stringify({
-                title: title,
-                description: description,
-                price: parseFloat(price) || 0,
-                created_by: currentUser.id
-            })
+            body: formData
         });
 
+        const result = await response.json();
+
         if (result.success) {
-            showNotification('Задание успешно создано!', 'success');
+            showNotification('🎯 Задание успешно создано!', 'success');
             
+            // Reset form
             document.getElementById('admin-task-title').value = '';
             document.getElementById('admin-task-description').value = '';
             document.getElementById('admin-task-price').value = '';
+            document.getElementById('admin-task-time').value = '';
+            document.getElementById('admin-task-difficulty').value = '';
+            document.getElementById('admin-task-people').value = '';
+            document.getElementById('admin-task-repost').value = '';
+            document.getElementById('admin-task-url').value = '';
+            removeTaskImage();
             
             loadAdminTasks();
             loadTasks();
@@ -6932,9 +7495,6 @@ function displayMainPagePosts(posts) {
             <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
                 <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
                 <div>Пока нет публикаций</div>
-                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
-                    Следите за обновлениями
-                </div>
             </div>
         `;
         return;
@@ -6953,16 +7513,17 @@ function displayMainPagePosts(posts) {
                     <div class="post-title">${escapeHtml(post.title)}</div>
                     <div class="post-author">
                         ${escapeHtml(post.author || 'Администратор')}
+                        ${isAdmin ? '<span class="admin-badge">ADMIN</span>' : ''}
                     </div>
                 </div>
                 <div class="post-date">${postDate}</div>
             </div>
             
-            <div class="post-content">${escapeHtml(post.content)}</div>
-            
             ${post.image_url ? `
-                <img src="${post.image_url}" alt="Изображение" class="post-image" onerror="this.style.display='none'">
+                <img src="${post.image_url}" alt="Изображение поста" class="post-image" onerror="this.style.display='none'">
             ` : ''}
+            
+            <div class="post-content">${escapeHtml(post.content)}</div>
             
             <div class="post-footer">
                 <div class="post-actions">
@@ -6970,9 +7531,9 @@ function displayMainPagePosts(posts) {
                         <span class="like-icon">👍</span>
                         <span class="like-count">${post.likes || 0}</span>
                     </button>
-                    <button class="dislike-btn" onclick="handleDislike(${post.id}, this)">
-                        <span class="dislike-icon">👎</span>
-                        <span class="dislike-count">${post.dislikes || 0}</span>
+                    <button class="share-btn" onclick="sharePost(${post.id})">
+                        <span class="share-icon">🔗</span>
+                        Поделиться
                     </button>
                 </div>
             </div>
@@ -7060,88 +7621,192 @@ async function handleDislike(postId, button) {
     }
 }
 
-// Функция для отправки запроса на вывод
-async function submitWithdraw() {
+// 🔧 ФУНКЦИИ ДЛЯ ВЫВОДА СРЕДСТВ
+
+// Функция для показа страницы вывода
+function showWithdrawPage() {
+    hideAllTabs();
+    document.getElementById('withdraw-page').classList.add('active');
+    
+    // Обновляем баланс
+    updateWithdrawBalance();
+    
+    // Загружаем историю операций
+    loadWithdrawHistory();
+}
+
+// Обновление баланса на странице вывода
+function updateWithdrawBalance() {
+    if (!currentUser) return;
+    
+    const balanceElement = document.getElementById('withdraw-balance-display');
+    if (balanceElement) {
+        balanceElement.textContent = `${currentUser.balance || 0} ⭐`;
+    }
+}
+
+// Процесс вывода средств
+async function processWithdrawal() {
     if (!currentUser) {
         showNotification('Пользователь не авторизован', 'error');
         return;
     }
     
-    const amountInput = document.getElementById('withdraw-amount');
-    const methodSelect = document.getElementById('withdraw-method');
-    const detailsInput = document.getElementById('withdraw-details');
+    const userBalance = currentUser.balance || 0;
     
-    const amount = parseFloat(amountInput?.value);
-    const method = methodSelect?.value;
-    const details = detailsInput?.value?.trim();
-    
-    // Валидация
-    if (!amount || amount <= 0) {
-        showNotification('Введите корректную сумму', 'error');
+    if (userBalance === 0) {
+        showNotification('На вашем счету нет звезд для вывода', 'error');
         return;
     }
     
-    if (amount < 50) {
-        showNotification('Минимальная сумма вывода: 150 ⭐', 'error');
-        return;
-    }
-    
-    if (amount > (currentUser.balance || 0)) {
-        showNotification('Недостаточно средств на балансе', 'error');
-        return;
-    }
-    
-    if (!method) {
-        showNotification('Выберите способ вывода', 'error');
-        return;
-    }
-    
-    if (!details) {
-        showNotification('Введите реквизиты для вывода', 'error');
+    if (!confirm(`Вы уверены, что хотите вывести ${userBalance} ⭐? После вывода баланс будет обнулен.`)) {
         return;
     }
     
     try {
+        showNotification('Обрабатываем вывод...', 'info');
+        
         const result = await makeRequest(`${API_URL}/withdrawal/request`, {
             method: 'POST',
             body: JSON.stringify({
                 user_id: currentUser.id,
-                amount: amount,
-                method: method,
-                details: details
+                amount: userBalance
             })
         });
 
         if (result.success) {
-            showNotification(`Запрос на вывод ${amount}⭐ отправлен! Ожидайте обработки в течение 24 часов.`, 'success');
-            
-            // Очищаем форму
-            if (amountInput) amountInput.value = '';
-            if (methodSelect) methodSelect.value = '';
-            if (detailsInput) detailsInput.value = '';
-            
             // Обновляем баланс пользователя
-            if (currentUser.balance) {
-                currentUser.balance -= amount;
-            }
+            currentUser.balance = 0;
             
-            // Обновляем отображение баланса
+            // Обновляем отображение
             displayUserProfile();
+            updateWithdrawBalance();
             
-            // Возвращаемся в профиль
-            setTimeout(() => {
-                showProfileTab();
-            }, 2000);
+            // Добавляем операцию в историю
+            addWithdrawalOperationToHistory({
+                id: result.operationId,
+                amount: userBalance,
+                status: 'processing',
+                created_at: new Date().toISOString()
+            });
+            
+            showNotification(`Запрос на вывод ${userBalance}⭐ отправлен! Уведомление отправлено администратору.`, 'success');
             
         } else {
-            showNotification('Ошибка: ' + (result.error || 'Неизвестная ошибка'), 'error');
+            showNotification('Ошибка при выводе: ' + result.error, 'error');
         }
     } catch (error) {
         console.error('Ошибка при выводе средств:', error);
-        showNotification('Ошибка соединения при отправке запроса', 'error');
+        showNotification('Ошибка соединения при выводе средств', 'error');
     }
 }
 
+// Загрузка истории выводов
+async function loadWithdrawHistory() {
+    if (!currentUser) return;
+    
+    try {
+        const result = await makeRequest(`${API_URL}/withdrawal/history/${currentUser.id}`);
+        if (result.success) {
+            displayWithdrawHistory(result.operations);
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки истории выводов:', error);
+    }
+}
+
+// Отображение истории выводов
+function displayWithdrawHistory(operations) {
+    const container = document.getElementById('withdraw-history-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!operations || operations.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; color: var(--text-secondary); font-size: 14px; padding: 40px 20px;">
+                Нет операций
+            </div>
+        `;
+        return;
+    }
+    
+    operations.forEach(operation => {
+        const operationElement = document.createElement('div');
+        operationElement.className = 'withdraw-operation-item';
+        operationElement.style.cssText = `
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border);
+        `;
+        
+        const statusText = operation.status === 'completed' ? '✅ Операция завершена' : 
+                          operation.status === 'processing' ? '🔄 Операция осуществляется' : 
+                          '❌ Ошибка';
+        
+        const statusColor = operation.status === 'completed' ? 'var(--success)' : 
+                           operation.status === 'processing' ? 'var(--warning)' : 
+                           'var(--error)';
+        
+        operationElement.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div style="font-weight: 600; font-size: 16px;">${operation.amount} ⭐</div>
+                <div style="color: ${statusColor}; font-size: 14px; font-weight: 600;">${statusText}</div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary);">
+                <div>ID: ${operation.id}</div>
+                <div>${new Date(operation.created_at).toLocaleDateString('ru-RU')}</div>
+            </div>
+        `;
+        
+        container.appendChild(operationElement);
+    });
+}
+
+// Добавление операции в историю
+function addWithdrawalOperationToHistory(operation) {
+    const container = document.getElementById('withdraw-history-list');
+    if (!container) return;
+    
+    // Если контейнер пустой, очищаем сообщение "нет операций"
+    if (container.innerHTML.includes('Нет операций')) {
+        container.innerHTML = '';
+    }
+    
+    const operationElement = document.createElement('div');
+    operationElement.className = 'withdraw-operation-item';
+    operationElement.style.cssText = `
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 10px;
+        border: 1px solid var(--border);
+    `;
+    
+    const statusText = operation.status === 'completed' ? '✅ Операция завершена' : 
+                      operation.status === 'processing' ? '🔄 Операция осуществляется' : 
+                      '❌ Ошибка';
+    
+    const statusColor = operation.status === 'completed' ? 'var(--success)' : 
+                       operation.status === 'processing' ? 'var(--warning)' : 
+                       'var(--error)';
+    
+    operationElement.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-weight: 600; font-size: 16px;">${operation.amount} ⭐</div>
+            <div style="color: ${statusColor}; font-size: 14px; font-weight: 600;">${statusText}</div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary);">
+            <div>ID: ${operation.id}</div>
+            <div>${new Date(operation.created_at).toLocaleDateString('ru-RU')}</div>
+        </div>
+    `;
+    
+    // Добавляем в начало списка
+    container.insertBefore(operationElement, container.firstChild);
+}
 // 🔧 ЭКСПОРТ ФУНКЦИЙ
 window.showTaskCategory = showTaskCategory;
 window.loadUserTasksForCategory = loadUserTasksForCategory;
@@ -7640,7 +8305,85 @@ async function sendAdminMessage() {
         showNotification('Ошибка отправки сообщения: ' + error.message, 'error');
     }
 }
+// Initialize image upload functionality
+function initImageUpload() {
+    initUploadArea('post');
+    initUploadArea('task');
+}
 
+function initUploadArea(type) {
+    const area = document.getElementById(`${type}-upload-area`);
+    const fileInput = document.getElementById(`admin-${type}-image`);
+    const preview = document.getElementById(`${type}-image-preview`);
+    const previewImg = document.getElementById(`${type}-preview-img`);
+
+    // Click to select file
+    area.addEventListener('click', () => fileInput.click());
+
+    // Drag and drop functionality
+    area.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        area.classList.add('dragover');
+    });
+
+    area.addEventListener('dragleave', () => {
+        area.classList.remove('dragover');
+    });
+
+    area.addEventListener('drop', (e) => {
+        e.preventDefault();
+        area.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleImageSelect(files[0], type);
+        }
+    });
+
+    // File input change
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            handleImageSelect(e.target.files[0], type);
+        }
+    });
+}
+
+function handleImageSelect(file, type) {
+    // Validate file type and size
+    if (!file.type.startsWith('image/')) {
+        showNotification('Пожалуйста, выберите файл изображения', 'error');
+        return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        showNotification('Размер файла не должен превышать 5MB', 'error');
+        return;
+    }
+
+    const preview = document.getElementById(`${type}-image-preview`);
+    const previewImg = document.getElementById(`${type}-preview-img`);
+    const area = document.getElementById(`${type}-upload-area`);
+
+    // Show preview
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        previewImg.src = e.target.result;
+        preview.style.display = 'block';
+        area.style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+}
+
+function removePostImage() {
+    document.getElementById('admin-post-image').value = '';
+    document.getElementById('post-image-preview').style.display = 'none';
+    document.getElementById('post-upload-area').style.display = 'block';
+}
+
+function removeTaskImage() {
+    document.getElementById('admin-task-image').value = '';
+    document.getElementById('task-image-preview').style.display = 'none';
+    document.getElementById('task-upload-area').style.display = 'block';
+}
 // Закрытие чата админа
 function closeAdminChat() {
     const chatWindow = document.getElementById('admin-chat-window');
