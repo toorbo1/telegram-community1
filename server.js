@@ -4,7 +4,9 @@ const cors = require('cors');
 const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
-const fetch = require('node-fetch');
+
+// Исправленный импорт fetch для Node.js 18+
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -47,6 +49,7 @@ const upload = multer({
         }
     }
 });
+
 // Configure multer for post images
 const postStorage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -90,6 +93,7 @@ const taskUpload = multer({
         fileSize: 5 * 1024 * 1024 // 5MB limit
     }
 });
+
 // Путь к базе данных
 const dbPath = path.join(__dirname, 'database.db');
 
@@ -112,25 +116,24 @@ db.on('error', (err) => {
 function initDatabase() {
     db.serialize(() => {
         // User profiles table
-        // В функции initDatabase() замените:
-db.run(`CREATE TABLE IF NOT EXISTS user_profiles (
-    user_id INTEGER PRIMARY KEY,
-    username TEXT,
-    first_name TEXT,
-    last_name TEXT,
-    photo_url TEXT,
-    balance REAL DEFAULT 0, 
-    level INTEGER DEFAULT 0,
-    experience INTEGER DEFAULT 0,
-    tasks_completed INTEGER DEFAULT 0,
-    active_tasks INTEGER DEFAULT 0,
-    quality_rate REAL DEFAULT 100,
-    referral_count INTEGER DEFAULT 0,
-    referral_earned REAL DEFAULT 0,
-    is_admin BOOLEAN DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-)`);
+        db.run(`CREATE TABLE IF NOT EXISTS user_profiles (
+            user_id INTEGER PRIMARY KEY,
+            username TEXT,
+            first_name TEXT,
+            last_name TEXT,
+            photo_url TEXT,
+            balance REAL DEFAULT 0, 
+            level INTEGER DEFAULT 0,
+            experience INTEGER DEFAULT 0,
+            tasks_completed INTEGER DEFAULT 0,
+            active_tasks INTEGER DEFAULT 0,
+            quality_rate REAL DEFAULT 100,
+            referral_count INTEGER DEFAULT 0,
+            referral_earned REAL DEFAULT 0,
+            is_admin BOOLEAN DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`);
 
         // Posts table
         db.run(`CREATE TABLE IF NOT EXISTS posts (
@@ -608,10 +611,6 @@ app.post('/api/withdrawal/complete/:operationId', (req, res) => {
     });
 });
 
-// Остальные эндпоинты остаются без изменений...
-// [Добавьте здесь все остальные эндпоинты из вашего оригинального server.js]
-
-
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -645,10 +644,7 @@ app.get('/api/support/chats/:chatId', (req, res) => {
         
         res.json({
             success: true,
-            chat: {
-                ...chat,
-                moscow_time: formatMoscowTimeShort(chat.last_message_time)
-            }
+            chat: chat
         });
     });
 });
