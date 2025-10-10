@@ -5075,10 +5075,17 @@ let currentVerificationId = null;
 // Улучшенная функция для запросов
 async function makeRequest(endpoint, options = {}) {
     try {
-        // Используем относительный путь
-        const url = endpoint.startsWith('http') ? endpoint : `${window.location.origin}${endpoint}`;
+        // Формируем полный URL
+        let url;
+        if (endpoint.startsWith('http')) {
+            url = endpoint;
+        } else if (endpoint.startsWith('/api')) {
+            url = window.location.origin + endpoint;
+        } else {
+            url = window.location.origin + '/api' + endpoint;
+        }
         
-        console.log(`🔗 Making request to: ${url}`);
+        console.log(`🚀 Making request to: ${url}`);
         
         const response = await fetch(url, {
             headers: {
@@ -5088,22 +5095,29 @@ async function makeRequest(endpoint, options = {}) {
             ...options
         });
 
+        console.log(`📨 Response status: ${response.status}`);
+        
         if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Response error:', errorText);
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
         const data = await response.json();
+        console.log('✅ Request successful:', data);
         return data;
     } catch (error) {
-        console.error('Request failed:', error);
+        console.error('💥 Request failed:', error);
         
-        // Показываем понятное сообщение об ошибке
+        // Более информативные сообщения об ошибках
         if (error.message.includes('Failed to fetch')) {
-            showNotification('Ошибка соединения с сервером', 'error');
+            showNotification('❌ Не удалось подключиться к серверу. Проверьте интернет.', 'error');
         } else if (error.message.includes('404')) {
-            showNotification('Сервер не найден. Попробуйте позже.', 'error');
+            showNotification('🔍 Сервер не найден. Возможно, сервер перезагружается.', 'error');
+        } else if (error.message.includes('500')) {
+            showNotification('⚙️ Ошибка на сервере. Попробуйте позже.', 'error');
         } else {
-            showNotification(`Ошибка: ${error.message}`, 'error');
+            showNotification(`⚠️ Ошибка: ${error.message}`, 'error');
         }
         
         throw error;
@@ -5238,7 +5252,62 @@ function initializeTestUser() {
     };
     initializeApp();
 }
+async function initializeApp() {
+    console.log('🎮 Initializing LinkGold app...');
+    console.log('📍 Current origin:', window.location.origin);
+    
+    // Показываем загрузку
+    showNotification('🔄 Подключаемся к серверу...', 'info');
+    
+    // Проверяем соединение с API
+    try {
+        console.log('🔍 Testing API connection...');
+        const health = await makeRequest('/api/health');
+        console.log('✅ API connection successful:', health);
+        showNotification('✅ Соединение с сервером установлено!', 'success');
+    } catch (error) {
+        console.error('❌ API connection failed:', error);
+        showNotification('❌ Не удалось подключиться к серверу', 'error');
+        
+        // Показываем кнопку для повторной попытки
+        showRetryButton();
+        return;
+    }
+    
+    // Инициализируем приложение
+    if (typeof tg !== 'undefined') {
+        console.log('📱 Telegram Web App detected');
+        tg.expand();
+        tg.ready();
+        initializeTelegramUser();
+    } else {
+        console.log('🖥️ Browser environment');
+        initializeTestUser();
+    }
+    
+    // Загружаем данные
+    loadMainPagePosts();
+    loadTasks();
+    initializeSearch();
+    loadUserTasks();
+    
+    console.log('🎉 App initialized successfully');
+}
 
+// Функция для кнопки повторной попытки
+function showRetryButton() {
+    const retryBtn = document.createElement('button');
+    retryBtn.textContent = '🔄 Попробовать снова';
+    retryBtn.className = 'btn btn-primary';
+    retryBtn.style.margin = '20px auto';
+    retryBtn.style.display = 'block';
+    retryBtn.onclick = function() {
+        retryBtn.remove();
+        initializeApp();
+    };
+    
+    document.body.appendChild(retryBtn);
+}
 // Основная инициализация приложения
 function initializeApp() {
     displayUserProfile();
