@@ -8,6 +8,7 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+
 // Middleware
 app.use(cors({
     origin: '*',
@@ -816,7 +817,168 @@ app.get('/api/user/:userId/tasks', (req, res) => {
         });
     });
 });
+const db = require('./db'); // импортируем базу данных
 
+// Старт задания
+app.post('/api/user/tasks/start', async (req, res) => {
+    const { userId, taskId } = req.body;
+    
+    try {
+        // Получаем задание из базы
+        const task = db.get(`tasks.${taskId}`).value();
+        if (!task) {
+            return res.json({ success: false, error: 'Задание не найдено' });
+        }
+
+        // Сохраняем задание пользователя
+        const userTaskId = Date.now(); // уникальный ID задания пользователя
+        
+        db.set(`user_tasks.${userTaskId}`, {
+            id: userTaskId,
+            user_id: userId,
+            task_id: taskId,
+            task_price: task.price, // сохраняем цену задания
+            status: 'active',
+            started_at: new Date().toISOString()
+        }).write();
+
+        res.json({
+            success: true,
+            message: 'Задание начато!',
+            userTaskId: userTaskId
+        });
+
+    } catch (error) {
+        console.error('Start task error:', error);
+        res.json({ success: false, error: 'Ошибка сервера' });
+    }
+});
+
+// Подтверждение выполнения задания с загрузкой скриншота
+app.post('/api/user/tasks/:userTaskId/submit', upload.single('screenshot'), async (req, res) => {
+    const userTaskId = req.params.userTaskId;
+    const { userId } = req.body;
+    
+    try {
+        // Получаем задание пользователя
+        const userTask = db.get(`user_tasks.${userTaskId}`).value();
+        if (!userTask || userTask.user_id != userId) {
+            return res.json({ success: false, error: 'Задание не найдено' });
+        }
+
+        // Получаем информацию о задании
+        const task = db.get(`tasks.${userTask.task_id}`).value();
+        
+        // Обновляем статус задания пользователя
+        db.set(`user_tasks.${userTaskId}.status`, 'pending_review')
+          .set(`user_tasks.${userTaskId}.submitted_at`, new Date().toISOString())
+          .set(`user_tasks.${userTaskId}.screenshot_url`, `/uploads/${req.file.filename}`)
+          .write();
+
+        // Создаем запись для проверки администратором
+        const user = db.get(`users.${userId}`).value();
+        
+        const verificationId = Date.now();
+        db.set(`verifications.${verificationId}`, {
+            id: verificationId,
+            user_task_id: userTaskId,
+            user_id: userId,
+            user_name: user.first_name,
+            task_id: userTask.task_id,
+            task_title: task.title,
+            task_price: task.price, // цена из задания
+            screenshot_url: `/uploads/${req.file.filename}`,
+            status: 'pending',
+            submitted_at: new Date().toISOString()
+        }).write();
+
+        res.json({
+            success: true,
+            message: 'Скриншот отправлен на проверку!',
+            verificationId: verificationId
+        });
+
+    } catch (error) {
+        console.error('Submit task error:', error);
+        res.json({ success: false, error: 'Ошибка загрузки скриншота' });
+    }
+});
+
+// Одобрение задания администратором (ДЕНЬГИ НАЧИСЛЯЮТСЯ ЗДЕСЬ)
+app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
+    const verificationId = req.params.verificationId;
+    const { adminId } = req.body;
+    
+    try {
+        // Получаем верификацию
+        const verification = db.get(`verifications.${verificationId}`).value();
+        if (!verification) {
+            return res.json({ success: false, error: 'Проверка не найдена' });
+        }
+
+        // Получаем задание пользователя
+        const userTask = db.get(`user_tasks.${verification.user_task_id}`).value();
+        
+        // Получаем текущего пользователя
+        const user = db.get(`users.${verification.user_id}`).value();
+        
+        // ВАЖНО: Начисляем баланс на сумму задания
+        const newBalance = (user.balance || 0) + verification.task_price;
+        
+        // Обновляем данные
+        db.set(`users.${verification.user_id}.balance`, newBalance)
+          .set(`users.${verification.user_id}.tasks_completed`, (user.tasks_completed || 0) + 1)
+          .set(`users.${verification.user_id}.active_tasks`, (user.active_tasks || 0) - 1)
+          .set(`verifications.${verificationId}.status`, 'approved')
+          .set(`verifications.${verificationId}.reviewed_at`, new Date().toISOString())
+          .set(`verifications.${verificationId}.reviewed_by`, adminId)
+          .set(`user_tasks.${verification.user_task_id}.status`, 'completed')
+          .set(`user_tasks.${verification.user_task_id}.completed_at`, new Date().toISOString())
+          .write();
+
+        console.log(`✅ Пользователь ${verification.user_id} получил ${verification.task_price}⭐. Новый баланс: ${newBalance}⭐`);
+
+        res.json({
+            success: true,
+            message: `Задание одобрено! Пользователь получил ${verification.task_price}⭐`,
+            amountAdded: verification.task_price,
+            newBalance: newBalance
+        });
+
+    } catch (error) {
+        console.error('Approve task error:', error);
+        res.json({ success: false, error: 'Ошибка одобрения задания' });
+    }
+});
+
+// Получение заданий пользователя
+app.get('/api/user/:userId/tasks', async (req, res) => {
+    const userId = req.params.userId;
+    const { status } = req.query;
+    
+    try {
+        const userTasks = db.get('user_tasks').value();
+        const tasks = db.get('tasks').value();
+        
+        let filteredTasks = Object.values(userTasks).filter(ut => ut.user_id == userId);
+        
+        if (status) {
+            filteredTasks = filteredTasks.filter(ut => ut.status === status);
+        }
+        
+        // Добавляем информацию о задании
+        const result = filteredTasks.map(userTask => ({
+            ...userTask,
+            task_info: tasks[userTask.task_id]
+        }));
+
+        res.json({ success: true, tasks: result });
+
+    } catch (error) {
+        console.error('Get user tasks error:', error);
+        res.json({ success: false, error: 'Ошибка загрузки заданий' });
+    }
+});
 // Submit task for verification
 app.post('/api/user/tasks/:userTaskId/submit', upload.single('screenshot'), (req, res) => {
     const userTaskId = req.params.userTaskId;

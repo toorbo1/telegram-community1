@@ -5681,7 +5681,7 @@ function displayTasks(tasks, category) {
     });
 }
 
-// Функции для заданий
+// Функция открытия модального окна задания
 function openTaskModal(taskId) {
     selectedTaskId = taskId;
     
@@ -5689,42 +5689,37 @@ function openTaskModal(taskId) {
     if (task) {
         document.getElementById('task-modal-title').textContent = task.title;
         document.getElementById('task-modal-category').textContent = task.category || 'Общее';
-        document.getElementById('task-modal-price').textContent = `${task.price} ⭐`;
+        document.getElementById('task-modal-price').textContent = `${task.price} ⭐`; // Показываем цену
         document.getElementById('task-modal-description').textContent = task.description;
         document.getElementById('task-modal-time').textContent = task.time_to_complete || '5 минут';
         document.getElementById('task-modal-difficulty').textContent = task.difficulty || 'Легкая';
-        document.getElementById('task-modal-available').textContent = `${task.people_required || 1} заданий`;
         
         document.getElementById('task-modal').classList.add('active');
     }
 }
 
-async function startTask() {
-    if (!selectedTaskId || !currentUser) return;
+// Функция подтверждения выполнения задания
+function showTaskConfirmation(userTaskId, taskName, taskPrice) {
+    currentUserTaskId = userTaskId;
+    currentTaskPrice = taskPrice; // Сохраняем цену задания
     
-    try {
-        const result = await makeRequest(`${API_URL}/user/tasks/start`, {
-            method: 'POST',
-            body: JSON.stringify({
-                userId: currentUser.id,
-                taskId: selectedTaskId
-            })
-        });
-
-        if (result.success) {
-            showNotification('Задание начато! После выполнения подтвердите его в разделе "Подтверждение".', 'success');
-            closeModal('task-modal');
-            loadUserTasks();
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error starting task:', error);
-        showNotification('Ошибка начала задания', 'error');
-    }
-    selectedTaskId = null;
+    document.getElementById('confirmation-task-name').textContent = taskName;
+    document.getElementById('confirmation-modal').classList.add('active');
 }
 
+// После одобрения задания администратором - обновляем интерфейс
+function updateUserBalance() {
+    // Обновляем баланс во всех местах
+    const balanceElements = document.querySelectorAll('#user-balance-main, #withdraw-balance');
+    balanceElements.forEach(element => {
+        if (currentUser && currentUser.balance !== undefined) {
+            element.textContent = `${currentUser.balance} ⭐`;
+        }
+    });
+    
+    // Показываем уведомление
+    showNotification(`Баланс пополнен на ${amountAdded}⭐! Новый баланс: ${currentUser.balance}⭐`, 'success');
+}
 // Функции для системы проверки заданий
 function showTaskConfirmation(userTaskId, taskName) {
     currentUserTaskId = userTaskId;
