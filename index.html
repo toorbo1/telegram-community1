@@ -5053,6 +5053,10 @@
     </div>
 </div>
     <script>
+        // Добавьте в самое начало файла, перед всеми функциями
+console.log('🌐 Current URL:', window.location.href);
+const API_BASE_URL = window.location.origin;
+console.log('🔗 API Base URL:', API_BASE_URL);
 // 🔧 КОНФИГУРАЦИЯ
 const API_URL = 'https://telegram-community1-production-0bc1.up.railway.app/api';
 const tg = window.Telegram.WebApp;
