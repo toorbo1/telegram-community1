@@ -5068,9 +5068,14 @@ let chatUpdateInterval = null;
 let currentUserTaskId = null;
 let currentVerificationId = null;
 
-// Улучшенная функция для отправки запросов
-async function makeRequest(url, options = {}) {
+// Улучшенная функция для запросов
+async function makeRequest(endpoint, options = {}) {
     try {
+        // Используем относительный путь
+        const url = endpoint.startsWith('http') ? endpoint : `${window.location.origin}${endpoint}`;
+        
+        console.log(`🔗 Making request to: ${url}`);
+        
         const response = await fetch(url, {
             headers: {
                 'Content-Type': 'application/json',
@@ -5087,11 +5092,19 @@ async function makeRequest(url, options = {}) {
         return data;
     } catch (error) {
         console.error('Request failed:', error);
-        showNotification(`Ошибка соединения: ${error.message}`, 'error');
+        
+        // Показываем понятное сообщение об ошибке
+        if (error.message.includes('Failed to fetch')) {
+            showNotification('Ошибка соединения с сервером', 'error');
+        } else if (error.message.includes('404')) {
+            showNotification('Сервер не найден. Попробуйте позже.', 'error');
+        } else {
+            showNotification(`Ошибка: ${error.message}`, 'error');
+        }
+        
         throw error;
     }
 }
-
 // Инициализация приложения
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Initializing LinkGold app...');
