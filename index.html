@@ -7446,7 +7446,78 @@ function displayAdminChatMessages(messages) {
     
     container.scrollTop = container.scrollHeight;
 }
+// В начале файла, после открывающего <script> тега
+console.log('📱 Telegram Web App environment detected');
 
+// Упрощенная инициализация для Telegram
+async function initializeTelegramApp() {
+    console.log('🎮 Initializing for Telegram Web App...');
+    
+    try {
+        // Проверяем соединение
+        const health = await fetch('/api/health');
+        if (health.ok) {
+            const data = await health.json();
+            console.log('✅ Server connection:', data);
+            showNotification('✅ Соединение установлено!', 'success');
+        } else {
+            throw new Error('Server not responding');
+        }
+        
+        // Инициализируем Telegram
+        if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+            tg.expand();
+            tg.ready();
+            
+            console.log('👤 Telegram user:', tg.initDataUnsafe.user);
+            
+            // Авторизуем пользователя
+            if (tg.initDataUnsafe.user) {
+                await initializeTelegramUser();
+            }
+        } else {
+            console.log('ℹ️ Not in Telegram Web App');
+            initializeTestUser();
+        }
+        
+        // Загружаем базовые данные
+        await loadBasicData();
+        
+    } catch (error) {
+        console.error('❌ Initialization failed:', error);
+        showNotification('⚠️ Проблемы с соединением', 'error');
+    }
+}
+
+// Упрощенная загрузка данных
+async function loadBasicData() {
+    try {
+        const [tasksResponse, postsResponse] = await Promise.all([
+            fetch('/api/tasks'),
+            fetch('/api/posts')
+        ]);
+        
+        if (tasksResponse.ok) {
+            const tasksData = await tasksResponse.json();
+            console.log('📋 Tasks loaded:', tasksData.tasks.length);
+        }
+        
+        if (postsResponse.ok) {
+            const postsData = await postsResponse.json();
+            console.log('📰 Posts loaded:', postsData.posts.length);
+        }
+        
+    } catch (error) {
+        console.error('Error loading data:', error);
+    }
+}
+
+// Замените вызов initializeApp на:
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Starting Telegram Web App...');
+    initializeTelegramApp();
+});
 // Отправка сообщения админом
 async function sendAdminMessage() {
     if (!currentAdminChat || !currentUser) {
