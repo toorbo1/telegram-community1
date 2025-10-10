@@ -4651,51 +4651,32 @@
         </div>
     </div>
 
-    <!-- Страница "Вывод средств" -->
-    <div id="withdraw-page" class="page">
-        <div class="page-header">
-            <button class="back-button" onclick="goBackToProfile()">←</button>
-            <div class="page-title">💳 Вывод средств</div>
+  <!-- Страница вывода средств -->
+<div id="withdraw-page" class="page">
+    <div class="page-header">
+        <button class="back-button" onclick="goBackToProfile()">←</button>
+        <div class="page-title">💫 Вывод звезд</div>
+    </div>
+
+    <div class="card">
+        <!-- Блок с балансом -->
+        <div class="withdraw-hero">
+            <div class="withdraw-balance" id="withdraw-balance-display">0 ⭐</div>
+            <div class="withdraw-subtitle">Ваш текущий баланс</div>
+            <button class="withdraw-btn" onclick="requestWithdraw()" id="withdraw-btn">
+                Вывести средства
+            </button>
         </div>
 
-        <div class="card">
-            <div class="balance-amount" id="withdraw-balance">0 ⭐</div>
-            <p class="about-text" style="text-align: center; margin-bottom: 20px;">Доступно для вывода</p>
-
-            <div class="withdraw-info" style="background: var(--bg-secondary); padding: 15px; border-radius: 12px; margin-bottom: 20px;">
-                <h4 style="margin-bottom: 10px;">📋 Условия вывода:</h4>
-                <ul style="color: var(--text-secondary); font-size: 14px; padding-left: 20px;">
-                    <li>Минимальная сумма вывода: <strong>50 ⭐</strong></li>
-                    <li>Вывод обрабатывается в течение <strong>24 часов</strong></li>
-                    <li>Комиссия: <strong>0%</strong> для всех способов</li>
-                    <li>Доступные методы: карты, QIWI, ЮMoney</li>
-                </ul>
-            </div>
-
-            <div class="admin-form">
-                <h3>Запрос на вывод</h3>
-                <input type="number" class="admin-input" id="withdraw-amount" placeholder="Сумма вывода (минимум 50 ⭐)" min="50">
-                <select class="admin-input" id="withdraw-method">
-                    <option value="">Выберите способ вывода</option>
-                    <option value="card">💳 Банковская карта</option>
-                    <option value="qiwi">🟠 QIWI Кошелек</option>
-                    <option value="yoomoney">🔵 ЮMoney</option>
-                    <option value="crypto">₿ Криптовалюта (USDT)</option>
-                </select>
-                <input type="text" class="admin-input" id="withdraw-details" placeholder="Реквизиты для вывода">
-                <button class="admin-submit" onclick="submitWithdraw()">Заказать выплату</button>
-            </div>
-
-            <div class="withdraw-history" style="margin-top: 25px;">
-                <h4 style="margin-bottom: 15px;">📊 История выводов</h4>
-                <div id="withdraw-history-list" style="background: var(--bg-secondary); border-radius: 12px; padding: 15px;">
-                    <div style="text-align: center; color: var(--text-secondary); font-size: 14px;">
-                        История выводов пуста
-                    </div>
-                </div>
+        <!-- История операций -->
+        <div class="withdraw-history">
+            <h3 style="margin-bottom: 15px; color: var(--text-primary);">📊 Прошлые операции</h3>
+            <div id="withdraw-history-list">
+                <!-- История будет загружена здесь -->
             </div>
         </div>
     </div>
+</div>
 
     <!-- Страница "Как это работает" -->
     <div id="how-it-works-page" class="page">
@@ -6467,7 +6448,221 @@ function formatPostDate(timestamp) {
         })} (МСК)`;
     }
 }
+// Эндпоинт для webhook Telegram
+app.post('/api/telegram/webhook', (req, res) => {
+    const { callback_query } = req.body;
+    
+    if (callback_query && callback_query.data) {
+        const data = callback_query.data;
+        
+        if (data.startsWith('withdraw_complete_')) {
+            const operationId = data.replace('withdraw_complete_', '');
+            
+            // Обновляем статус операции
+            db.run(`UPDATE withdraw_operations SET status = 'completed', completed_at = CURRENT_TIMESTAMP 
+                    WHERE id = ?`, [operationId], function(err) {
+                if (err) {
+                    console.error('Error completing withdrawal:', err);
+                } else {
+                    console.log(`Withdrawal operation ${operationId} completed by admin`);
+                    
+                    // Отправляем ответ в Telegram
+                    const telegramBotToken = 'YOUR_BOT_TOKEN';
+                    const callbackQueryId = callback_query.id;
+                    
+                    fetch(`https://api.telegram.org/bot${telegramBotToken}/answerCallbackQuery`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            callback_query_id: callbackQueryId,
+                            text: '✅ Выплата подтверждена!'
+                        })
+                    });
+                }
+            });
+        }
+    }
+    
+    res.json({ ok: true });
+});
+// Функция для запроса вывода средств
+async function requestWithdraw() {
+    if (!currentUser) {
+        showNotification('Пользователь не авторизован', 'error');
+        return;
+    }
+    
+    const currentBalance = currentUser.balance || 0;
+    
+    if (currentBalance <= 0) {
+        showNotification('Недостаточно средств для вывода', 'error');
+        return;
+    }
+    
+    // Подтверждение
+    if (!confirm(`Вы уверены, что хотите вывести ${currentBalance} ⭐?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/withdraw/request', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: currentUser.id,
+                amount: currentBalance
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Обновляем баланс пользователя
+            currentUser.balance = 0;
+            
+            // Обновляем отображение
+            displayUserProfile();
+            updateWithdrawPage();
+            
+            showNotification(`Заявка на вывод ${currentBalance} ⭐ отправлена! Ожидайте подтверждения.`, 'success');
+            
+            // Обновляем историю операций
+            loadWithdrawHistory();
+            
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Withdrawal error:', error);
+        showNotification('Ошибка при выводе средств', 'error');
+    }
+}
 
+// Загрузка истории выводов
+async function loadWithdrawHistory() {
+    if (!currentUser) return;
+    
+    try {
+        const response = await fetch(`/api/withdraw/history/${currentUser.id}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            displayWithdrawHistory(result.operations);
+        }
+    } catch (error) {
+        console.error('Error loading withdraw history:', error);
+    }
+}
+
+// Отображение истории выводов
+function displayWithdrawHistory(operations) {
+    const container = document.getElementById('withdraw-history-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!operations || operations.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
+                <div style="font-size: 48px; margin-bottom: 16px;">💫</div>
+                <div>Нет операций по выводу</div>
+            </div>
+        `;
+        return;
+    }
+    
+    operations.forEach(operation => {
+        const operationElement = document.createElement('div');
+        operationElement.className = 'withdraw-operation';
+        operationElement.style.cssText = `
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        `;
+        
+        const statusText = operation.status === 'completed' ? 
+            '✅ Операция завершена' : 
+            '🔄 Операция осуществляется';
+            
+        const statusColor = operation.status === 'completed' ? 
+            'var(--success)' : 'var(--warning)';
+        
+        operationElement.innerHTML = `
+            <div>
+                <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">
+                    ${operation.amount} ⭐
+                </div>
+                <div style="font-size: 12px; color: var(--text-secondary);">
+                    ${new Date(operation.created_at).toLocaleDateString('ru-RU')}
+                </div>
+            </div>
+            <div style="color: ${statusColor}; font-weight: 600; font-size: 14px;">
+                ${statusText}
+            </div>
+        `;
+        
+        container.appendChild(operationElement);
+    });
+}
+
+// Обновление страницы вывода
+function updateWithdrawPage() {
+    const balanceDisplay = document.getElementById('withdraw-balance-display');
+    const withdrawBtn = document.getElementById('withdraw-btn');
+    
+    if (balanceDisplay && currentUser) {
+        balanceDisplay.textContent = `${currentUser.balance || 0} ⭐`;
+    }
+    
+    if (withdrawBtn && currentUser) {
+        if ((currentUser.balance || 0) <= 0) {
+            withdrawBtn.disabled = true;
+            withdrawBtn.style.opacity = '0.5';
+            withdrawBtn.textContent = 'Недостаточно средств';
+        } else {
+            withdrawBtn.disabled = false;
+            withdrawBtn.style.opacity = '1';
+            withdrawBtn.textContent = 'Вывести средства';
+        }
+    }
+}
+
+// Обновим функцию showWithdrawPage
+function showWithdrawPage() {
+    hideAllTabs();
+    document.getElementById('withdraw-page').classList.add('active');
+    updateWithdrawPage();
+    loadWithdrawHistory();
+}
+
+// Добавим вызов в initializeApp()
+function initializeApp() {
+    displayUserProfile();
+    checkAdminRights();
+    loadMainPagePosts();
+    loadTasks();
+    initializeSearch();
+    loadUserTasks();
+    
+    // Загружаем историю выводов при инициализации
+    loadWithdrawHistory();
+    
+    // Если пользователь админ, загружаем админ-данные
+    if (currentUser && currentUser.isAdmin) {
+        loadAdminChats();
+        loadAdminTasks();
+        loadTaskVerifications();
+    }
+}
 function showNotification(message, type = 'info') {
     // Удаляем существующие уведомления
     document.querySelectorAll('.notification').forEach(notification => {

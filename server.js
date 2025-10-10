@@ -186,6 +186,18 @@ function initDatabase() {
             reviewed_by INTEGER,
             FOREIGN KEY(user_task_id) REFERENCES user_tasks(id)
         )`);
+
+db.run(`CREATE TABLE IF NOT EXISTS withdraw_operations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    username TEXT NOT NULL,
+    amount REAL NOT NULL,
+    status TEXT DEFAULT 'processing', -- 'processing', 'completed'
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    completed_at DATETIME,
+    admin_message_id TEXT,
+    FOREIGN KEY(user_id) REFERENCES user_profiles(user_id)
+)`);
     });
 }
 
@@ -195,7 +207,188 @@ const ADMIN_ID = 8036875641;
 function getMoscowTime() {
     return new Date().toLocaleString("ru-RU", { timeZone: "Europe/Moscow" });
 }
+// Эндпоинты для вывода средств
+app.post('/api/withdraw/request', async (req, res) => {
+    const { userId, amount } = req.body;
+    
+    if (!userId || !amount) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    try {
+        // Получаем данные пользователя
+        db.get("SELECT * FROM user_profiles WHERE user_id = ?", [userId], async (err, user) => {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Database error'
+                });
+            }
+            
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'User not found'
+                });
+            }
+            
+            if (user.balance < amount) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Insufficient balance'
+                });
+            }
+            
+            // Обнуляем баланс пользователя
+            db.run("UPDATE user_profiles SET balance = 0 WHERE user_id = ?", [userId], function(err) {
+                if (err) {
+                    return res.status(500).json({
+                        success: false,
+                        error: 'Database error'
+                    });
+                }
+                
+                // Создаем запись об операции вывода
+                db.run(`INSERT INTO withdraw_operations (user_id, username, amount, status) 
+                        VALUES (?, ?, ?, 'processing')`,
+                        [userId, user.username, amount], async function(err) {
+                    if (err) {
+                        return res.status(500).json({
+                            success: false,
+                            error: 'Database error'
+                        });
+                    }
+                    
+                    const operationId = this.lastID;
+                    
+                    try {
+                        // Отправляем сообщение в Telegram канал
+                        const telegramMessage = await sendTelegramNotification(user.username, amount, operationId);
+                        
+                        // Сохраняем ID сообщения в базе
+                        if (telegramMessage && telegramMessage.message_id) {
+                            db.run("UPDATE withdraw_operations SET admin_message_id = ? WHERE id = ?", 
+                                [telegramMessage.message_id, operationId]);
+                        }
+                        
+                        res.json({
+                            success: true,
+                            message: 'Withdrawal request submitted',
+                            operationId: operationId,
+                            newBalance: 0
+                        });
+                        
+                    } catch (telegramError) {
+                        console.error('Telegram error:', telegramError);
+                        // Все равно возвращаем успех, даже если Telegram не работает
+                        res.json({
+                            success: true,
+                            message: 'Withdrawal request submitted (Telegram notification failed)',
+                            operationId: operationId,
+                            newBalance: 0
+                        });
+                    }
+                });
+            });
+        });
+    } catch (error) {
+        console.error('Withdrawal error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error'
+        });
+    }
+});
 
+// Функция отправки уведомления в Telegram
+async function sendTelegramNotification(username, amount, operationId) {
+    const telegramBotToken = 'YOUR_BOT_TOKEN'; // Замените на реальный токен бота
+    const channelId = '@wergqervgba'; // Ваш канал
+    
+    const message = `
+🔄 Новая заявка на вывод средств
+
+👤 Пользователь: @${username}
+💫 Сумма: ${amount} звезд
+🆔 ID операции: ${operationId}
+
+Для подтверждения выплаты нажмите кнопку ниже:
+    `;
+    
+    const keyboard = {
+        inline_keyboard: [[
+            {
+                text: "✅ Перечислил",
+                callback_data: `withdraw_complete_${operationId}`
+            }
+        ]]
+    };
+    
+    const response = await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            chat_id: channelId,
+            text: message,
+            parse_mode: 'HTML',
+            reply_markup: keyboard
+        })
+    });
+    
+    return await response.json();
+}
+
+// Эндпоинт для обработки callback от Telegram
+app.post('/api/withdraw/complete', (req, res) => {
+    const { operationId } = req.body;
+    
+    if (!operationId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Operation ID required'
+        });
+    }
+    
+    db.run(`UPDATE withdraw_operations SET status = 'completed', completed_at = CURRENT_TIMESTAMP 
+            WHERE id = ?`, [operationId], function(err) {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Withdrawal operation completed'
+        });
+    });
+});
+
+// Получение истории выводов
+app.get('/api/withdraw/history/:userId', (req, res) => {
+    const userId = req.params.userId;
+    
+    db.all(`SELECT * FROM withdraw_operations WHERE user_id = ? ORDER BY created_at DESC`, 
+            [userId], (err, rows) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        }
+        
+        res.json({
+            success: true,
+            operations: rows
+        });
+    });
+});
 // Функция для форматирования времени в московском часовом поясе
 function formatMoscowTime(timestamp) {
     if (!timestamp) return '';
