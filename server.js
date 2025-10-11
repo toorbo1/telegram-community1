@@ -5,27 +5,7 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-// В server.js после middleware добавьте:
 
-// API routes first
-app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'OK', 
-        message: 'LinkGold API is running!',
-        timestamp: new Date().toISOString(),
-        database: 'PostgreSQL'
-    });
-});
-
-// Все остальные API routes...
-
-// Then static files
-app.use(express.static('.'));
-
-// Then catch-all handler for SPA
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
 // Middleware
 app.use(cors({
     origin: '*',
@@ -34,12 +14,11 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-app.use(express.static('.'));
 
 // PostgreSQL connection
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
 const ADMIN_ID = 8036875641;
@@ -80,7 +59,8 @@ async function initDatabase() {
                 image_url TEXT,
                 author TEXT NOT NULL,
                 author_id BIGINT NOT NULL,
-                is_admin BOOLEAN DEFAULT false,
+                likes INTEGER DEFAULT 0,
+                dislikes INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
@@ -148,6 +128,37 @@ async function initDatabase() {
                 is_admin BOOLEAN DEFAULT false,
                 is_read BOOLEAN DEFAULT false,
                 sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Withdrawal requests table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS withdrawal_requests (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                amount REAL NOT NULL,
+                method TEXT NOT NULL,
+                details TEXT NOT NULL,
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Task verification table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS task_verifications (
+                id SERIAL PRIMARY KEY,
+                user_task_id INTEGER NOT NULL,
+                user_id BIGINT NOT NULL,
+                task_id INTEGER NOT NULL,
+                user_name TEXT NOT NULL,
+                task_title TEXT NOT NULL,
+                task_price REAL NOT NULL,
+                screenshot_url TEXT NOT NULL,
+                status TEXT DEFAULT 'pending',
+                submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                reviewed_at TIMESTAMP,
+                reviewed_by INTEGER
             )
         `);
 
@@ -304,8 +315,8 @@ app.post('/api/posts', async (req, res) => {
     
     try {
         const result = await pool.query(`
-            INSERT INTO posts (title, content, author, author_id, is_admin) 
-            VALUES ($1, $2, $3, $4, true)
+            INSERT INTO posts (title, content, author, author_id) 
+            VALUES ($1, $2, $3, $4)
             RETURNING *
         `, [title, content, author, authorId]);
         
@@ -323,14 +334,106 @@ app.post('/api/posts', async (req, res) => {
     }
 });
 
-// Get all tasks
-app.get('/api/tasks', async (req, res) => {
+// Delete post
+app.delete('/api/posts/:id', async (req, res) => {
+    const { authorId } = req.body;
+    
+    if (parseInt(authorId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    try {
+        await pool.query("DELETE FROM posts WHERE id = $1", [req.params.id]);
+        res.json({
+            success: true,
+            message: 'Post deleted successfully'
+        });
+    } catch (error) {
+        console.error('Delete post error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error'
+        });
+    }
+});
+
+// Like post
+app.post('/api/posts/:postId/like', async (req, res) => {
+    const { userId } = req.body;
+    
     try {
         const result = await pool.query(`
-            SELECT * FROM tasks 
-            WHERE status = 'active' 
-            ORDER BY created_at DESC
-        `);
+            UPDATE posts SET likes = COALESCE(likes, 0) + 1 
+            WHERE id = $1 
+            RETURNING likes
+        `, [req.params.postId]);
+        
+        res.json({
+            success: true,
+            likes: result.rows[0].likes
+        });
+    } catch (error) {
+        console.error('Like post error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error'
+        });
+    }
+});
+
+// Dislike post
+app.post('/api/posts/:postId/dislike', async (req, res) => {
+    const { userId } = req.body;
+    
+    try {
+        const result = await pool.query(`
+            UPDATE posts SET dislikes = COALESCE(dislikes, 0) + 1 
+            WHERE id = $1 
+            RETURNING dislikes
+        `, [req.params.postId]);
+        
+        res.json({
+            success: true,
+            dislikes: result.rows[0].dislikes
+        });
+    } catch (error) {
+        console.error('Dislike post error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error'
+        });
+    }
+});
+
+// Get all tasks
+app.get('/api/tasks', async (req, res) => {
+    const { search, category } = req.query;
+    
+    try {
+        let query = "SELECT * FROM tasks WHERE status = 'active'";
+        let params = [];
+        
+        if (search) {
+            query += " AND (title ILIKE $1 OR description ILIKE $2)";
+            params.push(`%${search}%`, `%${search}%`);
+        }
+        
+        if (category && category !== 'all') {
+            if (params.length > 0) {
+                query += " AND category = $3";
+                params.push(category);
+            } else {
+                query += " AND category = $1";
+                params.push(category);
+            }
+        }
+        
+        query += " ORDER BY created_at DESC";
+        
+        const result = await pool.query(query, params);
         
         res.json({
             success: true,
@@ -415,6 +518,32 @@ app.post('/api/tasks', async (req, res) => {
     }
 });
 
+// Delete task
+app.delete('/api/tasks/:id', async (req, res) => {
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    try {
+        await pool.query("DELETE FROM tasks WHERE id = $1", [req.params.id]);
+        res.json({
+            success: true,
+            message: 'Task deleted successfully'
+        });
+    } catch (error) {
+        console.error('Delete task error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error'
+        });
+    }
+});
+
 // Start task for user
 app.post('/api/user/tasks/start', async (req, res) => {
     const { userId, taskId } = req.body;
@@ -468,7 +597,7 @@ app.post('/api/user/tasks/start', async (req, res) => {
     }
 });
 
-// Get user tasks - ИСПРАВЛЕННЫЙ ЗАПРОС (без task_url)
+// Get user tasks
 app.get('/api/user/:userId/tasks', async (req, res) => {
     const userId = req.params.userId;
     const { status } = req.query;
@@ -497,6 +626,109 @@ app.get('/api/user/:userId/tasks', async (req, res) => {
         });
     } catch (error) {
         console.error('Get user tasks error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error'
+        });
+    }
+});
+
+// Submit task for verification
+app.post('/api/user/tasks/:userTaskId/submit', async (req, res) => {
+    const userTaskId = req.params.userTaskId;
+    const { userId } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing user ID'
+        });
+    }
+    
+    try {
+        // In a real app, you would handle file upload here
+        // For now, we'll just update the status
+        const screenshotUrl = '/uploads/sample-screenshot.jpg'; // Placeholder
+        
+        // Update user_task
+        await pool.query(`
+            UPDATE user_tasks 
+            SET status = 'pending_review', screenshot_url = $1, submitted_at = CURRENT_TIMESTAMP 
+            WHERE id = $2 AND user_id = $3
+        `, [screenshotUrl, userTaskId, userId]);
+        
+        // Get task info for verification
+        const taskInfo = await pool.query(`
+            SELECT ut.user_id, ut.task_id, u.first_name, u.last_name, t.title, t.price 
+            FROM user_tasks ut 
+            JOIN user_profiles u ON ut.user_id = u.user_id 
+            JOIN tasks t ON ut.task_id = t.id 
+            WHERE ut.id = $1
+        `, [userTaskId]);
+        
+        if (taskInfo.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Task not found'
+            });
+        }
+        
+        const taskData = taskInfo.rows[0];
+        const userName = `${taskData.first_name} ${taskData.last_name}`;
+        
+        // Create verification record
+        const verificationResult = await pool.query(`
+            INSERT INTO task_verifications 
+            (user_task_id, user_id, task_id, user_name, task_title, task_price, screenshot_url) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING *
+        `, [userTaskId, taskData.user_id, taskData.task_id, userName, taskData.title, taskData.price, screenshotUrl]);
+        
+        res.json({
+            success: true,
+            message: 'Task submitted for review',
+            verificationId: verificationResult.rows[0].id
+        });
+    } catch (error) {
+        console.error('Submit task error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error'
+        });
+    }
+});
+
+// Cancel task
+app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
+    const userTaskId = req.params.userTaskId;
+    const { userId } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing user ID'
+        });
+    }
+    
+    try {
+        await pool.query(`
+            DELETE FROM user_tasks 
+            WHERE id = $1 AND user_id = $2
+        `, [userTaskId, userId]);
+        
+        // Update user's active tasks count
+        await pool.query(`
+            UPDATE user_profiles 
+            SET active_tasks = GREATEST(COALESCE(active_tasks, 0) - 1, 0) 
+            WHERE user_id = $1
+        `, [userId]);
+        
+        res.json({
+            success: true,
+            message: 'Task cancelled successfully'
+        });
+    } catch (error) {
+        console.error('Cancel task error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error'
@@ -627,6 +859,7 @@ app.get('/api/support/chats', async (req, res) => {
     try {
         const result = await pool.query(`
             SELECT * FROM support_chats 
+            WHERE is_active = true
             ORDER BY last_message_time DESC
         `);
         
@@ -636,6 +869,200 @@ app.get('/api/support/chats', async (req, res) => {
         });
     } catch (error) {
         console.error('Get chats error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error'
+        });
+    }
+});
+
+// Get all chats (including archived)
+app.get('/api/support/all-chats', async (req, res) => {
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    try {
+        const result = await pool.query(`
+            SELECT * FROM support_chats 
+            ORDER BY last_message_time DESC
+        `);
+        
+        res.json({
+            success: true,
+            chats: result.rows
+        });
+    } catch (error) {
+        console.error('Get all chats error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error'
+        });
+    }
+});
+
+// Get archived chats
+app.get('/api/support/archived-chats', async (req, res) => {
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    try {
+        const result = await pool.query(`
+            SELECT * FROM support_chats 
+            WHERE is_active = false
+            ORDER BY last_message_time DESC
+        `);
+        
+        res.json({
+            success: true,
+            chats: result.rows
+        });
+    } catch (error) {
+        console.error('Get archived chats error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error'
+        });
+    }
+});
+
+// Mark chat as read
+app.put('/api/support/chats/:chatId/read', async (req, res) => {
+    const chatId = req.params.chatId;
+
+    try {
+        await pool.query(`
+            UPDATE support_chats 
+            SET unread_count = 0 
+            WHERE id = $1
+        `, [chatId]);
+        
+        // Also mark messages as read
+        await pool.query(`
+            UPDATE support_messages 
+            SET is_read = true 
+            WHERE chat_id = $1 AND is_admin = false
+        `, [chatId]);
+        
+        res.json({
+            success: true,
+            message: 'Chat marked as read'
+        });
+    } catch (error) {
+        console.error('Mark chat as read error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error'
+        });
+    }
+});
+
+// Archive chat
+app.put('/api/support/chats/:chatId/archive', async (req, res) => {
+    const chatId = req.params.chatId;
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    try {
+        await pool.query(`
+            UPDATE support_chats 
+            SET is_active = false 
+            WHERE id = $1
+        `, [chatId]);
+        
+        res.json({
+            success: true,
+            message: 'Chat archived successfully'
+        });
+    } catch (error) {
+        console.error('Archive chat error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error'
+        });
+    }
+});
+
+// Restore chat
+app.put('/api/support/chats/:chatId/restore', async (req, res) => {
+    const chatId = req.params.chatId;
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    try {
+        await pool.query(`
+            UPDATE support_chats 
+            SET is_active = true 
+            WHERE id = $1
+        `, [chatId]);
+        
+        res.json({
+            success: true,
+            message: 'Chat restored successfully'
+        });
+    } catch (error) {
+        console.error('Restore chat error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error'
+        });
+    }
+});
+
+// Delete chat
+app.delete('/api/support/chats/:chatId', async (req, res) => {
+    const chatId = req.params.chatId;
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    try {
+        // Delete messages first
+        await pool.query(`
+            DELETE FROM support_messages 
+            WHERE chat_id = $1
+        `, [chatId]);
+        
+        // Then delete chat
+        await pool.query(`
+            DELETE FROM support_chats 
+            WHERE id = $1
+        `, [chatId]);
+        
+        res.json({
+            success: true,
+            message: 'Chat deleted successfully'
+        });
+    } catch (error) {
+        console.error('Delete chat error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error'
@@ -725,7 +1152,8 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
                 balance = COALESCE(balance, 0) + $1,
                 tasks_completed = COALESCE(tasks_completed, 0) + 1,
                 active_tasks = GREATEST(COALESCE(active_tasks, 0) - 1, 0),
-                experience = COALESCE(experience, 0) + 10
+                experience = COALESCE(experience, 0) + 10,
+                updated_at = CURRENT_TIMESTAMP
             WHERE user_id = $2
         `, [verificationData.task_price, verificationData.user_id]);
         
@@ -736,6 +1164,61 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
         });
     } catch (error) {
         console.error('Approve verification error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error'
+        });
+    }
+});
+
+// Reject task verification
+app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res) => {
+    const verificationId = req.params.verificationId;
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    try {
+        // Get verification info
+        const verification = await pool.query(
+            'SELECT * FROM task_verifications WHERE id = $1', 
+            [verificationId]
+        );
+        
+        if (verification.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Verification not found'
+            });
+        }
+
+        const verificationData = verification.rows[0];
+        
+        // Update verification status
+        await pool.query(`
+            UPDATE task_verifications 
+            SET status = 'rejected', reviewed_at = CURRENT_TIMESTAMP, reviewed_by = $1 
+            WHERE id = $2
+        `, [adminId, verificationId]);
+        
+        // Update user task
+        await pool.query(`
+            UPDATE user_tasks 
+            SET status = 'rejected', rejected_at = CURRENT_TIMESTAMP 
+            WHERE id = $1
+        `, [verificationData.user_task_id]);
+        
+        res.json({
+            success: true,
+            message: 'Task rejected successfully'
+        });
+    } catch (error) {
+        console.error('Reject verification error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error'
@@ -775,10 +1258,38 @@ app.post('/api/withdrawal/request', async (req, res) => {
     }
 });
 
-// Main route
-app.get('/', (req, res) => {
+// Get withdrawal history
+app.get('/api/withdraw/history/:userId', async (req, res) => {
+    const userId = req.params.userId;
+    
+    try {
+        const result = await pool.query(`
+            SELECT * FROM withdrawal_requests 
+            WHERE user_id = $1 
+            ORDER BY created_at DESC
+        `, [userId]);
+        
+        res.json({
+            success: true,
+            operations: result.rows
+        });
+    } catch (error) {
+        console.error('Get withdrawal history error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error'
+        });
+    }
+});
+
+// Serve static files (must be after API routes)
+app.use(express.static('.'));
+
+// Main route - serve index.html for all other routes (SPA)
+app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('❌ Server error:', err);
@@ -795,10 +1306,12 @@ app.use('/api/*', (req, res) => {
         error: 'API endpoint not found'
     });
 });
+
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📊 Health: http://localhost:${PORT}/api/health`);
     console.log(`🔐 Admin ID: ${ADMIN_ID}`);
     console.log(`🗄️ Database: PostgreSQL`);
+    console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
