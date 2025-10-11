@@ -6020,32 +6020,12 @@ async function makeRequest(endpoint, options = {}) {
                 showNotification('Ошибка соединения: ' + error.message, 'error');
             }
         }
-// Вместо addTask() используйте:
-async function addSimpleTask() {
-    const title = document.getElementById('admin-task-title').value;
-    const description = document.getElementById('admin-task-description').value;
-    const price = document.getElementById('admin-task-price').value;
-    
-    const result = await makeRequest('/api/simple/tasks', {
-        method: 'POST',
-        body: JSON.stringify({
-            title: title,
-            description: description,
-            price: price,
-            created_by: currentUser.id
-        })
-    });
-    
-    if (result.success) {
-        showNotification('Задание создано!', 'success');
-        // Очистить поля формы
-    }
-}
-    //    async function addTask() {
-    // console.log('🎯 ========== START addTask FUNCTION ==========');
+
+       async function addTask() {
+    console.log('🎯 ========== START addTask FUNCTION ==========');
     
     try {
-        // Проверяем авторизацию
+        // 1. Проверяем авторизацию
         if (!currentUser) {
             showNotification('Пользователь не авторизован', 'error');
             return;
@@ -6056,7 +6036,7 @@ async function addSimpleTask() {
             return;
         }
 
-        // Собираем данные из формы
+        // 2. Собираем данные из формы
         const getElementValue = (id) => {
             const element = document.getElementById(id);
             return element ? element.value : '';
@@ -6071,26 +6051,26 @@ async function addSimpleTask() {
             people_required: getElementValue('admin-task-people'),
             repost_time: getElementValue('admin-task-repost'),
             task_url: getElementValue('admin-task-url'),
-            category: 'general',
+            category: 'general', // добавляем категорию по умолчанию
             created_by: currentUser.id
         };
 
         console.log('📋 Form data collected:', formData);
 
-        // Валидация
+        // 3. Валидация
         if (!formData.title.trim() || !formData.description.trim() || !formData.price) {
             showNotification('Заполните название, описание и цену задания!', 'error');
             return;
         }
 
-        // Проверяем числовые поля
+        // 4. Проверяем числовые поля
         const price = parseFloat(formData.price);
         if (isNaN(price) || price <= 0) {
             showNotification('Цена должна быть положительным числом!', 'error');
             return;
         }
 
-        // Подготавливаем данные для отправки
+        // 5. Подготавливаем данные для отправки
         const requestData = {
             title: formData.title.trim(),
             description: formData.description.trim(),
@@ -6106,7 +6086,7 @@ async function addSimpleTask() {
 
         console.log('📤 Prepared request data:', requestData);
 
-        // Отправляем запрос
+        // 6. Отправляем запрос
         console.log('🚀 Sending request to /api/tasks...');
         const result = await makeRequest('/tasks', {
             method: 'POST',
@@ -6119,13 +6099,9 @@ async function addSimpleTask() {
             showNotification('✅ Задание успешно создано!', 'success');
             
             // Очищаем форму
-            const formFields = [
-                'admin-task-title', 'admin-task-description', 'admin-task-price',
-                'admin-task-time', 'admin-task-difficulty', 'admin-task-people',
-                'admin-task-repost', 'admin-task-url'
-            ];
-            formFields.forEach(fieldId => {
-                const element = document.getElementById(fieldId);
+            const formFields = ['title', 'description', 'price', 'time', 'difficulty', 'people', 'repost', 'url'];
+            formFields.forEach(field => {
+                const element = document.getElementById(`admin-task-${field}`);
                 if (element) element.value = '';
             });
             
@@ -6145,7 +6121,7 @@ async function addSimpleTask() {
     } finally {
         console.log('🎯 ========== END addTask FUNCTION ==========');
     }
-
+}
         // Load admin tasks
 async function loadAdminTasks() {
     if (!currentUser || !currentUser.isAdmin) return;
@@ -6245,14 +6221,11 @@ function displayAdminTasks(tasks) {
         showNotification('Ошибка удаления задания: ' + error.message, 'error');
     }
 }
-      // Вместо openAdminChat() используйте:
-async function openSimpleChat() {
-    const result = await makeRequest(`/api/simple/chats/${currentUser.id}`);
-    if (result.success) {
-        // Показать чат с сообщениями
-        showChatInterface(result.chat, result.messages);
+      async function openAdminChat() {
+    if (!currentUser) {
+        showNotification('Пользователь не авторизован', 'error');
+        return;
     }
-}
     
     try {
         console.log('👤 User opening support chat, ID:', currentUser.id);
@@ -6293,7 +6266,7 @@ async function openSimpleChat() {
             stack: error.stack
         });
     }
-
+}
         async function sendMessageToAdmin() {
             if (!currentUser || !currentChatId) {
                 showNotification('Чат не открыт', 'error');
