@@ -75,18 +75,23 @@ async function initDatabase() {
             )
         `);
 
-        // Упрощенная таблица заданий
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS tasks (
-                id SERIAL PRIMARY KEY,
-                title TEXT NOT NULL,
-                description TEXT NOT NULL,
-                price REAL NOT NULL,
-                created_by BIGINT NOT NULL,
-                status TEXT DEFAULT 'active',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
+    CREATE TABLE IF NOT EXISTS tasks (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL,
+        price REAL NOT NULL,
+        created_by BIGINT NOT NULL,
+        category TEXT DEFAULT 'general',
+        time_to_complete TEXT DEFAULT '5 минут',
+        difficulty TEXT DEFAULT 'Легкая',
+        people_required INTEGER DEFAULT 1,
+        repost_time TEXT DEFAULT '1 день',
+        task_url TEXT,
+        status TEXT DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+`);
 
         // Упрощенная таблица постов
         await pool.query(`
@@ -100,19 +105,63 @@ async function initDatabase() {
             )
         `);
 
-        // Упрощенная таблица чатов
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS support_chats (
-                id SERIAL PRIMARY KEY,
-                user_id BIGINT NOT NULL,
-                user_name TEXT NOT NULL,
-                last_message TEXT,
-                last_message_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                is_active BOOLEAN DEFAULT true,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
+    CREATE TABLE IF NOT EXISTS support_chats (
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT NOT NULL,
+        user_name TEXT NOT NULL,
+        user_username TEXT,
+        last_message TEXT,
+        last_message_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        is_active BOOLEAN DEFAULT true,
+        unread_count INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+`);
+// Таблица для заданий пользователей
+await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_tasks (
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT NOT NULL,
+        task_id INTEGER NOT NULL,
+        status TEXT DEFAULT 'active',
+        started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        screenshot_url TEXT,
+        submitted_at TIMESTAMP,
+        completed_at TIMESTAMP
+    )
+`);
 
+// Таблица для проверки заданий
+await pool.query(`
+    CREATE TABLE IF NOT EXISTS task_verifications (
+        id SERIAL PRIMARY KEY,
+        user_task_id INTEGER NOT NULL,
+        user_id BIGINT NOT NULL,
+        task_id INTEGER NOT NULL,
+        user_name TEXT NOT NULL,
+        task_title TEXT NOT NULL,
+        task_price REAL NOT NULL,
+        screenshot_url TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        reviewed_at TIMESTAMP,
+        reviewed_by BIGINT
+    )
+`);
+
+// Таблица для запросов на вывод
+await pool.query(`
+    CREATE TABLE IF NOT EXISTS withdrawal_requests (
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT NOT NULL,
+        amount REAL NOT NULL,
+        method TEXT,
+        details TEXT,
+        status TEXT DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+`);
         // Упрощенная таблица сообщений
         await pool.query(`
             CREATE TABLE IF NOT EXISTS support_messages (
@@ -124,8 +173,37 @@ async function initDatabase() {
                 is_admin BOOLEAN DEFAULT false,
                 sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        `);
 
+        `);
+// Функция для добавления недостающих колонок
+async function migrateDatabase() {
+    try {
+        console.log('🔄 Checking for database migrations...');
+        
+        // Добавляем недостающие колонки в support_chats
+        await pool.query(`
+            ALTER TABLE support_chats 
+            ADD COLUMN IF NOT EXISTS user_username TEXT,
+            ADD COLUMN IF NOT EXISTS unread_count INTEGER DEFAULT 0
+        `);
+        
+        // Добавляем недостающие колонки в tasks
+        await pool.query(`
+            ALTER TABLE tasks 
+            ADD COLUMN IF NOT EXISTS created_by BIGINT,
+            ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'general',
+            ADD COLUMN IF NOT EXISTS time_to_complete TEXT DEFAULT '5 минут',
+            ADD COLUMN IF NOT EXISTS difficulty TEXT DEFAULT 'Легкая',
+            ADD COLUMN IF NOT EXISTS people_required INTEGER DEFAULT 1,
+            ADD COLUMN IF NOT EXISTS repost_time TEXT DEFAULT '1 день',
+            ADD COLUMN IF NOT EXISTS task_url TEXT
+        `);
+        
+        console.log('✅ Database migrations completed');
+    } catch (error) {
+        console.error('❌ Database migration error:', error);
+    }
+}
         // Добавляем примеры если таблицы пустые
         const tasksCount = await pool.query('SELECT COUNT(*) FROM tasks');
         if (parseInt(tasksCount.rows[0].count) === 0) {
@@ -642,18 +720,11 @@ app.post('/api/tasks', async (req, res) => {
         title, 
         description, 
         price, 
-        created_by,
-        time_to_complete = '5 минут',
-        difficulty = 'Легкая',
-        people_required = 1,
-        repost_time = '1 день',
-        task_url = '',
-        category = 'general'
+        created_by
     } = req.body;
     
     // Validate required fields
     if (!title || !description || !price || !created_by) {
-        console.log('❌ Missing required fields:', { title, description, price, created_by });
         return res.status(400).json({
             success: false,
             error: 'Missing required fields: title, description, price, and created_by are required'
@@ -669,7 +740,6 @@ app.post('/api/tasks', async (req, res) => {
     }
     
     try {
-        // Validate and parse numeric fields
         const taskPrice = parseFloat(price);
         if (isNaN(taskPrice) || taskPrice <= 0) {
             return res.status(400).json({
@@ -678,28 +748,11 @@ app.post('/api/tasks', async (req, res) => {
             });
         }
 
-        const peopleRequired = parseInt(people_required) || 1;
-        
         const result = await pool.query(`
-            INSERT INTO tasks (
-                title, description, price, created_by,
-                time_to_complete, difficulty, people_required,
-                repost_time, task_url, category, status
-            ) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active')
+            INSERT INTO tasks (title, description, price, created_by) 
+            VALUES ($1, $2, $3, $4)
             RETURNING *
-        `, [
-            title.trim(), 
-            description.trim(), 
-            taskPrice, 
-            created_by,
-            time_to_complete,
-            difficulty,
-            peopleRequired,
-            repost_time,
-            task_url,
-            category
-        ]);
+        `, [title.trim(), description.trim(), taskPrice, created_by]);
         
         console.log('✅ Task created successfully:', result.rows[0]);
         
@@ -939,82 +992,55 @@ app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
     }
 });
 
-// Get or create user chat - IMPROVED VERSION
 app.get('/api/support/user-chat/:userId', async (req, res) => {
     const userId = req.params.userId;
     
-    console.log('💬 Getting user chat for:', userId);
-    
     try {
-        // First, ensure user exists in user_profiles
-        const userCheck = await pool.query(
-            'SELECT * FROM user_profiles WHERE user_id = $1', 
-            [userId]
-        );
-        
-        let user_name = `User_${userId}`;
-        let user_username = `user_${userId}`;
-        
-        if (userCheck.rows.length === 0) {
-            // Create basic user profile if doesn't exist
-            console.log('👤 Creating user profile for:', userId);
-            await pool.query(`
-                INSERT INTO user_profiles (user_id, username, first_name, is_admin) 
-                VALUES ($1, $2, $3, $4)
-            `, [userId, user_username, user_name, false]);
-        } else {
-            const user = userCheck.rows[0];
-            user_name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user_name;
-            user_username = user.username || user_username;
-        }
-        
-        // Check if chat exists
-        const existingChat = await pool.query(
+        // Сначала проверяем существующий чат
+        let chat = await pool.query(
             'SELECT * FROM support_chats WHERE user_id = $1', 
             [userId]
         );
         
-        if (existingChat.rows.length > 0) {
-            console.log('✅ Found existing chat:', existingChat.rows[0].id);
-            return res.json({
-                success: true,
-                chat: existingChat.rows[0]
-            });
-        }
-        
-        console.log('📝 Creating new chat for user:', userId);
-        
-        const newChat = await pool.query(`
-            INSERT INTO support_chats (user_id, user_name, user_username, last_message) 
-            VALUES ($1, $2, $3, $4)
-            RETURNING *
-        `, [userId, user_name, user_username, 'Чат создан']);
-        
-        const chatId = newChat.rows[0].id;
-        console.log('✅ Created new chat with ID:', chatId);
-        
-        // Create welcome message
-        try {
+        if (chat.rows.length === 0) {
+            // Получаем информацию о пользователе
+            const userResult = await pool.query(
+                'SELECT first_name, last_name, username FROM user_profiles WHERE user_id = $1',
+                [userId]
+            );
+            
+            let user_name = 'Пользователь';
+            let user_username = `user_${userId}`;
+            
+            if (userResult.rows.length > 0) {
+                const user = userResult.rows[0];
+                user_name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user_name;
+                user_username = user.username || user_username;
+            }
+            
+            // Создаем новый чат
+            chat = await pool.query(`
+                INSERT INTO support_chats (user_id, user_name, user_username, last_message) 
+                VALUES ($1, $2, $3, $4)
+                RETURNING *
+            `, [userId, user_name, user_username, 'Чат создан']);
+            
+            // Добавляем приветственное сообщение
             await pool.query(`
-                INSERT INTO support_messages (chat_id, user_id, user_name, message, is_admin, is_read) 
-                VALUES ($1, $2, $3, $4, true, true)
-            `, [chatId, ADMIN_ID, 'Администратор LinkGold', 'Здравствуйте! Чем могу помочь?']);
-            console.log('✅ Created welcome message for chat:', chatId);
-        } catch (messageError) {
-            console.error('❌ Error creating welcome message:', messageError);
-            // Continue even if message creation fails
+                INSERT INTO support_messages (chat_id, user_id, user_name, message, is_admin) 
+                VALUES ($1, $2, $3, $4, true)
+            `, [chat.rows[0].id, ADMIN_ID, 'Администратор', 'Здравствуйте! Чем могу помочь?']);
         }
         
         res.json({
             success: true,
-            chat: newChat.rows[0]
+            chat: chat.rows[0]
         });
     } catch (error) {
-        console.error('❌ Get user chat error:', error);
+        console.error('Get user chat error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error: ' + error.message,
-            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            error: 'Database error: ' + error.message
         });
     }
 });

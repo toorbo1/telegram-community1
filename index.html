@@ -6071,18 +6071,12 @@ async function makeRequest(endpoint, options = {}) {
         }
 
         // 5. Подготавливаем данные для отправки
-        const requestData = {
-            title: formData.title.trim(),
-            description: formData.description.trim(),
-            price: price,
-            time_to_complete: formData.time_to_complete || '5 минут',
-            difficulty: formData.difficulty || 'Легкая',
-            people_required: parseInt(formData.people_required) || 1,
-            repost_time: formData.repost_time || '1 день',
-            task_url: formData.task_url || '',
-            category: formData.category,
-            created_by: currentUser.id
-        };
+       const requestData = {
+    title: formData.title.trim(),
+    description: formData.description.trim(),
+    price: price,
+    created_by: currentUser.id
+};
 
         console.log('📤 Prepared request data:', requestData);
 
