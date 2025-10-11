@@ -6,7 +6,7 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware - ДОБАВЛЯЕМ ПЕРВЫМ
+// Middleware
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'DELETE', 'PUT'],
@@ -15,16 +15,13 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Serve static files SECOND
+// Serve static files FIRST
 app.use(express.static('.'));
 
 // PostgreSQL connection
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,
-    max: 20
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
 const ADMIN_ID = 8036875641;
@@ -71,7 +68,7 @@ async function initDatabase() {
             )
         `);
 
-        // Tasks table - ИСПРАВЛЕННЫЙ ЗАПРОС
+        // Tasks table
         await pool.query(`
             CREATE TABLE IF NOT EXISTS tasks (
                 id SERIAL PRIMARY KEY,
@@ -222,18 +219,18 @@ app.get('/api/health', async (req, res) => {
     }
 });
 
-// User authentication - УПРОЩЕННАЯ ВЕРСИЯ
+// User authentication
 app.post('/api/user/auth', async (req, res) => {
+    const { user } = req.body;
+    
+    if (!user) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
     try {
-        const { user } = req.body;
-        
-        if (!user) {
-            return res.status(400).json({
-                success: false,
-                error: 'Missing required fields'
-            });
-        }
-        
         const isAdmin = parseInt(user.id) === ADMIN_ID;
         
         const result = await pool.query(`
@@ -324,24 +321,24 @@ app.get('/api/posts', async (req, res) => {
 
 // Create post (admin only)
 app.post('/api/posts', async (req, res) => {
+    const { title, content, author, authorId } = req.body;
+    
+    if (!title || !content || !author) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    // Check admin rights
+    if (parseInt(authorId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+    
     try {
-        const { title, content, author, authorId } = req.body;
-        
-        if (!title || !content || !author) {
-            return res.status(400).json({
-                success: false,
-                error: 'Missing required fields'
-            });
-        }
-        
-        // Check admin rights
-        if (parseInt(authorId) !== ADMIN_ID) {
-            return res.status(403).json({
-                success: false,
-                error: 'Access denied'
-            });
-        }
-        
         const result = await pool.query(`
             INSERT INTO posts (title, content, author, author_id) 
             VALUES ($1, $2, $3, $4)
@@ -364,16 +361,16 @@ app.post('/api/posts', async (req, res) => {
 
 // Delete post
 app.delete('/api/posts/:id', async (req, res) => {
-    try {
-        const { authorId } = req.body;
-        
-        if (parseInt(authorId) !== ADMIN_ID) {
-            return res.status(403).json({
-                success: false,
-                error: 'Access denied'
-            });
-        }
+    const { authorId } = req.body;
+    
+    if (parseInt(authorId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
 
+    try {
         await pool.query("DELETE FROM posts WHERE id = $1", [req.params.id]);
         res.json({
             success: true,
@@ -390,9 +387,9 @@ app.delete('/api/posts/:id', async (req, res) => {
 
 // Like post
 app.post('/api/posts/:postId/like', async (req, res) => {
+    const { userId } = req.body;
+    
     try {
-        const { userId } = req.body;
-        
         const result = await pool.query(`
             UPDATE posts SET likes = COALESCE(likes, 0) + 1 
             WHERE id = $1 
@@ -414,9 +411,9 @@ app.post('/api/posts/:postId/like', async (req, res) => {
 
 // Dislike post
 app.post('/api/posts/:postId/dislike', async (req, res) => {
+    const { userId } = req.body;
+    
     try {
-        const { userId } = req.body;
-        
         const result = await pool.query(`
             UPDATE posts SET dislikes = COALESCE(dislikes, 0) + 1 
             WHERE id = $1 
@@ -436,11 +433,11 @@ app.post('/api/posts/:postId/dislike', async (req, res) => {
     }
 });
 
-// Get all tasks - УПРОЩЕННАЯ ВЕРСИЯ
+// Get all tasks
 app.get('/api/tasks', async (req, res) => {
+    const { search, category } = req.query;
+    
     try {
-        const { search, category } = req.query;
-        
         let query = "SELECT * FROM tasks WHERE status = 'active'";
         let params = [];
         
@@ -478,16 +475,16 @@ app.get('/api/tasks', async (req, res) => {
 
 // Get tasks for admin
 app.get('/api/admin/tasks', async (req, res) => {
-    try {
-        const { adminId } = req.query;
-        
-        if (parseInt(adminId) !== ADMIN_ID) {
-            return res.status(403).json({
-                success: false,
-                error: 'Access denied'
-            });
-        }
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
 
+    try {
         const result = await pool.query(`
             SELECT * FROM tasks 
             ORDER BY created_at DESC
@@ -508,24 +505,24 @@ app.get('/api/admin/tasks', async (req, res) => {
 
 // Create task (admin only)
 app.post('/api/tasks', async (req, res) => {
+    const { title, description, price, created_by } = req.body;
+    
+    if (!title || !description || !price || !created_by) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    // Check admin rights
+    if (parseInt(created_by) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+    
     try {
-        const { title, description, price, created_by } = req.body;
-        
-        if (!title || !description || !price || !created_by) {
-            return res.status(400).json({
-                success: false,
-                error: 'Missing required fields'
-            });
-        }
-        
-        // Check admin rights
-        if (parseInt(created_by) !== ADMIN_ID) {
-            return res.status(403).json({
-                success: false,
-                error: 'Access denied'
-            });
-        }
-        
         const result = await pool.query(`
             INSERT INTO tasks (title, description, price, created_by) 
             VALUES ($1, $2, $3, $4)
@@ -548,16 +545,16 @@ app.post('/api/tasks', async (req, res) => {
 
 // Delete task
 app.delete('/api/tasks/:id', async (req, res) => {
-    try {
-        const { adminId } = req.body;
-        
-        if (parseInt(adminId) !== ADMIN_ID) {
-            return res.status(403).json({
-                success: false,
-                error: 'Access denied'
-            });
-        }
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
 
+    try {
         await pool.query("DELETE FROM tasks WHERE id = $1", [req.params.id]);
         res.json({
             success: true,
@@ -572,11 +569,203 @@ app.delete('/api/tasks/:id', async (req, res) => {
     }
 });
 
-// Support chat system - УПРОЩЕННАЯ ВЕРСИЯ
-app.get('/api/support/user-chat/:userId', async (req, res) => {
+// Start task for user
+app.post('/api/user/tasks/start', async (req, res) => {
+    const { userId, taskId } = req.body;
+    
+    if (!userId || !taskId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
     try {
-        const userId = req.params.userId;
+        // Check if user already started this task
+        const existingTask = await pool.query(`
+            SELECT id FROM user_tasks 
+            WHERE user_id = $1 AND task_id = $2 AND status IN ('active', 'pending_review')
+        `, [userId, taskId]);
         
+        if (existingTask.rows.length > 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'Task already started'
+            });
+        }
+        
+        // Start the task
+        const result = await pool.query(`
+            INSERT INTO user_tasks (user_id, task_id, status) 
+            VALUES ($1, $2, 'active')
+            RETURNING *
+        `, [userId, taskId]);
+        
+        // Update user's active tasks count
+        await pool.query(`
+            UPDATE user_profiles 
+            SET active_tasks = COALESCE(active_tasks, 0) + 1 
+            WHERE user_id = $1
+        `, [userId]);
+        
+        res.json({
+            success: true,
+            message: 'Task started successfully',
+            userTaskId: result.rows[0].id
+        });
+    } catch (error) {
+        console.error('Start task error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Get user tasks
+app.get('/api/user/:userId/tasks', async (req, res) => {
+    const userId = req.params.userId;
+    const { status } = req.query;
+    
+    try {
+        let query = `
+            SELECT ut.*, t.title, t.description, t.price, t.category
+            FROM user_tasks ut 
+            JOIN tasks t ON ut.task_id = t.id 
+            WHERE ut.user_id = $1
+        `;
+        let params = [userId];
+        
+        if (status) {
+            query += " AND ut.status = $2";
+            params.push(status);
+        }
+        
+        query += " ORDER BY ut.started_at DESC";
+        
+        const result = await pool.query(query, params);
+        
+        res.json({
+            success: true,
+            tasks: result.rows
+        });
+    } catch (error) {
+        console.error('Get user tasks error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Submit task for verification
+app.post('/api/user/tasks/:userTaskId/submit', async (req, res) => {
+    const userTaskId = req.params.userTaskId;
+    const { userId } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing user ID'
+        });
+    }
+    
+    try {
+        // In a real app, you would handle file upload here
+        // For now, we'll just update the status
+        const screenshotUrl = '/uploads/sample-screenshot.jpg'; // Placeholder
+        
+        // Update user_task
+        await pool.query(`
+            UPDATE user_tasks 
+            SET status = 'pending_review', screenshot_url = $1, submitted_at = CURRENT_TIMESTAMP 
+            WHERE id = $2 AND user_id = $3
+        `, [screenshotUrl, userTaskId, userId]);
+        
+        // Get task info for verification
+        const taskInfo = await pool.query(`
+            SELECT ut.user_id, ut.task_id, u.first_name, u.last_name, t.title, t.price 
+            FROM user_tasks ut 
+            JOIN user_profiles u ON ut.user_id = u.user_id 
+            JOIN tasks t ON ut.task_id = t.id 
+            WHERE ut.id = $1
+        `, [userTaskId]);
+        
+        if (taskInfo.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Task not found'
+            });
+        }
+        
+        const taskData = taskInfo.rows[0];
+        const userName = `${taskData.first_name} ${taskData.last_name}`;
+        
+        // Create verification record
+        const verificationResult = await pool.query(`
+            INSERT INTO task_verifications 
+            (user_task_id, user_id, task_id, user_name, task_title, task_price, screenshot_url) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING *
+        `, [userTaskId, taskData.user_id, taskData.task_id, userName, taskData.title, taskData.price, screenshotUrl]);
+        
+        res.json({
+            success: true,
+            message: 'Task submitted for review',
+            verificationId: verificationResult.rows[0].id
+        });
+    } catch (error) {
+        console.error('Submit task error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Cancel task
+app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
+    const userTaskId = req.params.userTaskId;
+    const { userId } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing user ID'
+        });
+    }
+    
+    try {
+        await pool.query(`
+            DELETE FROM user_tasks 
+            WHERE id = $1 AND user_id = $2
+        `, [userTaskId, userId]);
+        
+        // Update user's active tasks count
+        await pool.query(`
+            UPDATE user_profiles 
+            SET active_tasks = GREATEST(COALESCE(active_tasks, 0) - 1, 0) 
+            WHERE user_id = $1
+        `, [userId]);
+        
+        res.json({
+            success: true,
+            message: 'Task cancelled successfully'
+        });
+    } catch (error) {
+        console.error('Cancel task error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Support chat system
+app.get('/api/support/user-chat/:userId', async (req, res) => {
+    const userId = req.params.userId;
+    
+    try {
         // Check if chat exists
         const existingChat = await pool.query(
             'SELECT * FROM support_chats WHERE user_id = $1', 
@@ -597,6 +786,12 @@ app.get('/api/support/user-chat/:userId', async (req, res) => {
             RETURNING *
         `, [userId, `User_${userId}`, `user_${userId}`, 'Чат создан']);
         
+        // Create welcome message
+        await pool.query(`
+            INSERT INTO support_messages (chat_id, user_id, user_name, message, is_admin, is_read) 
+            VALUES ($1, $2, $3, $4, true, true)
+        `, [newChat.rows[0].id, ADMIN_ID, 'Администратор LinkGold', 'Здравствуйте! Чем могу помочь?']);
+        
         res.json({
             success: true,
             chat: newChat.rows[0]
@@ -612,9 +807,9 @@ app.get('/api/support/user-chat/:userId', async (req, res) => {
 
 // Get chat messages
 app.get('/api/support/chats/:chatId/messages', async (req, res) => {
+    const chatId = req.params.chatId;
+    
     try {
-        const chatId = req.params.chatId;
-        
         const result = await pool.query(`
             SELECT * FROM support_messages 
             WHERE chat_id = $1 
@@ -636,17 +831,17 @@ app.get('/api/support/chats/:chatId/messages', async (req, res) => {
 
 // Send message to chat
 app.post('/api/support/chats/:chatId/messages', async (req, res) => {
+    const chatId = req.params.chatId;
+    const { user_id, user_name, message, is_admin } = req.body;
+
+    if (!message) {
+        return res.status(400).json({
+            success: false,
+            error: 'Message is required'
+        });
+    }
+
     try {
-        const chatId = req.params.chatId;
-        const { user_id, user_name, message, is_admin } = req.body;
-
-        if (!message) {
-            return res.status(400).json({
-                success: false,
-                error: 'Message is required'
-            });
-        }
-
         // Save message
         const result = await pool.query(`
             INSERT INTO support_messages (chat_id, user_id, user_name, message, is_admin) 
@@ -677,16 +872,16 @@ app.post('/api/support/chats/:chatId/messages', async (req, res) => {
 
 // Get all chats for admin
 app.get('/api/support/chats', async (req, res) => {
-    try {
-        const { adminId } = req.query;
-        
-        if (parseInt(adminId) !== ADMIN_ID) {
-            return res.status(403).json({
-                success: false,
-                error: 'Access denied'
-            });
-        }
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
 
+    try {
         const result = await pool.query(`
             SELECT * FROM support_chats 
             WHERE is_active = true
@@ -706,18 +901,212 @@ app.get('/api/support/chats', async (req, res) => {
     }
 });
 
+// Get all chats (including archived)
+app.get('/api/support/all-chats', async (req, res) => {
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    try {
+        const result = await pool.query(`
+            SELECT * FROM support_chats 
+            ORDER BY last_message_time DESC
+        `);
+        
+        res.json({
+            success: true,
+            chats: result.rows
+        });
+    } catch (error) {
+        console.error('Get all chats error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Get archived chats
+app.get('/api/support/archived-chats', async (req, res) => {
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    try {
+        const result = await pool.query(`
+            SELECT * FROM support_chats 
+            WHERE is_active = false
+            ORDER BY last_message_time DESC
+        `);
+        
+        res.json({
+            success: true,
+            chats: result.rows
+        });
+    } catch (error) {
+        console.error('Get archived chats error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Mark chat as read
+app.put('/api/support/chats/:chatId/read', async (req, res) => {
+    const chatId = req.params.chatId;
+
+    try {
+        await pool.query(`
+            UPDATE support_chats 
+            SET unread_count = 0 
+            WHERE id = $1
+        `, [chatId]);
+        
+        // Also mark messages as read
+        await pool.query(`
+            UPDATE support_messages 
+            SET is_read = true 
+            WHERE chat_id = $1 AND is_admin = false
+        `, [chatId]);
+        
+        res.json({
+            success: true,
+            message: 'Chat marked as read'
+        });
+    } catch (error) {
+        console.error('Mark chat as read error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Archive chat
+app.put('/api/support/chats/:chatId/archive', async (req, res) => {
+    const chatId = req.params.chatId;
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    try {
+        await pool.query(`
+            UPDATE support_chats 
+            SET is_active = false 
+            WHERE id = $1
+        `, [chatId]);
+        
+        res.json({
+            success: true,
+            message: 'Chat archived successfully'
+        });
+    } catch (error) {
+        console.error('Archive chat error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Restore chat
+app.put('/api/support/chats/:chatId/restore', async (req, res) => {
+    const chatId = req.params.chatId;
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    try {
+        await pool.query(`
+            UPDATE support_chats 
+            SET is_active = true 
+            WHERE id = $1
+        `, [chatId]);
+        
+        res.json({
+            success: true,
+            message: 'Chat restored successfully'
+        });
+    } catch (error) {
+        console.error('Restore chat error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Delete chat
+app.delete('/api/support/chats/:chatId', async (req, res) => {
+    const chatId = req.params.chatId;
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+
+    try {
+        // Delete messages first
+        await pool.query(`
+            DELETE FROM support_messages 
+            WHERE chat_id = $1
+        `, [chatId]);
+        
+        // Then delete chat
+        await pool.query(`
+            DELETE FROM support_chats 
+            WHERE id = $1
+        `, [chatId]);
+        
+        res.json({
+            success: true,
+            message: 'Chat deleted successfully'
+        });
+    } catch (error) {
+        console.error('Delete chat error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
 // Task verification system
 app.get('/api/admin/task-verifications', async (req, res) => {
-    try {
-        const { adminId } = req.query;
-        
-        if (parseInt(adminId) !== ADMIN_ID) {
-            return res.status(403).json({
-                success: false,
-                error: 'Access denied'
-            });
-        }
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
 
+    try {
         const result = await pool.query(`
             SELECT tv.*, u.username, u.first_name, u.last_name
             FROM task_verifications tv 
@@ -741,17 +1130,17 @@ app.get('/api/admin/task-verifications', async (req, res) => {
 
 // Approve task verification
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
-    try {
-        const verificationId = req.params.verificationId;
-        const { adminId } = req.body;
-        
-        if (parseInt(adminId) !== ADMIN_ID) {
-            return res.status(403).json({
-                success: false,
-                error: 'Access denied'
-            });
-        }
+    const verificationId = req.params.verificationId;
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
 
+    try {
         // Get verification info
         const verification = await pool.query(
             'SELECT * FROM task_verifications WHERE id = $1', 
@@ -809,17 +1198,17 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
 
 // Reject task verification
 app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res) => {
-    try {
-        const verificationId = req.params.verificationId;
-        const { adminId } = req.body;
-        
-        if (parseInt(adminId) !== ADMIN_ID) {
-            return res.status(403).json({
-                success: false,
-                error: 'Access denied'
-            });
-        }
+    const verificationId = req.params.verificationId;
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
 
+    try {
         // Get verification info
         const verification = await pool.query(
             'SELECT * FROM task_verifications WHERE id = $1', 
@@ -864,16 +1253,16 @@ app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res
 
 // Withdrawal request
 app.post('/api/withdrawal/request', async (req, res) => {
+    const { user_id, amount, method, details } = req.body;
+    
+    if (!user_id || !amount || !method || !details) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
     try {
-        const { user_id, amount, method, details } = req.body;
-        
-        if (!user_id || !amount || !method || !details) {
-            return res.status(400).json({
-                success: false,
-                error: 'Missing required fields'
-            });
-        }
-        
         const result = await pool.query(`
             INSERT INTO withdrawal_requests (user_id, amount, method, details) 
             VALUES ($1, $2, $3, $4)
@@ -896,9 +1285,9 @@ app.post('/api/withdrawal/request', async (req, res) => {
 
 // Get withdrawal history
 app.get('/api/withdraw/history/:userId', async (req, res) => {
+    const userId = req.params.userId;
+    
     try {
-        const userId = req.params.userId;
-        
         const result = await pool.query(`
             SELECT * FROM withdrawal_requests 
             WHERE user_id = $1 
