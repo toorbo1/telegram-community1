@@ -530,11 +530,21 @@ app.get('/api/admin/tasks', async (req, res) => {
     }
 });
 
-// Create task (admin only) - FIXED VERSION
+// Create task (admin only) - UPDATED WITH ALL FIELDS
 app.post('/api/tasks', async (req, res) => {
-    const { title, description, price, created_by } = req.body;
+    const { 
+        title, 
+        description, 
+        price, 
+        created_by,
+        time_to_complete,
+        difficulty,
+        people_required,
+        repost_time,
+        task_url
+    } = req.body;
     
-    console.log('📝 Creating task with data:', { title, description, price, created_by });
+    console.log('📝 Creating task with data:', req.body);
     
     if (!title || !description || !price || !created_by) {
         return res.status(400).json({
@@ -553,10 +563,24 @@ app.post('/api/tasks', async (req, res) => {
     
     try {
         const result = await pool.query(`
-            INSERT INTO tasks (title, description, price, created_by) 
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO tasks (
+                title, description, price, created_by,
+                time_to_complete, difficulty, people_required,
+                repost_time, task_url
+            ) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING *
-        `, [title, description, parseFloat(price), created_by]);
+        `, [
+            title, 
+            description, 
+            parseFloat(price), 
+            created_by,
+            time_to_complete || '5 минут',
+            difficulty || 'Легкая',
+            parseInt(people_required) || 1,
+            repost_time || '1 день',
+            task_url || ''
+        ]);
         
         console.log('✅ Task created successfully:', result.rows[0]);
         
@@ -573,8 +597,7 @@ app.post('/api/tasks', async (req, res) => {
         });
     }
 });
-
-// Delete task
+// Delete task - UPDATED
 app.delete('/api/tasks/:id', async (req, res) => {
     const { adminId } = req.body;
     
@@ -1250,7 +1273,48 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
         });
     }
 });
+// Function to check and remove completed tasks
+async function checkAndRemoveCompletedTasks() {
+    try {
+        console.log('🔍 Checking for completed tasks...');
+        
+        // Находим задания, где количество выполненных задач достигло people_required
+        const completedTasks = await pool.query(`
+            SELECT t.id, t.title, t.people_required,
+                   COUNT(ut.id) as completed_count
+            FROM tasks t
+            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
+            WHERE t.status = 'active'
+            GROUP BY t.id, t.title, t.people_required
+            HAVING COUNT(ut.id) >= t.people_required
+        `);
+        
+        if (completedTasks.rows.length > 0) {
+            console.log(`📊 Found ${completedTasks.rows.length} completed tasks to deactivate`);
+            
+            for (const task of completedTasks.rows) {
+                console.log(`🔄 Deactivating task: ${task.title} (ID: ${task.id})`);
+                
+                // Деактивируем задание
+                await pool.query(`
+                    UPDATE tasks 
+                    SET status = 'completed' 
+                    WHERE id = $1
+                `, [task.id]);
+                
+                console.log(`✅ Task ${task.id} deactivated - reached ${task.completed_count}/${task.people_required} completions`);
+            }
+        }
+    } catch (error) {
+        console.error('❌ Error checking completed tasks:', error);
+    }
+}
 
+// Запускаем проверку каждые 5 минут
+setInterval(checkAndRemoveCompletedTasks, 5 * 60 * 1000);
+
+// Также запускаем при старте сервера
+setTimeout(checkAndRemoveCompletedTasks, 10000);
 // Reject task verification
 app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res) => {
     const verificationId = req.params.verificationId;

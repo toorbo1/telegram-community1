@@ -6007,14 +6007,25 @@ async function makeRequest(endpoint, options = {}) {
             }
         }
 
-        async function addTask() {
-    // Используем правильные ID элементов из админ-панели
+       async function addTask() {
+    console.log('🔧 Starting to create task...');
+    
+    // Собираем все данные из формы
     const title = document.getElementById('admin-task-title').value;
     const description = document.getElementById('admin-task-description').value;
     const price = document.getElementById('admin-task-price').value;
+    const time_to_complete = document.getElementById('admin-task-time').value;
+    const difficulty = document.getElementById('admin-task-difficulty').value;
+    const people_required = document.getElementById('admin-task-people').value;
+    const repost_time = document.getElementById('admin-task-repost').value;
+    const task_url = document.getElementById('admin-task-url').value;
 
-    console.log('🔧 Creating task with:', { title, description, price });
+    console.log('📝 Form data:', {
+        title, description, price, time_to_complete,
+        difficulty, people_required, repost_time, task_url
+    });
 
+    // Валидация обязательных полей
     if (!title || !description || !price) {
         showNotification('Заполните обязательные поля: название, описание и цена!', 'error');
         return;
@@ -6026,25 +6037,39 @@ async function makeRequest(endpoint, options = {}) {
     }
 
     try {
+        console.log('🚀 Sending task creation request...');
+        
         const result = await makeRequest('/tasks', {
             method: 'POST',
             body: JSON.stringify({
                 title: title,
                 description: description,
                 price: parseFloat(price) || 0,
+                time_to_complete: time_to_complete || '5 минут',
+                difficulty: difficulty || 'Легкая',
+                people_required: parseInt(people_required) || 1,
+                repost_time: repost_time || '1 день',
+                task_url: task_url || '',
                 created_by: currentUser.id
             })
         });
 
+        console.log('✅ Task creation response:', result);
+
         if (result.success) {
             showNotification('Задание успешно создано!', 'success');
             
-            // Очищаем поля
+            // Очищаем все поля формы
             document.getElementById('admin-task-title').value = '';
             document.getElementById('admin-task-description').value = '';
             document.getElementById('admin-task-price').value = '';
+            document.getElementById('admin-task-time').value = '';
+            document.getElementById('admin-task-difficulty').value = '';
+            document.getElementById('admin-task-people').value = '';
+            document.getElementById('admin-task-repost').value = '';
+            document.getElementById('admin-task-url').value = '';
             
-            // Обновляем списки
+            // Обновляем списки заданий
             loadAdminTasks();
             loadTasks();
             
@@ -6053,55 +6078,56 @@ async function makeRequest(endpoint, options = {}) {
         }
         
     } catch (error) {
-        console.error('Error creating task:', error);
-        showNotification('Ошибка соединения: ' + error.message, 'error');
+        console.error('❌ Error creating task:', error);
+        showNotification('Ошибка создания задания: ' + error.message, 'error');
+    }
+}
+        // Load admin tasks
+async function loadAdminTasks() {
+    if (!currentUser || !currentUser.isAdmin) return;
+    
+    try {
+        const result = await makeRequest(`/admin/tasks?adminId=${ADMIN_ID}`);
+        if (result.success) {
+            displayAdminTasks(result.tasks);
+        }
+    } catch (error) {
+        console.error('Error loading admin tasks:', error);
     }
 }
 
-        // Загрузка заданий для админа
-        async function loadAdminTasks() {
-            if (!currentUser || !currentUser.isAdmin) return;
-            
-            try {
-                const result = await makeRequest(`/admin/tasks?adminId=${ADMIN_ID}`);
-                if (result.success) {
-                    displayAdminTasks(result.tasks);
-                }
-            } catch (error) {
-                console.error('Error loading admin tasks:', error);
-            }
-        }
-
-        function displayAdminTasks(tasks) {
-            const container = document.getElementById('admin-tasks-list');
-            if (!container) return;
-            
-            container.innerHTML = '';
-            
-            if (!tasks || tasks.length === 0) {
-                container.innerHTML = '<div class="no-tasks" style="text-align: center; padding: 20px;">Нет созданных заданий</div>';
-                return;
-            }
-            
-            tasks.forEach(task => {
-                const taskElement = document.createElement('div');
-                taskElement.className = 'admin-task-item';
-                taskElement.innerHTML = `
-                    <div class="admin-task-header">
-                        <div class="admin-task-title">${task.title}</div>
-                        <div class="admin-task-actions">
-                            <button class="admin-task-delete" onclick="deleteTask(${task.id})">🗑️ Удалить</button>
-                        </div>
-                    </div>
-                    <div class="admin-task-description">${task.description}</div>
-                    <div class="admin-task-details">
-                        <span class="admin-task-price">${task.price} ⭐</span>
-                        <span class="admin-task-category">${task.category}</span>
-                    </div>
-                `;
-                container.appendChild(taskElement);
-            });
-        }
+// Display admin tasks
+function displayAdminTasks(tasks) {
+    const container = document.getElementById('admin-tasks-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!tasks || tasks.length === 0) {
+        container.innerHTML = '<div class="no-tasks" style="text-align: center; padding: 20px;">Нет созданных заданий</div>';
+        return;
+    }
+    
+    tasks.forEach(task => {
+        const taskElement = document.createElement('div');
+        taskElement.className = 'admin-task-item';
+        taskElement.innerHTML = `
+            <div class="admin-task-header">
+                <div class="admin-task-title">${task.title}</div>
+                <div class="admin-task-actions">
+                    <button class="admin-task-delete" onclick="deleteTask(${task.id})">🗑️ Удалить</button>
+                </div>
+            </div>
+            <div class="admin-task-description">${task.description}</div>
+            <div class="admin-task-details">
+                <span class="admin-task-price">${task.price} ⭐</span>
+                <span class="admin-task-category">${task.category}</span>
+                <span class="admin-task-people">Нужно: ${task.people_required} чел.</span>
+            </div>
+        `;
+        container.appendChild(taskElement);
+    });
+}
 
         async function deletePost(postId) {
             if (!confirm('Удалить этот пост?')) return;
@@ -6130,33 +6156,32 @@ async function makeRequest(endpoint, options = {}) {
         }
 
         async function deleteTask(taskId) {
-            if (!confirm('Удалить это задание?')) return;
-            
-            if (!currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
-                showNotification('Только администратор может удалять задания!', 'error');
-                return;
-            }
-            
-            try {
-                const result = await makeRequest(`/tasks/${taskId}`, {
-                    method: 'DELETE',
-                    body: JSON.stringify({ adminId: currentUser.id })
-                });
+    if (!confirm('Удалить это задание?')) return;
+    
+    if (!currentUser || !currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+        showNotification('Только администратор может удалять задания!', 'error');
+        return;
+    }
+    
+    try {
+        const result = await makeRequest(`/tasks/${taskId}`, {
+            method: 'DELETE',
+            body: JSON.stringify({ adminId: currentUser.id })
+        });
 
-                if (result.success) {
-                    showNotification('Задание успешно удалено!', 'success');
-                    loadAdminTasks();
-                    loadTasks();
-                } else {
-                    showNotification('Ошибка: ' + result.error, 'error');
-                }
-            } catch (error) {
-                console.error('Error deleting task:', error);
-                showNotification('Ошибка соединения: ' + error.message, 'error');
-            }
+        if (result.success) {
+            showNotification('Задание успешно удалено!', 'success');
+            loadAdminTasks();
+            loadTasks();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
         }
-
-        async function openAdminChat() {
+    } catch (error) {
+        console.error('Error deleting task:', error);
+        showNotification('Ошибка удаления задания: ' + error.message, 'error');
+    }
+}
+      async function openAdminChat() {
     if (!currentUser) {
         showNotification('Пользователь не авторизован', 'error');
         return;
@@ -6193,9 +6218,15 @@ async function makeRequest(endpoint, options = {}) {
     } catch (error) {
         console.error('❌ Error opening user chat:', error);
         showNotification('Ошибка открытия чата: ' + error.message, 'error');
+        
+        // Показываем детали ошибки в консоли для отладки
+        console.error('Chat error details:', {
+            userId: currentUser?.id,
+            error: error.message,
+            stack: error.stack
+        });
     }
 }
-
         async function sendMessageToAdmin() {
             if (!currentUser || !currentChatId) {
                 showNotification('Чат не открыт', 'error');
