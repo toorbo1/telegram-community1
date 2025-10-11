@@ -4302,33 +4302,19 @@
             </div>
 
             <!-- Управление заданиями -->
-            <div id="admin-tasks-section" class="admin-section" style="display: none;">
-    <h3>Добавить задание</h3>
-    
-    <!-- TEST BUTTON -->
-    <div style="margin-bottom: 20px; padding: 15px; background: var(--bg-secondary); border-radius: 10px;">
-        <h4>Тестирование</h4>
-        <button class="btn btn-primary" onclick="testTaskCreation()" style="margin-bottom: 10px;">
-            🧪 Тест создания задания
-        </button>
-        <button class="btn" onclick="testConnection()" style="margin-bottom: 10px;">
-            🔗 Тест соединения
-        </button>
-        <div id="test-result" style="font-size: 12px; color: var(--text-secondary);"></div>
-    </div>
-    
-    <div class="admin-form">
-        <input type="text" class="admin-input" id="admin-task-title" placeholder="Название задания *">
-        <textarea class="admin-textarea" id="admin-task-description" placeholder="Описание задания *"></textarea>
-        <input type="text" class="admin-input" id="admin-task-price" placeholder="Цена (в рублях) *">
-        <input type="text" class="admin-input" id="admin-task-time" placeholder="Время выполнения">
-        <input type="text" class="admin-input" id="admin-task-difficulty" placeholder="Сложность">
-        <input type="number" class="admin-input" id="admin-task-people" placeholder="Сколько человек должно выполнить">
-        <input type="text" class="admin-input" id="admin-task-repost" placeholder="Время повторной публикации">
-        <input type="url" class="admin-input" id="admin-task-url" placeholder="URL задания">
-        <button class="admin-submit" onclick="addTask()">Добавить задание</button>
-    </div>
-</div>
+            <div id="task-management" class="admin-form" style="display: none;">
+                <h3>Добавить задание</h3>
+                <input type="text" class="admin-input" id="task-title" placeholder="Название задания">
+                <textarea class="admin-textarea" id="task-description" placeholder="Описание задания"></textarea>
+                <input type="text" class="admin-input" id="task-price" placeholder="Цена (в рублях)">
+                <input type="text" class="admin-input" id="task-time" placeholder="Время выполнения">
+                <input type="text" class="admin-input" id="task-difficulty" placeholder="Сложность">
+                <input type="number" class="admin-input" id="task-people" placeholder="Сколько человек должно выполнить">
+                <input type="text" class="admin-input" id="task-repost" placeholder="Время повторной публикации">
+                <input type="url" class="admin-input" id="task-url" placeholder="URL задания">
+                <input type="file" class="admin-input" id="task-image" accept="image/*">
+                <button class="admin-submit" onclick="addTask()">Добавить задание</button>
+            </div>
 
             <!-- Проверка заданий -->
             <div id="task-verification" class="admin-form" style="display: none;">
@@ -4535,33 +4521,23 @@
                 </div>
             </div>
 
+            <!-- Управление заданиями -->
             <div id="admin-tasks-section" class="admin-section" style="display: none;">
-    <h3>Добавить задание</h3>
-    
-    <!-- TEST BUTTON -->
-    <div style="margin-bottom: 20px; padding: 15px; background: var(--bg-secondary); border-radius: 10px;">
-        <h4>Тестирование</h4>
-        <button class="btn btn-primary" onclick="testTaskCreation()" style="margin-bottom: 10px;">
-            🧪 Тест создания задания
-        </button>
-        <button class="btn" onclick="testConnection()" style="margin-bottom: 10px;">
-            🔗 Тест соединения
-        </button>
-        <div id="test-result" style="font-size: 12px; color: var(--text-secondary);"></div>
-    </div>
-    
-    <div class="admin-form">
-        <input type="text" class="admin-input" id="admin-task-title" placeholder="Название задания *">
-        <textarea class="admin-textarea" id="admin-task-description" placeholder="Описание задания *"></textarea>
-        <input type="text" class="admin-input" id="admin-task-price" placeholder="Цена (в рублях) *">
-        <input type="text" class="admin-input" id="admin-task-time" placeholder="Время выполнения">
-        <input type="text" class="admin-input" id="admin-task-difficulty" placeholder="Сложность">
-        <input type="number" class="admin-input" id="admin-task-people" placeholder="Сколько человек должно выполнить">
-        <input type="text" class="admin-input" id="admin-task-repost" placeholder="Время повторной публикации">
-        <input type="url" class="admin-input" id="admin-task-url" placeholder="URL задания">
-        <button class="admin-submit" onclick="addTask()">Добавить задание</button>
-    </div>
-</div>
+                <h3>Добавить задание</h3>
+                <div class="admin-form">
+                    <input type="text" class="admin-input" id="admin-task-title" placeholder="Название задания">
+                    <textarea class="admin-textarea" id="admin-task-description" placeholder="Описание задания"></textarea>
+                    <input type="text" class="admin-input" id="admin-task-price" placeholder="Цена (в рублях)">
+                    <input type="text" class="admin-input" id="admin-task-time" placeholder="Время выполнения">
+                    <input type="text" class="admin-input" id="admin-task-difficulty" placeholder="Сложность">
+                    <input type="number" class="admin-input" id="admin-task-people" placeholder="Сколько человек должно выполнить">
+                    <input type="text" class="admin-input" id="admin-task-repost" placeholder="Время повторной публикации">
+                    <input type="url" class="admin-input" id="admin-task-url" placeholder="URL задания">
+                    <input type="file" class="admin-input" id="admin-task-image" accept="image/*">
+                    <button class="admin-submit" onclick="addTask()">Добавить задание</button>
+                </div>
+            </div>
+
             <!-- Проверка заданий -->
             <div id="admin-verification-section" class="admin-section" style="display: none;">
                 <h3>Задания на проверке</h3>
