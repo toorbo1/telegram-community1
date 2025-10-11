@@ -5071,7 +5071,7 @@
         let currentUserTaskId = null;
         let currentVerificationId = null;
 
-        // Улучшенная функция для запросов
+// Улучшенная функция для запросов
 async function makeRequest(endpoint, options = {}) {
     try {
         // Формируем полный URL
@@ -5097,9 +5097,23 @@ async function makeRequest(endpoint, options = {}) {
         console.log(`📨 Response status: ${response.status}`);
         
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error('❌ Response error:', errorText);
-            throw new Error(`HTTP error! status: ${response.status}`);
+            let errorMessage = `HTTP error! status: ${response.status}`;
+            try {
+                const errorData = await response.json();
+                if (errorData.error) {
+                    errorMessage = errorData.error;
+                }
+                if (errorData.details) {
+                    errorMessage += ` - ${errorData.details}`;
+                }
+            } catch (parseError) {
+                // If response is not JSON, use text
+                const errorText = await response.text();
+                if (errorText) {
+                    errorMessage += ` - ${errorText}`;
+                }
+            }
+            throw new Error(errorMessage);
         }
 
         const data = await response.json();
@@ -6011,7 +6025,7 @@ async function makeRequest(endpoint, options = {}) {
     console.log('🎯 ========== START addTask FUNCTION ==========');
     
     try {
-        // 1. Проверяем авторизацию
+        // Проверяем авторизацию
         if (!currentUser) {
             showNotification('Пользователь не авторизован', 'error');
             return;
@@ -6022,7 +6036,7 @@ async function makeRequest(endpoint, options = {}) {
             return;
         }
 
-        // 2. Собираем данные из формы
+        // Собираем данные из формы
         const getElementValue = (id) => {
             const element = document.getElementById(id);
             return element ? element.value : '';
@@ -6037,26 +6051,26 @@ async function makeRequest(endpoint, options = {}) {
             people_required: getElementValue('admin-task-people'),
             repost_time: getElementValue('admin-task-repost'),
             task_url: getElementValue('admin-task-url'),
-            category: 'general', // добавляем категорию по умолчанию
+            category: 'general',
             created_by: currentUser.id
         };
 
         console.log('📋 Form data collected:', formData);
 
-        // 3. Валидация
+        // Валидация
         if (!formData.title.trim() || !formData.description.trim() || !formData.price) {
             showNotification('Заполните название, описание и цену задания!', 'error');
             return;
         }
 
-        // 4. Проверяем числовые поля
+        // Проверяем числовые поля
         const price = parseFloat(formData.price);
         if (isNaN(price) || price <= 0) {
             showNotification('Цена должна быть положительным числом!', 'error');
             return;
         }
 
-        // 5. Подготавливаем данные для отправки
+        // Подготавливаем данные для отправки
         const requestData = {
             title: formData.title.trim(),
             description: formData.description.trim(),
@@ -6072,7 +6086,7 @@ async function makeRequest(endpoint, options = {}) {
 
         console.log('📤 Prepared request data:', requestData);
 
-        // 6. Отправляем запрос
+        // Отправляем запрос
         console.log('🚀 Sending request to /api/tasks...');
         const result = await makeRequest('/tasks', {
             method: 'POST',
@@ -6085,9 +6099,13 @@ async function makeRequest(endpoint, options = {}) {
             showNotification('✅ Задание успешно создано!', 'success');
             
             // Очищаем форму
-            const formFields = ['title', 'description', 'price', 'time', 'difficulty', 'people', 'repost', 'url'];
-            formFields.forEach(field => {
-                const element = document.getElementById(`admin-task-${field}`);
+            const formFields = [
+                'admin-task-title', 'admin-task-description', 'admin-task-price',
+                'admin-task-time', 'admin-task-difficulty', 'admin-task-people',
+                'admin-task-repost', 'admin-task-url'
+            ];
+            formFields.forEach(fieldId => {
+                const element = document.getElementById(fieldId);
                 if (element) element.value = '';
             });
             

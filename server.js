@@ -590,7 +590,7 @@ app.get('/api/admin/tasks', async (req, res) => {
     }
 });
 
-// Create task (admin only) - FIXED VERSION
+// Create task (admin only) - UPDATED VERSION
 app.post('/api/tasks', async (req, res) => {
     console.log('🎯 Received task creation request:', req.body);
     
@@ -599,12 +599,12 @@ app.post('/api/tasks', async (req, res) => {
         description, 
         price, 
         created_by,
-        time_to_complete,
-        difficulty,
-        people_required,
-        repost_time,
-        task_url,
-        category
+        time_to_complete = '5 минут',
+        difficulty = 'Легкая',
+        people_required = 1,
+        repost_time = '1 день',
+        task_url = '',
+        category = 'general'
     } = req.body;
     
     // Validate required fields
@@ -625,25 +625,36 @@ app.post('/api/tasks', async (req, res) => {
     }
     
     try {
+        // Validate and parse numeric fields
+        const taskPrice = parseFloat(price);
+        if (isNaN(taskPrice) || taskPrice <= 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'Price must be a positive number'
+            });
+        }
+
+        const peopleRequired = parseInt(people_required) || 1;
+        
         const result = await pool.query(`
             INSERT INTO tasks (
                 title, description, price, created_by,
                 time_to_complete, difficulty, people_required,
-                repost_time, task_url, category
+                repost_time, task_url, category, status
             ) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active')
             RETURNING *
         `, [
             title.trim(), 
             description.trim(), 
-            parseFloat(price) || 0, 
+            taskPrice, 
             created_by,
-            time_to_complete || '5 минут',
-            difficulty || 'Легкая',
-            parseInt(people_required) || 1,
-            repost_time || '1 день',
-            task_url || '',
-            category || 'general'
+            time_to_complete,
+            difficulty,
+            peopleRequired,
+            repost_time,
+            task_url,
+            category
         ]);
         
         console.log('✅ Task created successfully:', result.rows[0]);
@@ -884,13 +895,35 @@ app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
     }
 });
 
-// Get or create user chat - FIXED VERSION
+// Get or create user chat - IMPROVED VERSION
 app.get('/api/support/user-chat/:userId', async (req, res) => {
     const userId = req.params.userId;
     
     console.log('💬 Getting user chat for:', userId);
     
     try {
+        // First, ensure user exists in user_profiles
+        const userCheck = await pool.query(
+            'SELECT * FROM user_profiles WHERE user_id = $1', 
+            [userId]
+        );
+        
+        let user_name = `User_${userId}`;
+        let user_username = `user_${userId}`;
+        
+        if (userCheck.rows.length === 0) {
+            // Create basic user profile if doesn't exist
+            console.log('👤 Creating user profile for:', userId);
+            await pool.query(`
+                INSERT INTO user_profiles (user_id, username, first_name, is_admin) 
+                VALUES ($1, $2, $3, $4)
+            `, [userId, user_username, user_name, false]);
+        } else {
+            const user = userCheck.rows[0];
+            user_name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user_name;
+            user_username = user.username || user_username;
+        }
+        
         // Check if chat exists
         const existingChat = await pool.query(
             'SELECT * FROM support_chats WHERE user_id = $1', 
@@ -903,21 +936,6 @@ app.get('/api/support/user-chat/:userId', async (req, res) => {
                 success: true,
                 chat: existingChat.rows[0]
             });
-        }
-        
-        // Get user info from profiles
-        const userResult = await pool.query(
-            'SELECT first_name, last_name, username FROM user_profiles WHERE user_id = $1',
-            [userId]
-        );
-        
-        let user_name = `User_${userId}`;
-        let user_username = `user_${userId}`;
-        
-        if (userResult.rows.length > 0) {
-            const user = userResult.rows[0];
-            user_name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user_name;
-            user_username = user.username || user_username;
         }
         
         console.log('📝 Creating new chat for user:', userId);
@@ -951,7 +969,8 @@ app.get('/api/support/user-chat/:userId', async (req, res) => {
         console.error('❌ Get user chat error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error: ' + error.message
+            error: 'Database error: ' + error.message,
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 });
