@@ -55,12 +55,12 @@ const pool = new Pool({
 
 const ADMIN_ID = 8036875641;
 
-// Инициализация базы данных
+// Упрощенная инициализация базы данных
 async function initDatabase() {
     try {
-        console.log('🔄 Initializing database...');
+        console.log('🔄 Initializing simplified database...');
         
-        // User profiles table
+        // Только самые необходимые таблицы
         await pool.query(`
             CREATE TABLE IF NOT EXISTS user_profiles (
                 user_id BIGINT PRIMARY KEY,
@@ -70,85 +70,50 @@ async function initDatabase() {
                 photo_url TEXT,
                 balance REAL DEFAULT 0,
                 level INTEGER DEFAULT 1,
-                experience INTEGER DEFAULT 0,
-                tasks_completed INTEGER DEFAULT 0,
-                active_tasks INTEGER DEFAULT 0,
-                quality_rate REAL DEFAULT 100,
-                referral_count INTEGER DEFAULT 0,
-                referral_earned REAL DEFAULT 0,
                 is_admin BOOLEAN DEFAULT false,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        // Posts table
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS posts (
-                id SERIAL PRIMARY KEY,
-                title TEXT NOT NULL,
-                content TEXT NOT NULL,
-                image_url TEXT,
-                author TEXT NOT NULL,
-                author_id BIGINT NOT NULL,
-                likes INTEGER DEFAULT 0,
-                dislikes INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
 
-        // Tasks table
+        // Упрощенная таблица заданий
         await pool.query(`
             CREATE TABLE IF NOT EXISTS tasks (
                 id SERIAL PRIMARY KEY,
                 title TEXT NOT NULL,
                 description TEXT NOT NULL,
-                category TEXT DEFAULT 'general',
                 price REAL NOT NULL,
-                time_to_complete TEXT,
-                difficulty TEXT,
-                people_required INTEGER DEFAULT 1,
-                repost_time TEXT,
-                task_url TEXT,
-                image_url TEXT,
                 created_by BIGINT NOT NULL,
                 status TEXT DEFAULT 'active',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
 
-        // User tasks table
+        // Упрощенная таблица постов
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS user_tasks (
+            CREATE TABLE IF NOT EXISTS posts (
                 id SERIAL PRIMARY KEY,
-                user_id BIGINT NOT NULL,
-                task_id INTEGER NOT NULL,
-                status TEXT DEFAULT 'active',
-                screenshot_url TEXT,
-                started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                submitted_at TIMESTAMP,
-                completed_at TIMESTAMP,
-                rejected_at TIMESTAMP,
-                rejection_reason TEXT
+                title TEXT NOT NULL,
+                content TEXT NOT NULL,
+                author TEXT NOT NULL,
+                author_id BIGINT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
 
-        // Support chats table
+        // Упрощенная таблица чатов
         await pool.query(`
             CREATE TABLE IF NOT EXISTS support_chats (
                 id SERIAL PRIMARY KEY,
                 user_id BIGINT NOT NULL,
                 user_name TEXT NOT NULL,
-                user_username TEXT,
                 last_message TEXT,
                 last_message_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                unread_count INTEGER DEFAULT 0,
                 is_active BOOLEAN DEFAULT true,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
 
-        // Support messages table
+        // Упрощенная таблица сообщений
         await pool.query(`
             CREATE TABLE IF NOT EXISTS support_messages (
                 id SERIAL PRIMARY KEY,
@@ -156,68 +121,32 @@ async function initDatabase() {
                 user_id BIGINT NOT NULL,
                 user_name TEXT NOT NULL,
                 message TEXT NOT NULL,
-                image_url TEXT,
                 is_admin BOOLEAN DEFAULT false,
-                is_read BOOLEAN DEFAULT false,
                 sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
 
-        // Withdrawal requests table
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS withdrawal_requests (
-                id SERIAL PRIMARY KEY,
-                user_id BIGINT NOT NULL,
-                amount REAL NOT NULL,
-                method TEXT NOT NULL,
-                details TEXT NOT NULL,
-                status TEXT DEFAULT 'pending',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        // Task verification table
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS task_verifications (
-                id SERIAL PRIMARY KEY,
-                user_task_id INTEGER NOT NULL,
-                user_id BIGINT NOT NULL,
-                task_id INTEGER NOT NULL,
-                user_name TEXT NOT NULL,
-                task_title TEXT NOT NULL,
-                task_price REAL NOT NULL,
-                screenshot_url TEXT NOT NULL,
-                status TEXT DEFAULT 'pending',
-                submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                reviewed_at TIMESTAMP,
-                reviewed_by INTEGER
-            )
-        `);
-
-        // Add sample tasks if they don't exist
+        // Добавляем примеры если таблицы пустые
         const tasksCount = await pool.query('SELECT COUNT(*) FROM tasks');
         if (parseInt(tasksCount.rows[0].count) === 0) {
             await pool.query(`
-                INSERT INTO tasks (title, description, price, category, time_to_complete, difficulty, created_by) 
+                INSERT INTO tasks (title, description, price, created_by) 
                 VALUES 
-                ('Подписаться на канал', 'Подпишитесь на наш Telegram канал и оставайтесь подписанным', 50, 'subscribe', '2 минуты', 'Легкая', $1),
-                ('Посмотреть видео', 'Посмотрите видео до конца и поставьте лайк', 30, 'view', '5 минут', 'Легкая', $1),
-                ('Сделать репост', 'Сделайте репост записи к себе в канал', 70, 'repost', '3 минуты', 'Средняя', $1)
+                ('Подписаться на канал', 'Подпишитесь на наш Telegram канал', 50, $1),
+                ('Посмотреть видео', 'Посмотрите видео до конца', 30, $1),
+                ('Сделать репост', 'Сделайте репост записи', 70, $1)
             `, [ADMIN_ID]);
-            console.log('✅ Sample tasks created');
         }
 
-        // Add sample post
         const postsCount = await pool.query('SELECT COUNT(*) FROM posts');
         if (parseInt(postsCount.rows[0].count) === 0) {
             await pool.query(`
                 INSERT INTO posts (title, content, author, author_id) 
-                VALUES ('Добро пожаловать в LinkGold!', 'Мы рады приветствовать вас в нашем сервисе заработка. Выполняйте задания, приглашайте друзей и зарабатывайте вместе с нами!', 'Администратор', $1)
+                VALUES ('Добро пожаловать!', 'Начните зарабатывать выполняя простые задания!', 'Администратор', $1)
             `, [ADMIN_ID]);
-            console.log('✅ Sample post created');
         }
 
-        console.log('✅ Database initialized successfully');
+        console.log('✅ Simplified database initialized successfully');
     } catch (error) {
         console.error('❌ Database initialization error:', error);
     }
@@ -225,7 +154,122 @@ async function initDatabase() {
 
 // Инициализируем базу данных при запуске
 initDatabase();
+// Упрощенное создание задания
+app.post('/api/simple/tasks', async (req, res) => {
+    const { title, description, price, created_by } = req.body;
+    
+    if (!title || !description || !price) {
+        return res.status(400).json({
+            success: false,
+            error: 'Заполните название, описание и цену'
+        });
+    }
+    
+    try {
+        const result = await pool.query(`
+            INSERT INTO tasks (title, description, price, created_by) 
+            VALUES ($1, $2, $3, $4)
+            RETURNING *
+        `, [title, description, parseFloat(price), created_by]);
+        
+        res.json({
+            success: true,
+            message: 'Задание создано!',
+            task: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Create task error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка создания задания'
+        });
+    }
+});
 
+// Упрощенный чат
+app.get('/api/simple/chats/:userId', async (req, res) => {
+    const userId = req.params.userId;
+    
+    try {
+        // Создаем или получаем чат
+        let chat = await pool.query(
+            'SELECT * FROM support_chats WHERE user_id = $1', 
+            [userId]
+        );
+        
+        if (chat.rows.length === 0) {
+            const userResult = await pool.query(
+                'SELECT first_name FROM user_profiles WHERE user_id = $1',
+                [userId]
+            );
+            
+            const userName = userResult.rows[0]?.first_name || `User_${userId}`;
+            
+            chat = await pool.query(`
+                INSERT INTO support_chats (user_id, user_name, last_message) 
+                VALUES ($1, $2, $3)
+                RETURNING *
+            `, [userId, userName, 'Чат создан']);
+            
+            // Приветственное сообщение
+            await pool.query(`
+                INSERT INTO support_messages (chat_id, user_id, user_name, message, is_admin) 
+                VALUES ($1, $2, $3, $4, true)
+            `, [chat.rows[0].id, ADMIN_ID, 'Администратор', 'Здравствуйте! Чем могу помочь?']);
+        }
+        
+        // Получаем сообщения
+        const messages = await pool.query(`
+            SELECT * FROM support_messages 
+            WHERE chat_id = $1 
+            ORDER BY sent_at ASC
+        `, [chat.rows[0].id]);
+        
+        res.json({
+            success: true,
+            chat: chat.rows[0],
+            messages: messages.rows
+        });
+    } catch (error) {
+        console.error('Chat error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка чата'
+        });
+    }
+});
+
+// Отправка сообщения
+app.post('/api/simple/chats/:chatId/messages', async (req, res) => {
+    const chatId = req.params.chatId;
+    const { user_id, user_name, message, is_admin } = req.body;
+
+    try {
+        const result = await pool.query(`
+            INSERT INTO support_messages (chat_id, user_id, user_name, message, is_admin) 
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING *
+        `, [chatId, user_id, user_name, message, is_admin || false]);
+
+        // Обновляем последнее сообщение в чате
+        await pool.query(`
+            UPDATE support_chats 
+            SET last_message = $1, last_message_time = CURRENT_TIMESTAMP
+            WHERE id = $2
+        `, [message, chatId]);
+
+        res.json({
+            success: true,
+            message: 'Сообщение отправлено'
+        });
+    } catch (error) {
+        console.error('Send message error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка отправки'
+        });
+    }
+});
 // Health check
 app.get('/api/health', async (req, res) => {
     try {

@@ -6020,9 +6020,29 @@ async function makeRequest(endpoint, options = {}) {
                 showNotification('Ошибка соединения: ' + error.message, 'error');
             }
         }
-
-       async function addTask() {
-    console.log('🎯 ========== START addTask FUNCTION ==========');
+// Вместо addTask() используйте:
+async function addSimpleTask() {
+    const title = document.getElementById('admin-task-title').value;
+    const description = document.getElementById('admin-task-description').value;
+    const price = document.getElementById('admin-task-price').value;
+    
+    const result = await makeRequest('/api/simple/tasks', {
+        method: 'POST',
+        body: JSON.stringify({
+            title: title,
+            description: description,
+            price: price,
+            created_by: currentUser.id
+        })
+    });
+    
+    if (result.success) {
+        showNotification('Задание создано!', 'success');
+        // Очистить поля формы
+    }
+}
+    //    async function addTask() {
+    // console.log('🎯 ========== START addTask FUNCTION ==========');
     
     try {
         // Проверяем авторизацию
@@ -6125,7 +6145,7 @@ async function makeRequest(endpoint, options = {}) {
     } finally {
         console.log('🎯 ========== END addTask FUNCTION ==========');
     }
-}
+
         // Load admin tasks
 async function loadAdminTasks() {
     if (!currentUser || !currentUser.isAdmin) return;
@@ -6225,11 +6245,14 @@ function displayAdminTasks(tasks) {
         showNotification('Ошибка удаления задания: ' + error.message, 'error');
     }
 }
-      async function openAdminChat() {
-    if (!currentUser) {
-        showNotification('Пользователь не авторизован', 'error');
-        return;
+      // Вместо openAdminChat() используйте:
+async function openSimpleChat() {
+    const result = await makeRequest(`/api/simple/chats/${currentUser.id}`);
+    if (result.success) {
+        // Показать чат с сообщениями
+        showChatInterface(result.chat, result.messages);
     }
+}
     
     try {
         console.log('👤 User opening support chat, ID:', currentUser.id);
@@ -6270,7 +6293,7 @@ function displayAdminTasks(tasks) {
             stack: error.stack
         });
     }
-}
+
         async function sendMessageToAdmin() {
             if (!currentUser || !currentChatId) {
                 showNotification('Чат не открыт', 'error');
