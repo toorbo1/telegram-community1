@@ -859,7 +859,7 @@ app.get('/api/user/:userId/tasks', (req, res) => {
     const { status } = req.query;
     
     let query = `
-        SELECT ut.*, t.title, t.description, t.price, t.category, t.task_url
+        SELECT ut.*, t.title, t.description, t.price, t.category
         FROM user_tasks ut 
         JOIN tasks t ON ut.task_id = t.id 
         WHERE ut.user_id = ?
@@ -875,6 +875,7 @@ app.get('/api/user/:userId/tasks', (req, res) => {
     
     db.all(query, params, (err, rows) => {
         if (err) {
+            console.error('Get user tasks error:', err);
             return res.status(500).json({
                 success: false,
                 error: 'Database error'
@@ -918,12 +919,10 @@ app.post('/api/user/tasks/:userTaskId/submit', upload.single('screenshot'), (req
             });
         }
         
-        // Получаем информацию о задании и пользователе для verification
-        db.get(`SELECT ut.user_id, ut.task_id, u.first_name, u.last_name, t.title, t.price 
-                FROM user_tasks ut 
-                JOIN user_profiles u ON ut.user_id = u.user_id 
-                JOIN tasks t ON ut.task_id = t.id 
-                WHERE ut.id = ?`, [userTaskId], (err, row) => {
+        db.all(`SELECT ut.*, t.title, t.description, t.price, t.category
+        FROM user_tasks ut 
+        JOIN tasks t ON ut.task_id = t.id 
+        WHERE ut.user_id = ?`, [userId], (err, rows) => {
             if (err) {
                 return res.status(500).json({
                     success: false,
