@@ -5,7 +5,27 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+// В server.js после middleware добавьте:
 
+// API routes first
+app.get('/api/health', (req, res) => {
+    res.json({ 
+        status: 'OK', 
+        message: 'LinkGold API is running!',
+        timestamp: new Date().toISOString(),
+        database: 'PostgreSQL'
+    });
+});
+
+// Все остальные API routes...
+
+// Then static files
+app.use(express.static('.'));
+
+// Then catch-all handler for SPA
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 // Middleware
 app.use(cors({
     origin: '*',
@@ -759,7 +779,22 @@ app.post('/api/withdrawal/request', async (req, res) => {
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error('❌ Server error:', err);
+    res.status(500).json({
+        success: false,
+        error: 'Internal server error'
+    });
+});
 
+// 404 handler for API routes
+app.use('/api/*', (req, res) => {
+    res.status(404).json({
+        success: false,
+        error: 'API endpoint not found'
+    });
+});
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on port ${PORT}`);
