@@ -15,6 +15,9 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Serve static files FIRST
+app.use(express.static('.'));
+
 // PostgreSQL connection
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -175,6 +178,16 @@ async function initDatabase() {
             console.log('✅ Sample tasks created');
         }
 
+        // Add sample post
+        const postsCount = await pool.query('SELECT COUNT(*) FROM posts');
+        if (parseInt(postsCount.rows[0].count) === 0) {
+            await pool.query(`
+                INSERT INTO posts (title, content, author, author_id) 
+                VALUES ('Добро пожаловать в LinkGold!', 'Мы рады приветствовать вас в нашем сервисе заработка. Выполняйте задания, приглашайте друзей и зарабатывайте вместе с нами!', 'Администратор', $1)
+            `, [ADMIN_ID]);
+            console.log('✅ Sample post created');
+        }
+
         console.log('✅ Database initialized successfully');
     } catch (error) {
         console.error('❌ Database initialization error:', error);
@@ -184,14 +197,26 @@ async function initDatabase() {
 // Инициализируем базу данных при запуске
 initDatabase();
 
-// Health check
-app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'OK', 
-        message: 'LinkGold API is running!',
-        timestamp: new Date().toISOString(),
-        database: 'PostgreSQL'
-    });
+// Health check - УПРОЩЕННАЯ ВЕРСИЯ
+app.get('/api/health', async (req, res) => {
+    try {
+        // Простая проверка базы данных
+        await pool.query('SELECT 1');
+        
+        res.json({ 
+            status: 'OK', 
+            message: 'LinkGold API is running!',
+            timestamp: new Date().toISOString(),
+            database: 'PostgreSQL'
+        });
+    } catch (error) {
+        console.error('Health check error:', error);
+        res.status(500).json({
+            status: 'ERROR',
+            message: 'Database connection failed',
+            error: error.message
+        });
+    }
 });
 
 // User authentication
@@ -240,7 +265,7 @@ app.post('/api/user/auth', async (req, res) => {
         console.error('Auth error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -268,7 +293,7 @@ app.get('/api/user/:userId', async (req, res) => {
         console.error('Get user error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -289,7 +314,7 @@ app.get('/api/posts', async (req, res) => {
         console.error('Get posts error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -329,7 +354,7 @@ app.post('/api/posts', async (req, res) => {
         console.error('Create post error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -355,7 +380,7 @@ app.delete('/api/posts/:id', async (req, res) => {
         console.error('Delete post error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -379,7 +404,7 @@ app.post('/api/posts/:postId/like', async (req, res) => {
         console.error('Like post error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -403,7 +428,7 @@ app.post('/api/posts/:postId/dislike', async (req, res) => {
         console.error('Dislike post error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -443,7 +468,7 @@ app.get('/api/tasks', async (req, res) => {
         console.error('Get tasks error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -473,7 +498,7 @@ app.get('/api/admin/tasks', async (req, res) => {
         console.error('Get admin tasks error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -513,7 +538,7 @@ app.post('/api/tasks', async (req, res) => {
         console.error('Create task error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -539,7 +564,7 @@ app.delete('/api/tasks/:id', async (req, res) => {
         console.error('Delete task error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -592,7 +617,7 @@ app.post('/api/user/tasks/start', async (req, res) => {
         console.error('Start task error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -628,7 +653,7 @@ app.get('/api/user/:userId/tasks', async (req, res) => {
         console.error('Get user tasks error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -693,7 +718,7 @@ app.post('/api/user/tasks/:userTaskId/submit', async (req, res) => {
         console.error('Submit task error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -731,7 +756,7 @@ app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
         console.error('Cancel task error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -775,7 +800,7 @@ app.get('/api/support/user-chat/:userId', async (req, res) => {
         console.error('Get user chat error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -799,7 +824,7 @@ app.get('/api/support/chats/:chatId/messages', async (req, res) => {
         console.error('Get chat messages error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -840,7 +865,7 @@ app.post('/api/support/chats/:chatId/messages', async (req, res) => {
         console.error('Send message error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -871,7 +896,7 @@ app.get('/api/support/chats', async (req, res) => {
         console.error('Get chats error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -901,7 +926,7 @@ app.get('/api/support/all-chats', async (req, res) => {
         console.error('Get all chats error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -932,7 +957,7 @@ app.get('/api/support/archived-chats', async (req, res) => {
         console.error('Get archived chats error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -963,7 +988,7 @@ app.put('/api/support/chats/:chatId/read', async (req, res) => {
         console.error('Mark chat as read error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -995,7 +1020,7 @@ app.put('/api/support/chats/:chatId/archive', async (req, res) => {
         console.error('Archive chat error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -1027,7 +1052,7 @@ app.put('/api/support/chats/:chatId/restore', async (req, res) => {
         console.error('Restore chat error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -1065,7 +1090,7 @@ app.delete('/api/support/chats/:chatId', async (req, res) => {
         console.error('Delete chat error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -1098,7 +1123,7 @@ app.get('/api/admin/task-verifications', async (req, res) => {
         console.error('Get verifications error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -1166,7 +1191,7 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
         console.error('Approve verification error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -1221,7 +1246,7 @@ app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res
         console.error('Reject verification error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -1253,7 +1278,7 @@ app.post('/api/withdrawal/request', async (req, res) => {
         console.error('Withdrawal error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -1277,13 +1302,10 @@ app.get('/api/withdraw/history/:userId', async (req, res) => {
         console.error('Get withdrawal history error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error'
+            error: 'Database error: ' + error.message
         });
     }
 });
-
-// Serve static files (must be after API routes)
-app.use(express.static('.'));
 
 // Main route - serve index.html for all other routes (SPA)
 app.get('*', (req, res) => {
@@ -1295,7 +1317,7 @@ app.use((err, req, res, next) => {
     console.error('❌ Server error:', err);
     res.status(500).json({
         success: false,
-        error: 'Internal server error'
+        error: 'Internal server error: ' + err.message
     });
 });
 
