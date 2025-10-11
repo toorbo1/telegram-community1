@@ -4302,19 +4302,33 @@
             </div>
 
             <!-- Управление заданиями -->
-            <div id="task-management" class="admin-form" style="display: none;">
-                <h3>Добавить задание</h3>
-                <input type="text" class="admin-input" id="task-title" placeholder="Название задания">
-                <textarea class="admin-textarea" id="task-description" placeholder="Описание задания"></textarea>
-                <input type="text" class="admin-input" id="task-price" placeholder="Цена (в рублях)">
-                <input type="text" class="admin-input" id="task-time" placeholder="Время выполнения">
-                <input type="text" class="admin-input" id="task-difficulty" placeholder="Сложность">
-                <input type="number" class="admin-input" id="task-people" placeholder="Сколько человек должно выполнить">
-                <input type="text" class="admin-input" id="task-repost" placeholder="Время повторной публикации">
-                <input type="url" class="admin-input" id="task-url" placeholder="URL задания">
-                <input type="file" class="admin-input" id="task-image" accept="image/*">
-                <button class="admin-submit" onclick="addTask()">Добавить задание</button>
-            </div>
+            <div id="admin-tasks-section" class="admin-section" style="display: none;">
+    <h3>Добавить задание</h3>
+    
+    <!-- TEST BUTTON -->
+    <div style="margin-bottom: 20px; padding: 15px; background: var(--bg-secondary); border-radius: 10px;">
+        <h4>Тестирование</h4>
+        <button class="btn btn-primary" onclick="testTaskCreation()" style="margin-bottom: 10px;">
+            🧪 Тест создания задания
+        </button>
+        <button class="btn" onclick="testConnection()" style="margin-bottom: 10px;">
+            🔗 Тест соединения
+        </button>
+        <div id="test-result" style="font-size: 12px; color: var(--text-secondary);"></div>
+    </div>
+    
+    <div class="admin-form">
+        <input type="text" class="admin-input" id="admin-task-title" placeholder="Название задания *">
+        <textarea class="admin-textarea" id="admin-task-description" placeholder="Описание задания *"></textarea>
+        <input type="text" class="admin-input" id="admin-task-price" placeholder="Цена (в рублях) *">
+        <input type="text" class="admin-input" id="admin-task-time" placeholder="Время выполнения">
+        <input type="text" class="admin-input" id="admin-task-difficulty" placeholder="Сложность">
+        <input type="number" class="admin-input" id="admin-task-people" placeholder="Сколько человек должно выполнить">
+        <input type="text" class="admin-input" id="admin-task-repost" placeholder="Время повторной публикации">
+        <input type="url" class="admin-input" id="admin-task-url" placeholder="URL задания">
+        <button class="admin-submit" onclick="addTask()">Добавить задание</button>
+    </div>
+</div>
 
             <!-- Проверка заданий -->
             <div id="task-verification" class="admin-form" style="display: none;">
@@ -4521,23 +4535,33 @@
                 </div>
             </div>
 
-            <!-- Управление заданиями -->
             <div id="admin-tasks-section" class="admin-section" style="display: none;">
-                <h3>Добавить задание</h3>
-                <div class="admin-form">
-                    <input type="text" class="admin-input" id="admin-task-title" placeholder="Название задания">
-                    <textarea class="admin-textarea" id="admin-task-description" placeholder="Описание задания"></textarea>
-                    <input type="text" class="admin-input" id="admin-task-price" placeholder="Цена (в рублях)">
-                    <input type="text" class="admin-input" id="admin-task-time" placeholder="Время выполнения">
-                    <input type="text" class="admin-input" id="admin-task-difficulty" placeholder="Сложность">
-                    <input type="number" class="admin-input" id="admin-task-people" placeholder="Сколько человек должно выполнить">
-                    <input type="text" class="admin-input" id="admin-task-repost" placeholder="Время повторной публикации">
-                    <input type="url" class="admin-input" id="admin-task-url" placeholder="URL задания">
-                    <input type="file" class="admin-input" id="admin-task-image" accept="image/*">
-                    <button class="admin-submit" onclick="addTask()">Добавить задание</button>
-                </div>
-            </div>
-
+    <h3>Добавить задание</h3>
+    
+    <!-- TEST BUTTON -->
+    <div style="margin-bottom: 20px; padding: 15px; background: var(--bg-secondary); border-radius: 10px;">
+        <h4>Тестирование</h4>
+        <button class="btn btn-primary" onclick="testTaskCreation()" style="margin-bottom: 10px;">
+            🧪 Тест создания задания
+        </button>
+        <button class="btn" onclick="testConnection()" style="margin-bottom: 10px;">
+            🔗 Тест соединения
+        </button>
+        <div id="test-result" style="font-size: 12px; color: var(--text-secondary);"></div>
+    </div>
+    
+    <div class="admin-form">
+        <input type="text" class="admin-input" id="admin-task-title" placeholder="Название задания *">
+        <textarea class="admin-textarea" id="admin-task-description" placeholder="Описание задания *"></textarea>
+        <input type="text" class="admin-input" id="admin-task-price" placeholder="Цена (в рублях) *">
+        <input type="text" class="admin-input" id="admin-task-time" placeholder="Время выполнения">
+        <input type="text" class="admin-input" id="admin-task-difficulty" placeholder="Сложность">
+        <input type="number" class="admin-input" id="admin-task-people" placeholder="Сколько человек должно выполнить">
+        <input type="text" class="admin-input" id="admin-task-repost" placeholder="Время повторной публикации">
+        <input type="url" class="admin-input" id="admin-task-url" placeholder="URL задания">
+        <button class="admin-submit" onclick="addTask()">Добавить задание</button>
+    </div>
+</div>
             <!-- Проверка заданий -->
             <div id="admin-verification-section" class="admin-section" style="display: none;">
                 <h3>Задания на проверке</h3>
@@ -6008,78 +6032,100 @@ async function makeRequest(endpoint, options = {}) {
         }
 
        async function addTask() {
-    console.log('🔧 Starting to create task...');
+    console.log('🎯 ========== START addTask FUNCTION ==========');
     
-    // Собираем все данные из формы
-    const title = document.getElementById('admin-task-title').value;
-    const description = document.getElementById('admin-task-description').value;
-    const price = document.getElementById('admin-task-price').value;
-    const time_to_complete = document.getElementById('admin-task-time').value;
-    const difficulty = document.getElementById('admin-task-difficulty').value;
-    const people_required = document.getElementById('admin-task-people').value;
-    const repost_time = document.getElementById('admin-task-repost').value;
-    const task_url = document.getElementById('admin-task-url').value;
-
-    console.log('📝 Form data:', {
-        title, description, price, time_to_complete,
-        difficulty, people_required, repost_time, task_url
-    });
-
-    // Валидация обязательных полей
-    if (!title || !description || !price) {
-        showNotification('Заполните обязательные поля: название, описание и цена!', 'error');
-        return;
-    }
-
-    if (!currentUser || !currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
-        showNotification('Только администратор может создавать задания!', 'error');
-        return;
-    }
-
     try {
-        console.log('🚀 Sending task creation request...');
-        
-        const result = await makeRequest('/tasks', {
-            method: 'POST',
-            body: JSON.stringify({
-                title: title,
-                description: description,
-                price: parseFloat(price) || 0,
-                time_to_complete: time_to_complete || '5 минут',
-                difficulty: difficulty || 'Легкая',
-                people_required: parseInt(people_required) || 1,
-                repost_time: repost_time || '1 день',
-                task_url: task_url || '',
-                created_by: currentUser.id
-            })
-        });
-
-        console.log('✅ Task creation response:', result);
-
-        if (result.success) {
-            showNotification('Задание успешно создано!', 'success');
-            
-            // Очищаем все поля формы
-            document.getElementById('admin-task-title').value = '';
-            document.getElementById('admin-task-description').value = '';
-            document.getElementById('admin-task-price').value = '';
-            document.getElementById('admin-task-time').value = '';
-            document.getElementById('admin-task-difficulty').value = '';
-            document.getElementById('admin-task-people').value = '';
-            document.getElementById('admin-task-repost').value = '';
-            document.getElementById('admin-task-url').value = '';
-            
-            // Обновляем списки заданий
-            loadAdminTasks();
-            loadTasks();
-            
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
+        // 1. Проверяем авторизацию
+        if (!currentUser) {
+            showNotification('Пользователь не авторизован', 'error');
+            return;
         }
         
+        if (!currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+            showNotification('Только главный администратор может создавать задания!', 'error');
+            return;
+        }
+
+        // 2. Собираем данные из формы с проверкой элементов
+        const getElementValue = (id) => {
+            const element = document.getElementById(id);
+            if (!element) {
+                console.error(`❌ Element with id "${id}" not found!`);
+                return null;
+            }
+            return element.value;
+        };
+
+        const formData = {
+            title: getElementValue('admin-task-title'),
+            description: getElementValue('admin-task-description'),
+            price: getElementValue('admin-task-price'),
+            time_to_complete: getElementValue('admin-task-time'),
+            difficulty: getElementValue('admin-task-difficulty'),
+            people_required: getElementValue('admin-task-people'),
+            repost_time: getElementValue('admin-task-repost'),
+            task_url: getElementValue('admin-task-url'),
+            created_by: currentUser.id
+        };
+
+        console.log('📋 Form data collected:', formData);
+
+        // 3. Валидация
+        if (!formData.title || !formData.description || !formData.price) {
+            showNotification('Заполните название, описание и цену задания!', 'error');
+            return;
+        }
+
+        // 4. Подготавливаем данные для отправки
+        const requestData = {
+            title: formData.title.trim(),
+            description: formData.description.trim(),
+            price: parseFloat(formData.price) || 0,
+            time_to_complete: formData.time_to_complete || '5 минут',
+            difficulty: formData.difficulty || 'Легкая',
+            people_required: parseInt(formData.people_required) || 1,
+            repost_time: formData.repost_time || '1 день',
+            task_url: formData.task_url || '',
+            created_by: currentUser.id
+        };
+
+        console.log('📤 Prepared request data:', requestData);
+
+        // 5. Отправляем запрос
+        console.log('🚀 Sending request to /api/tasks...');
+        const result = await makeRequest('/tasks', {
+            method: 'POST',
+            body: JSON.stringify(requestData)
+        });
+
+        console.log('📨 Server response:', result);
+
+        if (result.success) {
+            showNotification('✅ Задание успешно создано!', 'success');
+            
+            // Очищаем форму
+            Object.keys(formData).forEach(key => {
+                if (key !== 'created_by') {
+                    const element = document.getElementById(`admin-task-${key}`);
+                    if (element) element.value = '';
+                }
+            });
+            
+            // Обновляем списки
+            setTimeout(() => {
+                loadAdminTasks();
+                loadTasks();
+            }, 1000);
+            
+        } else {
+            throw new Error(result.error || 'Unknown server error');
+        }
+
     } catch (error) {
-        console.error('❌ Error creating task:', error);
-        showNotification('Ошибка создания задания: ' + error.message, 'error');
+        console.error('💥 Error in addTask:', error);
+        showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
+    } finally {
+        console.log('🎯 ========== END addTask FUNCTION ==========');
     }
 }
         // Load admin tasks

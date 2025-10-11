@@ -296,7 +296,82 @@ app.post('/api/user/auth', async (req, res) => {
         });
     }
 });
+// Diagnostic endpoint - check what's actually deployed
+app.get('/api/debug/info', async (req, res) => {
+    try {
+        const dbCheck = await pool.query('SELECT version()');
+        const tablesCheck = await pool.query(`
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public'
+        `);
+        
+        res.json({
+            success: true,
+            timestamp: new Date().toISOString(),
+            database: {
+                version: dbCheck.rows[0].version,
+                tables: tablesCheck.rows.map(row => row.table_name)
+            },
+            environment: {
+                node: process.version,
+                port: PORT,
+                admin_id: ADMIN_ID
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+// Simple test endpoint for task creation
+app.post('/api/test/task', async (req, res) => {
+    console.log('🧪 TEST TASK CREATION:', req.body);
+    
+    try {
+        const result = await pool.query(`
+            INSERT INTO tasks (title, description, price, created_by) 
+            VALUES ($1, $2, $3, $4)
+            RETURNING *
+        `, ['Test Task', 'Test Description', 10, ADMIN_ID]);
+        
+        res.json({
+            success: true,
+            message: 'Test task created',
+            task: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Test task error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+// Test functions
+async function testConnection() {
+    try {
+        const result = await makeRequest('/debug/info');
+        document.getElementById('test-result').innerHTML = 
+            `✅ Соединение работает<br>База: ${result.database.version}<br>Таблицы: ${result.database.tables.join(', ')}`;
+    } catch (error) {
+        document.getElementById('test-result').innerHTML = `❌ Ошибка: ${error.message}`;
+    }
+}
 
+async function testTaskCreation() {
+    try {
+        const result = await makeRequest('/test/task', {
+            method: 'POST',
+            body: JSON.stringify({ test: true })
+        });
+        document.getElementById('test-result').innerHTML = `✅ Тестовое задание создано! ID: ${result.task.id}`;
+    } catch (error) {
+        document.getElementById('test-result').innerHTML = `❌ Ошибка теста: ${error.message}`;
+    }
+}
 // Get user profile
 app.get('/api/user/:userId', async (req, res) => {
     try {
@@ -530,38 +605,59 @@ app.get('/api/admin/tasks', async (req, res) => {
     }
 });
 
-// Create task (admin only) - UPDATED WITH ALL FIELDS
+// Create task - COMPLETELY REWRITTEN
 app.post('/api/tasks', async (req, res) => {
-    const { 
-        title, 
-        description, 
-        price, 
-        created_by,
-        time_to_complete,
-        difficulty,
-        people_required,
-        repost_time,
-        task_url
-    } = req.body;
-    
-    console.log('📝 Creating task with data:', req.body);
-    
-    if (!title || !description || !price || !created_by) {
-        return res.status(400).json({
-            success: false,
-            error: 'Missing required fields'
-        });
-    }
-    
-    // Check admin rights
-    if (parseInt(created_by) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied'
-        });
-    }
+    console.log('🎯 ========== TASK CREATION REQUEST ==========');
+    console.log('📦 Headers:', req.headers);
+    console.log('📝 Body:', req.body);
     
     try {
+        const { 
+            title, 
+            description, 
+            price, 
+            created_by,
+            time_to_complete,
+            difficulty,
+            people_required,
+            repost_time,
+            task_url
+        } = req.body;
+
+        // Validate required fields
+        if (!title || !description || !price || !created_by) {
+            console.log('❌ Missing required fields');
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required fields: title, description, price, created_by'
+            });
+        }
+
+        // Check admin rights
+        if (parseInt(created_by) !== ADMIN_ID) {
+            console.log('❌ Access denied for user:', created_by);
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied'
+            });
+        }
+
+        // Prepare data for insertion
+        const taskData = {
+            title: title.toString().trim(),
+            description: description.toString().trim(),
+            price: parseFloat(price),
+            created_by: parseInt(created_by),
+            time_to_complete: time_to_complete ? time_to_complete.toString() : '5 минут',
+            difficulty: difficulty ? difficulty.toString() : 'Легкая',
+            people_required: people_required ? parseInt(people_required) : 1,
+            repost_time: repost_time ? repost_time.toString() : '1 день',
+            task_url: task_url ? task_url.toString() : ''
+        };
+
+        console.log('💾 Inserting task data:', taskData);
+
+        // Insert into database
         const result = await pool.query(`
             INSERT INTO tasks (
                 title, description, price, created_by,
@@ -571,29 +667,54 @@ app.post('/api/tasks', async (req, res) => {
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING *
         `, [
-            title, 
-            description, 
-            parseFloat(price), 
-            created_by,
-            time_to_complete || '5 минут',
-            difficulty || 'Легкая',
-            parseInt(people_required) || 1,
-            repost_time || '1 день',
-            task_url || ''
+            taskData.title,
+            taskData.description, 
+            taskData.price,
+            taskData.created_by,
+            taskData.time_to_complete,
+            taskData.difficulty,
+            taskData.people_required,
+            taskData.repost_time,
+            taskData.task_url
         ]);
-        
-        console.log('✅ Task created successfully:', result.rows[0]);
-        
+
+        const createdTask = result.rows[0];
+        console.log('✅ Task created successfully:', createdTask);
+
         res.json({
             success: true,
             message: 'Task created successfully',
-            task: result.rows[0]
+            task: createdTask
         });
+
     } catch (error) {
-        console.error('❌ Create task error:', error);
+        console.error('💥 Task creation error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
+        });
+    } finally {
+        console.log('🎯 ========== END TASK CREATION ==========');
+    }
+});
+// Check tasks table structure
+app.get('/api/debug/tasks-structure', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT column_name, data_type, is_nullable
+            FROM information_schema.columns
+            WHERE table_name = 'tasks'
+            ORDER BY ordinal_position
+        `);
+        
+        res.json({
+            success: true,
+            columns: result.rows
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
         });
     }
 });
