@@ -54,13 +54,54 @@ const pool = new Pool({
 });
 
 const ADMIN_ID = 8036875641;
+async function migrateDatabase() {
+    try {
+        console.log('🔄 Checking for required database migrations...');
+        
+        // Миграции для support_chats
+        try {
+            await pool.query('ALTER TABLE support_chats ADD COLUMN IF NOT EXISTS user_username TEXT');
+            console.log('✅ Added user_username to support_chats');
+        } catch (e) { console.log('ℹ️ user_username already exists'); }
+        
+        try {
+            await pool.query('ALTER TABLE support_chats ADD COLUMN IF NOT EXISTS unread_count INTEGER DEFAULT 0');
+            console.log('✅ Added unread_count to support_chats');
+        } catch (e) { console.log('ℹ️ unread_count already exists'); }
 
+        // Миграции для tasks
+        try {
+            await pool.query('ALTER TABLE tasks ADD COLUMN IF NOT EXISTS created_by BIGINT');
+            console.log('✅ Added created_by to tasks');
+        } catch (e) { console.log('ℹ️ created_by already exists'); }
+        
+        try {
+            await pool.query('ALTER TABLE tasks ADD COLUMN IF NOT EXISTS category TEXT DEFAULT ',general ,'');
+            console.log('✅ Added category to tasks');
+        } catch (e) { console.log('ℹ️ category already exists'); }
+
+        console.log('✅ Database migrations completed');
+    } catch (error) {
+        console.error('❌ Migration error:', error);
+    }
+}
 // Упрощенная инициализация базы данных
 async function initDatabase() {
     try {
-        console.log('🔄 Initializing simplified database...');
+        console.log('🔄 FORCE INITIALIZING DATABASE...');
         
-        // Только самые необходимые таблицы
+        // УДАЛИТЕ ЭТОТ БЛОК ЕСЛИ НЕ ХОТИТЕ ТЕРЯТЬ ДАННЫЕ!
+        // Но он гарантированно исправит проблему
+        await pool.query('DROP TABLE IF EXISTS support_messages CASCADE');
+        await pool.query('DROP TABLE IF EXISTS support_chats CASCADE');
+        await pool.query('DROP TABLE IF EXISTS task_verifications CASCADE');
+        await pool.query('DROP TABLE IF EXISTS user_tasks CASCADE');
+        await pool.query('DROP TABLE IF EXISTS withdrawal_requests CASCADE');
+        await pool.query('DROP TABLE IF EXISTS posts CASCADE');
+        await pool.query('DROP TABLE IF EXISTS tasks CASCADE');
+        await pool.query('DROP TABLE IF EXISTS user_profiles CASCADE');
+
+        // Теперь создаем таблицы с правильной структурой
         await pool.query(`
             CREATE TABLE IF NOT EXISTS user_profiles (
                 user_id BIGINT PRIMARY KEY,
@@ -70,30 +111,36 @@ async function initDatabase() {
                 photo_url TEXT,
                 balance REAL DEFAULT 0,
                 level INTEGER DEFAULT 1,
+                experience INTEGER DEFAULT 0,
+                tasks_completed INTEGER DEFAULT 0,
+                active_tasks INTEGER DEFAULT 0,
+                quality_rate REAL DEFAULT 0,
+                referral_count INTEGER DEFAULT 0,
+                referral_earned REAL DEFAULT 0,
                 is_admin BOOLEAN DEFAULT false,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
 
         await pool.query(`
-    CREATE TABLE IF NOT EXISTS tasks (
-        id SERIAL PRIMARY KEY,
-        title TEXT NOT NULL,
-        description TEXT NOT NULL,
-        price REAL NOT NULL,
-        created_by BIGINT NOT NULL,
-        category TEXT DEFAULT 'general',
-        time_to_complete TEXT DEFAULT '5 минут',
-        difficulty TEXT DEFAULT 'Легкая',
-        people_required INTEGER DEFAULT 1,
-        repost_time TEXT DEFAULT '1 день',
-        task_url TEXT,
-        status TEXT DEFAULT 'active',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-`);
+            CREATE TABLE IF NOT EXISTS tasks (
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL,
+                price REAL NOT NULL,
+                created_by BIGINT NOT NULL,
+                category TEXT DEFAULT 'general',
+                time_to_complete TEXT DEFAULT '5 минут',
+                difficulty TEXT DEFAULT 'Легкая',
+                people_required INTEGER DEFAULT 1,
+                repost_time TEXT DEFAULT '1 день',
+                task_url TEXT,
+                status TEXT DEFAULT 'active',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
 
-        // Упрощенная таблица постов
         await pool.query(`
             CREATE TABLE IF NOT EXISTS posts (
                 id SERIAL PRIMARY KEY,
@@ -101,68 +148,26 @@ async function initDatabase() {
                 content TEXT NOT NULL,
                 author TEXT NOT NULL,
                 author_id BIGINT NOT NULL,
+                likes INTEGER DEFAULT 0,
+                dislikes INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
 
         await pool.query(`
-    CREATE TABLE IF NOT EXISTS support_chats (
-        id SERIAL PRIMARY KEY,
-        user_id BIGINT NOT NULL,
-        user_name TEXT NOT NULL,
-        user_username TEXT,
-        last_message TEXT,
-        last_message_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        is_active BOOLEAN DEFAULT true,
-        unread_count INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-`);
-// Таблица для заданий пользователей
-await pool.query(`
-    CREATE TABLE IF NOT EXISTS user_tasks (
-        id SERIAL PRIMARY KEY,
-        user_id BIGINT NOT NULL,
-        task_id INTEGER NOT NULL,
-        status TEXT DEFAULT 'active',
-        started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        screenshot_url TEXT,
-        submitted_at TIMESTAMP,
-        completed_at TIMESTAMP
-    )
-`);
+            CREATE TABLE IF NOT EXISTS support_chats (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                user_name TEXT NOT NULL,
+                user_username TEXT,
+                last_message TEXT,
+                last_message_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                is_active BOOLEAN DEFAULT true,
+                unread_count INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
 
-// Таблица для проверки заданий
-await pool.query(`
-    CREATE TABLE IF NOT EXISTS task_verifications (
-        id SERIAL PRIMARY KEY,
-        user_task_id INTEGER NOT NULL,
-        user_id BIGINT NOT NULL,
-        task_id INTEGER NOT NULL,
-        user_name TEXT NOT NULL,
-        task_title TEXT NOT NULL,
-        task_price REAL NOT NULL,
-        screenshot_url TEXT NOT NULL,
-        status TEXT DEFAULT 'pending',
-        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        reviewed_at TIMESTAMP,
-        reviewed_by BIGINT
-    )
-`);
-
-// Таблица для запросов на вывод
-await pool.query(`
-    CREATE TABLE IF NOT EXISTS withdrawal_requests (
-        id SERIAL PRIMARY KEY,
-        user_id BIGINT NOT NULL,
-        amount REAL NOT NULL,
-        method TEXT,
-        details TEXT,
-        status TEXT DEFAULT 'pending',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-`);
-        // Упрощенная таблица сообщений
         await pool.query(`
             CREATE TABLE IF NOT EXISTS support_messages (
                 id SERIAL PRIMARY KEY,
@@ -171,65 +176,84 @@ await pool.query(`
                 user_name TEXT NOT NULL,
                 message TEXT NOT NULL,
                 is_admin BOOLEAN DEFAULT false,
+                is_read BOOLEAN DEFAULT false,
                 sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
+        `);
 
-        `);
-// Функция для добавления недостающих колонок
-async function migrateDatabase() {
-    try {
-        console.log('🔄 Checking for database migrations...');
-        
-        // Добавляем недостающие колонки в support_chats
         await pool.query(`
-            ALTER TABLE support_chats 
-            ADD COLUMN IF NOT EXISTS user_username TEXT,
-            ADD COLUMN IF NOT EXISTS unread_count INTEGER DEFAULT 0
+            CREATE TABLE IF NOT EXISTS user_tasks (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                task_id INTEGER NOT NULL,
+                status TEXT DEFAULT 'active',
+                started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                screenshot_url TEXT,
+                submitted_at TIMESTAMP,
+                completed_at TIMESTAMP,
+                rejected_at TIMESTAMP
+            )
         `);
-        
-        // Добавляем недостающие колонки в tasks
+
         await pool.query(`
-            ALTER TABLE tasks 
-            ADD COLUMN IF NOT EXISTS created_by BIGINT,
-            ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'general',
-            ADD COLUMN IF NOT EXISTS time_to_complete TEXT DEFAULT '5 минут',
-            ADD COLUMN IF NOT EXISTS difficulty TEXT DEFAULT 'Легкая',
-            ADD COLUMN IF NOT EXISTS people_required INTEGER DEFAULT 1,
-            ADD COLUMN IF NOT EXISTS repost_time TEXT DEFAULT '1 день',
-            ADD COLUMN IF NOT EXISTS task_url TEXT
+            CREATE TABLE IF NOT EXISTS task_verifications (
+                id SERIAL PRIMARY KEY,
+                user_task_id INTEGER NOT NULL,
+                user_id BIGINT NOT NULL,
+                task_id INTEGER NOT NULL,
+                user_name TEXT NOT NULL,
+                task_title TEXT NOT NULL,
+                task_price REAL NOT NULL,
+                screenshot_url TEXT NOT NULL,
+                status TEXT DEFAULT 'pending',
+                submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                reviewed_at TIMESTAMP,
+                reviewed_by BIGINT
+            )
         `);
-        
-        console.log('✅ Database migrations completed');
-    } catch (error) {
-        console.error('❌ Database migration error:', error);
-    }
-}
-        // Добавляем примеры если таблицы пустые
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS withdrawal_requests (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                amount REAL NOT NULL,
+                method TEXT,
+                details TEXT,
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Добавляем тестовые данные
         const tasksCount = await pool.query('SELECT COUNT(*) FROM tasks');
         if (parseInt(tasksCount.rows[0].count) === 0) {
             await pool.query(`
-                INSERT INTO tasks (title, description, price, created_by) 
+                INSERT INTO tasks (title, description, price, created_by, category) 
                 VALUES 
-                ('Подписаться на канал', 'Подпишитесь на наш Telegram канал', 50, $1),
-                ('Посмотреть видео', 'Посмотрите видео до конца', 30, $1),
-                ('Сделать репост', 'Сделайте репост записи', 70, $1)
+                ('Подписаться на канал', 'Подпишитесь на наш Telegram канал и оставайтесь подписанным 3 дня', 50, $1, 'subscribe'),
+                ('Посмотреть видео', 'Посмотрите видео до конца и оставьте комментарий', 30, $1, 'view'),
+                ('Сделать репост', 'Сделайте репост записи в своем канале', 70, $1, 'repost')
             `, [ADMIN_ID]);
+            console.log('✅ Test tasks added');
         }
 
         const postsCount = await pool.query('SELECT COUNT(*) FROM posts');
         if (parseInt(postsCount.rows[0].count) === 0) {
             await pool.query(`
                 INSERT INTO posts (title, content, author, author_id) 
-                VALUES ('Добро пожаловать!', 'Начните зарабатывать выполняя простые задания!', 'Администратор', $1)
+                VALUES 
+                ('Добро пожаловать в LinkGold!', 'Начните зарабатывать выполняя простые задания. Выполняйте задания, получайте оплату и выводите средства удобным способом.', 'Администратор', $1),
+                ('Новые задания уже доступны', 'Мы добавили новые интересные задания. Не упустите возможность заработать!', 'Администратор', $1)
             `, [ADMIN_ID]);
+            console.log('✅ Test posts added');
         }
 
-        console.log('✅ Simplified database initialized successfully');
+        console.log('✅ DATABASE FORCE INITIALIZED SUCCESSFULLY');
     } catch (error) {
         console.error('❌ Database initialization error:', error);
+        throw error;
     }
 }
-
 // Инициализируем базу данных при запуске
 initDatabase();
 // Упрощенное создание задания
@@ -263,7 +287,50 @@ app.post('/api/simple/tasks', async (req, res) => {
         });
     }
 });
-
+// Добавьте этот endpoint ПЕРВЫМ в server.js
+app.get('/api/debug/db-check', async (req, res) => {
+    try {
+        console.log('🔍 Checking database structure...');
+        
+        // Проверим существующие таблицы
+        const tables = await pool.query(`
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public'
+        `);
+        
+        const results = {};
+        
+        // Проверим структуру каждой таблицы
+        for (let table of tables.rows) {
+            const tableName = table.table_name;
+            const structure = await pool.query(`
+                SELECT column_name, data_type, is_nullable 
+                FROM information_schema.columns 
+                WHERE table_name = $1 
+                ORDER BY ordinal_position
+            `, [tableName]);
+            
+            results[tableName] = {
+                columns: structure.rows,
+                count: (await pool.query(`SELECT COUNT(*) FROM ${tableName}`)).rows[0].count
+            };
+        }
+        
+        res.json({
+            success: true,
+            database: results,
+            admin_id: ADMIN_ID,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            stack: error.stack
+        });
+    }
+});
 // Упрощенный чат
 app.get('/api/simple/chats/:userId', async (req, res) => {
     const userId = req.params.userId;
@@ -448,6 +515,36 @@ app.post('/api/user/auth', async (req, res) => {
         });
     }
 });
+
+// Функция для добавления недостающих колонок
+async function migrateDatabase() {
+    try {
+        console.log('🔄 Checking for database migrations...');
+        
+        // Добавляем недостающие колонки в support_chats
+        await pool.query(`
+            ALTER TABLE support_chats 
+            ADD COLUMN IF NOT EXISTS user_username TEXT,
+            ADD COLUMN IF NOT EXISTS unread_count INTEGER DEFAULT 0
+        `);
+        
+        // Добавляем недостающие колонки в tasks
+        await pool.query(`
+            ALTER TABLE tasks 
+            ADD COLUMN IF NOT EXISTS created_by BIGINT,
+            ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'general',
+            ADD COLUMN IF NOT EXISTS time_to_complete TEXT DEFAULT '5 минут',
+            ADD COLUMN IF NOT EXISTS difficulty TEXT DEFAULT 'Легкая',
+            ADD COLUMN IF NOT EXISTS people_required INTEGER DEFAULT 1,
+            ADD COLUMN IF NOT EXISTS repost_time TEXT DEFAULT '1 день',
+            ADD COLUMN IF NOT EXISTS task_url TEXT
+        `);
+        
+        console.log('✅ Database migrations completed');
+    } catch (error) {
+        console.error('❌ Database migration error:', error);
+    }
+}
 // Diagnostic endpoint - check what's actually deployed
 app.get('/api/debug/info', async (req, res) => {
     try {
@@ -1615,10 +1712,22 @@ app.use('/api/*', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📊 Health: http://localhost:${PORT}/api/health`);
-    console.log(`🔐 Admin ID: ${ADMIN_ID}`);
-    console.log(`🗄️ Database: PostgreSQL`);
-    console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+// В конце server.js, перед app.listen
+async function startServer() {
+    try {
+        console.log('🚀 Starting LinkGold Server...');
+        await initDatabase();
+        await migrateDatabase();
+        
+        app.listen(PORT, '0.0.0.0', () => {
+            console.log(`🎉 Server running on port ${PORT}`);
+            console.log(`🔍 Debug: http://localhost:${PORT}/api/debug/db-check`);
+            console.log(`❤️ Health: http://localhost:${PORT}/api/health`);
+        });
+    } catch (error) {
+        console.error('❌ Failed to start server:', error);
+        process.exit(1);
+    }
+}
+
+startServer();
