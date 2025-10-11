@@ -6022,14 +6022,10 @@ async function makeRequest(endpoint, options = {}) {
             return;
         }
 
-        // 2. Собираем данные из формы с проверкой элементов
+        // 2. Собираем данные из формы
         const getElementValue = (id) => {
             const element = document.getElementById(id);
-            if (!element) {
-                console.error(`❌ Element with id "${id}" not found!`);
-                return null;
-            }
-            return element.value;
+            return element ? element.value : '';
         };
 
         const formData = {
@@ -6041,33 +6037,42 @@ async function makeRequest(endpoint, options = {}) {
             people_required: getElementValue('admin-task-people'),
             repost_time: getElementValue('admin-task-repost'),
             task_url: getElementValue('admin-task-url'),
+            category: 'general', // добавляем категорию по умолчанию
             created_by: currentUser.id
         };
 
         console.log('📋 Form data collected:', formData);
 
         // 3. Валидация
-        if (!formData.title || !formData.description || !formData.price) {
+        if (!formData.title.trim() || !formData.description.trim() || !formData.price) {
             showNotification('Заполните название, описание и цену задания!', 'error');
             return;
         }
 
-        // 4. Подготавливаем данные для отправки
+        // 4. Проверяем числовые поля
+        const price = parseFloat(formData.price);
+        if (isNaN(price) || price <= 0) {
+            showNotification('Цена должна быть положительным числом!', 'error');
+            return;
+        }
+
+        // 5. Подготавливаем данные для отправки
         const requestData = {
             title: formData.title.trim(),
             description: formData.description.trim(),
-            price: parseFloat(formData.price) || 0,
+            price: price,
             time_to_complete: formData.time_to_complete || '5 минут',
             difficulty: formData.difficulty || 'Легкая',
             people_required: parseInt(formData.people_required) || 1,
             repost_time: formData.repost_time || '1 день',
             task_url: formData.task_url || '',
+            category: formData.category,
             created_by: currentUser.id
         };
 
         console.log('📤 Prepared request data:', requestData);
 
-        // 5. Отправляем запрос
+        // 6. Отправляем запрос
         console.log('🚀 Sending request to /api/tasks...');
         const result = await makeRequest('/tasks', {
             method: 'POST',
@@ -6080,11 +6085,10 @@ async function makeRequest(endpoint, options = {}) {
             showNotification('✅ Задание успешно создано!', 'success');
             
             // Очищаем форму
-            Object.keys(formData).forEach(key => {
-                if (key !== 'created_by') {
-                    const element = document.getElementById(`admin-task-${key}`);
-                    if (element) element.value = '';
-                }
+            const formFields = ['title', 'description', 'price', 'time', 'difficulty', 'people', 'repost', 'url'];
+            formFields.forEach(field => {
+                const element = document.getElementById(`admin-task-${field}`);
+                if (element) element.value = '';
             });
             
             // Обновляем списки

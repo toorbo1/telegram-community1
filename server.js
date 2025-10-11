@@ -245,7 +245,37 @@ app.get('/api/health', async (req, res) => {
         });
     }
 });
-
+// Debug endpoint to check database state
+app.get('/api/debug/tables', async (req, res) => {
+    try {
+        const tables = await pool.query(`
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public'
+        `);
+        
+        const results = {};
+        for (let table of tables.rows) {
+            const tableName = table.table_name;
+            const countResult = await pool.query(`SELECT COUNT(*) FROM ${tableName}`);
+            results[tableName] = {
+                count: parseInt(countResult.rows[0].count),
+                sample: countResult.rows[0].count > 0 ? 
+                    (await pool.query(`SELECT * FROM ${tableName} LIMIT 3`)).rows : []
+            };
+        }
+        
+        res.json({
+            success: true,
+            tables: results
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 // User authentication
 app.post('/api/user/auth', async (req, res) => {
     const { user } = req.body;
@@ -560,8 +590,10 @@ app.get('/api/admin/tasks', async (req, res) => {
     }
 });
 
-// Create task (admin only) - UPDATED WITH ALL FIELDS
+// Create task (admin only) - FIXED VERSION
 app.post('/api/tasks', async (req, res) => {
+    console.log('🎯 Received task creation request:', req.body);
+    
     const { 
         title, 
         description, 
@@ -571,15 +603,16 @@ app.post('/api/tasks', async (req, res) => {
         difficulty,
         people_required,
         repost_time,
-        task_url
+        task_url,
+        category
     } = req.body;
     
-    console.log('📝 Creating task with data:', req.body);
-    
+    // Validate required fields
     if (!title || !description || !price || !created_by) {
+        console.log('❌ Missing required fields:', { title, description, price, created_by });
         return res.status(400).json({
             success: false,
-            error: 'Missing required fields'
+            error: 'Missing required fields: title, description, price, and created_by are required'
         });
     }
     
@@ -587,7 +620,7 @@ app.post('/api/tasks', async (req, res) => {
     if (parseInt(created_by) !== ADMIN_ID) {
         return res.status(403).json({
             success: false,
-            error: 'Access denied'
+            error: 'Access denied - only admin can create tasks'
         });
     }
     
@@ -596,20 +629,21 @@ app.post('/api/tasks', async (req, res) => {
             INSERT INTO tasks (
                 title, description, price, created_by,
                 time_to_complete, difficulty, people_required,
-                repost_time, task_url
+                repost_time, task_url, category
             ) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING *
         `, [
-            title, 
-            description, 
-            parseFloat(price), 
+            title.trim(), 
+            description.trim(), 
+            parseFloat(price) || 0, 
             created_by,
             time_to_complete || '5 минут',
             difficulty || 'Легкая',
             parseInt(people_required) || 1,
             repost_time || '1 день',
-            task_url || ''
+            task_url || '',
+            category || 'general'
         ]);
         
         console.log('✅ Task created successfully:', result.rows[0]);
@@ -850,7 +884,7 @@ app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
     }
 });
 
-// Support chat system - FIXED VERSION
+// Get or create user chat - FIXED VERSION
 app.get('/api/support/user-chat/:userId', async (req, res) => {
     const userId = req.params.userId;
     
@@ -871,10 +905,20 @@ app.get('/api/support/user-chat/:userId', async (req, res) => {
             });
         }
         
-        // Create new chat
-        const user_name = `User_${userId}`;
-        const user_username = `user_${userId}`;
-        const last_message = 'Чат создан';
+        // Get user info from profiles
+        const userResult = await pool.query(
+            'SELECT first_name, last_name, username FROM user_profiles WHERE user_id = $1',
+            [userId]
+        );
+        
+        let user_name = `User_${userId}`;
+        let user_username = `user_${userId}`;
+        
+        if (userResult.rows.length > 0) {
+            const user = userResult.rows[0];
+            user_name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user_name;
+            user_username = user.username || user_username;
+        }
         
         console.log('📝 Creating new chat for user:', userId);
         
@@ -882,7 +926,7 @@ app.get('/api/support/user-chat/:userId', async (req, res) => {
             INSERT INTO support_chats (user_id, user_name, user_username, last_message) 
             VALUES ($1, $2, $3, $4)
             RETURNING *
-        `, [userId, user_name, user_username, last_message]);
+        `, [userId, user_name, user_username, 'Чат создан']);
         
         const chatId = newChat.rows[0].id;
         console.log('✅ Created new chat with ID:', chatId);
