@@ -74,6 +74,14 @@ async function initDatabase() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
+// Добавьте эти колонки в таблицу user_profiles
+await pool.query(`
+    ALTER TABLE user_profiles 
+    ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE,
+    ADD COLUMN IF NOT EXISTS referred_by BIGINT,
+    ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS referral_earned REAL DEFAULT 0
+`);
 
         await pool.query(`
     CREATE TABLE IF NOT EXISTS tasks (
@@ -150,16 +158,16 @@ await pool.query(`
     )
 `);
 
-// Таблица для запросов на вывод
+
+// Таблица для запросов на вывод (если еще не добавлена)
 await pool.query(`
     CREATE TABLE IF NOT EXISTS withdrawal_requests (
         id SERIAL PRIMARY KEY,
         user_id BIGINT NOT NULL,
         amount REAL NOT NULL,
-        method TEXT,
-        details TEXT,
         status TEXT DEFAULT 'pending',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        completed_at TIMESTAMP
     )
 `);
         // Упрощенная таблица сообщений
@@ -229,7 +237,136 @@ async function migrateDatabase() {
         console.error('❌ Database initialization error:', error);
     }
 }
+// Функция генерации реферального кода
+function generateReferralCode(userId) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code + userId.toString().slice(-4);
+}
 
+// Обновленный endpoint аутентизации
+app.post('/api/user/auth', async (req, res) => {
+    const { user, start_param } = req.body;
+    
+    if (!user) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    try {
+        const isAdmin = parseInt(user.id) === ADMIN_ID;
+        
+        // Генерируем реферальный код если его нет
+        let referralCode = null;
+        let referredBy = null;
+        
+        // Проверяем реферальную ссылку
+        if (start_param && start_param.startsWith('ref_')) {
+            const refCode = start_param.substring(4);
+            // Находим пользователя по реферальному коду
+            const referrer = await pool.query(
+                'SELECT user_id FROM user_profiles WHERE referral_code = $1',
+                [refCode]
+            );
+            if (referrer.rows.length > 0) {
+                referredBy = referrer.rows[0].user_id;
+            }
+        }
+        
+        const result = await pool.query(`
+            INSERT INTO user_profiles 
+            (user_id, username, first_name, last_name, photo_url, is_admin, referral_code, referred_by, updated_at) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
+            ON CONFLICT (user_id) 
+            DO UPDATE SET 
+                username = EXCLUDED.username,
+                first_name = EXCLUDED.first_name,
+                last_name = EXCLUDED.last_name,
+                photo_url = EXCLUDED.photo_url,
+                is_admin = EXCLUDED.is_admin,
+                updated_at = CURRENT_TIMESTAMP
+            RETURNING *
+        `, [
+            user.id, 
+            user.username || `user_${user.id}`,
+            user.first_name || 'Пользователь',
+            user.last_name || '',
+            user.photo_url || '',
+            isAdmin,
+            referralCode || generateReferralCode(user.id),
+            referredBy
+        ]);
+        
+        const userProfile = result.rows[0];
+        
+        // Если это новый пользователь по реферальной ссылке - начисляем бонусы
+        if (referredBy && result.rows[0].was_created) {
+            // Начисляем 15 звезд приглашающему
+            await pool.query(`
+                UPDATE user_profiles 
+                SET 
+                    balance = COALESCE(balance, 0) + 15,
+                    referral_count = COALESCE(referral_count, 0) + 1,
+                    referral_earned = COALESCE(referral_earned, 0) + 15
+                WHERE user_id = $1
+            `, [referredBy]);
+            
+            // Начисляем 5 звезд приглашенному
+            await pool.query(`
+                UPDATE user_profiles 
+                SET balance = COALESCE(balance, 0) + 5
+                WHERE user_id = $1
+            `, [user.id]);
+            
+            console.log(`🎁 Реферальные бонусы начислены! Пригласивший: ${referredBy}, Новый пользователь: ${user.id}`);
+        }
+        
+        res.json({
+            success: true,
+            user: userProfile
+        });
+    } catch (error) {
+        console.error('Auth error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Получение реферальной статистики
+app.get('/api/user/:userId/referral-stats', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT referral_count, referral_earned 
+            FROM user_profiles 
+            WHERE user_id = $1
+        `, [req.params.userId]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            });
+        }
+        
+        res.json({
+            success: true,
+            stats: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Get referral stats error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
 // Инициализируем базу данных при запуске
 initDatabase();
 // Упрощенное создание задания
@@ -1576,11 +1713,11 @@ app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res
     }
 });
 
-// Withdrawal request
+// Обновленный endpoint вывода средств
 app.post('/api/withdrawal/request', async (req, res) => {
-    const { user_id, amount, method, details } = req.body;
+    const { user_id, amount } = req.body;
     
-    if (!user_id || !amount || !method || !details) {
+    if (!user_id || !amount) {
         return res.status(400).json({
             success: false,
             error: 'Missing required fields'
@@ -1588,16 +1725,51 @@ app.post('/api/withdrawal/request', async (req, res) => {
     }
     
     try {
+        // Проверяем баланс пользователя
+        const userResult = await pool.query(
+            'SELECT balance, username FROM user_profiles WHERE user_id = $1',
+            [user_id]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            });
+        }
+        
+        const userBalance = parseFloat(userResult.rows[0].balance) || 0;
+        const requestAmount = parseFloat(amount);
+        const username = userResult.rows[0].username;
+        
+        if (requestAmount > userBalance) {
+            return res.status(400).json({
+                success: false,
+                error: 'Insufficient balance'
+            });
+        }
+        
+        // Обнуляем баланс пользователя
+        await pool.query(
+            'UPDATE user_profiles SET balance = 0 WHERE user_id = $1',
+            [user_id]
+        );
+        
+        // Создаем запрос на вывод
         const result = await pool.query(`
-            INSERT INTO withdrawal_requests (user_id, amount, method, details) 
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO withdrawal_requests (user_id, amount, status) 
+            VALUES ($1, $2, 'pending')
             RETURNING *
-        `, [user_id, amount, method, details]);
+        `, [user_id, requestAmount]);
+        
+        // Отправляем уведомление в Telegram канал
+        await sendWithdrawalToTelegram(username, requestAmount, result.rows[0].id);
         
         res.json({
             success: true,
             message: 'Withdrawal request submitted',
-            requestId: result.rows[0].id
+            requestId: result.rows[0].id,
+            newBalance: 0
         });
     } catch (error) {
         console.error('Withdrawal error:', error);
@@ -1608,6 +1780,83 @@ app.post('/api/withdrawal/request', async (req, res) => {
     }
 });
 
+// Функция отправки в Telegram канал
+async function sendWithdrawalToTelegram(username, amount, requestId) {
+    try {
+        // Здесь должна быть реализация отправки в Telegram
+        // Для примера просто логируем
+        console.log(`📤 Вывод средств в Telegram канал:
+👤 Пользователь: @${username}
+💰 Сумма: ${amount} ⭐
+🆔 ID запроса: ${requestId}
+⏰ Время: ${new Date().toLocaleString('ru-RU')}
+        `);
+        
+        // В реальном приложении здесь будет код для отправки сообщения в Telegram канал
+        // с использованием Telegram Bot API
+        
+        return true;
+    } catch (error) {
+        console.error('Error sending to Telegram:', error);
+        return false;
+    }
+}
+
+// Endpoint для подтверждения выплаты админом
+app.post('/api/admin/withdrawal/complete', async (req, res) => {
+    const { request_id, admin_id } = req.body;
+    
+    if (parseInt(admin_id) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+    
+    try {
+        // Обновляем статус запроса
+        await pool.query(`
+            UPDATE withdrawal_requests 
+            SET status = 'completed', completed_at = CURRENT_TIMESTAMP 
+            WHERE id = $1
+        `, [request_id]);
+        
+        res.json({
+            success: true,
+            message: 'Withdrawal marked as completed'
+        });
+    } catch (error) {
+        console.error('Complete withdrawal error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Получение истории выводов
+app.get('/api/withdraw/history/:userId', async (req, res) => {
+    const userId = req.params.userId;
+    
+    try {
+        const result = await pool.query(`
+            SELECT * FROM withdrawal_requests 
+            WHERE user_id = $1 
+            ORDER BY created_at DESC
+        `, [userId]);
+        
+        res.json({
+            success: true,
+            operations: result.rows
+        });
+    } catch (error) {
+        console.error('Get withdrawal history error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
 // Get withdrawal history
 app.get('/api/withdraw/history/:userId', async (req, res) => {
     const userId = req.params.userId;

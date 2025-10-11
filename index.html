@@ -4178,6 +4178,79 @@
 .nav-item.active .nav-icon img {
     filter: brightness(0) invert(1); /* Белые иконки для активного состояния */
 }
+/* Светлая тема */
+[data-theme="light"] {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --text-primary: #2d3748;
+    --text-secondary: #4a5568;
+    --accent: #6366f1;
+    --accent-hover: #4f46e5;
+    --card-bg: #ffffff;
+    --border: #e2e8f0;
+    --shadow: rgba(0, 0, 0, 0.1);
+    --nav-bg: rgba(255, 255, 255, 0.95);
+    --gold: #d97706;
+    --gold-gradient: linear-gradient(135deg, #f59e0b, #d97706);
+    --purple-gradient: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    --blue-gradient: linear-gradient(135deg, #3b82f6, #2563eb);
+    --teal-gradient: linear-gradient(135deg, #0ea5e9, #0369a1);
+    --success: #10b981;
+    --error: #ef4444;
+    --warning: #f59e0b;
+}
+
+/* Переключатель темы */
+.theme-switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+}
+
+.theme-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.theme-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border);
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.theme-slider:before {
+    position: absolute;
+    content: "🌙";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 3px;
+    background-color: var(--accent);
+    transition: .4s;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+input:checked + .theme-slider {
+    background-color: var(--accent);
+}
+
+input:checked + .theme-slider:before {
+    content: "☀️";
+    transform: translateX(26px);
+}
     </style>
 </head>
 <body>
@@ -4545,7 +4618,11 @@
                     <!-- Задания на проверке будут загружаться динамически -->
                 </div>
             </div>
-
+<div class="profile-action" onclick="toggleTheme()">
+    <div class="action-icon">🎨</div>
+    <div class="action-text">Тема оформления</div>
+    <div class="action-arrow">›</div>
+</div>
             <!-- Поддержка -->
             <div id="admin-support-section" class="admin-section" style="display: none;">
                 <h3>💬 Чаты с пользователями</h3>
@@ -6525,132 +6602,111 @@ function displayAdminTasks(tasks) {
             }
         }
 
-        // Функция для запроса вывода средств
-        async function requestWithdraw() {
-            if (!currentUser) {
-                showNotification('Пользователь не авторизован', 'error');
-                return;
-            }
+        // Обновленная функция запроса вывода
+async function requestWithdraw() {
+    if (!currentUser) {
+        showNotification('Пользователь не авторизован', 'error');
+        return;
+    }
+    
+    const currentBalance = currentUser.balance || 0;
+    
+    if (currentBalance <= 0) {
+        showNotification('Недостаточно средств для вывода', 'error');
+        return;
+    }
+    
+    // Подтверждение
+    if (!confirm(`Вы уверены, что хотите вывести ${currentBalance} ⭐?`)) {
+        return;
+    }
+    
+    try {
+        const result = await makeRequest('/withdrawal/request', {
+            method: 'POST',
+            body: JSON.stringify({
+                user_id: currentUser.id,
+                amount: currentBalance
+            })
+        });
+        
+        if (result.success) {
+            // Обновляем баланс пользователя
+            currentUser.balance = 0;
             
-            const currentBalance = currentUser.balance || 0;
+            // Обновляем отображение
+            displayUserProfile();
+            updateWithdrawPage();
             
-            if (currentBalance <= 0) {
-                showNotification('Недостаточно средств для вывода', 'error');
-                return;
-            }
+            showNotification(`Заявка на вывод ${currentBalance} ⭐ отправлена! Ожидайте подтверждения.`, 'success');
             
-            // Подтверждение
-            if (!confirm(`Вы уверены, что хотите вывести ${currentBalance} ⭐?`)) {
-                return;
-            }
+            // Обновляем историю операций
+            loadWithdrawHistory();
             
-            try {
-                const response = await fetch(API_BASE_URL + '/api/withdrawal/request', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        userId: currentUser.id,
-                        amount: currentBalance
-                    })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    // Обновляем баланс пользователя
-                    currentUser.balance = 0;
-                    
-                    // Обновляем отображение
-                    displayUserProfile();
-                    updateWithdrawPage();
-                    
-                    showNotification(`Заявка на вывод ${currentBalance} ⭐ отправлена! Ожидайте подтверждения.`, 'success');
-                    
-                    // Обновляем историю операций
-                    loadWithdrawHistory();
-                    
-                } else {
-                    showNotification('Ошибка: ' + result.error, 'error');
-                }
-            } catch (error) {
-                console.error('Withdrawal error:', error);
-                showNotification('Ошибка при выводе средств', 'error');
-            }
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
         }
+    } catch (error) {
+        console.error('Withdrawal error:', error);
+        showNotification('Ошибка при выводе средств', 'error');
+    }
+}
 
-        // Загрузка истории выводов
-        async function loadWithdrawHistory() {
-            if (!currentUser) return;
+// Обновленная функция отображения истории выводов
+function displayWithdrawHistory(operations) {
+    const container = document.getElementById('withdraw-history-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!operations || operations.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
+                <div style="font-size: 48px; margin-bottom: 16px;">💫</div>
+                <div>Нет операций по выводу</div>
+            </div>
+        `;
+        return;
+    }
+    
+    operations.forEach(operation => {
+        const operationElement = document.createElement('div');
+        operationElement.className = 'withdraw-operation';
+        operationElement.style.cssText = `
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        `;
+        
+        const statusText = operation.status === 'completed' ? 
+            '✅ Операция завершена' : 
+            '🔄 Операция осуществляется';
             
-            try {
-                const response = await fetch(API_BASE_URL + `/api/withdraw/history/${currentUser.id}`);
-                const result = await response.json();
-                
-                if (result.success) {
-                    displayWithdrawHistory(result.operations);
-                }
-            } catch (error) {
-                console.error('Error loading withdraw history:', error);
-            }
-        }
-
-        // Отображение истории выводов
-        function displayWithdrawHistory(operations) {
-            const container = document.getElementById('withdraw-history-list');
-            if (!container) return;
-            
-            container.innerHTML = '';
-            
-            if (!operations || operations.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
-                        <div style="font-size: 48px; margin-bottom: 16px;">💫</div>
-                        <div>Нет операций по выводу</div>
-                    </div>
-                `;
-                return;
-            }
-            
-            operations.forEach(operation => {
-                const operationElement = document.createElement('div');
-                operationElement.className = 'withdraw-operation';
-                operationElement.style.cssText = `
-                    background: var(--card-bg);
-                    border: 1px solid var(--border);
-                    border-radius: 12px;
-                    padding: 16px;
-                    margin-bottom: 12px;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                `;
-                
-                const statusText = operation.status === 'completed' ? 
-                    '✅ Операция завершена' : 
-                    '🔄 Операция осуществляется';
-                    
-                const statusColor = operation.status === 'completed' ? 
-                    'var(--success)' : 'var(--warning)';
-                
-                operationElement.innerHTML = `
-                    <div>
-                        <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">
-                            ${operation.amount} ⭐
-                        </div>
-                        <div style="font-size: 12px; color: var(--text-secondary);">
-                            ${new Date(operation.created_at).toLocaleDateString('ru-RU')}
-                        </div>
-                    </div>
-                    <div style="color: ${statusColor}; font-weight: 600; font-size: 14px;">
-                        ${statusText}
-                    </div>
-                `;
-                
-                container.appendChild(operationElement);
-            });
-        }
+        const statusColor = operation.status === 'completed' ? 
+            'var(--success)' : 'var(--warning)';
+        
+        operationElement.innerHTML = `
+            <div>
+                <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">
+                    ${operation.amount} ⭐
+                </div>
+                <div style="font-size: 12px; color: var(--text-secondary);">
+                    ${new Date(operation.created_at).toLocaleDateString('ru-RU')}
+                </div>
+            </div>
+            <div style="color: ${statusColor}; font-weight: 600; font-size: 14px;">
+                ${statusText}
+            </div>
+        `;
+        
+        container.appendChild(operationElement);
+    });
+}
 
         // Обновление страницы вывода
         function updateWithdrawPage() {
@@ -7454,7 +7510,33 @@ function displayAdminTasks(tasks) {
                 showNotification('Ошибка архивации чата', 'error');
             }
         }
+// Управление темой
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeToggle(savedTheme);
+}
 
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    updateThemeToggle(newTheme);
+    
+    showNotification(`Тема изменена на ${newTheme === 'dark' ? 'тёмную' : 'светлую'}`, 'success');
+}
+
+function updateThemeToggle(theme) {
+    const toggle = document.getElementById('theme-toggle');
+    if (toggle) {
+        toggle.checked = theme === 'light';
+    }
+}
+
+// Инициализируем тему при загрузке
+initTheme();
         // Восстановление чата из архива
         async function restoreChat(chatId) {
             try {
