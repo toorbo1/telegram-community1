@@ -5072,56 +5072,56 @@
         let currentVerificationId = null;
 
         // Улучшенная функция для запросов
-        async function makeRequest(endpoint, options = {}) {
-            try {
-                // Формируем полный URL
-                let url;
-                if (endpoint.startsWith('http')) {
-                    url = endpoint;
-                } else if (endpoint.startsWith('/api')) {
-                    url = API_BASE_URL + endpoint;
-                } else {
-                    url = API_BASE_URL + '/api' + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
-                }
-                
-                console.log(`🚀 Making request to: ${url}`);
-                
-                const response = await fetch(url, {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...options.headers
-                    },
-                    ...options
-                });
-
-                console.log(`📨 Response status: ${response.status}`);
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('❌ Response error:', errorText);
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-                console.log('✅ Request successful:', data);
-                return data;
-            } catch (error) {
-                console.error('💥 Request failed:', error);
-                
-                // Более информативные сообщения об ошибках
-                if (error.message.includes('Failed to fetch')) {
-                    showNotification('❌ Не удалось подключиться к серверу. Проверьте интернет.', 'error');
-                } else if (error.message.includes('404')) {
-                    showNotification('🔍 Сервер не найден. Возможно, сервер перезагружается.', 'error');
-                } else if (error.message.includes('500')) {
-                    showNotification('⚙️ Ошибка на сервере. Попробуйте позже.', 'error');
-                } else {
-                    showNotification(`⚠️ Ошибка: ${error.message}`, 'error');
-                }
-                
-                throw error;
-            }
+async function makeRequest(endpoint, options = {}) {
+    try {
+        // Формируем полный URL
+        let url;
+        if (endpoint.startsWith('http')) {
+            url = endpoint;
+        } else if (endpoint.startsWith('/api')) {
+            url = API_BASE_URL + endpoint;
+        } else {
+            url = API_BASE_URL + '/api' + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
         }
+        
+        console.log(`🚀 Making ${options.method || 'GET'} request to: ${url}`);
+        
+        const response = await fetch(url, {
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            },
+            ...options
+        });
+
+        console.log(`📨 Response status: ${response.status}`);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Response error:', errorText);
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('✅ Request successful');
+        return data;
+    } catch (error) {
+        console.error('💥 Request failed:', error);
+        
+        // Более информативные сообщения об ошибках
+        if (error.message.includes('Failed to fetch')) {
+            showNotification('❌ Не удалось подключиться к серверу. Проверьте интернет.', 'error');
+        } else if (error.message.includes('404')) {
+            showNotification('🔍 Сервер не найден. Возможно, сервер перезагружается.', 'error');
+        } else if (error.message.includes('500')) {
+            showNotification('⚙️ Ошибка на сервере. Попробуйте позже.', 'error');
+        } else {
+            showNotification(`⚠️ Ошибка: ${error.message}`, 'error');
+        }
+        
+        throw error;
+    }
+}
 
         // Инициализация приложения
         document.addEventListener('DOMContentLoaded', function() {
@@ -6008,50 +6008,55 @@
         }
 
         async function addTask() {
-            const title = document.getElementById('admin-task-title').value;
-            const description = document.getElementById('admin-task-description').value;
-            const price = document.getElementById('admin-task-price').value;
+    // Используем правильные ID элементов из админ-панели
+    const title = document.getElementById('admin-task-title').value;
+    const description = document.getElementById('admin-task-description').value;
+    const price = document.getElementById('admin-task-price').value;
 
-            if (!title || !description || !price) {
-                showNotification('Заполните обязательные поля: название, описание и цена!', 'error');
-                return;
-            }
+    console.log('🔧 Creating task with:', { title, description, price });
 
-            if (!currentUser || !currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
-                showNotification('Только администратор может создавать задания!', 'error');
-                return;
-            }
+    if (!title || !description || !price) {
+        showNotification('Заполните обязательные поля: название, описание и цена!', 'error');
+        return;
+    }
 
-            try {
-                const result = await makeRequest('/tasks', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        title: title,
-                        description: description,
-                        price: parseFloat(price) || 0,
-                        created_by: currentUser.id
-                    })
-                });
+    if (!currentUser || !currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+        showNotification('Только администратор может создавать задания!', 'error');
+        return;
+    }
 
-                if (result.success) {
-                    showNotification('Задание успешно создано!', 'success');
-                    
-                    document.getElementById('admin-task-title').value = '';
-                    document.getElementById('admin-task-description').value = '';
-                    document.getElementById('admin-task-price').value = '';
-                    
-                    loadAdminTasks();
-                    loadTasks();
-                    
-                } else {
-                    showNotification('Ошибка: ' + result.error, 'error');
-                }
-                
-            } catch (error) {
-                console.error('Error creating task:', error);
-                showNotification('Ошибка соединения: ' + error.message, 'error');
-            }
+    try {
+        const result = await makeRequest('/tasks', {
+            method: 'POST',
+            body: JSON.stringify({
+                title: title,
+                description: description,
+                price: parseFloat(price) || 0,
+                created_by: currentUser.id
+            })
+        });
+
+        if (result.success) {
+            showNotification('Задание успешно создано!', 'success');
+            
+            // Очищаем поля
+            document.getElementById('admin-task-title').value = '';
+            document.getElementById('admin-task-description').value = '';
+            document.getElementById('admin-task-price').value = '';
+            
+            // Обновляем списки
+            loadAdminTasks();
+            loadTasks();
+            
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
         }
+        
+    } catch (error) {
+        console.error('Error creating task:', error);
+        showNotification('Ошибка соединения: ' + error.message, 'error');
+    }
+}
 
         // Загрузка заданий для админа
         async function loadAdminTasks() {
@@ -6151,46 +6156,45 @@
             }
         }
 
-        // 🔧 СИСТЕМА ЧАТОВ
         async function openAdminChat() {
-            if (!currentUser) {
-                showNotification('Пользователь не авторизован', 'error');
-                return;
+    if (!currentUser) {
+        showNotification('Пользователь не авторизован', 'error');
+        return;
+    }
+    
+    try {
+        console.log('👤 User opening support chat, ID:', currentUser.id);
+        
+        // Получаем или создаем чат для пользователя
+        const chatResult = await makeRequest(`/support/user-chat/${currentUser.id}`);
+        
+        if (chatResult.success) {
+            currentChatId = chatResult.chat.id;
+            console.log('✅ Chat ID:', currentChatId);
+            
+            // Загружаем сообщения
+            try {
+                const messagesResult = await makeRequest(`/support/chats/${currentChatId}/messages`);
+                if (messagesResult.success) {
+                    displayChatMessages(messagesResult.messages);
+                }
+            } catch (messagesError) {
+                console.log('No messages yet or error loading messages:', messagesError);
+                // Показываем пустой чат с приветствием
+                displayChatMessages([]);
             }
             
-            try {
-                console.log('👤 User opening support chat, ID:', currentUser.id);
-                
-                // Получаем или создаем чат для пользователя
-                const chatResult = await makeRequest(`/support/user-chat/${currentUser.id}`);
-                
-                if (chatResult.success) {
-                    currentChatId = chatResult.chat.id;
-                    console.log('✅ Chat ID:', currentChatId);
-                    
-                    // Загружаем сообщения
-                    try {
-                        const messagesResult = await makeRequest(`/support/chats/${currentChatId}/messages`);
-                        if (messagesResult.success) {
-                            displayChatMessages(messagesResult.messages);
-                        }
-                    } catch (messagesError) {
-                        console.log('No messages yet or error loading messages:', messagesError);
-                        // Показываем пустой чат
-                        displayChatMessages([]);
-                    }
-                    
-                    // Показываем чат
-                    document.getElementById('admin-chat').classList.add('active');
-                    
-                } else {
-                    throw new Error(chatResult.error || 'Failed to create chat');
-                }
-            } catch (error) {
-                console.error('❌ Error opening user chat:', error);
-                showNotification('Ошибка открытия чата: ' + error.message, 'error');
-            }
+            // Показываем чат
+            document.getElementById('admin-chat').classList.add('active');
+            
+        } else {
+            throw new Error(chatResult.error || 'Failed to create chat');
         }
+    } catch (error) {
+        console.error('❌ Error opening user chat:', error);
+        showNotification('Ошибка открытия чата: ' + error.message, 'error');
+    }
+}
 
         async function sendMessageToAdmin() {
             if (!currentUser || !currentChatId) {

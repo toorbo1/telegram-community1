@@ -530,9 +530,11 @@ app.get('/api/admin/tasks', async (req, res) => {
     }
 });
 
-// Create task (admin only)
+// Create task (admin only) - FIXED VERSION
 app.post('/api/tasks', async (req, res) => {
     const { title, description, price, created_by } = req.body;
+    
+    console.log('📝 Creating task with data:', { title, description, price, created_by });
     
     if (!title || !description || !price || !created_by) {
         return res.status(400).json({
@@ -556,13 +558,15 @@ app.post('/api/tasks', async (req, res) => {
             RETURNING *
         `, [title, description, parseFloat(price), created_by]);
         
+        console.log('✅ Task created successfully:', result.rows[0]);
+        
         res.json({
             success: true,
             message: 'Task created successfully',
             task: result.rows[0]
         });
     } catch (error) {
-        console.error('Create task error:', error);
+        console.error('❌ Create task error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
@@ -793,9 +797,11 @@ app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
     }
 });
 
-// Support chat system
+// Support chat system - FIXED VERSION
 app.get('/api/support/user-chat/:userId', async (req, res) => {
     const userId = req.params.userId;
+    
+    console.log('💬 Getting user chat for:', userId);
     
     try {
         // Check if chat exists
@@ -805,6 +811,7 @@ app.get('/api/support/user-chat/:userId', async (req, res) => {
         );
         
         if (existingChat.rows.length > 0) {
+            console.log('✅ Found existing chat:', existingChat.rows[0].id);
             return res.json({
                 success: true,
                 chat: existingChat.rows[0]
@@ -812,24 +819,39 @@ app.get('/api/support/user-chat/:userId', async (req, res) => {
         }
         
         // Create new chat
+        const user_name = `User_${userId}`;
+        const user_username = `user_${userId}`;
+        const last_message = 'Чат создан';
+        
+        console.log('📝 Creating new chat for user:', userId);
+        
         const newChat = await pool.query(`
             INSERT INTO support_chats (user_id, user_name, user_username, last_message) 
             VALUES ($1, $2, $3, $4)
             RETURNING *
-        `, [userId, `User_${userId}`, `user_${userId}`, 'Чат создан']);
+        `, [userId, user_name, user_username, last_message]);
+        
+        const chatId = newChat.rows[0].id;
+        console.log('✅ Created new chat with ID:', chatId);
         
         // Create welcome message
-        await pool.query(`
-            INSERT INTO support_messages (chat_id, user_id, user_name, message, is_admin, is_read) 
-            VALUES ($1, $2, $3, $4, true, true)
-        `, [newChat.rows[0].id, ADMIN_ID, 'Администратор LinkGold', 'Здравствуйте! Чем могу помочь?']);
+        try {
+            await pool.query(`
+                INSERT INTO support_messages (chat_id, user_id, user_name, message, is_admin, is_read) 
+                VALUES ($1, $2, $3, $4, true, true)
+            `, [chatId, ADMIN_ID, 'Администратор LinkGold', 'Здравствуйте! Чем могу помочь?']);
+            console.log('✅ Created welcome message for chat:', chatId);
+        } catch (messageError) {
+            console.error('❌ Error creating welcome message:', messageError);
+            // Continue even if message creation fails
+        }
         
         res.json({
             success: true,
             chat: newChat.rows[0]
         });
     } catch (error) {
-        console.error('Get user chat error:', error);
+        console.error('❌ Get user chat error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
