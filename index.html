@@ -5766,36 +5766,37 @@
         }
 
         async function submitScreenshot() {
-            const fileInput = document.getElementById('screenshot-file');
-            if (!fileInput.files[0]) {
-                showNotification('Выберите файл скриншота', 'error');
-                return;
-            }
+    const fileInput = document.getElementById('screenshot-file');
+    if (!fileInput.files[0]) {
+        showNotification('Выберите файл скриншота', 'error');
+        return;
+    }
 
-            const formData = new FormData();
-            formData.append('screenshot', fileInput.files[0]);
-            formData.append('userId', currentUser.id);
+    const formData = new FormData();
+    formData.append('screenshot', fileInput.files[0]);
+    formData.append('userId', currentUser.id);
 
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/user/tasks/${currentUserTaskId}/submit`, {
-                    method: 'POST',
-                    body: formData
-                });
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/user/tasks/${currentUserTaskId}/submit`, {
+            method: 'POST',
+            body: formData
+            // Не устанавливаем Content-Type, браузер сам установит с boundary
+        });
 
-                const result = await response.json();
+        const result = await response.json();
 
-                if (result.success) {
-                    showNotification('Скриншот отправлен на проверку!', 'success');
-                    closeModal('screenshot-modal');
-                    loadUserTasks();
-                } else {
-                    showNotification('Ошибка: ' + result.error, 'error');
-                }
-            } catch (error) {
-                console.error('Error submitting screenshot:', error);
-                showNotification('Ошибка отправки скриншота', 'error');
-            }
+        if (result.success) {
+            showNotification('Скриншот отправлен на проверку!', 'success');
+            closeModal('screenshot-modal');
+            loadUserTasks();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
         }
+    } catch (error) {
+        console.error('Error submitting screenshot:', error);
+        showNotification('Ошибка отправки скриншота', 'error');
+    }
+}
 
         async function cancelTask() {
             if (!currentUserTaskId) return;
@@ -6906,26 +6907,34 @@
             document.getElementById(modalId).classList.remove('active');
         }
 
-        function startTask() {
-            if (!currentUser || !selectedTaskId) {
-                showNotification('Ошибка: пользователь не авторизован или задание не выбрано', 'error');
-                return;
-            }
+        async function startTask() {
+    if (!currentUser || !selectedTaskId) {
+        showNotification('Ошибка: пользователь не авторизован или задание не выбрано', 'error');
+        return;
+    }
 
-            // Здесь должна быть логика начала задания
-            // Пока просто закрываем модальное окно и показываем уведомление
+    try {
+        const result = await makeRequest('/user/tasks/start', {
+            method: 'POST',
+            body: JSON.stringify({
+                userId: currentUser.id,
+                taskId: selectedTaskId
+            })
+        });
+
+        if (result.success) {
             closeModal('task-modal');
             showNotification('Задание начато! Выполните его и вернитесь для подтверждения.', 'success');
-            
-            // В реальном приложении здесь был бы вызов API для старта задания
-            // makeRequest('/user/tasks/start', {
-            //     method: 'POST',
-            //     body: JSON.stringify({
-            //         userId: currentUser.id,
-            //         taskId: selectedTaskId
-            //     })
-            // });
+            // Обновляем список заданий
+            loadUserTasks();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
         }
+    } catch (error) {
+        console.error('Error starting task:', error);
+        showNotification('Ошибка начала задания', 'error');
+    }
+}
 
         // 🔧 ЗАГРУЗКА ЧАТОВ ДЛЯ АДМИНА
         async function loadAdminChats() {

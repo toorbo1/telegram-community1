@@ -2,6 +2,8 @@ const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
 const path = require('path');
+const multer = require('multer');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,9 +16,36 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-
-// Serve static files FIRST
 app.use(express.static('.'));
+
+// Настройка multer для загрузки файлов
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadsDir = path.join(__dirname, 'uploads');
+        if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        cb(null, uploadsDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'screenshot-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const upload = multer({ 
+    storage: storage,
+    limits: {
+        fileSize: 10 * 1024 * 1024 // 10MB limit
+    },
+    fileFilter: function (req, file, cb) {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed!'), false);
+        }
+    }
+});
 
 // PostgreSQL connection
 const pool = new Pool({
@@ -197,12 +226,10 @@ async function initDatabase() {
 // Инициализируем базу данных при запуске
 initDatabase();
 
-// Health check - УПРОЩЕННАЯ ВЕРСИЯ
+// Health check
 app.get('/api/health', async (req, res) => {
     try {
-        // Простая проверка базы данных
         await pool.query('SELECT 1');
-        
         res.json({ 
             status: 'OK', 
             message: 'LinkGold API is running!',
@@ -658,8 +685,8 @@ app.get('/api/user/:userId/tasks', async (req, res) => {
     }
 });
 
-// Submit task for verification
-app.post('/api/user/tasks/:userTaskId/submit', async (req, res) => {
+// Submit task for verification (WITH FILE UPLOAD)
+app.post('/api/user/tasks/:userTaskId/submit', upload.single('screenshot'), async (req, res) => {
     const userTaskId = req.params.userTaskId;
     const { userId } = req.body;
     
@@ -670,11 +697,16 @@ app.post('/api/user/tasks/:userTaskId/submit', async (req, res) => {
         });
     }
     
+    if (!req.file) {
+        return res.status(400).json({
+            success: false,
+            error: 'No screenshot uploaded'
+        });
+    }
+    
+    const screenshotUrl = `/uploads/${req.file.filename}`;
+    
     try {
-        // In a real app, you would handle file upload here
-        // For now, we'll just update the status
-        const screenshotUrl = '/uploads/sample-screenshot.jpg'; // Placeholder
-        
         // Update user_task
         await pool.query(`
             UPDATE user_tasks 
@@ -829,7 +861,7 @@ app.get('/api/support/chats/:chatId/messages', async (req, res) => {
     }
 });
 
-// Send message to chat
+// Send message to chat (FIXED)
 app.post('/api/support/chats/:chatId/messages', async (req, res) => {
     const chatId = req.params.chatId;
     const { user_id, user_name, message, is_admin } = req.body;
@@ -852,9 +884,10 @@ app.post('/api/support/chats/:chatId/messages', async (req, res) => {
         // Update chat last message
         await pool.query(`
             UPDATE support_chats 
-            SET last_message = $1, last_message_time = CURRENT_TIMESTAMP 
-            WHERE id = $2
-        `, [message, chatId]);
+            SET last_message = $1, last_message_time = CURRENT_TIMESTAMP,
+                unread_count = CASE WHEN $2 = true THEN 0 ELSE unread_count + 1 END
+            WHERE id = $3
+        `, [message, is_admin, chatId]);
 
         res.json({
             success: true,
@@ -1128,7 +1161,7 @@ app.get('/api/admin/task-verifications', async (req, res) => {
     }
 });
 
-// Approve task verification
+// Approve task verification (FIXED)
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
@@ -1306,6 +1339,9 @@ app.get('/api/withdraw/history/:userId', async (req, res) => {
         });
     }
 });
+
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Main route - serve index.html for all other routes (SPA)
 app.get('*', (req, res) => {
