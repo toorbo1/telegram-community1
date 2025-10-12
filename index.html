@@ -5336,6 +5336,7 @@ input:checked + .theme-slider:before {
         let currentVerificationId = null;
 
 // Улучшенная функция для запросов
+// Улучшенная функция для запросов с диагностикой
 async function makeRequest(endpoint, options = {}) {
     try {
         // Формируем полный URL
@@ -5359,6 +5360,16 @@ async function makeRequest(endpoint, options = {}) {
         });
 
         console.log(`📨 Response status: ${response.status}`);
+        
+        // Проверяем Content-Type
+        const contentType = response.headers.get('content-type');
+        console.log(`📋 Content-Type: ${contentType}`);
+        
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.log('📝 Non-JSON response:', text.substring(0, 200));
+            throw new Error(`Server returned non-JSON response: ${contentType}`);
+        }
         
         if (!response.ok) {
             let errorMessage = `HTTP error! status: ${response.status}`;
@@ -5387,10 +5398,12 @@ async function makeRequest(endpoint, options = {}) {
         console.error('💥 Request failed:', error);
         
         // Более информативные сообщения об ошибках
-        if (error.message.includes('Failed to fetch')) {
+        if (error.message.includes('non-JSON response')) {
+            showNotification('❌ Сервер вернул неверный формат данных. Возможно, endpoint не существует.', 'error');
+        } else if (error.message.includes('Failed to fetch')) {
             showNotification('❌ Не удалось подключиться к серверу. Проверьте интернет.', 'error');
         } else if (error.message.includes('404')) {
-            showNotification('🔍 Сервер не найден. Возможно, сервер перезагружается.', 'error');
+            showNotification('🔍 Endpoint не найден. Возможно, сервер перезагружается.', 'error');
         } else if (error.message.includes('500')) {
             showNotification('⚙️ Ошибка на сервере. Попробуйте позже.', 'error');
         } else {
@@ -5400,7 +5413,36 @@ async function makeRequest(endpoint, options = {}) {
         throw error;
     }
 }
+// Функция для тестирования endpoint'ов
+async function testEndpoints() {
+    if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) return;
+    
+    try {
+        console.log('🧪 Testing endpoints...');
+        
+        // Тестируем базовый endpoint
+        const health = await makeRequest('/health');
+        console.log('✅ Health endpoint:', health);
+        
+        // Тестируем debug endpoints
+        const debug = await makeRequest('/debug/endpoints');
+        console.log('✅ Debug endpoints:', debug);
+        
+        // Тестируем admins-list endpoint
+        const admins = await makeRequest(`/admin/admins-list?adminId=${currentUser.id}`);
+        console.log('✅ Admins list endpoint:', admins);
+        
+    } catch (error) {
+        console.error('❌ Endpoint test failed:', error);
+    }
+}
 
+// Вызов для тестирования
+setTimeout(() => {
+    if (currentUser && parseInt(currentUser.id) === ADMIN_ID) {
+        testEndpoints();
+    }
+}, 5000);
         // Инициализация приложения
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Initializing LinkGold app...');
@@ -8050,6 +8092,7 @@ function showAdminAdminsSection() {
 }
 
 // Загрузка списка админов - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// Загрузка списка админов - С ДИАГНОСТИКОЙ
 async function loadAdminsList() {
     console.log('🔄 Loading admins list...');
     
@@ -8065,21 +8108,33 @@ async function loadAdminsList() {
     }
     
     try {
-        const result = await makeRequest(`/admin/admins-list?adminId=${currentUser.id}`);
+        console.log('🔍 Making request to /admin/admins-list...');
+        const url = `/admin/admins-list?adminId=${currentUser.id}`;
+        console.log('📤 Request URL:', url);
         
-        if (result.success) {
-            console.log('✅ Admins list loaded:', result.admins);
-            displayAdminsList(result.admins);
-        } else {
-            console.error('❌ Failed to load admins:', result.error);
-            showNotification('Ошибка загрузки списка админов: ' + result.error, 'error');
-        }
+        const result = await makeRequest(url);
+        
+        console.log('✅ Admins list loaded successfully:', result);
+        displayAdminsList(result.admins);
+        
     } catch (error) {
         console.error('❌ Error loading admins list:', error);
-        showNotification('Ошибка загрузки списка админов: ' + error.message, 'error');
+        
+        // Показываем более подробную информацию об ошибке
+        let errorMessage = 'Неизвестная ошибка';
+        if (error.message.includes('Unexpected token')) {
+            errorMessage = 'Сервер вернул HTML вместо JSON. Проверьте endpoint.';
+        } else if (error.message.includes('404')) {
+            errorMessage = 'Endpoint не найден (404). Проверьте серверные маршруты.';
+        } else if (error.message.includes('500')) {
+            errorMessage = 'Ошибка сервера (500). Проверьте логи сервера.';
+        } else {
+            errorMessage = error.message;
+        }
+        
+        showNotification('Ошибка загрузки списка админов: ' + errorMessage, 'error');
     }
 }
-
 // Отображение списка админов
 function displayAdminsList(admins) {
     const container = document.getElementById('admins-list');

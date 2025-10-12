@@ -54,7 +54,51 @@ const pool = new Pool({
 });
 
 const ADMIN_ID = 8036875641;
-
+// Endpoint для получения списка админов
+app.get('/api/admin/admins-list', async (req, res) => {
+    const { adminId } = req.query;
+    
+    console.log('🛠️ Received admins-list request from:', adminId);
+    
+    // Проверяем права доступа - только главный админ
+    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied - only main admin can view admins list'
+        });
+    }
+    
+    try {
+        const result = await pool.query(`
+            SELECT 
+                user_id, 
+                username, 
+                first_name, 
+                last_name, 
+                is_admin,
+                created_at 
+            FROM user_profiles 
+            WHERE is_admin = true 
+            ORDER BY 
+                CASE WHEN user_id = $1 THEN 0 ELSE 1 END,
+                created_at DESC
+        `, [ADMIN_ID]);
+        
+        console.log(`✅ Found ${result.rows.length} admins`);
+        
+        res.json({
+            success: true,
+            admins: result.rows
+        });
+        
+    } catch (error) {
+        console.error('❌ Get admins list error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
 // Упрощенная инициализация базы данных
 async function initDatabase() {
     try {
@@ -1819,7 +1863,44 @@ async function initDatabase() {
 //     }
 // }
 
+// Диагностический endpoint для проверки API
+app.get('/api/debug/endpoints', async (req, res) => {
+    try {
+        // Получаем список всех зарегистрированных маршрутов
+        const routes = [];
+        app._router.stack.forEach(middleware => {
+            if (middleware.route) {
+                // Маршруты, зарегистрированные напрямую
+                routes.push({
+                    path: middleware.route.path,
+                    methods: Object.keys(middleware.route.methods)
+                });
+            } else if (middleware.name === 'router') {
+                // Маршруты из роутеров
+                middleware.handle.stack.forEach(handler => {
+                    if (handler.route) {
+                        routes.push({
+                            path: handler.route.path,
+                            methods: Object.keys(handler.route.methods)
+                        });
+                    }
+                });
+            }
+        });
 
+        res.json({
+            success: true,
+            endpoints: routes,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Debug endpoints error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 // Restore chat
 app.put('/api/support/chats/:chatId/restore', async (req, res) => {
     const chatId = req.params.chatId;
@@ -2325,51 +2406,9 @@ app.use('/api/*', (req, res) => {
     });
 });
 // Получение списка всех админов
-// Получение списка всех админов
-// Получение списка всех админов - ИСПРАВЛЕННАЯ ВЕРСИЯ
-app.get('/api/admin/admins-list', async (req, res) => {
-    const { adminId } = req.query;
-    
-    console.log('🛠️ Received admins-list request from:', adminId);
-    
-    // Проверяем права доступа - только главный админ
-    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied - only main admin can view admins list'
-        });
-    }
-    
-    try {
-        const result = await pool.query(`
-            SELECT 
-                user_id, 
-                username, 
-                first_name, 
-                last_name, 
-                is_admin,
-                created_at 
-            FROM user_profiles 
-            WHERE is_admin = true 
-            ORDER BY 
-                CASE WHEN user_id = $1 THEN 0 ELSE 1 END,
-                created_at DESC
-        `, [ADMIN_ID]);
-        
-        console.log(`✅ Found ${result.rows.length} admins`);
-        
-        res.json({
-            success: true,
-            admins: result.rows
-        });
-        
-    } catch (error) {
-        console.error('❌ Get admins list error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
+// Этот должен быть ПОСЛЕДНИМ
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
