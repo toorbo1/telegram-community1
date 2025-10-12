@@ -1586,39 +1586,7 @@ app.post('/api/admin/remove-admin', async (req, res) => {
     }
 });
 
-// Получение списка всех админов
-app.get('/api/admin/admins-list', async (req, res) => {
-    const { adminId } = req.query;
-    
-    // Проверяем права доступа - только главный админ
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied - only main admin can view admins list'
-        });
-    }
-    
-    try {
-        const result = await pool.query(`
-            SELECT user_id, username, first_name, last_name, created_at 
-            FROM user_profiles 
-            WHERE is_admin = true 
-            ORDER BY created_at DESC
-        `);
-        
-        res.json({
-            success: true,
-            admins: result.rows
-        });
-        
-    } catch (error) {
-        console.error('❌ Get admins list error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
+
 // Функция для отображения секции управления админами
 function showAdminAdminsSection() {
     showAdminSection('admins');
@@ -1627,18 +1595,25 @@ function showAdminAdminsSection() {
 
 // Загрузка списка админов
 async function loadAdminsList() {
-    if (!currentUser || !currentUser.isAdmin) return;
+    console.log('🔄 Loading admins list...');
+    
+    if (!currentUser || !currentUser.isAdmin) {
+        console.log('❌ User is not admin');
+        return;
+    }
     
     try {
-        const result = await makeRequest(`/admin/admins-list?adminId=${ADMIN_ID}`);
+        const result = await makeRequest(`/admin/admins-list?adminId=${currentUser.id}`);
         
         if (result.success) {
+            console.log('✅ Admins list loaded:', result.admins);
             displayAdminsList(result.admins);
         } else {
+            console.error('❌ Failed to load admins:', result.error);
             showNotification('Ошибка загрузки списка админов: ' + result.error, 'error');
         }
     } catch (error) {
-        console.error('Error loading admins list:', error);
+        console.error('❌ Error loading admins list:', error);
         showNotification('Ошибка загрузки списка админов', 'error');
     }
 }
@@ -1646,12 +1621,23 @@ async function loadAdminsList() {
 // Отображение списка админов
 function displayAdminsList(admins) {
     const container = document.getElementById('admins-list');
-    if (!container) return;
+    if (!container) {
+        console.error('❌ Container #admins-list not found');
+        return;
+    }
     
     container.innerHTML = '';
     
     if (!admins || admins.length === 0) {
-        container.innerHTML = '<div class="no-tasks">Нет администраторов</div>';
+        container.innerHTML = `
+            <div class="no-tasks" style="text-align: center; padding: 30px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">👥</div>
+                <div>Нет администраторов</div>
+                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
+                    Добавьте первого администратора
+                </div>
+            </div>
+        `;
         return;
     }
     
@@ -1661,11 +1647,12 @@ function displayAdminsList(admins) {
         
         const isMainAdmin = parseInt(admin.user_id) === ADMIN_ID;
         const joinDate = new Date(admin.created_at).toLocaleDateString('ru-RU');
+        const fullName = `${admin.first_name} ${admin.last_name || ''}`.trim();
         
         adminElement.innerHTML = `
             <div class="admin-task-header">
                 <div class="admin-task-title">
-                    ${admin.first_name} ${admin.last_name || ''}
+                    ${fullName}
                     ${isMainAdmin ? ' <span style="color: var(--gold);">(Главный админ)</span>' : ''}
                 </div>
                 ${!isMainAdmin ? `
@@ -1687,18 +1674,38 @@ function displayAdminsList(admins) {
 
 // Добавление нового админа
 async function addNewAdmin() {
-    if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) {
-        showNotification('Только главный администратор может добавлять админов!', 'error');
-        return;
-    }
+    console.log('🎯 Starting addNewAdmin function...');
     
     const usernameInput = document.getElementById('new-admin-username');
-    const username = usernameInput?.value.trim();
+    const messageDiv = document.getElementById('admin-form-message');
+    const submitBtn = document.getElementById('add-admin-btn');
     
-    if (!username) {
-        showNotification('Введите юзернейм пользователя', 'error');
+    if (!usernameInput || !messageDiv) {
+        console.error('❌ Required elements not found');
+        showNotification('Ошибка: элементы формы не найдены', 'error');
         return;
     }
+    
+    const username = usernameInput.value.trim();
+    
+    // Валидация
+    if (!username) {
+        messageDiv.innerHTML = '<span style="color: var(--error);">Введите юзернейм пользователя</span>';
+        return;
+    }
+    
+    // Проверяем права доступа
+    if (!currentUser || !currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+        messageDiv.innerHTML = '<span style="color: var(--error);">Только главный администратор может добавлять админов!</span>';
+        return;
+    }
+    
+    console.log('👤 Attempting to add admin with username:', username);
+    
+    // Показываем загрузку
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Добавляем...';
+    messageDiv.innerHTML = '<span style="color: var(--warning);">Добавляем администратора...</span>';
     
     try {
         const result = await makeRequest('/admin/add-admin', {
@@ -1709,22 +1716,39 @@ async function addNewAdmin() {
             })
         });
         
+        console.log('📨 Server response:', result);
+        
         if (result.success) {
-            showNotification(result.message, 'success');
+            messageDiv.innerHTML = `<span style="color: var(--success);">${result.message}</span>`;
             usernameInput.value = ''; // Очищаем поле ввода
-            loadAdminsList(); // Обновляем список админов
+            
+            // Обновляем список админов
+            setTimeout(() => {
+                loadAdminsList();
+            }, 1000);
+            
+            showNotification(result.message, 'success');
         } else {
+            messageDiv.innerHTML = `<span style="color: var(--error);">Ошибка: ${result.error}</span>`;
             showNotification('Ошибка: ' + result.error, 'error');
         }
+        
     } catch (error) {
-        console.error('Error adding admin:', error);
-        showNotification('Ошибка добавления админа: ' + error.message, 'error');
+        console.error('❌ Error adding admin:', error);
+        messageDiv.innerHTML = `<span style="color: var(--error);">Ошибка сети: ${error.message}</span>`;
+        showNotification('Ошибка сети при добавлении админа', 'error');
+    } finally {
+        // Восстанавливаем кнопку
+        submitBtn.disabled = false;
+        submitBtn.textContent = '➕ Добавить администратора';
     }
 }
 
 // Удаление админа
 async function removeAdmin(targetAdminId) {
-    if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) {
+    console.log('🗑️ Removing admin:', targetAdminId);
+    
+    if (!currentUser || !currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
         showNotification('Только главный администратор может удалять админов!', 'error');
         return;
     }
@@ -1749,13 +1773,15 @@ async function removeAdmin(targetAdminId) {
             showNotification('Ошибка: ' + result.error, 'error');
         }
     } catch (error) {
-        console.error('Error removing admin:', error);
+        console.error('❌ Error removing admin:', error);
         showNotification('Ошибка удаления админа: ' + error.message, 'error');
     }
 }
 
 // Обновите функцию showAdminSection чтобы включить новую секцию
 function showAdminSection(section) {
+    console.log('🔄 Switching to admin section:', section);
+    
     // Скрываем все админ секции
     document.querySelectorAll('.admin-section').forEach(sec => {
         sec.style.display = 'none';
@@ -1769,9 +1795,22 @@ function showAdminSection(section) {
     
     // Загружаем данные для определенных секций
     if (section === 'admins') {
-        loadAdminsList();
+        setTimeout(() => {
+            loadAdminsList();
+        }, 100);
     }
 }
+// Добавьте обработчик события для поля ввода (в конце script)
+document.addEventListener('DOMContentLoaded', function() {
+    const usernameInput = document.getElementById('new-admin-username');
+    if (usernameInput) {
+        usernameInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addNewAdmin();
+            }
+        });
+    }
+});
 // Restore chat
 app.put('/api/support/chats/:chatId/restore', async (req, res) => {
     const chatId = req.params.chatId;
@@ -2276,7 +2315,43 @@ app.use('/api/*', (req, res) => {
         error: 'API endpoint not found'
     });
 });
-
+// Получение списка всех админов
+app.get('/api/admin/admins-list', async (req, res) => {
+    const { adminId } = req.query;
+    
+    console.log('🛠️ Received admins-list request from:', adminId);
+    
+    // Проверяем права доступа - только главный админ
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied - only main admin can view admins list'
+        });
+    }
+    
+    try {
+        const result = await pool.query(`
+            SELECT user_id, username, first_name, last_name, created_at 
+            FROM user_profiles 
+            WHERE is_admin = true 
+            ORDER BY created_at DESC
+        `);
+        
+        console.log(`✅ Found ${result.rows.length} admins`);
+        
+        res.json({
+            success: true,
+            admins: result.rows
+        });
+        
+    } catch (error) {
+        console.error('❌ Get admins list error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on port ${PORT}`);
