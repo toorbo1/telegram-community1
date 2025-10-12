@@ -54,7 +54,7 @@ const pool = new Pool({
 });
 
 const ADMIN_ID = 8036875641;
-// Endpoint для получения списка админов
+// Получение списка всех админов - ТОЛЬКО для главного админа
 app.get('/api/admin/admins-list', async (req, res) => {
     const { adminId } = req.query;
     
@@ -746,7 +746,7 @@ app.get('/api/posts', async (req, res) => {
     }
 });
 
-// Create post (admin only) - ОБНОВЛЕННАЯ ВЕРСИЯ
+// Create post (admin only) - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.post('/api/posts', async (req, res) => {
     const { title, content, author, authorId } = req.body;
     
@@ -799,13 +799,28 @@ app.post('/api/posts', async (req, res) => {
     }
 });
 // Delete post
+// Delete post - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.delete('/api/posts/:id', async (req, res) => {
     const { authorId } = req.body;
     
-    if (parseInt(authorId) !== ADMIN_ID) {
-        return res.status(403).json({
+    // Check admin rights - разрешаем всем админам
+    try {
+        const userResult = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [authorId]
+        );
+        
+        if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied - admin rights required'
+            });
+        }
+    } catch (error) {
+        console.error('Admin check error:', error);
+        return res.status(500).json({
             success: false,
-            error: 'Access denied'
+            error: 'Database error during admin check'
         });
     }
 
@@ -823,7 +838,6 @@ app.delete('/api/posts/:id', async (req, res) => {
         });
     }
 });
-
 // Like post
 app.post('/api/posts/:postId/like', async (req, res) => {
     const { userId } = req.body;
@@ -912,14 +926,28 @@ app.get('/api/tasks', async (req, res) => {
     }
 });
 
-// Get tasks for admin
+// Get tasks for admin - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.get('/api/admin/tasks', async (req, res) => {
     const { adminId } = req.query;
     
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
+    // Check admin rights - разрешаем всем админам
+    try {
+        const userResult = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [adminId]
+        );
+        
+        if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied - admin rights required'
+            });
+        }
+    } catch (error) {
+        console.error('Admin check error:', error);
+        return res.status(500).json({
             success: false,
-            error: 'Access denied'
+            error: 'Database error during admin check'
         });
     }
 
@@ -942,7 +970,7 @@ app.get('/api/admin/tasks', async (req, res) => {
     }
 });
 
-// Create task (admin only) - UPDATED VERSION
+// Create task (admin only) - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.post('/api/tasks', async (req, res) => {
     console.log('🎯 Received task creation request:', req.body);
     
@@ -954,18 +982,31 @@ app.post('/api/tasks', async (req, res) => {
     } = req.body;
     
     // Validate required fields
-    if (!title || !description || !price || !created_by) {
+    if (!title || !description || !price) {
         return res.status(400).json({
             success: false,
-            error: 'Missing required fields: title, description, price, and created_by are required'
+            error: 'Заполните название, описание и цену'
         });
     }
     
-    // Check admin rights
-    if (parseInt(created_by) !== ADMIN_ID) {
-        return res.status(403).json({
+    // Check admin rights - разрешаем всем админам
+    try {
+        const userResult = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [created_by]
+        );
+        
+        if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied - admin rights required'
+            });
+        }
+    } catch (error) {
+        console.error('Admin check error:', error);
+        return res.status(500).json({
             success: false,
-            error: 'Access denied - only admin can create tasks'
+            error: 'Database error during admin check'
         });
     }
     
@@ -974,7 +1015,7 @@ app.post('/api/tasks', async (req, res) => {
         if (isNaN(taskPrice) || taskPrice <= 0) {
             return res.status(400).json({
                 success: false,
-                error: 'Price must be a positive number'
+                error: 'Цена должна быть положительным числом!'
             });
         }
 
@@ -1000,13 +1041,28 @@ app.post('/api/tasks', async (req, res) => {
     }
 });
 // Delete task - UPDATED
+// Delete task - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.delete('/api/tasks/:id', async (req, res) => {
     const { adminId } = req.body;
     
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
+    // Check admin rights - разрешаем всем админам
+    try {
+        const userResult = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [adminId]
+        );
+        
+        if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied - admin rights required'
+            });
+        }
+    } catch (error) {
+        console.error('Admin check error:', error);
+        return res.status(500).json({
             success: false,
-            error: 'Access denied'
+            error: 'Database error during admin check'
         });
     }
 
@@ -1024,7 +1080,6 @@ app.delete('/api/tasks/:id', async (req, res) => {
         });
     }
 });
-
 // Start task for user - ОБНОВЛЕННАЯ ВЕРСИЯ
 app.post('/api/user/tasks/start', async (req, res) => {
     const { userId, taskId } = req.body;
@@ -1359,14 +1414,28 @@ app.post('/api/support/chats/:chatId/messages', async (req, res) => {
     }
 });
 
-// Get all chats for admin
+// Get all chats for admin - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.get('/api/support/chats', async (req, res) => {
     const { adminId } = req.query;
     
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
+    // Check admin rights - разрешаем всем админам
+    try {
+        const userResult = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [adminId]
+        );
+        
+        if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied - admin rights required'
+            });
+        }
+    } catch (error) {
+        console.error('Admin check error:', error);
+        return res.status(500).json({
             success: false,
-            error: 'Access denied'
+            error: 'Database error during admin check'
         });
     }
 
@@ -1390,14 +1459,28 @@ app.get('/api/support/chats', async (req, res) => {
     }
 });
 
-// Get all chats (including archived)
+// Get all chats (including archived) - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.get('/api/support/all-chats', async (req, res) => {
     const { adminId } = req.query;
     
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
+    // Check admin rights - разрешаем всем админам
+    try {
+        const userResult = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [adminId]
+        );
+        
+        if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied - admin rights required'
+            });
+        }
+    } catch (error) {
+        console.error('Admin check error:', error);
+        return res.status(500).json({
             success: false,
-            error: 'Access denied'
+            error: 'Database error during admin check'
         });
     }
 
@@ -1981,14 +2064,28 @@ app.delete('/api/support/chats/:chatId', async (req, res) => {
     }
 });
 
-// Task verification system
+// Task verification system - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.get('/api/admin/task-verifications', async (req, res) => {
     const { adminId } = req.query;
     
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
+    // Check admin rights - разрешаем всем админам
+    try {
+        const userResult = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [adminId]
+        );
+        
+        if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied - admin rights required'
+            });
+        }
+    } catch (error) {
+        console.error('Admin check error:', error);
+        return res.status(500).json({
             success: false,
-            error: 'Access denied'
+            error: 'Database error during admin check'
         });
     }
 
@@ -2014,15 +2111,29 @@ app.get('/api/admin/task-verifications', async (req, res) => {
     }
 });
 
-// Approve task verification (FIXED)
+// Approve task verification - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
     
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
+    // Check admin rights - разрешаем всем админам
+    try {
+        const userResult = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [adminId]
+        );
+        
+        if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied - admin rights required'
+            });
+        }
+    } catch (error) {
+        console.error('Admin check error:', error);
+        return res.status(500).json({
             success: false,
-            error: 'Access denied'
+            error: 'Database error during admin check'
         });
     }
 
@@ -2124,14 +2235,29 @@ setInterval(checkAndRemoveCompletedTasks, 5 * 60 * 1000);
 // Также запускаем при старте сервера
 setTimeout(checkAndRemoveCompletedTasks, 10000);
 // Reject task verification
+// Reject task verification - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
     
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
+    // Check admin rights - разрешаем всем админам
+    try {
+        const userResult = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [adminId]
+        );
+        
+        if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied - admin rights required'
+            });
+        }
+    } catch (error) {
+        console.error('Admin check error:', error);
+        return res.status(500).json({
             success: false,
-            error: 'Access denied'
+            error: 'Database error during admin check'
         });
     }
 
