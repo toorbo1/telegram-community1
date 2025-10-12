@@ -1190,20 +1190,7 @@ app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
         });
     }
 });
-// Функция для тестирования прав администратора
-async function testAdminRights() {
-    if (!currentUser) return;
-    
-    try {
-        const result = await makeRequest(`/admin/debug-rights?userId=${currentUser.id}`);
-        console.log('🔍 Admin rights debug:', result);
-    } catch (error) {
-        console.error('Error testing admin rights:', error);
-    }
-}
 
-// Вызов для отладки
-setTimeout(testAdminRights, 3000);
 
 app.get('/api/support/user-chat/:userId', async (req, res) => {
     const userId = req.params.userId;
@@ -1609,7 +1596,7 @@ app.post('/api/admin/remove-admin', async (req, res) => {
     }
 });
 
-// Debug endpoint для проверки прав администратора
+// Debug endpoint для проверки прав администратора (серверный)
 app.get('/api/admin/debug-rights', async (req, res) => {
     const { userId } = req.query;
     
@@ -1649,6 +1636,7 @@ app.get('/api/admin/debug-rights', async (req, res) => {
 });
 
 // Убедитесь, что главный администратор всегда имеет права
+// Убедитесь, что главный администратор всегда имеет права
 async function ensureMainAdmin() {
     try {
         const result = await pool.query(`
@@ -1664,6 +1652,36 @@ async function ensureMainAdmin() {
         console.log('✅ Main admin ensured');
     } catch (error) {
         console.error('❌ Error ensuring main admin:', error);
+    }
+}
+
+async function initDatabase() {
+    try {
+        console.log('🔄 Initializing simplified database...');
+        
+        // Только самые необходимые таблицы
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS user_profiles (
+                user_id BIGINT PRIMARY KEY,
+                username TEXT,
+                first_name TEXT,
+                last_name TEXT,
+                photo_url TEXT,
+                balance REAL DEFAULT 0,
+                level INTEGER DEFAULT 1,
+                is_admin BOOLEAN DEFAULT false,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // ... остальной код инициализации базы данных ...
+
+        // Гарантируем, что главный администратор существует и имеет права
+        await ensureMainAdmin();
+        
+        console.log('✅ Simplified database initialized successfully');
+    } catch (error) {
+        console.error('❌ Database initialization error:', error);
     }
 }
 // // Функция для отображения секции управления админами

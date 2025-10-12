@@ -8343,6 +8343,27 @@ function debugAdminRights() {
 
 // Вызов для отладки
 setTimeout(debugAdminRights, 2000);
+// Функция для тестирования прав администратора (только клиентская)
+async function testAdminRights() {
+    if (!currentUser) {
+        console.log('❌ No current user for rights test');
+        return;
+    }
+    
+    try {
+        const result = await makeRequest(`/admin/debug-rights?userId=${currentUser.id}`);
+        console.log('🔍 Admin rights debug:', result);
+    } catch (error) {
+        console.error('Error testing admin rights:', error);
+    }
+}
+
+// Вызов для отладки (только на клиенте)
+setTimeout(() => {
+    if (typeof currentUser !== 'undefined') {
+        testAdminRights();
+    }
+}, 3000);
 </script>
 </body>
 </html>
