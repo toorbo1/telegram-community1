@@ -39,18 +39,73 @@
             --error: #ef4444;
             --warning: #f59e0b;
         }
+body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 16px;
+    padding-bottom: 140px; /* Увеличил отступ снизу */
+    line-height: 1.6;
+    background-image: 
+        radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.05) 0%, transparent 25%),
+        radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.05) 0%, transparent 25%);
+}
 
-        body {
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            min-height: 100vh;
-            padding: 16px;
-            padding-bottom: 100px;
-            line-height: 1.6;
-            background-image: 
-                radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.05) 0%, transparent 25%),
-                radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.05) 0%, transparent 25%);
-        }
+.bottom-nav {
+    position: fixed;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    background: var(--nav-bg);
+    border-radius: 18px;
+    padding: 12px; /* Уменьшил padding */
+    display: flex;
+    justify-content: space-around;
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border);
+    z-index: 1000;
+    backdrop-filter: blur(15px);
+    height: 60px; /* Фиксированная высота */
+}
+
+.nav-item {
+    text-align: center;
+    cursor: pointer;
+    padding: 6px 8px; /* Уменьшил padding */
+    border-radius: 14px;
+    flex: 1;
+    opacity: 0.7;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+}
+
+.nav-icon {
+    font-size: 18px; /* Уменьшил размер иконок */
+    margin-bottom: 2px;
+    color: var(--text-secondary);
+}
+
+.nav-label {
+    font-size: 10px; /* Уменьшил размер текста */
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* Убедимся что контент не перекрывается */
+.main-content {
+    min-height: calc(100vh - 200px);
+    position: relative;
+}
+
+.tab-content {
+    min-height: calc(100vh - 250px);
+    padding-bottom: 20px;
+}
+      
 
         .container {
             max-width: 100%;
@@ -505,17 +560,7 @@
             --warning: #f59e0b;
         }
 
-        body {
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            min-height: 100vh;
-            padding: 16px;
-            padding-bottom: 100px;
-            line-height: 1.6;
-            background-image: 
-                radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.05) 0%, transparent 25%),
-                radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.05) 0%, transparent 25%);
-        }
+       
 
         .container {
             max-width: 100%;
@@ -4251,6 +4296,69 @@ input:checked + .theme-slider:before {
     content: "☀️";
     transform: translateX(26px);
 }
+.tasks-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: 1fr;
+    min-height: 200px; /* Фиксированная минимальная высота */
+}
+
+/* Для предотвращения смещения */
+.tab-content {
+    min-height: 500px;
+    position: relative;
+}
+
+.task-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+}
+.chat-messages {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: calc(100vh - 140px);
+}
+
+.message {
+    max-width: 85%;
+    padding: 12px 16px;
+    border-radius: 16px;
+    margin-bottom: 4px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+    position: relative;
+}
+
+.message-text {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+    line-height: 1.4;
+    max-width: 100%;
+}
+
+/* Для админского чата */
+.admin-chat-messages {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: calc(100vh - 200px);
+}
     </style>
 </head>
 <body>
@@ -4618,11 +4726,7 @@ input:checked + .theme-slider:before {
                     <!-- Задания на проверке будут загружаться динамически -->
                 </div>
             </div>
-<div class="profile-action" onclick="toggleTheme()">
-    <div class="action-icon">🎨</div>
-    <div class="action-text">Тема оформления</div>
-    <div class="action-arrow">›</div>
-</div>
+
             <!-- Поддержка -->
             <div id="admin-support-section" class="admin-section" style="display: none;">
                 <h3>💬 Чаты с пользователями</h3>
@@ -5759,41 +5863,49 @@ async function makeRequest(endpoint, options = {}) {
         }
 
         function displayTasks(tasks, category) {
-            const container = document.getElementById(category + '-tasks');
-            if (!container) return;
-            
-            container.innerHTML = '';
+    const container = document.getElementById(category + '-tasks');
+    if (!container) return;
+    
+    // Сохраняем текущую прокрутку
+    const scrollPosition = container.scrollTop;
+    
+    container.innerHTML = '';
 
-            if (!tasks || tasks.length === 0) {
-                container.innerHTML = `
-                    <div class="no-tasks">
-                        <div class="no-tasks-icon">📝</div>
-                        <div>Заданий пока нет</div>
-                    </div>
-                `;
-                return;
-            }
+    if (!tasks || tasks.length === 0) {
+        container.innerHTML = `
+            <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                <div class="no-tasks-icon">📝</div>
+                <div>Заданий пока нет</div>
+            </div>
+        `;
+        return;
+    }
 
-            tasks.forEach(task => {
-                const taskElement = document.createElement('div');
-                taskElement.className = 'task-card fade-in';
-                taskElement.innerHTML = `
-                    <div class="task-header">
-                        <div>
-                            <div class="task-title">${escapeHtml(task.title)}</div>
-                            <div class="task-category">${task.category || 'Общее'}</div>
-                        </div>
-                        <div class="task-price">${task.price} ⭐</div>
-                    </div>
-                    <div class="task-description">${escapeHtml(task.description)}</div>
-                    <div class="task-footer">
-                        <div class="task-time">${task.time_to_complete || '5 минут'}</div>
-                        <button class="task-btn" onclick="openTaskModal(${task.id})">Начать</button>
-                    </div>
-                `;
-                container.appendChild(taskElement);
-            });
-        }
+    tasks.forEach(task => {
+        const taskElement = document.createElement('div');
+        taskElement.className = 'task-card fade-in';
+        taskElement.style.animationDelay = `${Math.random() * 0.3}s`; // Разное время появления
+        
+        taskElement.innerHTML = `
+            <div class="task-header">
+                <div style="flex: 1;">
+                    <div class="task-title">${escapeHtml(task.title)}</div>
+                    <div class="task-category">${task.category || 'Общее'}</div>
+                </div>
+                <div class="task-price">${task.price} ⭐</div>
+            </div>
+            <div class="task-description">${escapeHtml(task.description)}</div>
+            <div class="task-footer">
+                <div class="task-time">${task.time_to_complete || '5 минут'}</div>
+                <button class="task-btn" onclick="openTaskModal(${task.id})">Начать</button>
+            </div>
+        `;
+        container.appendChild(taskElement);
+    });
+    
+    // Восстанавливаем позицию прокрутки
+    container.scrollTop = scrollPosition;
+}
 
         // Функция открытия модального окна задания
         function openTaskModal(taskId) {
@@ -6602,7 +6714,7 @@ function displayAdminTasks(tasks) {
             }
         }
 
-        // Обновленная функция запроса вывода
+// Обновленная функция запроса вывода
 async function requestWithdraw() {
     if (!currentUser) {
         showNotification('Пользователь не авторизован', 'error');
@@ -6617,11 +6729,13 @@ async function requestWithdraw() {
     }
     
     // Подтверждение
-    if (!confirm(`Вы уверены, что хотите вывести ${currentBalance} ⭐?`)) {
+    if (!confirm(`Вы уверены, что хотите вывести ${currentBalance} ⭐?\n\nПосле подтверждения баланс будет обнулен и заявка отправлена на обработку.`)) {
         return;
     }
     
     try {
+        console.log('🔄 Отправка запроса на вывод...');
+        
         const result = await makeRequest('/withdrawal/request', {
             method: 'POST',
             body: JSON.stringify({
@@ -6638,17 +6752,19 @@ async function requestWithdraw() {
             displayUserProfile();
             updateWithdrawPage();
             
-            showNotification(`Заявка на вывод ${currentBalance} ⭐ отправлена! Ожидайте подтверждения.`, 'success');
+            showNotification(`✅ Заявка на вывод ${currentBalance} ⭐ отправлена! Ожидайте подтверждения администратора.`, 'success');
             
             // Обновляем историю операций
-            loadWithdrawHistory();
+            setTimeout(() => {
+                loadWithdrawHistory();
+            }, 1000);
             
         } else {
-            showNotification('Ошибка: ' + result.error, 'error');
+            showNotification('❌ Ошибка: ' + result.error, 'error');
         }
     } catch (error) {
-        console.error('Withdrawal error:', error);
-        showNotification('Ошибка при выводе средств', 'error');
+        console.error('❌ Withdrawal error:', error);
+        showNotification('❌ Ошибка при выводе средств: ' + error.message, 'error');
     }
 }
 
@@ -6664,10 +6780,14 @@ function displayWithdrawHistory(operations) {
             <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
                 <div style="font-size: 48px; margin-bottom: 16px;">💫</div>
                 <div>Нет операций по выводу</div>
+                <div style="font-size: 12px; margin-top: 8px;">Здесь будут отображаться ваши запросы на вывод</div>
             </div>
         `;
         return;
     }
+    
+    // Сортируем по дате (новые сверху)
+    operations.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     
     operations.forEach(operation => {
         const operationElement = document.createElement('div');
@@ -6681,6 +6801,7 @@ function displayWithdrawHistory(operations) {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            transition: all 0.3s ease;
         `;
         
         const statusText = operation.status === 'completed' ? 
@@ -6690,17 +6811,28 @@ function displayWithdrawHistory(operations) {
         const statusColor = operation.status === 'completed' ? 
             'var(--success)' : 'var(--warning)';
         
+        const date = new Date(operation.created_at).toLocaleDateString('ru-RU', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+        });
+        
         operationElement.innerHTML = `
-            <div>
+            <div style="flex: 1;">
                 <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">
                     ${operation.amount} ⭐
                 </div>
                 <div style="font-size: 12px; color: var(--text-secondary);">
-                    ${new Date(operation.created_at).toLocaleDateString('ru-RU')}
+                    ${date}
                 </div>
             </div>
-            <div style="color: ${statusColor}; font-weight: 600; font-size: 14px;">
+            <div style="color: ${statusColor}; font-weight: 600; font-size: 13px; text-align: right;">
                 ${statusText}
+                ${operation.completed_at ? `
+                    <div style="font-size: 11px; font-weight: normal; margin-top: 2px;">
+                        Завершено: ${new Date(operation.completed_at).toLocaleDateString('ru-RU')}
+                    </div>
+                ` : ''}
             </div>
         `;
         
@@ -7510,30 +7642,8 @@ function displayWithdrawHistory(operations) {
                 showNotification('Ошибка архивации чата', 'error');
             }
         }
-// Управление темой
-function initTheme() {
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    updateThemeToggle(savedTheme);
-}
 
-function toggleTheme() {
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('theme', newTheme);
-    updateThemeToggle(newTheme);
-    
-    showNotification(`Тема изменена на ${newTheme === 'dark' ? 'тёмную' : 'светлую'}`, 'success');
-}
 
-function updateThemeToggle(theme) {
-    const toggle = document.getElementById('theme-toggle');
-    if (toggle) {
-        toggle.checked = theme === 'light';
-    }
-}
 
 // Инициализируем тему при загрузке
 initTheme();

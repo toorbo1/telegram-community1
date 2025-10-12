@@ -975,7 +975,7 @@ app.delete('/api/tasks/:id', async (req, res) => {
     }
 });
 
-// Start task for user
+// Start task for user - ОБНОВЛЕННАЯ ВЕРСИЯ
 app.post('/api/user/tasks/start', async (req, res) => {
     const { userId, taskId } = req.body;
     
@@ -987,16 +987,41 @@ app.post('/api/user/tasks/start', async (req, res) => {
     }
     
     try {
-        // Check if user already started this task
+        // Проверяем, выполнял ли пользователь это задание ЛЮБОЙ раз
         const existingTask = await pool.query(`
             SELECT id FROM user_tasks 
-            WHERE user_id = $1 AND task_id = $2 AND status IN ('active', 'pending_review')
+            WHERE user_id = $1 AND task_id = $2
         `, [userId, taskId]);
         
         if (existingTask.rows.length > 0) {
             return res.status(400).json({
                 success: false,
-                error: 'Task already started'
+                error: 'Вы уже выполняли это задание'
+            });
+        }
+        
+        // Проверяем, доступно ли задание (не достигнут лимит)
+        const taskInfo = await pool.query(`
+            SELECT t.*, 
+                   COUNT(ut.id) as completed_count
+            FROM tasks t
+            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
+            WHERE t.id = $1 AND t.status = 'active'
+            GROUP BY t.id
+        `, [taskId]);
+        
+        if (taskInfo.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Задание не найдено или недоступно'
+            });
+        }
+        
+        const task = taskInfo.rows[0];
+        if (task.completed_count >= task.people_required) {
+            return res.status(400).json({
+                success: false,
+                error: 'Достигнут лимит выполнения этого задания'
             });
         }
         
@@ -1007,27 +1032,19 @@ app.post('/api/user/tasks/start', async (req, res) => {
             RETURNING *
         `, [userId, taskId]);
         
-        // Update user's active tasks count
-        await pool.query(`
-            UPDATE user_profiles 
-            SET active_tasks = COALESCE(active_tasks, 0) + 1 
-            WHERE user_id = $1
-        `, [userId]);
-        
         res.json({
             success: true,
-            message: 'Task started successfully',
+            message: 'Задание начато!',
             userTaskId: result.rows[0].id
         });
     } catch (error) {
-        console.error('Start task error:', error);
+        console.error('❌ Start task error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
         });
     }
 });
-
 // Get user tasks
 app.get('/api/user/:userId/tasks', async (req, res) => {
     const userId = req.params.userId;
@@ -1383,36 +1400,7 @@ app.get('/api/support/archived-chats', async (req, res) => {
     }
 });
 
-// Mark chat as read
-app.put('/api/support/chats/:chatId/read', async (req, res) => {
-    const chatId = req.params.chatId;
 
-    try {
-        await pool.query(`
-            UPDATE support_chats 
-            SET unread_count = 0 
-            WHERE id = $1
-        `, [chatId]);
-        
-        // Also mark messages as read
-        await pool.query(`
-            UPDATE support_messages 
-            SET is_read = true 
-            WHERE chat_id = $1 AND is_admin = false
-        `, [chatId]);
-        
-        res.json({
-            success: true,
-            message: 'Chat marked as read'
-        });
-    } catch (error) {
-        console.error('Mark chat as read error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
 
 // Archive chat
 app.put('/api/support/chats/:chatId/archive', async (req, res) => {
@@ -1717,6 +1705,8 @@ app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res
 app.post('/api/withdrawal/request', async (req, res) => {
     const { user_id, amount } = req.body;
     
+    console.log('📨 Получен запрос на вывод:', { user_id, amount });
+    
     if (!user_id || !amount) {
         return res.status(400).json({
             success: false,
@@ -1727,7 +1717,7 @@ app.post('/api/withdrawal/request', async (req, res) => {
     try {
         // Проверяем баланс пользователя
         const userResult = await pool.query(
-            'SELECT balance, username FROM user_profiles WHERE user_id = $1',
+            'SELECT balance, username, first_name FROM user_profiles WHERE user_id = $1',
             [user_id]
         );
         
@@ -1740,12 +1730,15 @@ app.post('/api/withdrawal/request', async (req, res) => {
         
         const userBalance = parseFloat(userResult.rows[0].balance) || 0;
         const requestAmount = parseFloat(amount);
-        const username = userResult.rows[0].username;
+        const username = userResult.rows[0].username || `user_${user_id}`;
+        const firstName = userResult.rows[0].first_name || 'Пользователь';
+        
+        console.log(`💰 Баланс пользователя: ${userBalance}, Запрошено: ${requestAmount}`);
         
         if (requestAmount > userBalance) {
             return res.status(400).json({
                 success: false,
-                error: 'Insufficient balance'
+                error: 'Недостаточно средств на балансе'
             });
         }
         
@@ -1762,17 +1755,22 @@ app.post('/api/withdrawal/request', async (req, res) => {
             RETURNING *
         `, [user_id, requestAmount]);
         
+        const requestId = result.rows[0].id;
+        
+        console.log(`✅ Запрос на вывод создан: ID ${requestId}`);
+        
         // Отправляем уведомление в Telegram канал
-        await sendWithdrawalToTelegram(username, requestAmount, result.rows[0].id);
+        await sendWithdrawalToTelegram(username, firstName, requestAmount, requestId, user_id);
         
         res.json({
             success: true,
-            message: 'Withdrawal request submitted',
-            requestId: result.rows[0].id,
+            message: 'Запрос на вывод отправлен',
+            requestId: requestId,
             newBalance: 0
         });
+        
     } catch (error) {
-        console.error('Withdrawal error:', error);
+        console.error('❌ Withdrawal error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
@@ -1780,24 +1778,57 @@ app.post('/api/withdrawal/request', async (req, res) => {
     }
 });
 
-// Функция отправки в Telegram канал
-async function sendWithdrawalToTelegram(username, amount, requestId) {
+// Функция отправки в Telegram канал (заглушка - нужно реализовать с Telegram Bot API)
+async function sendWithdrawalToTelegram(username, firstName, amount, requestId, userId) {
     try {
-        // Здесь должна быть реализация отправки в Telegram
-        // Для примера просто логируем
-        console.log(`📤 Вывод средств в Telegram канал:
-👤 Пользователь: @${username}
+        const message = `💸 НОВЫЙ ЗАПРОС НА ВЫВОД
+👤 Пользователь: ${firstName} (@${username})
+🆔 ID: ${userId}
 💰 Сумма: ${amount} ⭐
-🆔 ID запроса: ${requestId}
-⏰ Время: ${new Date().toLocaleString('ru-RU')}
-        `);
+📋 ID запроса: ${requestId}
+⏰ Время: ${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}
+
+Для подтверждения выплаты нажмите кнопку ниже.`;
+
+        console.log('📤 Сообщение для Telegram канала:');
+        console.log(message);
         
-        // В реальном приложении здесь будет код для отправки сообщения в Telegram канал
-        // с использованием Telegram Bot API
+        // Здесь должна быть реализация отправки в Telegram канал
+        // Пример с использованием Telegram Bot API:
+        /*
+        const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
+        const channelId = process.env.CHANNEL_ID;
+        
+        if (telegramToken && channelId) {
+            const url = `https://api.telegram.org/bot${telegramToken}/sendMessage`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    chat_id: channelId,
+                    text: message,
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: [[
+                            {
+                                text: '✅ Перечислил',
+                                callback_data: `withdraw_complete_${requestId}`
+                            }
+                        ]]
+                    }
+                })
+            });
+            
+            const result = await response.json();
+            console.log('✅ Сообщение отправлено в Telegram:', result);
+        }
+        */
         
         return true;
     } catch (error) {
-        console.error('Error sending to Telegram:', error);
+        console.error('❌ Error sending to Telegram:', error);
         return false;
     }
 }
@@ -1821,12 +1852,14 @@ app.post('/api/admin/withdrawal/complete', async (req, res) => {
             WHERE id = $1
         `, [request_id]);
         
+        console.log(`✅ Выплата подтверждена: ID ${request_id}`);
+        
         res.json({
             success: true,
             message: 'Withdrawal marked as completed'
         });
     } catch (error) {
-        console.error('Complete withdrawal error:', error);
+        console.error('❌ Complete withdrawal error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
