@@ -8049,12 +8049,18 @@ function showAdminAdminsSection() {
     loadAdminsList();
 }
 
-// Загрузка списка админов
+// Загрузка списка админов - ИСПРАВЛЕННАЯ ВЕРСИЯ
 async function loadAdminsList() {
     console.log('🔄 Loading admins list...');
     
-    if (!currentUser || !currentUser.isAdmin) {
-        console.log('❌ User is not admin');
+    if (!currentUser) {
+        console.log('❌ User not authenticated');
+        return;
+    }
+    
+    // Проверяем, что это главный администратор
+    if (parseInt(currentUser.id) !== ADMIN_ID) {
+        console.log('❌ User is not main admin');
         return;
     }
     
@@ -8070,7 +8076,7 @@ async function loadAdminsList() {
         }
     } catch (error) {
         console.error('❌ Error loading admins list:', error);
-        showNotification('Ошибка загрузки списка админов', 'error');
+        showNotification('Ошибка загрузки списка админов: ' + error.message, 'error');
     }
 }
 
@@ -8133,6 +8139,7 @@ function displayAdminsList(admins) {
 }
 
 // Добавление нового админа - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// Добавление нового админа - ИСПРАВЛЕННАЯ ВЕРСИЯ
 async function addNewAdmin() {
     console.log('🎯 Starting addNewAdmin function...');
     
@@ -8155,7 +8162,7 @@ async function addNewAdmin() {
     }
     
     // Проверяем права доступа
-    if (!currentUser || !currentUser.is_admin || currentUser.id !== ADMIN_ID.toString()) {
+    if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) {
         messageDiv.innerHTML = '<span style="color: var(--error);">Только главный администратор может добавлять админов!</span>';
         return;
     }
@@ -8189,13 +8196,6 @@ async function addNewAdmin() {
             
             showNotification(result.message, 'success');
             
-            // Если добавленный админ - это текущий пользователь, принудительно обновляем его права
-            if (result.user && result.user.id.toString() === currentUser.id.toString()) {
-                console.log('🔄 Added admin is current user, refreshing rights...');
-                setTimeout(() => {
-                    refreshAdminRights();
-                }, 1500);
-            }
         } else {
             messageDiv.innerHTML = `<span style="color: var(--error);">Ошибка: ${result.error}</span>`;
             showNotification('Ошибка: ' + result.error, 'error');
@@ -8213,10 +8213,11 @@ async function addNewAdmin() {
 }
 
 // Удаление админа
+// Удаление админа - ИСПРАВЛЕННАЯ ВЕРСИЯ
 async function removeAdmin(targetAdminId) {
     console.log('🗑️ Removing admin:', targetAdminId);
     
-    if (!currentUser || !currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+    if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) {
         showNotification('Только главный администратор может удалять админов!', 'error');
         return;
     }
@@ -8245,7 +8246,6 @@ async function removeAdmin(targetAdminId) {
         showNotification('Ошибка удаления админа: ' + error.message, 'error');
     }
 }
-
 // Обновите функцию showAdminSection чтобы включить новую секцию
 // Обновите функцию showAdminSection чтобы включить новую секцию
 function showAdminSection(section) {

@@ -206,6 +206,7 @@ async function migrateDatabase() {
             ADD COLUMN IF NOT EXISTS repost_time TEXT DEFAULT '1 день',
             ADD COLUMN IF NOT EXISTS task_url TEXT
         `);
+        await ensureMainAdmin();
         
         console.log('✅ Database migrations completed');
     } catch (error) {
@@ -1189,6 +1190,20 @@ app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
         });
     }
 });
+// Функция для тестирования прав администратора
+async function testAdminRights() {
+    if (!currentUser) return;
+    
+    try {
+        const result = await makeRequest(`/admin/debug-rights?userId=${currentUser.id}`);
+        console.log('🔍 Admin rights debug:', result);
+    } catch (error) {
+        console.error('Error testing admin rights:', error);
+    }
+}
+
+// Вызов для отладки
+setTimeout(testAdminRights, 3000);
 
 app.get('/api/support/user-chat/:userId', async (req, res) => {
     const userId = req.params.userId;
@@ -1436,13 +1451,14 @@ app.put('/api/support/chats/:chatId/archive', async (req, res) => {
 });
 // Добавление админа по юзернейму (только для главного админа)
 // Добавление админа по юзернейму (только для главного админа)
+// Добавление админа по юзернейму (только для главного админа) - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.post('/api/admin/add-admin', async (req, res) => {
     const { adminId, username } = req.body;
     
     console.log('🛠️ Received add-admin request:', { adminId, username });
     
     // Проверяем права доступа - только главный админ
-    if (parseInt(adminId) !== ADMIN_ID) {
+    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
         return res.status(403).json({
             success: false,
             error: 'Access denied - only main admin can add admins'
@@ -1458,7 +1474,9 @@ app.post('/api/admin/add-admin', async (req, res) => {
     
     try {
         // Ищем пользователя по юзернейму (убираем @ если есть)
-        const cleanUsername = username.replace('@', '');
+        const cleanUsername = username.replace('@', '').trim();
+        
+        console.log('🔍 Searching for user with username:', cleanUsername);
         
         const userResult = await pool.query(
             'SELECT user_id, username, first_name, is_admin FROM user_profiles WHERE username = $1',
@@ -1468,17 +1486,19 @@ app.post('/api/admin/add-admin', async (req, res) => {
         if (userResult.rows.length === 0) {
             return res.status(404).json({
                 success: false,
-                error: 'User not found with this username'
+                error: 'Пользователь с таким юзернеймом не найден'
             });
         }
         
         const user = userResult.rows[0];
         
+        console.log('👤 Found user:', user);
+        
         // Проверяем, не является ли пользователь уже админом
         if (user.is_admin) {
             return res.status(400).json({
                 success: false,
-                error: 'User is already an admin'
+                error: 'Этот пользователь уже является администратором'
             });
         }
         
@@ -1492,7 +1512,7 @@ app.post('/api/admin/add-admin', async (req, res) => {
         
         res.json({
             success: true,
-            message: `User @${user.username} (${user.first_name}) successfully added as admin`,
+            message: `Пользователь @${user.username} (${user.first_name}) успешно добавлен как администратор`,
             user: {
                 id: user.user_id,
                 username: user.username,
@@ -1510,13 +1530,14 @@ app.post('/api/admin/add-admin', async (req, res) => {
 });
 
 // Удаление админа (только для главного админа)
+// Удаление админа (только для главного админа) - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.post('/api/admin/remove-admin', async (req, res) => {
     const { adminId, targetAdminId } = req.body;
     
     console.log('🛠️ Received remove-admin request:', { adminId, targetAdminId });
     
     // Проверяем права доступа - только главный админ
-    if (parseInt(adminId) !== ADMIN_ID) {
+    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
         return res.status(403).json({
             success: false,
             error: 'Access denied - only main admin can remove admins'
@@ -1534,7 +1555,7 @@ app.post('/api/admin/remove-admin', async (req, res) => {
     if (parseInt(targetAdminId) === ADMIN_ID) {
         return res.status(400).json({
             success: false,
-            error: 'Cannot remove main admin'
+            error: 'Нельзя удалить главного администратора'
         });
     }
     
@@ -1548,7 +1569,7 @@ app.post('/api/admin/remove-admin', async (req, res) => {
         if (userResult.rows.length === 0) {
             return res.status(404).json({
                 success: false,
-                error: 'User not found'
+                error: 'Пользователь не найден'
             });
         }
         
@@ -1557,7 +1578,7 @@ app.post('/api/admin/remove-admin', async (req, res) => {
         if (!user.is_admin) {
             return res.status(400).json({
                 success: false,
-                error: 'User is not an admin'
+                error: 'Этот пользователь не является администратором'
             });
         }
         
@@ -1571,7 +1592,7 @@ app.post('/api/admin/remove-admin', async (req, res) => {
         
         res.json({
             success: true,
-            message: `Admin @${user.username} (${user.first_name}) successfully removed`,
+            message: `Администратор @${user.username} (${user.first_name}) успешно удален`,
             user: {
                 id: user.user_id,
                 username: user.username,
@@ -1588,141 +1609,197 @@ app.post('/api/admin/remove-admin', async (req, res) => {
     }
 });
 
-
-// Функция для отображения секции управления админами
-function showAdminAdminsSection() {
-    showAdminSection('admins');
-    loadAdminsList();
-}
-
-// Загрузка списка админов
-async function loadAdminsList() {
-    if (!currentUser || !currentUser.isAdmin) return;
+// Debug endpoint для проверки прав администратора
+app.get('/api/admin/debug-rights', async (req, res) => {
+    const { userId } = req.query;
     
     try {
-        const result = await makeRequest(`/admin/admins-list?adminId=${ADMIN_ID}`);
+        const userResult = await pool.query(
+            'SELECT user_id, username, first_name, is_admin FROM user_profiles WHERE user_id = $1',
+            [userId]
+        );
         
-        if (result.success) {
-            displayAdminsList(result.admins);
-        } else {
-            showNotification('Ошибка загрузки списка админов: ' + result.error, 'error');
+        if (userResult.rows.length === 0) {
+            return res.json({
+                success: true,
+                user: null,
+                isMainAdmin: false,
+                hasAdminRights: false
+            });
         }
-    } catch (error) {
-        console.error('Error loading admins list:', error);
-        showNotification('Ошибка загрузки списка админов', 'error');
-    }
-}
-
-// Отображение списка админов
-function displayAdminsList(admins) {
-    const container = document.getElementById('admins-list');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    if (!admins || admins.length === 0) {
-        container.innerHTML = '<div class="no-tasks">Нет администраторов</div>';
-        return;
-    }
-    
-    admins.forEach(admin => {
-        const adminElement = document.createElement('div');
-        adminElement.className = 'admin-task-item';
         
-        const isMainAdmin = parseInt(admin.user_id) === ADMIN_ID;
-        const joinDate = new Date(admin.created_at).toLocaleDateString('ru-RU');
+        const user = userResult.rows[0];
+        const isMainAdmin = parseInt(userId) === ADMIN_ID;
+        const hasAdminRights = user.is_admin || isMainAdmin;
         
-        adminElement.innerHTML = `
-            <div class="admin-task-header">
-                <div class="admin-task-title">
-                    ${admin.first_name} ${admin.last_name || ''}
-                    ${isMainAdmin ? ' <span style="color: var(--gold);">(Главный админ)</span>' : ''}
-                </div>
-                ${!isMainAdmin ? `
-                    <div class="admin-task-actions">
-                        <button class="admin-task-delete" onclick="removeAdmin(${admin.user_id})">
-                            🗑️ Удалить
-                        </button>
-                    </div>
-                ` : ''}
-            </div>
-            <div class="admin-task-description">
-                @${admin.username} • ID: ${admin.user_id} • Добавлен: ${joinDate}
-            </div>
-        `;
-        
-        container.appendChild(adminElement);
-    });
-}
-
-// Добавление нового админа
-async function addNewAdmin() {
-    if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) {
-        showNotification('Только главный администратор может добавлять админов!', 'error');
-        return;
-    }
-    
-    const usernameInput = document.getElementById('new-admin-username');
-    const username = usernameInput?.value.trim();
-    
-    if (!username) {
-        showNotification('Введите юзернейм пользователя', 'error');
-        return;
-    }
-    
-    try {
-        const result = await makeRequest('/admin/add-admin', {
-            method: 'POST',
-            body: JSON.stringify({
-                adminId: currentUser.id,
-                username: username
-            })
+        res.json({
+            success: true,
+            user: user,
+            isMainAdmin: isMainAdmin,
+            hasAdminRights: hasAdminRights
         });
         
-        if (result.success) {
-            showNotification(result.message, 'success');
-            usernameInput.value = ''; // Очищаем поле ввода
-            loadAdminsList(); // Обновляем список админов
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
     } catch (error) {
-        console.error('Error adding admin:', error);
-        showNotification('Ошибка добавления админа: ' + error.message, 'error');
+        console.error('Debug rights error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Убедитесь, что главный администратор всегда имеет права
+async function ensureMainAdmin() {
+    try {
+        const result = await pool.query(`
+            INSERT INTO user_profiles 
+            (user_id, username, first_name, last_name, is_admin) 
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (user_id) 
+            DO UPDATE SET 
+                is_admin = true,
+                updated_at = CURRENT_TIMESTAMP
+        `, [ADMIN_ID, 'linkgold_admin', 'Главный', 'Администратор', true]);
+        
+        console.log('✅ Main admin ensured');
+    } catch (error) {
+        console.error('❌ Error ensuring main admin:', error);
     }
 }
+// // Функция для отображения секции управления админами
+// function showAdminAdminsSection() {
+//     showAdminSection('admins');
+//     loadAdminsList();
+// }
+
+// // Загрузка списка админов
+// async function loadAdminsList() {
+//     if (!currentUser || !currentUser.isAdmin) return;
+    
+//     try {
+//         const result = await makeRequest(`/admin/admins-list?adminId=${ADMIN_ID}`);
+        
+//         if (result.success) {
+//             displayAdminsList(result.admins);
+//         } else {
+//             showNotification('Ошибка загрузки списка админов: ' + result.error, 'error');
+//         }
+//     } catch (error) {
+//         console.error('Error loading admins list:', error);
+//         showNotification('Ошибка загрузки списка админов', 'error');
+//     }
+// }
+
+// // Отображение списка админов
+// function displayAdminsList(admins) {
+//     const container = document.getElementById('admins-list');
+//     if (!container) return;
+    
+//     container.innerHTML = '';
+    
+//     if (!admins || admins.length === 0) {
+//         container.innerHTML = '<div class="no-tasks">Нет администраторов</div>';
+//         return;
+//     }
+    
+//     admins.forEach(admin => {
+//         const adminElement = document.createElement('div');
+//         adminElement.className = 'admin-task-item';
+        
+//         const isMainAdmin = parseInt(admin.user_id) === ADMIN_ID;
+//         const joinDate = new Date(admin.created_at).toLocaleDateString('ru-RU');
+        
+//         adminElement.innerHTML = `
+//             <div class="admin-task-header">
+//                 <div class="admin-task-title">
+//                     ${admin.first_name} ${admin.last_name || ''}
+//                     ${isMainAdmin ? ' <span style="color: var(--gold);">(Главный админ)</span>' : ''}
+//                 </div>
+//                 ${!isMainAdmin ? `
+//                     <div class="admin-task-actions">
+//                         <button class="admin-task-delete" onclick="removeAdmin(${admin.user_id})">
+//                             🗑️ Удалить
+//                         </button>
+//                     </div>
+//                 ` : ''}
+//             </div>
+//             <div class="admin-task-description">
+//                 @${admin.username} • ID: ${admin.user_id} • Добавлен: ${joinDate}
+//             </div>
+//         `;
+        
+//         container.appendChild(adminElement);
+//     });
+// }
+
+// // Добавление нового админа
+// async function addNewAdmin() {
+//     if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) {
+//         showNotification('Только главный администратор может добавлять админов!', 'error');
+//         return;
+//     }
+    
+//     const usernameInput = document.getElementById('new-admin-username');
+//     const username = usernameInput?.value.trim();
+    
+//     if (!username) {
+//         showNotification('Введите юзернейм пользователя', 'error');
+//         return;
+//     }
+    
+//     try {
+//         const result = await makeRequest('/admin/add-admin', {
+//             method: 'POST',
+//             body: JSON.stringify({
+//                 adminId: currentUser.id,
+//                 username: username
+//             })
+//         });
+        
+//         if (result.success) {
+//             showNotification(result.message, 'success');
+//             usernameInput.value = ''; // Очищаем поле ввода
+//             loadAdminsList(); // Обновляем список админов
+//         } else {
+//             showNotification('Ошибка: ' + result.error, 'error');
+//         }
+//     } catch (error) {
+//         console.error('Error adding admin:', error);
+//         showNotification('Ошибка добавления админа: ' + error.message, 'error');
+//     }
+// }
 
 // Удаление админа
-async function removeAdmin(targetAdminId) {
-    if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) {
-        showNotification('Только главный администратор может удалять админов!', 'error');
-        return;
-    }
+// async function removeAdmin(targetAdminId) {
+//     if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) {
+//         showNotification('Только главный администратор может удалять админов!', 'error');
+//         return;
+//     }
     
-    if (!confirm('Вы уверены, что хотите удалить этого администратора?')) {
-        return;
-    }
+//     if (!confirm('Вы уверены, что хотите удалить этого администратора?')) {
+//         return;
+//     }
     
-    try {
-        const result = await makeRequest('/admin/remove-admin', {
-            method: 'POST',
-            body: JSON.stringify({
-                adminId: currentUser.id,
-                targetAdminId: targetAdminId
-            })
-        });
+//     try {
+//         const result = await makeRequest('/admin/remove-admin', {
+//             method: 'POST',
+//             body: JSON.stringify({
+//                 adminId: currentUser.id,
+//                 targetAdminId: targetAdminId
+//             })
+//         });
         
-        if (result.success) {
-            showNotification(result.message, 'success');
-            loadAdminsList(); // Обновляем список админов
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error removing admin:', error);
-        showNotification('Ошибка удаления админа: ' + error.message, 'error');
-    }
-}
+//         if (result.success) {
+//             showNotification(result.message, 'success');
+//             loadAdminsList(); // Обновляем список админов
+//         } else {
+//             showNotification('Ошибка: ' + result.error, 'error');
+//         }
+//     } catch (error) {
+//         console.error('Error removing admin:', error);
+//         showNotification('Ошибка удаления админа: ' + error.message, 'error');
+//     }
+// }
 
 
 // Restore chat
@@ -2231,13 +2308,14 @@ app.use('/api/*', (req, res) => {
 });
 // Получение списка всех админов
 // Получение списка всех админов
+// Получение списка всех админов - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.get('/api/admin/admins-list', async (req, res) => {
     const { adminId } = req.query;
     
     console.log('🛠️ Received admins-list request from:', adminId);
     
     // Проверяем права доступа - только главный админ
-    if (parseInt(adminId) !== ADMIN_ID) {
+    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
         return res.status(403).json({
             success: false,
             error: 'Access denied - only main admin can view admins list'
@@ -2246,9 +2324,15 @@ app.get('/api/admin/admins-list', async (req, res) => {
     
     try {
         const result = await pool.query(`
-            SELECT user_id, username, first_name, last_name, is_admin, created_at 
+            SELECT 
+                user_id, 
+                username, 
+                first_name, 
+                last_name, 
+                is_admin,
+                created_at 
             FROM user_profiles 
-            WHERE is_admin = true OR user_id = $1
+            WHERE is_admin = true 
             ORDER BY 
                 CASE WHEN user_id = $1 THEN 0 ELSE 1 END,
                 created_at DESC
