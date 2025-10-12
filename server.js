@@ -271,6 +271,7 @@ app.post('/api/user/auth', async (req, res) => {
         // Если пользователь уже существует и был назначен админом, сохраняем его права
         if (existingUser.rows.length > 0) {
             isAdmin = existingUser.rows[0].is_admin || isMainAdmin;
+            console.log(`🔄 User ${user.id} admin status: ${isAdmin} (from DB: ${existingUser.rows[0].is_admin})`);
         }
         
         // Обновляем или создаем пользователя
@@ -293,10 +294,12 @@ app.post('/api/user/auth', async (req, res) => {
             user.first_name || 'Пользователь',
             user.last_name || '',
             user.photo_url || '',
-            isAdmin  // Сохраняем текущие права админа
+            isAdmin
         ]);
         
         const userProfile = result.rows[0];
+        
+        console.log(`✅ User ${user.id} authenticated, admin: ${userProfile.is_admin}`);
         
         res.json({
             success: true,
@@ -1661,7 +1664,7 @@ function displayAdminsList(admins) {
     });
 }
 
-// Добавление нового админа
+// Добавление нового админа - ИСПРАВЛЕННАЯ ВЕРСИЯ
 async function addNewAdmin() {
     console.log('🎯 Starting addNewAdmin function...');
     
@@ -1684,7 +1687,7 @@ async function addNewAdmin() {
     }
     
     // Проверяем права доступа
-    if (!currentUser || !currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+    if (!currentUser || !currentUser.is_admin || currentUser.id !== ADMIN_ID.toString()) {
         messageDiv.innerHTML = '<span style="color: var(--error);">Только главный администратор может добавлять админов!</span>';
         return;
     }
@@ -1717,6 +1720,14 @@ async function addNewAdmin() {
             }, 1000);
             
             showNotification(result.message, 'success');
+            
+            // Если добавленный админ - это текущий пользователь, принудительно обновляем его права
+            if (result.user && result.user.id.toString() === currentUser.id.toString()) {
+                console.log('🔄 Added admin is current user, refreshing rights...');
+                setTimeout(() => {
+                    refreshAdminRights();
+                }, 1500);
+            }
         } else {
             messageDiv.innerHTML = `<span style="color: var(--error);">Ошибка: ${result.error}</span>`;
             showNotification('Ошибка: ' + result.error, 'error');
@@ -1821,7 +1832,37 @@ app.put('/api/support/chats/:chatId/restore', async (req, res) => {
         });
     }
 });
-
+// Принудительное обновление прав пользователя
+app.get('/api/user/:userId/refresh-rights', async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM user_profiles WHERE user_id = $1', 
+            [req.params.userId]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            });
+        }
+        
+        const userProfile = result.rows[0];
+        
+        console.log(`🔄 Refreshing rights for user ${req.params.userId}, admin: ${userProfile.is_admin}`);
+        
+        res.json({
+            success: true,
+            profile: userProfile
+        });
+    } catch (error) {
+        console.error('Refresh rights error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
 // Delete chat
 app.delete('/api/support/chats/:chatId', async (req, res) => {
     const chatId = req.params.chatId;
