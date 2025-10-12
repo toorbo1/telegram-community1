@@ -2068,24 +2068,114 @@ app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res
     }
 });
 
-// Обновленный endpoint вывода средств
-app.post('/api/withdrawal/request', async (req, res) => {
-    const { user_id, amount } = req.body;
+// Добавление админа по юзернейму (только для главного админа)
+app.post('/api/admin/add-admin', async (req, res) => {
+    const { adminId, username } = req.body;
     
-    console.log('📨 Получен запрос на вывод:', { user_id, amount });
+    console.log('🛠️ Received add-admin request:', { adminId, username });
     
-    if (!user_id || !amount) {
+    // Проверяем права доступа - только главный админ
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied - only main admin can add admins'
+        });
+    }
+    
+    if (!username) {
         return res.status(400).json({
             success: false,
-            error: 'Missing required fields'
+            error: 'Username is required'
         });
     }
     
     try {
-        // Проверяем баланс пользователя
+        // Ищем пользователя по юзернейму (убираем @ если есть)
+        const cleanUsername = username.replace('@', '');
+        
         const userResult = await pool.query(
-            'SELECT balance, username, first_name FROM user_profiles WHERE user_id = $1',
-            [user_id]
+            'SELECT user_id, username, first_name FROM user_profiles WHERE username = $1',
+            [cleanUsername]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found with this username'
+            });
+        }
+        
+        const user = userResult.rows[0];
+        
+        // Проверяем, не является ли пользователь уже админом
+        if (user.is_admin) {
+            return res.status(400).json({
+                success: false,
+                error: 'User is already an admin'
+            });
+        }
+        
+        // Назначаем пользователя админом
+        await pool.query(
+            'UPDATE user_profiles SET is_admin = true WHERE user_id = $1',
+            [user.user_id]
+        );
+        
+        console.log(`✅ Admin added: ${user.username} (ID: ${user.user_id})`);
+        
+        res.json({
+            success: true,
+            message: `User @${user.username} (${user.first_name}) successfully added as admin`,
+            user: {
+                id: user.user_id,
+                username: user.username,
+                firstName: user.first_name
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Add admin error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Удаление админа (только для главного админа)
+app.post('/api/admin/remove-admin', async (req, res) => {
+    const { adminId, targetAdminId } = req.body;
+    
+    console.log('🛠️ Received remove-admin request:', { adminId, targetAdminId });
+    
+    // Проверяем права доступа - только главный админ
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied - only main admin can remove admins'
+        });
+    }
+    
+    if (!targetAdminId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Target admin ID is required'
+        });
+    }
+    
+    // Нельзя удалить самого себя
+    if (parseInt(targetAdminId) === ADMIN_ID) {
+        return res.status(400).json({
+            success: false,
+            error: 'Cannot remove main admin'
+        });
+    }
+    
+    try {
+        // Проверяем существование пользователя
+        const userResult = await pool.query(
+            'SELECT user_id, username, first_name, is_admin FROM user_profiles WHERE user_id = $1',
+            [targetAdminId]
         );
         
         if (userResult.rows.length === 0) {
@@ -2095,49 +2185,35 @@ app.post('/api/withdrawal/request', async (req, res) => {
             });
         }
         
-        const userBalance = parseFloat(userResult.rows[0].balance) || 0;
-        const requestAmount = parseFloat(amount);
-        const username = userResult.rows[0].username || `user_${user_id}`;
-        const firstName = userResult.rows[0].first_name || 'Пользователь';
+        const user = userResult.rows[0];
         
-        console.log(`💰 Баланс пользователя: ${userBalance}, Запрошено: ${requestAmount}`);
-        
-        if (requestAmount > userBalance) {
+        if (!user.is_admin) {
             return res.status(400).json({
                 success: false,
-                error: 'Недостаточно средств на балансе'
+                error: 'User is not an admin'
             });
         }
         
-        // Обнуляем баланс пользователя
+        // Удаляем права админа
         await pool.query(
-            'UPDATE user_profiles SET balance = 0 WHERE user_id = $1',
-            [user_id]
+            'UPDATE user_profiles SET is_admin = false WHERE user_id = $1',
+            [targetAdminId]
         );
         
-        // Создаем запрос на вывод
-        const result = await pool.query(`
-            INSERT INTO withdrawal_requests (user_id, amount, status) 
-            VALUES ($1, $2, 'pending')
-            RETURNING *
-        `, [user_id, requestAmount]);
-        
-        const requestId = result.rows[0].id;
-        
-        console.log(`✅ Запрос на вывод создан: ID ${requestId}`);
-        
-        // Отправляем уведомление в Telegram канал
-        await sendWithdrawalToTelegram(username, firstName, requestAmount, requestId, user_id);
+        console.log(`✅ Admin removed: ${user.username} (ID: ${user.user_id})`);
         
         res.json({
             success: true,
-            message: 'Запрос на вывод отправлен',
-            requestId: requestId,
-            newBalance: 0
+            message: `Admin @${user.username} (${user.first_name}) successfully removed`,
+            user: {
+                id: user.user_id,
+                username: user.username,
+                firstName: user.first_name
+            }
         });
         
     } catch (error) {
-        console.error('❌ Withdrawal error:', error);
+        console.error('❌ Remove admin error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
@@ -2145,166 +2221,6 @@ app.post('/api/withdrawal/request', async (req, res) => {
     }
 });
 
-// Функция отправки в Telegram канал (заглушка - нужно реализовать с Telegram Bot API)
-async function sendWithdrawalToTelegram(username, firstName, amount, requestId, userId) {
-    try {
-        const message = `💸 НОВЫЙ ЗАПРОС НА ВЫВОД
-👤 Пользователь: ${firstName} (@${username})
-🆔 ID: ${userId}
-💰 Сумма: ${amount} ⭐
-📋 ID запроса: ${requestId}
-⏰ Время: ${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}
-
-Для подтверждения выплаты нажмите кнопку ниже.`;
-
-        console.log('📤 Сообщение для Telegram канала:');
-        console.log(message);
-        
-        // Здесь должна быть реализация отправки в Telegram канал
-        // Пример с использованием Telegram Bot API:
-        /*
-        const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
-        const channelId = process.env.CHANNEL_ID;
-        
-        if (telegramToken && channelId) {
-            const url = `https://api.telegram.org/bot${telegramToken}/sendMessage`;
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    chat_id: channelId,
-                    text: message,
-                    parse_mode: 'HTML',
-                    reply_markup: {
-                        inline_keyboard: [[
-                            {
-                                text: '✅ Перечислил',
-                                callback_data: `withdraw_complete_${requestId}`
-                            }
-                        ]]
-                    }
-                })
-            });
-            
-            const result = await response.json();
-            console.log('✅ Сообщение отправлено в Telegram:', result);
-        }
-        */
-        
-        return true;
-    } catch (error) {
-        console.error('❌ Error sending to Telegram:', error);
-        return false;
-    }
-}
-
-// Endpoint для подтверждения выплаты админом
-app.post('/api/admin/withdrawal/complete', async (req, res) => {
-    const { request_id, admin_id } = req.body;
-    
-    if (parseInt(admin_id) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied'
-        });
-    }
-    
-    try {
-        // Обновляем статус запроса
-        await pool.query(`
-            UPDATE withdrawal_requests 
-            SET status = 'completed', completed_at = CURRENT_TIMESTAMP 
-            WHERE id = $1
-        `, [request_id]);
-        
-        console.log(`✅ Выплата подтверждена: ID ${request_id}`);
-        
-        res.json({
-            success: true,
-            message: 'Withdrawal marked as completed'
-        });
-    } catch (error) {
-        console.error('❌ Complete withdrawal error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
-
-// Получение истории выводов
-app.get('/api/withdraw/history/:userId', async (req, res) => {
-    const userId = req.params.userId;
-    
-    try {
-        const result = await pool.query(`
-            SELECT * FROM withdrawal_requests 
-            WHERE user_id = $1 
-            ORDER BY created_at DESC
-        `, [userId]);
-        
-        res.json({
-            success: true,
-            operations: result.rows
-        });
-    } catch (error) {
-        console.error('Get withdrawal history error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
-// Get withdrawal history
-app.get('/api/withdraw/history/:userId', async (req, res) => {
-    const userId = req.params.userId;
-    
-    try {
-        const result = await pool.query(`
-            SELECT * FROM withdrawal_requests 
-            WHERE user_id = $1 
-            ORDER BY created_at DESC
-        `, [userId]);
-        
-        res.json({
-            success: true,
-            operations: result.rows
-        });
-    } catch (error) {
-        console.error('Get withdrawal history error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
-
-// Serve uploaded files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-// Main route - serve index.html for all other routes (SPA)
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error('❌ Server error:', err);
-    res.status(500).json({
-        success: false,
-        error: 'Internal server error: ' + err.message
-    });
-});
-
-// 404 handler for API routes
-app.use('/api/*', (req, res) => {
-    res.status(404).json({
-        success: false,
-        error: 'API endpoint not found'
-    });
-});
 // Получение списка всех админов
 app.get('/api/admin/admins-list', async (req, res) => {
     const { adminId } = req.query;
@@ -2350,3 +2266,8 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🗄️ Database: PostgreSQL`);
     console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
+// 🔧 ЭКСПОРТ ФУНКЦИЙ
+window.showAdminAdminsSection = showAdminAdminsSection;
+window.loadAdminsList = loadAdminsList;
+window.addNewAdmin = addNewAdmin;
+window.removeAdmin = removeAdmin;

@@ -4730,7 +4730,7 @@ input:checked + .theme-slider:before {
             <div class="page-title">Панель администратора</div>
         </div>
 
-        <div class="admin-buttons">
+<div class="admin-buttons">
     <button class="admin-btn" onclick="showAdminSection('posts')">📝 Посты</button>
     <button class="admin-btn" onclick="showAdminSection('tasks')">📋 Задания</button>
     <button class="admin-btn" onclick="showAdminSection('verification')">✅ Проверка</button>
@@ -5082,6 +5082,7 @@ input:checked + .theme-slider:before {
     </div>
 </main> -->
 <!-- Секция управления админами -->
+<!-- Управление админами -->
 <!-- Управление админами -->
 <div id="admin-admins-section" class="admin-section" style="display: none;">
     <div class="admin-form">
@@ -7875,6 +7876,11 @@ if (document.readyState === 'loading') {
         window.loadArchivedAdminChats = loadArchivedAdminChats;
         window.openAdminChatWindow = openAdminChatWindow;
         window.requestWithdraw = requestWithdraw;
+        // 🔧 ЭКСПОРТ ФУНКЦИЙ
+window.showAdminAdminsSection = showAdminAdminsSection;
+window.loadAdminsList = loadAdminsList;
+window.addNewAdmin = addNewAdmin;
+window.removeAdmin = removeAdmin;
 </script>
 </body>
 </html>
