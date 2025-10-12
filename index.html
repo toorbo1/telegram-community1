@@ -5516,7 +5516,361 @@ setTimeout(() => {
                 initializeTestUser();
             }
         }
+// 🔍 Проверка прав администратора
+async function checkAdminAccess(userId) {
+    try {
+        const result = await makeRequest(`/user/${userId}`);
+        if (result.success) {
+            return result.profile.is_admin || parseInt(userId) === ADMIN_ID;
+        }
+    } catch (error) {
+        console.error('Admin check error:', error);
+    }
+    return false;
+}
 
+// 📝 Функции для админов (без админ-панели)
+async function addNewPostAsAdmin() {
+    if (!currentUser) return;
+    
+    const title = prompt('Введите заголовок поста:');
+    if (!title) return;
+    
+    const content = prompt('Введите содержание поста:');
+    if (!content) return;
+    
+    // Проверяем права
+    const isAdmin = await checkAdminAccess(currentUser.id);
+    if (!isAdmin) {
+        showNotification('Только администратор может публиковать посты!', 'error');
+        return;
+    }
+    
+    try {
+        const result = await makeRequest('/posts', {
+            method: 'POST',
+            body: JSON.stringify({
+                title: title,
+                content: content,
+                author: currentUser.firstName,
+                authorId: currentUser.id
+            })
+        });
+
+        if (result.success) {
+            showNotification('Пост успешно опубликован!', 'success');
+            loadMainPagePosts();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error adding post:', error);
+        showNotification('Ошибка публикации поста', 'error');
+    }
+}
+
+// 🗑️ Удаление поста
+async function deletePostAsAdmin(postId) {
+    if (!currentUser) return;
+    
+    if (!confirm('Удалить этот пост?')) return;
+    
+    // Проверяем права
+    const isAdmin = await checkAdminAccess(currentUser.id);
+    if (!isAdmin) {
+        showNotification('Только администратор может удалять посты!', 'error');
+        return;
+    }
+    
+    try {
+        const result = await makeRequest(`/posts/${postId}`, {
+            method: 'DELETE',
+            body: JSON.stringify({ authorId: currentUser.id })
+        });
+
+        if (result.success) {
+            showNotification('Пост успешно удален!', 'success');
+            loadMainPagePosts();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting post:', error);
+        showNotification('Ошибка удаления поста', 'error');
+    }
+}
+
+// 📋 Создание задания
+async function addTaskAsAdmin() {
+    if (!currentUser) return;
+    
+    const title = prompt('Введите название задания:');
+    if (!title) return;
+    
+    const description = prompt('Введите описание задания:');
+    if (!description) return;
+    
+    const price = prompt('Введите цену задания (в рублях):');
+    if (!price) return;
+    
+    // Проверяем права
+    const isAdmin = await checkAdminAccess(currentUser.id);
+    if (!isAdmin) {
+        showNotification('Только администратор может создавать задания!', 'error');
+        return;
+    }
+    
+    try {
+        const result = await makeRequest('/tasks', {
+            method: 'POST',
+            body: JSON.stringify({
+                title: title,
+                description: description,
+                price: parseFloat(price),
+                created_by: currentUser.id
+            })
+        });
+
+        if (result.success) {
+            showNotification('Задание успешно создано!', 'success');
+            loadTasks();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error adding task:', error);
+        showNotification('Ошибка создания задания', 'error');
+    }
+}
+
+// 🗑️ Удаление задания
+async function deleteTaskAsAdmin(taskId) {
+    if (!currentUser) return;
+    
+    if (!confirm('Удалить это задание?')) return;
+    
+    // Проверяем права
+    const isAdmin = await checkAdminAccess(currentUser.id);
+    if (!isAdmin) {
+        showNotification('Только администратор может удалять задания!', 'error');
+        return;
+    }
+    
+    try {
+        const result = await makeRequest(`/tasks/${taskId}`, {
+            method: 'DELETE',
+            body: JSON.stringify({ adminId: currentUser.id })
+        });
+
+        if (result.success) {
+            showNotification('Задание успешно удалено!', 'success');
+            loadTasks();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting task:', error);
+        showNotification('Ошибка удаления задания', 'error');
+    }
+}
+
+// ✅ Проверка заданий (для админов)
+async function loadTaskVerificationsForAdmin() {
+    if (!currentUser) return;
+    
+    // Проверяем права
+    const isAdmin = await checkAdminAccess(currentUser.id);
+    if (!isAdmin) return;
+    
+    try {
+        const result = await makeRequest(`/admin/task-verifications?adminId=${currentUser.id}`);
+        if (result.success) {
+            showVerificationsModal(result.verifications);
+        }
+    } catch (error) {
+        console.error('Error loading verifications:', error);
+    }
+}
+
+// 🎨 Модальное окно проверки заданий
+function showVerificationsModal(verifications) {
+    let modalHTML = `
+        <div class="modal active" id="verifications-modal">
+            <div class="modal-content" style="max-width: 600px; max-height: 80vh; overflow-y: auto;">
+                <div class="modal-header">
+                    <div class="modal-title">✅ Проверка заданий</div>
+                    <button class="modal-close" onclick="closeModal('verifications-modal')">×</button>
+                </div>
+                <div class="modal-body">
+    `;
+    
+    if (!verifications || verifications.length === 0) {
+        modalHTML += `
+            <div style="text-align: center; padding: 40px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
+                <div>Нет заданий на проверке</div>
+            </div>
+        `;
+    } else {
+        verifications.forEach(verification => {
+            modalHTML += `
+                <div class="verification-item" style="margin-bottom: 16px; padding: 16px; border: 1px solid var(--border); border-radius: 12px;">
+                    <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 12px;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600;">${verification.user_name}</div>
+                            <div style="color: var(--text-secondary); font-size: 14px;">${verification.task_title}</div>
+                        </div>
+                        <div style="font-weight: 700; color: var(--gold);">${verification.task_price} ⭐</div>
+                    </div>
+                    <div style="margin-bottom: 12px;">
+                        <img src="${verification.screenshot_url}" alt="Скриншот" style="width: 100%; border-radius: 8px;">
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-success" style="flex: 1;" onclick="approveVerification(${verification.id})">✅ Одобрить</button>
+                        <button class="btn btn-error" style="flex: 1;" onclick="rejectVerification(${verification.id})">❌ Отклонить</button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    modalHTML += `
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Добавляем модальное окно в DOM
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+// 💬 Админ-чат с пользователями
+async function openAdminSupportChat() {
+    if (!currentUser) return;
+    
+    // Проверяем права
+    const isAdmin = await checkAdminAccess(currentUser.id);
+    if (!isAdmin) {
+        showNotification('Только администратор может отвечать в чате!', 'error');
+        return;
+    }
+    
+    try {
+        const result = await makeRequest(`/support/chats?adminId=${currentUser.id}`);
+        if (result.success) {
+            showAdminChatsModal(result.chats);
+        }
+    } catch (error) {
+        console.error('Error loading admin chats:', error);
+    }
+}
+
+// 🎨 Модальное окно чатов для админа
+function showAdminChatsModal(chats) {
+    let modalHTML = `
+        <div class="modal active" id="admin-chats-modal">
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <div class="modal-title">💬 Чаты с пользователями</div>
+                    <button class="modal-close" onclick="closeModal('admin-chats-modal')">×</button>
+                </div>
+                <div class="modal-body">
+    `;
+    
+    if (!chats || chats.length === 0) {
+        modalHTML += `
+            <div style="text-align: center; padding: 40px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">💬</div>
+                <div>Нет активных чатов</div>
+            </div>
+        `;
+    } else {
+        chats.forEach(chat => {
+            modalHTML += `
+                <div class="chat-item" style="display: flex; align-items: center; padding: 12px; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; cursor: pointer;" onclick="openChatWithUser(${chat.id})">
+                    <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--purple-gradient); display: flex; align-items: center; justify-content: center; margin-right: 12px; color: white; font-weight: 600;">
+                        ${chat.user_name ? chat.user_name.charAt(0).toUpperCase() : 'U'}
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600;">${chat.user_name}</div>
+                        <div style="color: var(--text-secondary); font-size: 12px;">${chat.last_message || 'Нет сообщений'}</div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    modalHTML += `
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+// 🔧 Обновление интерфейса для админов
+function updateAdminInterface() {
+    if (!currentUser) return;
+    
+    // Проверяем права асинхронно и обновляем интерфейс
+    checkAdminAccess(currentUser.id).then(isAdmin => {
+        if (isAdmin) {
+            // Добавляем кнопки для админов в главную страницу
+            addAdminButtonsToMainPage();
+        }
+    });
+}
+
+// 🎨 Добавление кнопок админа на главную страницу
+function addAdminButtonsToMainPage() {
+    // Проверяем, не добавлены ли кнопки уже
+    if (document.getElementById('admin-buttons-container')) return;
+    
+    const adminButtonsHTML = `
+        <div id="admin-buttons-container" class="card fade-in" style="margin-top: 20px;">
+            <h3 style="margin-bottom: 16px; text-align: center;">⚙️ Панель администратора</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <button class="btn btn-primary" onclick="addNewPostAsAdmin()">📝 Добавить пост</button>
+                <button class="btn btn-primary" onclick="addTaskAsAdmin()">📋 Добавить задание</button>
+                <button class="btn btn-warning" onclick="loadTaskVerificationsForAdmin()">✅ Проверить задания</button>
+                <button class="btn btn-success" onclick="openAdminSupportChat()">💬 Ответить в чатах</button>
+            </div>
+        </div>
+    `;
+    
+    const mainTab = document.getElementById('main-tab');
+    if (mainTab) {
+        mainTab.insertAdjacentHTML('beforeend', adminButtonsHTML);
+    }
+}
+
+// 🔄 Обновление функции инициализации
+async function initializeApp() {
+    console.log('🎮 Initializing LinkGold app...');
+    
+    // Показываем загрузку
+    showNotification('🔄 Загружаем приложение...', 'info');
+    
+    // Инициализируем пользователя
+    if (typeof tg !== 'undefined') {
+        await initializeTelegramUser();
+    } else {
+        initializeTestUser();
+    }
+    
+    // Инициализируем приложение
+    displayUserProfile();
+    loadMainPagePosts();
+    loadTasks();
+    initializeSearch();
+    loadUserTasks();
+    
+    // Обновляем интерфейс для админов
+    updateAdminInterface();
+    
+    console.log('🎉 App initialized successfully');
+}
         // Функция для тестирования (без Telegram)
         function initializeTestUser() {
             currentUser = {
@@ -8493,6 +8847,17 @@ setTimeout(() => {
         testAdminRights();
     }
 }, 3000);
+
+// 🔧 ЭКСПОРТ НОВЫХ ФУНКЦИЙ
+window.addNewPostAsAdmin = addNewPostAsAdmin;
+window.deletePostAsAdmin = deletePostAsAdmin;
+window.addTaskAsAdmin = addTaskAsAdmin;
+window.deleteTaskAsAdmin = deleteTaskAsAdmin;
+window.loadTaskVerificationsForAdmin = loadTaskVerificationsForAdmin;
+window.openAdminSupportChat = openAdminSupportChat;
+window.approveVerification = approveVerification;
+window.rejectVerification = rejectVerification;
+window.closeModal = closeModal;
 </script>
 </body>
 </html>
