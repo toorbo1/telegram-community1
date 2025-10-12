@@ -5085,6 +5085,7 @@ input:checked + .theme-slider:before {
 <!-- Управление админами -->
 <!-- Управление админами -->
 <!-- Управление админами -->
+<!-- Управление админами -->
 <div id="admin-admins-section" class="admin-section" style="display: none;">
     <div class="admin-form">
         <h3>👥 Добавление администраторов</h3>
@@ -5695,7 +5696,16 @@ function checkAdminRights() {
         if (adminPanel) adminPanel.style.display = 'none';
     }
 }
-
+// В функции инициализации админ-панели добавьте:
+if (parseInt(currentUser.id) === ADMIN_ID) {
+    // Показываем кнопку управления админами только главному админу
+    const adminButtons = document.querySelector('.admin-buttons');
+    if (adminButtons) {
+        adminButtons.innerHTML += `
+            <button class="admin-btn" onclick="showAdminSection('admins')">👥 Админы</button>
+        `;
+    }
+}
 // Обновите функцию инициализации приложения
 async function initializeApp() {
     console.log('🎮 Initializing LinkGold app...');
@@ -7965,8 +7975,13 @@ window.showAdminSection = showAdminSection;
 window.refreshUserData = refreshUserData;
 window.checkAdminRights = checkAdminRights;
 // 🔧 ФУНКЦИИ ДЛЯ УПРАВЛЕНИЯ АДМИНАМИ
-
-// Функция для отображения секции управления админами
+// 🔧 ЭКСПОРТ ФУНКЦИЙ ДЛЯ УПРАВЛЕНИЯ АДМИНАМИ
+window.showAdminAdminsSection = showAdminAdminsSection;
+window.loadAdminsList = loadAdminsList;
+window.addNewAdmin = addNewAdmin;
+window.removeAdmin = removeAdmin;
+window.showAdminSection = showAdminSection;
+// Функции для управления администраторами
 function showAdminAdminsSection() {
     showAdminSection('admins');
     loadAdminsList();
@@ -7997,7 +8012,7 @@ async function loadAdminsList() {
     }
 }
 
-// Обновите функцию отображения списка админов
+// Отображение списка админов
 function displayAdminsList(admins) {
     const container = document.getElementById('admins-list');
     if (!container) {
@@ -8055,7 +8070,7 @@ function displayAdminsList(admins) {
     });
 }
 
-// Добавление нового админа - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// Добавление нового админа
 async function addNewAdmin() {
     console.log('🎯 Starting addNewAdmin function...');
     
@@ -8111,13 +8126,6 @@ async function addNewAdmin() {
             }, 1000);
             
             showNotification(result.message, 'success');
-            
-            // Если добавленный админ - это текущий пользователь, обновляем его права
-            if (result.user && parseInt(result.user.id) === parseInt(currentUser.id)) {
-                setTimeout(() => {
-                    refreshUserData();
-                }, 1500);
-            }
         } else {
             messageDiv.innerHTML = `<span style="color: var(--error);">Ошибка: ${result.error}</span>`;
             showNotification('Ошибка: ' + result.error, 'error');
@@ -8133,6 +8141,7 @@ async function addNewAdmin() {
         submitBtn.textContent = '➕ Добавить администратора';
     }
 }
+
 // Удаление админа
 async function removeAdmin(targetAdminId) {
     console.log('🗑️ Removing admin:', targetAdminId);
@@ -8203,11 +8212,9 @@ function initAdminInputHandlers() {
 }
 
 // Инициализация после загрузки DOM
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initAdminInputHandlers);
-} else {
+document.addEventListener('DOMContentLoaded', function() {
     initAdminInputHandlers();
-}
+});
 </script>
 </body>
 </html>

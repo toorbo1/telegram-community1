@@ -247,9 +247,8 @@ function generateReferralCode(userId) {
     return code + userId.toString().slice(-4);
 }
 
-// Обновите endpoint аутентификации пользователя
 app.post('/api/user/auth', async (req, res) => {
-    const { user, start_param } = req.body;
+    const { user } = req.body;
     
     if (!user) {
         return res.status(400).json({
@@ -285,6 +284,7 @@ app.post('/api/user/auth', async (req, res) => {
                 first_name = EXCLUDED.first_name,
                 last_name = EXCLUDED.last_name,
                 photo_url = EXCLUDED.photo_url,
+                is_admin = EXCLUDED.is_admin,
                 updated_at = CURRENT_TIMESTAMP
             RETURNING *
         `, [
@@ -2211,6 +2211,7 @@ app.post('/api/admin/remove-admin', async (req, res) => {
 });
 
 // Получение списка всех админов
+// Получение списка всех администраторов
 app.get('/api/admin/admins-list', async (req, res) => {
     const { adminId } = req.query;
     
@@ -2226,11 +2227,13 @@ app.get('/api/admin/admins-list', async (req, res) => {
     
     try {
         const result = await pool.query(`
-            SELECT user_id, username, first_name, last_name, created_at 
+            SELECT user_id, username, first_name, last_name, created_at, is_admin
             FROM user_profiles 
             WHERE is_admin = true 
-            ORDER BY created_at DESC
-        `);
+            ORDER BY 
+                CASE WHEN user_id = $1 THEN 0 ELSE 1 END,
+                created_at DESC
+        `, [ADMIN_ID]);
         
         console.log(`✅ Found ${result.rows.length} admins`);
         
@@ -2244,6 +2247,160 @@ app.get('/api/admin/admins-list', async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Добавление администратора по юзернейму
+app.post('/api/admin/add-admin', async (req, res) => {
+    const { adminId, username } = req.body;
+    
+    console.log('🛠️ Received add-admin request:', { adminId, username });
+    
+    // Проверяем права доступа - только главный админ
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied - only main admin can add admins'
+        });
+    }
+    
+    if (!username) {
+        return res.status(400).json({
+            success: false,
+            error: 'Username is required'
+        });
+    }
+    
+    try {
+        // Ищем пользователя по юзернейму (убираем @ если есть)
+        const cleanUsername = username.replace('@', '').trim();
+        
+        const userResult = await pool.query(
+            'SELECT user_id, username, first_name, last_name, is_admin FROM user_profiles WHERE username = $1',
+            [cleanUsername]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Пользователь с таким юзернеймом не найден'
+            });
+        }
+        
+        const user = userResult.rows[0];
+        
+        // Проверяем, не является ли пользователь уже админом
+        if (user.is_admin) {
+            return res.status(400).json({
+                success: false,
+                error: 'Этот пользователь уже является администратором'
+            });
+        }
+        
+        // Назначаем пользователя админом
+        await pool.query(
+            'UPDATE user_profiles SET is_admin = true, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1',
+            [user.user_id]
+        );
+        
+        console.log(`✅ Admin added: ${user.username} (ID: ${user.user_id})`);
+        
+        res.json({
+            success: true,
+            message: `Пользователь @${user.username} успешно добавлен как администратор!`,
+            user: {
+                id: user.user_id,
+                username: user.username,
+                firstName: user.first_name,
+                lastName: user.last_name
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Add admin error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка базы данных: ' + error.message
+        });
+    }
+});
+
+// Удаление администратора
+app.post('/api/admin/remove-admin', async (req, res) => {
+    const { adminId, targetAdminId } = req.body;
+    
+    console.log('🛠️ Received remove-admin request:', { adminId, targetAdminId });
+    
+    // Проверяем права доступа - только главный админ
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied - only main admin can remove admins'
+        });
+    }
+    
+    if (!targetAdminId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Target admin ID is required'
+        });
+    }
+    
+    // Нельзя удалить главного админа
+    if (parseInt(targetAdminId) === ADMIN_ID) {
+        return res.status(400).json({
+            success: false,
+            error: 'Нельзя удалить главного администратора'
+        });
+    }
+    
+    try {
+        // Проверяем существование пользователя
+        const userResult = await pool.query(
+            'SELECT user_id, username, first_name, is_admin FROM user_profiles WHERE user_id = $1',
+            [targetAdminId]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Пользователь не найден'
+            });
+        }
+        
+        const user = userResult.rows[0];
+        
+        if (!user.is_admin) {
+            return res.status(400).json({
+                success: false,
+                error: 'Этот пользователь не является администратором'
+            });
+        }
+        
+        // Удаляем права админа
+        await pool.query(
+            'UPDATE user_profiles SET is_admin = false WHERE user_id = $1',
+            [targetAdminId]
+        );
+        
+        console.log(`✅ Admin removed: ${user.username} (ID: ${user.user_id})`);
+        
+        res.json({
+            success: true,
+            message: `Администратор @${user.username} успешно удален`,
+            user: {
+                id: user.user_id,
+                username: user.username,
+                firstName: user.first_name
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Remove admin error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка базы данных: ' + error.message
         });
     }
 });
