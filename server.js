@@ -579,6 +579,7 @@ app.get('/api/debug/tables', async (req, res) => {
     }
 });
 // User authentication
+// User authentication
 app.post('/api/user/auth', async (req, res) => {
     const { user } = req.body;
     
@@ -590,7 +591,7 @@ app.post('/api/user/auth', async (req, res) => {
     }
     
     try {
-        const isAdmin = parseInt(user.id) === ADMIN_ID;
+        const isMainAdmin = parseInt(user.id) === ADMIN_ID;
         
         const result = await pool.query(`
             INSERT INTO user_profiles 
@@ -602,7 +603,7 @@ app.post('/api/user/auth', async (req, res) => {
                 first_name = EXCLUDED.first_name,
                 last_name = EXCLUDED.last_name,
                 photo_url = EXCLUDED.photo_url,
-                is_admin = EXCLUDED.is_admin,
+                is_admin = COALESCE(EXCLUDED.is_admin, user_profiles.is_admin),
                 updated_at = CURRENT_TIMESTAMP
             RETURNING *
         `, [
@@ -611,7 +612,7 @@ app.post('/api/user/auth', async (req, res) => {
             user.first_name || 'Пользователь',
             user.last_name || '',
             user.photo_url || '',
-            isAdmin
+            isMainAdmin  // Только главный админ автоматически становится админом
         ]);
         
         const userProfile = result.rows[0];
@@ -1434,6 +1435,7 @@ app.put('/api/support/chats/:chatId/archive', async (req, res) => {
     }
 });
 // Добавление админа по юзернейму (только для главного админа)
+// Добавление админа по юзернейму (только для главного админа)
 app.post('/api/admin/add-admin', async (req, res) => {
     const { adminId, username } = req.body;
     
@@ -1459,7 +1461,7 @@ app.post('/api/admin/add-admin', async (req, res) => {
         const cleanUsername = username.replace('@', '');
         
         const userResult = await pool.query(
-            'SELECT user_id, username, first_name FROM user_profiles WHERE username = $1',
+            'SELECT user_id, username, first_name, is_admin FROM user_profiles WHERE username = $1',
             [cleanUsername]
         );
         
@@ -1722,24 +1724,7 @@ async function removeAdmin(targetAdminId) {
     }
 }
 
-// Обновите функцию showAdminSection чтобы включить новую секцию
-function showAdminSection(section) {
-    // Скрываем все админ секции
-    document.querySelectorAll('.admin-section').forEach(sec => {
-        sec.style.display = 'none';
-    });
-    
-    // Показываем выбранную секцию
-    const targetSection = document.getElementById('admin-' + section + '-section');
-    if (targetSection) {
-        targetSection.style.display = 'block';
-    }
-    
-    // Загружаем данные для определенных секций
-    if (section === 'admins') {
-        loadAdminsList();
-    }
-}
+
 // Restore chat
 app.put('/api/support/chats/:chatId/restore', async (req, res) => {
     const chatId = req.params.chatId;
@@ -2245,6 +2230,7 @@ app.use('/api/*', (req, res) => {
     });
 });
 // Получение списка всех админов
+// Получение списка всех админов
 app.get('/api/admin/admins-list', async (req, res) => {
     const { adminId } = req.query;
     
@@ -2260,11 +2246,13 @@ app.get('/api/admin/admins-list', async (req, res) => {
     
     try {
         const result = await pool.query(`
-            SELECT user_id, username, first_name, last_name, created_at 
+            SELECT user_id, username, first_name, last_name, is_admin, created_at 
             FROM user_profiles 
-            WHERE is_admin = true 
-            ORDER BY created_at DESC
-        `);
+            WHERE is_admin = true OR user_id = $1
+            ORDER BY 
+                CASE WHEN user_id = $1 THEN 0 ELSE 1 END,
+                created_at DESC
+        `, [ADMIN_ID]);
         
         console.log(`✅ Found ${result.rows.length} admins`);
         
