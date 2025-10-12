@@ -274,41 +274,18 @@ app.post('/api/user/auth', async (req, res) => {
             isAdmin = existingUser.rows[0].is_admin || isMainAdmin;
         }
         
-        // Генерируем реферальный код если его нет
-        let referralCode = null;
-        let referredBy = null;
-        
-        if (start_param && start_param.startsWith('ref_')) {
-            const refCode = start_param.substring(4);
-            const referrer = await pool.query(
-                'SELECT user_id FROM user_profiles WHERE referral_code = $1',
-                [refCode]
-            );
-            if (referrer.rows.length > 0) {
-                referredBy = referrer.rows[0].user_id;
-            }
-        }
-        
-        // Если пользователя нет, генерируем реферальный код
-        if (existingUser.rows.length === 0) {
-            referralCode = generateReferralCode(user.id);
-        } else {
-            referralCode = existingUser.rows[0].referral_code;
-        }
-        
+        // Обновляем или создаем пользователя
         const result = await pool.query(`
             INSERT INTO user_profiles 
-            (user_id, username, first_name, last_name, photo_url, is_admin, referral_code, referred_by, updated_at) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
+            (user_id, username, first_name, last_name, photo_url, is_admin, updated_at) 
+            VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
             ON CONFLICT (user_id) 
             DO UPDATE SET 
                 username = EXCLUDED.username,
                 first_name = EXCLUDED.first_name,
                 last_name = EXCLUDED.last_name,
                 photo_url = EXCLUDED.photo_url,
-                referral_code = EXCLUDED.referral_code,
                 updated_at = CURRENT_TIMESTAMP
-                ${isMainAdmin ? ', is_admin = true' : ''}  // Главный админ всегда остается админом
             RETURNING *
         `, [
             user.id, 
@@ -316,30 +293,10 @@ app.post('/api/user/auth', async (req, res) => {
             user.first_name || 'Пользователь',
             user.last_name || '',
             user.photo_url || '',
-            isAdmin,  // Сохраняем текущие права админа
-            referralCode,
-            referredBy
+            isAdmin  // Сохраняем текущие права админа
         ]);
         
         const userProfile = result.rows[0];
-        
-        // Если это новый пользователь по реферальной ссылке - начисляем бонусы
-        if (referredBy && result.rows[0].was_created) {
-            await pool.query(`
-                UPDATE user_profiles 
-                SET 
-                    balance = COALESCE(balance, 0) + 15,
-                    referral_count = COALESCE(referral_count, 0) + 1,
-                    referral_earned = COALESCE(referral_earned, 0) + 15
-                WHERE user_id = $1
-            `, [referredBy]);
-            
-            await pool.query(`
-                UPDATE user_profiles 
-                SET balance = COALESCE(balance, 0) + 5
-                WHERE user_id = $1
-            `, [user.id]);
-        }
         
         res.json({
             success: true,
@@ -592,9 +549,9 @@ app.get('/api/debug/tables', async (req, res) => {
         });
     }
 });
-// User authentication
+// Обновите endpoint аутентификации пользователя
 app.post('/api/user/auth', async (req, res) => {
-    const { user } = req.body;
+    const { user, start_param } = req.body;
     
     if (!user) {
         return res.status(400).json({
@@ -604,8 +561,22 @@ app.post('/api/user/auth', async (req, res) => {
     }
     
     try {
-        const isAdmin = parseInt(user.id) === ADMIN_ID;
+        const isMainAdmin = parseInt(user.id) === ADMIN_ID;
         
+        // Сначала получаем текущие данные пользователя из базы
+        const existingUser = await pool.query(
+            'SELECT * FROM user_profiles WHERE user_id = $1', 
+            [user.id]
+        );
+        
+        let isAdmin = isMainAdmin;
+        
+        // Если пользователь уже существует и был назначен админом, сохраняем его права
+        if (existingUser.rows.length > 0) {
+            isAdmin = existingUser.rows[0].is_admin || isMainAdmin;
+        }
+        
+        // Обновляем или создаем пользователя
         const result = await pool.query(`
             INSERT INTO user_profiles 
             (user_id, username, first_name, last_name, photo_url, is_admin, updated_at) 
@@ -616,7 +587,6 @@ app.post('/api/user/auth', async (req, res) => {
                 first_name = EXCLUDED.first_name,
                 last_name = EXCLUDED.last_name,
                 photo_url = EXCLUDED.photo_url,
-                is_admin = EXCLUDED.is_admin,
                 updated_at = CURRENT_TIMESTAMP
             RETURNING *
         `, [
@@ -625,7 +595,7 @@ app.post('/api/user/auth', async (req, res) => {
             user.first_name || 'Пользователь',
             user.last_name || '',
             user.photo_url || '',
-            isAdmin
+            isAdmin  // Сохраняем текущие права админа
         ]);
         
         const userProfile = result.rows[0];
