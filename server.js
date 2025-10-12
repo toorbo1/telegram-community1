@@ -2266,8 +2266,3 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🗄️ Database: PostgreSQL`);
     console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
-// 🔧 ЭКСПОРТ ФУНКЦИЙ
-window.showAdminAdminsSection = showAdminAdminsSection;
-window.loadAdminsList = loadAdminsList;
-window.addNewAdmin = addNewAdmin;
-window.removeAdmin = removeAdmin;
