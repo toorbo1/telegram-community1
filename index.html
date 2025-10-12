@@ -18,7 +18,169 @@
             transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             -webkit-tap-highlight-color: transparent;
         }
+/* Совместимое многострочное ограничение текста */
+.task-description {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    line-height: 1.4;
+    flex: 1;
+    overflow: hidden;
+    
+    /* Стандартное свойство */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    
+    /* Альтернативные варианты для совместимости */
+    display: -moz-box;
+    -moz-line-clamp: 2;
+    -moz-box-orient: vertical;
+    
+    /* Современное стандартное свойство */
+    display: box;
+    line-clamp: 2;
+    box-orient: vertical;
+}
 
+/* Для сообщений в чате */
+.message-text {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+    line-height: 1.4;
+    max-width: 100%;
+    
+    /* Многострочное ограничение для длинных сообщений */
+    display: -webkit-box;
+    -webkit-line-clamp: 10; /* Максимум 10 строк */
+    -webkit-box-orient: vertical;
+    
+    display: -moz-box;
+    -moz-line-clamp: 10;
+    -moz-box-orient: vertical;
+    
+    display: box;
+    line-clamp: 10;
+    box-orient: vertical;
+    
+    overflow: hidden;
+}
+
+/* Для постов с возможностью раскрытия */
+.post-content {
+    color: var(--text-primary);
+    line-height: 1.5;
+    margin-bottom: 12px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    
+    /* Ограничение по умолчанию для постов */
+    display: -webkit-box;
+    -webkit-line-clamp: 6;
+    -webkit-box-orient: vertical;
+    
+    display: -moz-box;
+    -moz-line-clamp: 6;
+    -moz-box-orient: vertical;
+    
+    display: box;
+    line-clamp: 6;
+    box-orient: vertical;
+    
+    overflow: hidden;
+}
+
+/* Класс для развернутого текста */
+.post-content.expanded {
+    -webkit-line-clamp: unset;
+    -moz-line-clamp: unset;
+    line-clamp: unset;
+    display: block;
+    overflow: visible;
+}
+
+/* Для длинных названий заданий */
+.task-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    
+    /* Ограничение в 1 строку */
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    
+    display: -moz-box;
+    -moz-line-clamp: 1;
+    -moz-box-orient: vertical;
+    
+    display: box;
+    line-clamp: 1;
+    box-orient: vertical;
+    
+    overflow: hidden;
+}
+
+/* Для последних сообщений в чатах */
+.chat-last-message {
+    font-size: 12px;
+    color: var(--text-secondary);
+    
+    /* Ограничение в 1 строку */
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    
+    display: -moz-box;
+    -moz-line-clamp: 1;
+    -moz-box-orient: vertical;
+    
+    display: box;
+    line-clamp: 1;
+    box-orient: vertical;
+    
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* Fallback для браузеров без поддержки line-clamp */
+@supports not (line-clamp: 2) {
+    .task-description {
+        max-height: 2.8em; /* Примерная высота для 2 строк */
+        position: relative;
+    }
+    
+    .task-description:after {
+        content: '...';
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        background: var(--card-bg);
+        padding: 0 4px;
+    }
+}
+
+/* Для современных браузеров с поддержкой line-clamp */
+@supports (line-clamp: 2) {
+    .task-description:after {
+        display: none;
+    }
+}
+
+/* Улучшенная совместимость для Firefox */
+@-moz-document url-prefix() {
+    .task-description {
+        max-height: 2.8em;
+    }
+    
+    .post-content {
+        max-height: 9em; /* Примерная высота для 6 строк */
+    }
+}
         :root {
             --bg-primary: #050510;
             --bg-secondary: #0a0a1a;
@@ -44,7 +206,7 @@ body {
     color: var(--text-primary);
     min-height: 100vh;
     padding: 16px;
-    padding-bottom: 120px; /* Увеличил отступ снизу */
+    padding-bottom: 12px; /* Увеличил отступ снизу */
     line-height: 1.6;
     background-image: 
         radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.05) 0%, transparent 25%),
@@ -5567,66 +5729,65 @@ async function makeRequest(endpoint, options = {}) {
             }
         }
 
-        // 🔧 ФУНКЦИИ ДЛЯ ВКЛАДОК ЗАДАНИЙ
         function showTaskCategory(category) {
-            console.log('Switching to task category:', category);
-            
-            // Скрываем все контейнеры заданий
-            document.getElementById('new-tasks').style.display = 'none';
-            document.getElementById('confirmation-tasks').style.display = 'none';
-            document.getElementById('completed-tasks').style.display = 'none';
-            document.getElementById('rejected-tasks').style.display = 'none';
-            
-            // Убираем активный класс со всех вкладок
-            document.querySelectorAll('.task-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // Показываем выбранный контейнер и активируем вкладку
-            let targetContainer = null;
-            let targetTab = null;
-            
-            switch(category) {
-                case 'new':
-                    targetContainer = document.getElementById('new-tasks');
-                    targetTab = document.querySelector('.task-tab:nth-child(1)');
-                    targetContainer.style.display = 'block';
-                    // Загружаем новые задания если они еще не загружены
-                    if (allTasks.length === 0) {
-                        loadTasks();
-                    }
-                    break;
-                    
-                case 'confirmation':
-                    targetContainer = document.getElementById('confirmation-tasks');
-                    targetTab = document.querySelector('.task-tab:nth-child(2)');
-                    targetContainer.style.display = 'block';
-                    // Загружаем задания на подтверждение
-                    loadUserTasksForCategory('active');
-                    break;
-                    
-                case 'completed':
-                    targetContainer = document.getElementById('completed-tasks');
-                    targetTab = document.querySelector('.task-tab:nth-child(3)');
-                    targetContainer.style.display = 'block';
-                    // Загружаем выполненные задания
-                    loadUserTasksForCategory('completed');
-                    break;
-                    
-                case 'rejected':
-                    targetContainer = document.getElementById('rejected-tasks');
-                    targetTab = document.querySelector('.task-tab:nth-child(4)');
-                    targetContainer.style.display = 'block';
-                    // Загружаем отклоненные задания
-                    loadUserTasksForCategory('rejected');
-                    break;
+    console.log('Switching to task category:', category);
+    
+    // Скрываем все контейнеры заданий
+    document.getElementById('new-tasks').classList.remove('active');
+    document.getElementById('confirmation-tasks').classList.remove('active');
+    document.getElementById('completed-tasks').classList.remove('active');
+    document.getElementById('rejected-tasks').classList.remove('active');
+    
+    // Убираем активный класс со всех вкладок
+    document.querySelectorAll('.task-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Показываем выбранный контейнер и активируем вкладку
+    let targetContainer = null;
+    let targetTab = null;
+    
+    switch(category) {
+        case 'new':
+            targetContainer = document.getElementById('new-tasks');
+            targetTab = document.querySelector('.task-tab:nth-child(1)');
+            targetContainer.classList.add('active');
+            // Загружаем новые задания если они еще не загружены
+            if (allTasks.length === 0) {
+                loadTasks();
             }
+            break;
             
-            // Активируем вкладку
-            if (targetTab) {
-                targetTab.classList.add('active');
-            }
-        }
+        case 'confirmation':
+            targetContainer = document.getElementById('confirmation-tasks');
+            targetTab = document.querySelector('.task-tab:nth-child(2)');
+            targetContainer.classList.add('active');
+            // Загружаем задания на подтверждение
+            loadUserTasksForCategory('active');
+            break;
+            
+        case 'completed':
+            targetContainer = document.getElementById('completed-tasks');
+            targetTab = document.querySelector('.task-tab:nth-child(3)');
+            targetContainer.classList.add('active');
+            // Загружаем выполненные задания
+            loadUserTasksForCategory('completed');
+            break;
+            
+        case 'rejected':
+            targetContainer = document.getElementById('rejected-tasks');
+            targetTab = document.querySelector('.task-tab:nth-child(4)');
+            targetContainer.classList.add('active');
+            // Загружаем отклоненные задания
+            loadUserTasksForCategory('rejected');
+            break;
+    }
+    
+    // Активируем вкладку
+    if (targetTab) {
+        targetTab.classList.add('active');
+    }
+}
 
         // Функция для загрузки заданий пользователя по категории
         async function loadUserTasksForCategory(status) {
@@ -5833,18 +5994,15 @@ async function makeRequest(endpoint, options = {}) {
             }
         }
 
-        function displayTasks(tasks, category) {
+function displayTasks(tasks, category) {
     const container = document.getElementById(category + '-tasks');
     if (!container) return;
-    
-    // Сохраняем текущую прокрутку
-    const scrollPosition = container.scrollTop;
     
     container.innerHTML = '';
 
     if (!tasks || tasks.length === 0) {
         container.innerHTML = `
-            <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+            <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center; grid-column: 1 / -1;">
                 <div class="no-tasks-icon">📝</div>
                 <div>Заданий пока нет</div>
             </div>
@@ -5855,7 +6013,6 @@ async function makeRequest(endpoint, options = {}) {
     tasks.forEach(task => {
         const taskElement = document.createElement('div');
         taskElement.className = 'task-card fade-in';
-        taskElement.style.animationDelay = `${Math.random() * 0.3}s`; // Разное время появления
         
         taskElement.innerHTML = `
             <div class="task-header">
@@ -5873,9 +6030,104 @@ async function makeRequest(endpoint, options = {}) {
         `;
         container.appendChild(taskElement);
     });
+}
+
+// Обновите функцию отображения пользовательских заданий
+function displayUserTasksForCategory(tasks, status) {
+    let container = null;
     
-    // Восстанавливаем позицию прокрутки
-    container.scrollTop = scrollPosition;
+    switch(status) {
+        case 'active':
+            container = document.getElementById('confirmation-tasks');
+            break;
+        case 'completed':
+            container = document.getElementById('completed-tasks');
+            break;
+        case 'rejected':
+            container = document.getElementById('rejected-tasks');
+            break;
+    }
+    
+    if (!container) return;
+    
+    container.innerHTML = '';
+
+    if (!tasks || tasks.length === 0) {
+        let message = '';
+        switch(status) {
+            case 'active':
+                message = 'Нет заданий на подтверждение';
+                break;
+            case 'completed':
+                message = 'Нет выполненных заданий';
+                break;
+            case 'rejected':
+                message = 'Нет отклоненных заданий';
+                break;
+        }
+        
+        container.innerHTML = `
+            <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center; grid-column: 1 / -1;">
+                <div class="no-tasks-icon">📝</div>
+                <div>${message}</div>
+            </div>
+        `;
+        return;
+    }
+
+    tasks.forEach(task => {
+        const taskElement = document.createElement('div');
+        taskElement.className = `task-card ${status === 'rejected' ? 'rejected-task' : ''}`;
+        
+        if (status === 'active') {
+            taskElement.innerHTML = `
+                <div class="task-header">
+                    <div>
+                        <div class="task-title">${escapeHtml(task.title)}</div>
+                        <div class="task-category">${task.category || 'Общее'}</div>
+                    </div>
+                    <div class="task-price">${task.price} ⭐</div>
+                </div>
+                <div class="task-description">${escapeHtml(task.description)}</div>
+                <div class="task-footer">
+                    <div class="task-time">Ожидает подтверждения</div>
+                    <button class="task-btn" onclick="showTaskConfirmation(${task.id}, '${escapeHtml(task.title)}')">Подтвердить выполнение</button>
+                </div>
+            `;
+        } else if (status === 'completed') {
+            taskElement.innerHTML = `
+                <div class="task-header">
+                    <div>
+                        <div class="task-title">${escapeHtml(task.title)}</div>
+                        <div class="task-category">${task.category || 'Общее'}</div>
+                    </div>
+                    <div class="task-price">${task.price} ⭐</div>
+                </div>
+                <div class="task-description">${escapeHtml(task.description)}</div>
+                <div class="task-footer">
+                    <div class="task-time">Выполнено</div>
+                    <div class="task-status completed">✅</div>
+                </div>
+            `;
+        } else if (status === 'rejected') {
+            taskElement.innerHTML = `
+                <div class="task-header">
+                    <div>
+                        <div class="task-title">${escapeHtml(task.title)}</div>
+                        <div class="task-category">${task.category || 'Общее'}</div>
+                    </div>
+                    <div class="task-price">${task.price} ⭐</div>
+                </div>
+                <div class="task-description">${escapeHtml(task.description)}</div>
+                <div class="task-footer">
+                    <div class="task-time">Отклонено</div>
+                    <button class="support-btn" onclick="openAdminChat()">Написать в поддержку</button>
+                </div>
+            `;
+        }
+        
+        container.appendChild(taskElement);
+    });
 }
 
         // Функция открытия модального окна задания
