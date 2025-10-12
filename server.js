@@ -746,7 +746,7 @@ app.get('/api/posts', async (req, res) => {
     }
 });
 
-// Create post (admin only)
+// Create post (admin only) - ОБНОВЛЕННАЯ ВЕРСИЯ
 app.post('/api/posts', async (req, res) => {
     const { title, content, author, authorId } = req.body;
     
@@ -757,11 +757,24 @@ app.post('/api/posts', async (req, res) => {
         });
     }
     
-    // Check admin rights
-    if (parseInt(authorId) !== ADMIN_ID) {
-        return res.status(403).json({
+    // Check admin rights - разрешаем главному админу И нанятым админам
+    try {
+        const userResult = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [authorId]
+        );
+        
+        if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied - admin rights required'
+            });
+        }
+    } catch (error) {
+        console.error('Admin check error:', error);
+        return res.status(500).json({
             success: false,
-            error: 'Access denied'
+            error: 'Database error during admin check'
         });
     }
     
@@ -785,7 +798,6 @@ app.post('/api/posts', async (req, res) => {
         });
     }
 });
-
 // Delete post
 app.delete('/api/posts/:id', async (req, res) => {
     const { authorId } = req.body;
