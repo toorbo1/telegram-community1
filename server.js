@@ -1772,10 +1772,11 @@ app.get('/api/admin/debug-rights', async (req, res) => {
     }
 });
 
-// 🔐 Функция обеспечения прав главного администратора
+// Убедитесь, что главный администратор всегда имеет права
+// Убедитесь, что главный администратор всегда имеет права
 async function ensureMainAdmin() {
     try {
-        await pool.query(`
+        const result = await pool.query(`
             INSERT INTO user_profiles 
             (user_id, username, first_name, last_name, is_admin) 
             VALUES ($1, $2, $3, $4, $5)
@@ -1784,134 +1785,12 @@ async function ensureMainAdmin() {
                 is_admin = true,
                 updated_at = CURRENT_TIMESTAMP
         `, [ADMIN_ID, 'linkgold_admin', 'Главный', 'Администратор', true]);
+        
+        console.log('✅ Main admin ensured');
     } catch (error) {
-        console.error('Error ensuring main admin:', error);
+        console.error('❌ Error ensuring main admin:', error);
     }
 }
-
-// 📋 Получение списка администраторов
-app.get('/api/admin/admins-list', async (req, res) => {
-    const { adminId } = req.query;
-    
-    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Только главный администратор может просматривать список админов'
-        });
-    }
-    
-    try {
-        const result = await pool.query(`
-            SELECT user_id, username, first_name, last_name, is_admin, created_at 
-            FROM user_profiles 
-            WHERE is_admin = true 
-            ORDER BY created_at DESC
-        `);
-        
-        res.json({
-            success: true,
-            admins: result.rows
-        });
-    } catch (error) {
-        console.error('Get admins list error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Ошибка базы данных'
-        });
-    }
-});
-
-// ➕ Добавление нового администратора
-app.post('/api/admin/add-admin', async (req, res) => {
-    const { adminId, username } = req.body;
-    
-    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Только главный администратор может добавлять админов'
-        });
-    }
-    
-    if (!username) {
-        return res.status(400).json({
-            success: false,
-            error: 'Укажите юзернейм пользователя'
-        });
-    }
-    
-    try {
-        const cleanUsername = username.replace('@', '').trim();
-        
-        // Поиск пользователя по юзернейму
-        const userResult = await pool.query(
-            'SELECT user_id, username, first_name FROM user_profiles WHERE username = $1',
-            [cleanUsername]
-        );
-        
-        if (userResult.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'Пользователь с таким юзернеймом не найден'
-            });
-        }
-        
-        const user = userResult.rows[0];
-        
-        // Назначение прав администратора
-        await pool.query(
-            'UPDATE user_profiles SET is_admin = true WHERE user_id = $1',
-            [user.user_id]
-        );
-        
-        res.json({
-            success: true,
-            message: `Пользователь @${user.username} успешно добавлен как администратор`
-        });
-    } catch (error) {
-        console.error('Add admin error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Ошибка базы данных'
-        });
-    }
-});
-
-// 🗑️ Удаление администратора
-app.post('/api/admin/remove-admin', async (req, res) => {
-    const { adminId, targetAdminId } = req.body;
-    
-    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Только главный администратор может удалять админов'
-        });
-    }
-    
-    if (parseInt(targetAdminId) === ADMIN_ID) {
-        return res.status(400).json({
-            success: false,
-            error: 'Нельзя удалить главного администратора'
-        });
-    }
-    
-    try {
-        await pool.query(
-            'UPDATE user_profiles SET is_admin = false WHERE user_id = $1',
-            [targetAdminId]
-        );
-        
-        res.json({
-            success: true,
-            message: 'Администратор успешно удален'
-        });
-    } catch (error) {
-        console.error('Remove admin error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Ошибка базы данных'
-        });
-    }
-});
 
 async function initDatabase() {
     try {
