@@ -282,6 +282,7 @@ async function migrateDatabase() {
         console.error('❌ Database initialization error:', error);
     }
 }
+
 // Функция генерации реферального кода
 function generateReferralCode(userId) {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -310,6 +311,23 @@ function checkAdminAccess(userId) {
         }
     });
 }
+// ✅ ДОБАВИТЬ эту функцию проверки прав
+async function isUserAdmin(userId) {
+    try {
+        const result = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [userId]
+        );
+        
+        if (result.rows.length > 0) {
+            return result.rows[0].is_admin === true || parseInt(userId) === ADMIN_ID;
+        }
+        return parseInt(userId) === ADMIN_ID;
+    } catch (error) {
+        return parseInt(userId) === ADMIN_ID;
+    }
+}
+
 
 // 📝 Создание поста - доступно всем админам
 app.post('/api/posts', async (req, res) => {

@@ -5334,217 +5334,113 @@ input:checked + .theme-slider:before {
     </div>
 </div>
     <script>
-        // 🔧 КОНФИГУРАЦИЯ
-        console.log('🌐 Current URL:', window.location.href);
-        const API_BASE_URL = window.location.origin;
-        console.log('🔗 API Base URL:', API_BASE_URL);
-        
-        const tg = window.Telegram.WebApp;
-        const ADMIN_ID = 8036875641;
+  // 🔧 КОНФИГУРАЦИЯ
+const tg = window.Telegram.WebApp;
+const ADMIN_ID = 8036875641;
 
-        // Глобальные переменные
-        let currentUser = null;
-        let currentChatId = null;
-        let currentAdminChat = null;
-        let selectedTaskId = null;
-        let allTasks = [];
-        let chatUpdateInterval = null;
-        let currentUserTaskId = null;
-        let currentVerificationId = null;
+// Глобальные переменные
+let currentUser = null;
+let currentChatId = null;
+let currentAdminChat = null;
+let selectedTaskId = null;
+let allTasks = [];
+let currentUserTaskId = null;
+let currentVerificationId = null;
 
-// Улучшенная функция для запросов
-// Улучшенная функция для запросов с диагностикой
-async function makeRequest(endpoint, options = {}) {
-    try {
-        // Формируем полный URL
-        let url;
-        if (endpoint.startsWith('http')) {
-            url = endpoint;
-        } else if (endpoint.startsWith('/api')) {
-            url = API_BASE_URL + endpoint;
-        } else {
-            url = API_BASE_URL + '/api' + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
-        }
-        
-        console.log(`🚀 Making ${options.method || 'GET'} request to: ${url}`);
-        
-        const response = await fetch(url, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            },
-            ...options
-        });
-
-        console.log(`📨 Response status: ${response.status}`);
-        
-        // Проверяем Content-Type
-        const contentType = response.headers.get('content-type');
-        console.log(`📋 Content-Type: ${contentType}`);
-        
-        if (!contentType || !contentType.includes('application/json')) {
-            const text = await response.text();
-            console.log('📝 Non-JSON response:', text.substring(0, 200));
-            throw new Error(`Server returned non-JSON response: ${contentType}`);
-        }
-        
-        if (!response.ok) {
-            let errorMessage = `HTTP error! status: ${response.status}`;
-            try {
-                const errorData = await response.json();
-                if (errorData.error) {
-                    errorMessage = errorData.error;
-                }
-                if (errorData.details) {
-                    errorMessage += ` - ${errorData.details}`;
-                }
-            } catch (parseError) {
-                // If response is not JSON, use text
-                const errorText = await response.text();
-                if (errorText) {
-                    errorMessage += ` - ${errorText}`;
-                }
-            }
-            throw new Error(errorMessage);
-        }
-
-        const data = await response.json();
-        console.log('✅ Request successful');
-        return data;
-    } catch (error) {
-        console.error('💥 Request failed:', error);
-        
-        // Более информативные сообщения об ошибках
-        if (error.message.includes('non-JSON response')) {
-            showNotification('❌ Сервер вернул неверный формат данных. Возможно, endpoint не существует.', 'error');
-        } else if (error.message.includes('Failed to fetch')) {
-            showNotification('❌ Не удалось подключиться к серверу. Проверьте интернет.', 'error');
-        } else if (error.message.includes('404')) {
-            showNotification('🔍 Endpoint не найден. Возможно, сервер перезагружается.', 'error');
-        } else if (error.message.includes('500')) {
-            showNotification('⚙️ Ошибка на сервере. Попробуйте позже.', 'error');
-        } else {
-            showNotification(`⚠️ Ошибка: ${error.message}`, 'error');
-        }
-        
-        throw error;
-    }
-}
-// Функция для тестирования endpoint'ов
-async function testEndpoints() {
-    if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) return;
-    
-    try {
-        console.log('🧪 Testing endpoints...');
-        
-        // Тестируем базовый endpoint
-        const health = await makeRequest('/health');
-        console.log('✅ Health endpoint:', health);
-        
-        // Тестируем debug endpoints
-        const debug = await makeRequest('/debug/endpoints');
-        console.log('✅ Debug endpoints:', debug);
-        
-        // Тестируем admins-list endpoint
-        const admins = await makeRequest(`/admin/admins-list?adminId=${currentUser.id}`);
-        console.log('✅ Admins list endpoint:', admins);
-        
-    } catch (error) {
-        console.error('❌ Endpoint test failed:', error);
-    }
-}
-
-// Вызов для тестирования
-setTimeout(() => {
-    if (currentUser && parseInt(currentUser.id) === ADMIN_ID) {
-        testEndpoints();
-    }
-}, 5000);
-        // Инициализация приложения
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Initializing LinkGold app...');
-            
-            if (typeof tg !== 'undefined') {
-                tg.expand();
-                tg.ready();
-                initializeTelegramUser();
-            } else {
-                console.log('Telegram Web App context not available');
-                initializeTestUser();
-            }
-        });
-
-        // Инициализация пользователя Telegram
-        async function initializeTelegramUser() {
-            try {
-                if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                    const tgUser = tg.initDataUnsafe.user;
-                    
-                    currentUser = {
-                        id: tgUser.id,
-                        firstName: tgUser.first_name || 'Пользователь',
-                        lastName: tgUser.last_name || '',
-                        username: tgUser.username || `user_${tgUser.id}`,
-                        photoUrl: tgUser.photo_url || '',
-                        isAdmin: parseInt(tgUser.id) === ADMIN_ID
-                    };
-                    
-                    // Аутентифицируем пользователя на сервере
-                    try {
-                        const authResult = await makeRequest('/user/auth', {
-                            method: 'POST',
-                            body: JSON.stringify({
-                                user: currentUser
-                            })
-                        });
-                        
-                        if (authResult.success) {
-                            Object.assign(currentUser, authResult.user);
-                        }
-                    } catch (authError) {
-                        console.log('Auth endpoint not available, continuing with basic user data');
-                    }
-                    
-                    initializeApp();
-                    
-                } else {
-                    console.log('Telegram user data not available');
-                    initializeTestUser();
-                }
-            } catch (error) {
-                console.error('Error initializing Telegram user:', error);
-                initializeTestUser();
-            }
-        }
-// 🔍 Проверка прав администратора
-async function checkAdminAccess(userId) {
+// 🔍 Функция проверки прав администратора
+async function checkUserIsAdmin(userId) {
     try {
         const result = await makeRequest(`/user/${userId}`);
         if (result.success) {
-            return result.profile.is_admin || parseInt(userId) === ADMIN_ID;
+            return result.profile.is_admin === true || parseInt(userId) === ADMIN_ID;
         }
+        return false;
     } catch (error) {
         console.error('Admin check error:', error);
+        return false;
     }
-    return false;
 }
 
-// 📝 Функции для админов (без админ-панели)
-async function addNewPostAsAdmin() {
+// 🎯 Основная функция инициализации
+async function initializeApp() {
+    console.log('🎮 Initializing LinkGold app...');
+    
+    // Инициализируем пользователя
+    if (typeof tg !== 'undefined') {
+        await initializeTelegramUser();
+    } else {
+        initializeTestUser();
+    }
+    
+    // Инициализируем приложение
+    displayUserProfile();
+    loadMainPagePosts();
+    loadTasks();
+    initializeSearch();
+    loadUserTasks();
+    
+    // Обновляем интерфейс для админов
+    updateAdminInterface();
+    
+    console.log('🎉 App initialized successfully');
+}
+
+// 🔄 Обновление интерфейса для админов
+async function updateAdminInterface() {
     if (!currentUser) return;
+    
+    const isAdmin = await checkUserIsAdmin(currentUser.id);
+    if (isAdmin) {
+        addAdminButtonsToMainPage();
+    }
+}
+
+// 🎨 Добавление кнопок админа на главную страницу
+function addAdminButtonsToMainPage() {
+    // Удаляем старый контейнер если есть
+    const oldContainer = document.getElementById('admin-buttons-container');
+    if (oldContainer) oldContainer.remove();
+    
+    const adminButtonsHTML = `
+        <div id="admin-buttons-container" class="card fade-in" style="margin-top: 20px;">
+            <h3 style="margin-bottom: 16px; text-align: center;">⚙️ Панель администратора</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <button class="btn btn-primary" onclick="addNewPostAsAdmin()">📝 Добавить пост</button>
+                <button class="btn btn-primary" onclick="addTaskAsAdmin()">📋 Добавить задание</button>
+                <button class="btn btn-warning" onclick="loadTaskVerificationsForAdmin()">✅ Проверить задания</button>
+                <button class="btn btn-success" onclick="openAdminSupportChat()">💬 Ответить в чатах</button>
+            </div>
+        </div>
+    `;
+    
+    const mainTab = document.getElementById('main-tab');
+    if (mainTab) {
+        const tasksButton = mainTab.querySelector('.tasks-button-container');
+        if (tasksButton) {
+            tasksButton.insertAdjacentHTML('afterend', adminButtonsHTML);
+        }
+    }
+}
+
+// 📝 Функция создания поста (для всех админов)
+async function addNewPostAsAdmin() {
+    if (!currentUser) {
+        showNotification('Пользователь не авторизован', 'error');
+        return;
+    }
+    
+    // Проверяем права
+    const isAdmin = await checkUserIsAdmin(currentUser.id);
+    if (!isAdmin) {
+        showNotification('Только администратор может публиковать посты!', 'error');
+        return;
+    }
     
     const title = prompt('Введите заголовок поста:');
     if (!title) return;
     
     const content = prompt('Введите содержание поста:');
     if (!content) return;
-    
-    // Проверяем права
-    const isAdmin = await checkAdminAccess(currentUser.id);
-    if (!isAdmin) {
-        showNotification('Только администратор может публиковать посты!', 'error');
-        return;
-    }
     
     try {
         const result = await makeRequest('/posts', {
@@ -5569,14 +5465,14 @@ async function addNewPostAsAdmin() {
     }
 }
 
-// 🗑️ Удаление поста
+// 🗑️ Удаление поста (для всех админов)
 async function deletePostAsAdmin(postId) {
     if (!currentUser) return;
     
     if (!confirm('Удалить этот пост?')) return;
     
     // Проверяем права
-    const isAdmin = await checkAdminAccess(currentUser.id);
+    const isAdmin = await checkUserIsAdmin(currentUser.id);
     if (!isAdmin) {
         showNotification('Только администратор может удалять посты!', 'error');
         return;
@@ -5600,9 +5496,19 @@ async function deletePostAsAdmin(postId) {
     }
 }
 
-// 📋 Создание задания
+// 📋 Функция создания задания (для всех админов)
 async function addTaskAsAdmin() {
-    if (!currentUser) return;
+    if (!currentUser) {
+        showNotification('Пользователь не авторизован', 'error');
+        return;
+    }
+    
+    // Проверяем права
+    const isAdmin = await checkUserIsAdmin(currentUser.id);
+    if (!isAdmin) {
+        showNotification('Только администратор может создавать задания!', 'error');
+        return;
+    }
     
     const title = prompt('Введите название задания:');
     if (!title) return;
@@ -5612,13 +5518,6 @@ async function addTaskAsAdmin() {
     
     const price = prompt('Введите цену задания (в рублях):');
     if (!price) return;
-    
-    // Проверяем права
-    const isAdmin = await checkAdminAccess(currentUser.id);
-    if (!isAdmin) {
-        showNotification('Только администратор может создавать задания!', 'error');
-        return;
-    }
     
     try {
         const result = await makeRequest('/tasks', {
@@ -5643,14 +5542,14 @@ async function addTaskAsAdmin() {
     }
 }
 
-// 🗑️ Удаление задания
+// 🗑️ Удаление задания (для всех админов)
 async function deleteTaskAsAdmin(taskId) {
     if (!currentUser) return;
     
     if (!confirm('Удалить это задание?')) return;
     
     // Проверяем права
-    const isAdmin = await checkAdminAccess(currentUser.id);
+    const isAdmin = await checkUserIsAdmin(currentUser.id);
     if (!isAdmin) {
         showNotification('Только администратор может удалять задания!', 'error');
         return;
@@ -5674,21 +5573,27 @@ async function deleteTaskAsAdmin(taskId) {
     }
 }
 
-// ✅ Проверка заданий (для админов)
+// ✅ Проверка заданий (для всех админов)
 async function loadTaskVerificationsForAdmin() {
     if (!currentUser) return;
     
     // Проверяем права
-    const isAdmin = await checkAdminAccess(currentUser.id);
-    if (!isAdmin) return;
+    const isAdmin = await checkUserIsAdmin(currentUser.id);
+    if (!isAdmin) {
+        showNotification('Только администратор может проверять задания!', 'error');
+        return;
+    }
     
     try {
         const result = await makeRequest(`/admin/task-verifications?adminId=${currentUser.id}`);
         if (result.success) {
             showVerificationsModal(result.verifications);
+        } else {
+            showNotification('Ошибка загрузки заданий на проверку', 'error');
         }
     } catch (error) {
         console.error('Error loading verifications:', error);
+        showNotification('Ошибка загрузки заданий на проверку', 'error');
     }
 }
 
@@ -5715,7 +5620,7 @@ function showVerificationsModal(verifications) {
         verifications.forEach(verification => {
             modalHTML += `
                 <div class="verification-item" style="margin-bottom: 16px; padding: 16px; border: 1px solid var(--border); border-radius: 12px;">
-                    <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
                         <div style="flex: 1;">
                             <div style="font-weight: 600;">${verification.user_name}</div>
                             <div style="color: var(--text-secondary); font-size: 14px;">${verification.task_title}</div>
@@ -5723,7 +5628,7 @@ function showVerificationsModal(verifications) {
                         <div style="font-weight: 700; color: var(--gold);">${verification.task_price} ⭐</div>
                     </div>
                     <div style="margin-bottom: 12px;">
-                        <img src="${verification.screenshot_url}" alt="Скриншот" style="width: 100%; border-radius: 8px;">
+                        <img src="${verification.screenshot_url}" alt="Скриншот" style="width: 100%; border-radius: 8px; max-height: 300px; object-fit: contain;">
                     </div>
                     <div style="display: flex; gap: 8px;">
                         <button class="btn btn-success" style="flex: 1;" onclick="approveVerification(${verification.id})">✅ Одобрить</button>
@@ -5749,7 +5654,7 @@ async function openAdminSupportChat() {
     if (!currentUser) return;
     
     // Проверяем права
-    const isAdmin = await checkAdminAccess(currentUser.id);
+    const isAdmin = await checkUserIsAdmin(currentUser.id);
     if (!isAdmin) {
         showNotification('Только администратор может отвечать в чате!', 'error');
         return;
@@ -5759,9 +5664,12 @@ async function openAdminSupportChat() {
         const result = await makeRequest(`/support/chats?adminId=${currentUser.id}`);
         if (result.success) {
             showAdminChatsModal(result.chats);
+        } else {
+            showNotification('Ошибка загрузки чатов', 'error');
         }
     } catch (error) {
         console.error('Error loading admin chats:', error);
+        showNotification('Ошибка загрузки чатов', 'error');
     }
 }
 
@@ -5809,3253 +5717,211 @@ function showAdminChatsModal(chats) {
     document.body.insertAdjacentHTML('beforeend', modalHTML);
 }
 
-// 🔧 Обновление интерфейса для админов
-function updateAdminInterface() {
+// 💬 Открыть чат с пользователем
+async function openChatWithUser(chatId) {
     if (!currentUser) return;
     
-    // Проверяем права асинхронно и обновляем интерфейс
-    checkAdminAccess(currentUser.id).then(isAdmin => {
-        if (isAdmin) {
-            // Добавляем кнопки для админов в главную страницу
-            addAdminButtonsToMainPage();
+    try {
+        // Загружаем сообщения
+        const messagesResult = await makeRequest(`/support/chats/${chatId}/messages`);
+        
+        if (messagesResult.success) {
+            showAdminChatWindow(chatId, messagesResult.messages);
         }
-    });
+    } catch (error) {
+        console.error('Error opening chat:', error);
+        showNotification('Ошибка открытия чата', 'error');
+    }
 }
 
-// 🎨 Добавление кнопок админа на главную страницу
-function addAdminButtonsToMainPage() {
-    // Проверяем, не добавлены ли кнопки уже
-    if (document.getElementById('admin-buttons-container')) return;
+// 🎨 Показать окно чата админа
+function showAdminChatWindow(chatId, messages) {
+    let chatWindow = document.getElementById('admin-chat-window');
+    if (!chatWindow) {
+        createAdminChatWindow();
+        chatWindow = document.getElementById('admin-chat-window');
+    }
     
-    const adminButtonsHTML = `
-        <div id="admin-buttons-container" class="card fade-in" style="margin-top: 20px;">
-            <h3 style="margin-bottom: 16px; text-align: center;">⚙️ Панель администратора</h3>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                <button class="btn btn-primary" onclick="addNewPostAsAdmin()">📝 Добавить пост</button>
-                <button class="btn btn-primary" onclick="addTaskAsAdmin()">📋 Добавить задание</button>
-                <button class="btn btn-warning" onclick="loadTaskVerificationsForAdmin()">✅ Проверить задания</button>
-                <button class="btn btn-success" onclick="openAdminSupportChat()">💬 Ответить в чатах</button>
+    // Сохраняем ID текущего чата
+    currentAdminChat = { id: chatId };
+    
+    // Отображаем сообщения
+    displayAdminChatMessages(messages);
+    
+    chatWindow.classList.add('active');
+}
+
+// 🎨 Создание окна чата админа
+function createAdminChatWindow() {
+    const chatWindowHTML = `
+        <div class="admin-chat-window" id="admin-chat-window">
+            <div class="admin-chat-header">
+                <div class="admin-chat-user">
+                    <div class="chat-avatar-small" id="admin-chat-avatar">U</div>
+                    <div class="chat-info-small">
+                        <div class="chat-name-small" id="admin-chat-user-name">Пользователь</div>
+                        <div class="chat-status">Онлайн</div>
+                    </div>
+                </div>
+                <button class="chat-close" onclick="closeAdminChat()">×</button>
+            </div>
+            <div class="admin-chat-messages" id="admin-chat-messages">
+                <!-- Сообщения будут загружены здесь -->
+            </div>
+            <div class="admin-chat-input-container">
+                <input type="text" id="admin-chat-input" placeholder="Введите сообщение..." onkeypress="if(event.key==='Enter') sendAdminMessage()">
+                <button class="admin-chat-send" onclick="sendAdminMessage()">➤</button>
             </div>
         </div>
     `;
     
-    const mainTab = document.getElementById('main-tab');
-    if (mainTab) {
-        mainTab.insertAdjacentHTML('beforeend', adminButtonsHTML);
-    }
+    document.body.insertAdjacentHTML('beforeend', chatWindowHTML);
 }
 
-// 🔄 Обновление функции инициализации
-async function initializeApp() {
-    console.log('🎮 Initializing LinkGold app...');
-    
-    // Показываем загрузку
-    showNotification('🔄 Загружаем приложение...', 'info');
-    
-    // Инициализируем пользователя
-    if (typeof tg !== 'undefined') {
-        await initializeTelegramUser();
-    } else {
-        initializeTestUser();
-    }
-    
-    // Инициализируем приложение
-    displayUserProfile();
-    loadMainPagePosts();
-    loadTasks();
-    initializeSearch();
-    loadUserTasks();
-    
-    // Обновляем интерфейс для админов
-    updateAdminInterface();
-    
-    console.log('🎉 App initialized successfully');
-}
-        // Функция для тестирования (без Telegram)
-        function initializeTestUser() {
-            currentUser = {
-                id: 123456789,
-                firstName: 'Алексей',
-                lastName: 'Иванов',
-                username: 'alexey_test',
-                isAdmin: false,
-                balance: 150,
-                level: 1,
-                tasks_completed: 5,
-                active_tasks: 2,
-                quality_rate: 95,
-                referral_count: 3,
-                referral_earned: 450
-            };
-            initializeApp();
-        }
-
-
-// Обновление админ-панели при изменении прав
-function updateAdminPanel() {
-    checkAdminRights();
-    setupAdminPanel();
-    
-    // Если мы сейчас на админ-вкладке, обновляем ее
-    if (document.getElementById('admin-tab').classList.contains('active')) {
-        const currentSection = document.querySelector('.admin-section[style*="display: block"]');
-        if (currentSection) {
-            const sectionId = currentSection.id;
-            const sectionName = sectionId.replace('admin-', '').replace('-section', '');
-            showAdminSection(sectionName);
-        }
-    }
-}
-// ✅ ПРАВИЛЬНЫЕ ПРОВЕРКИ ДЛЯ ВСЕХ АДМИНОВ
-
-// Функция проверки прав администратора
-async function isUserAdmin(userId) {
-    try {
-        const result = await pool.query(
-            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
-            [userId]
-        );
-        
-        if (result.rows.length > 0) {
-            return result.rows[0].is_admin === true || parseInt(userId) === ADMIN_ID;
-        }
-        return parseInt(userId) === ADMIN_ID;
-    } catch (error) {
-        return parseInt(userId) === ADMIN_ID;
-    }
-}
-
-// Создание поста - для всех админов
-app.post('/api/posts', async (req, res) => {
-    const { title, content, author, authorId } = req.body;
-    
-    if (!title || !content || !author) {
-        return res.status(400).json({
-            success: false,
-            error: 'Заполните все поля'
-        });
-    }
-    
-    // ✅ ПРАВИЛЬНАЯ ПРОВЕРКА - все админы могут создавать посты
-    const userIsAdmin = await isUserAdmin(authorId);
-    if (!userIsAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Только администратор может публиковать посты!'
-        });
-    }
-    
-    try {
-        const result = await pool.query(`
-            INSERT INTO posts (title, content, author, author_id) 
-            VALUES ($1, $2, $3, $4)
-            RETURNING *
-        `, [title, content, author, authorId]);
-        
-        res.json({
-            success: true,
-            message: 'Пост успешно опубликован!',
-            post: result.rows[0]
-        });
-    } catch (error) {
-        console.error('Create post error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Ошибка базы данных'
-        });
-    }
-});
-
-// Создание задания - для всех админов
-app.post('/api/tasks', async (req, res) => {
-    const { title, description, price, created_by } = req.body;
-    
-    if (!title || !description || !price) {
-        return res.status(400).json({
-            success: false,
-            error: 'Заполните название, описание и цену'
-        });
-    }
-    
-    // ✅ ПРАВИЛЬНАЯ ПРОВЕРКА - все админы могут создавать задания
-    const userIsAdmin = await isUserAdmin(created_by);
-    if (!userIsAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Только администратор может создавать задания!'
-        });
-    }
-    
-    try {
-        const taskPrice = parseFloat(price);
-        if (isNaN(taskPrice) || taskPrice <= 0) {
-            return res.status(400).json({
-                success: false,
-                error: 'Цена должна быть положительным числом!'
-            });
-        }
-
-        const result = await pool.query(`
-            INSERT INTO tasks (title, description, price, created_by) 
-            VALUES ($1, $2, $3, $4)
-            RETURNING *
-        `, [title.trim(), description.trim(), taskPrice, created_by]);
-        
-        res.json({
-            success: true,
-            message: 'Задание успешно создано!',
-            task: result.rows[0]
-        });
-    } catch (error) {
-        console.error('Create task error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Ошибка создания задания'
-        });
-    }
-});
-// 🔍 Функция проверки прав администратора
-async function checkUserIsAdmin(userId) {
-    try {
-        const result = await makeRequest(`/user/${userId}`);
-        if (result.success) {
-            return result.profile.is_admin === true || parseInt(userId) === ADMIN_ID;
-        }
-        return false;
-    } catch (error) {
-        console.error('Admin check error:', error);
-        return false;
-    }
-}
-
-// 📝 Функция создания поста (для всех админов)
-async function addNewPostAsAdmin() {
-    if (!currentUser) {
-        showNotification('Пользователь не авторизован', 'error');
+// ✉️ Отправка сообщения админом
+async function sendAdminMessage() {
+    if (!currentAdminChat || !currentUser) {
+        showNotification('Чат не выбран', 'error');
         return;
     }
     
-    // ✅ ПРАВИЛЬНАЯ ПРОВЕРКА
-    const isAdmin = await checkUserIsAdmin(currentUser.id);
-    if (!isAdmin) {
-        showNotification('Только администратор может публиковать посты!', 'error');
-        return;
-    }
+    const input = document.getElementById('admin-chat-input');
+    if (!input) return;
     
-    const title = prompt('Введите заголовок поста:');
-    if (!title) return;
+    const message = input.value.trim();
     
-    const content = prompt('Введите содержание поста:');
-    if (!content) return;
-    
-    try {
-        const result = await makeRequest('/posts', {
-            method: 'POST',
-            body: JSON.stringify({
-                title: title,
-                content: content,
-                author: currentUser.firstName,
-                authorId: currentUser.id
-            })
-        });
-
-        if (result.success) {
-            showNotification('Пост успешно опубликован!', 'success');
-            loadMainPagePosts();
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error adding post:', error);
-        showNotification('Ошибка публикации поста', 'error');
-    }
-}
-
-// 📋 Функция создания задания (для всех админов)
-async function addTaskAsAdmin() {
-    if (!currentUser) {
-        showNotification('Пользователь не авторизован', 'error');
-        return;
-    }
-    
-    // ✅ ПРАВИЛЬНАЯ ПРОВЕРКА
-    const isAdmin = await checkUserIsAdmin(currentUser.id);
-    if (!isAdmin) {
-        showNotification('Только администратор может создавать задания!', 'error');
-        return;
-    }
-    
-    const title = prompt('Введите название задания:');
-    if (!title) return;
-    
-    const description = prompt('Введите описание задания:');
-    if (!description) return;
-    
-    const price = prompt('Введите цену задания (в рублях):');
-    if (!price) return;
-    
-    try {
-        const result = await makeRequest('/tasks', {
-            method: 'POST',
-            body: JSON.stringify({
-                title: title,
-                description: description,
-                price: parseFloat(price),
-                created_by: currentUser.id
-            })
-        });
-
-        if (result.success) {
-            showNotification('Задание успешно создано!', 'success');
-            loadTasks();
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error adding task:', error);
-        showNotification('Ошибка создания задания', 'error');
-    }
-}
-// Обновите функцию инициализации приложения
-// Обновите функцию инициализации приложения
-async function initializeApp() {
-    console.log('🎮 Initializing LinkGold app...');
-    
-    // Показываем загрузку
-    showNotification('🔄 Подключаемся к серверу...', 'info');
-    
-    // Проверяем соединение с API
-    try {
-        console.log('🔍 Testing API connection...');
-        const health = await makeRequest('/health');
-        console.log('✅ API connection successful:', health);
-        showNotification('✅ Соединение с сервером установлено!', 'success');
-    } catch (error) {
-        console.error('❌ API connection failed:', error);
-        showNotification('❌ Не удалось подключиться к серверу', 'error');
-        showRetryButton();
-        return;
-    }
-    
-    // Принудительно обновляем права администратора
-    await refreshAdminRights();
-    
-    // Настраиваем админ-панель
-    setupAdminPanel();
-    
-    // Инициализируем приложение
-    displayUserProfile();
-    checkAdminRights();
-    loadMainPagePosts();
-    loadTasks();
-    initializeSearch();
-    loadUserTasks();
-    
-    // Запускаем автообновление данных
-    startUserDataAutoUpdate();
-    
-    // Если пользователь админ, загружаем админ-данные
-    if (currentUser && (currentUser.is_admin || parseInt(currentUser.id) === ADMIN_ID)) {
-        loadAdminChats();
-        loadAdminTasks();
-        loadTaskVerifications();
-        
-        // Если это главный админ, загружаем список админов
-        if (parseInt(currentUser.id) === ADMIN_ID) {
-            setTimeout(() => {
-                loadAdminsList();
-            }, 500);
-        }
-    }
-    
-    console.log('🎉 App initialized successfully');
-}
-// Функция для отладки прав администратора
-function debugAdminRights() {
-    console.log('🐛 DEBUG Admin Rights:');
-    console.log('- Current User:', currentUser);
-    console.log('- ADMIN_ID:', ADMIN_ID);
-    console.log('- is_admin:', currentUser?.is_admin);
-    console.log('- isMainAdmin:', currentUser?.id === ADMIN_ID.toString());
-    console.log('- Admin Nav Visible:', document.getElementById('admin-nav-item')?.style.display);
-    console.log('- Admin Panel Visible:', document.getElementById('admin-panel')?.style.display);
-}
-
-// Вызов для отладки (можно убрать после тестирования)
-setTimeout(debugAdminRights, 2000);
-
-        // Функция для кнопки повторной попытки
-        function showRetryButton() {
-            const retryBtn = document.createElement('button');
-            retryBtn.textContent = '🔄 Попробовать снова';
-            retryBtn.className = 'btn btn-primary';
-            retryBtn.style.margin = '20px auto';
-            retryBtn.style.display = 'block';
-            retryBtn.onclick = function() {
-                retryBtn.remove();
-                initializeApp();
-            };
-            
-            document.body.appendChild(retryBtn);
-        }
-
-        // Автоматическое обновление данных пользователя
-        function startUserDataAutoUpdate() {
-            // Обновляем каждые 30 секунд
-            setInterval(() => {
-                if (currentUser) {
-                    updateUserData();
-                }
-            }, 30000);
-        }
-
-        // Обновление данных пользователя
-        async function updateUserData() {
-            if (!currentUser) return;
-            
-            try {
-                const result = await makeRequest(`/user/${currentUser.id}`);
-                if (result.success) {
-                    // Обновляем текущего пользователя
-                    currentUser = { ...currentUser, ...result.profile };
-                    
-                    // Обновляем отображение во всех местах
-                    displayUserProfile();
-                    
-                    console.log('✅ Данные пользователя обновлены:', currentUser.balance);
-                }
-            } catch (error) {
-                console.error('Ошибка обновления данных пользователя:', error);
-            }
-        }
-
-        // Отображение профиля пользователя
-        function displayUserProfile() {
-            if (!currentUser) return;
-
-            const firstNameElement = document.getElementById('user-first-name');
-            const usernameElement = document.getElementById('user-username');
-            const levelElement = document.getElementById('user-level');
-            const balanceElement = document.getElementById('user-balance-main');
-            const withdrawBalanceElement = document.getElementById('withdraw-balance');
-            const withdrawBalanceDisplay = document.getElementById('withdraw-balance-display');
-            
-            if (firstNameElement) {
-                const fullName = currentUser.lastName ? 
-                    `${currentUser.firstName} ${currentUser.lastName}` : 
-                    currentUser.firstName;
-                firstNameElement.textContent = fullName;
-            }
-            
-            if (usernameElement) usernameElement.textContent = currentUser.username;
-            if (levelElement) levelElement.textContent = currentUser.level || 0;
-            
-            // ОБНОВЛЯЕМ БАЛАНС ВО ВСЕХ МЕСТАХ
-            const userBalance = currentUser.balance || 0;
-            if (balanceElement) balanceElement.textContent = `${userBalance} ⭐`;
-            if (withdrawBalanceElement) withdrawBalanceElement.textContent = `${userBalance} ⭐`;
-            if (withdrawBalanceDisplay) withdrawBalanceDisplay.textContent = `${userBalance} ⭐`;
-            
-            // Обновляем аватар
-            const userPhotoElement = document.getElementById('user-photo');
-            if (userPhotoElement) {
-                if (currentUser.photoUrl) {
-                    userPhotoElement.src = currentUser.photoUrl;
-                    userPhotoElement.alt = 'Фото профиля';
-                } else {
-                    userPhotoElement.style.display = 'flex';
-                    userPhotoElement.style.alignItems = 'center';
-                    userPhotoElement.style.justifyContent = 'center';
-                    userPhotoElement.style.backgroundColor = '#6366f1';
-                    userPhotoElement.style.color = 'white';
-                    userPhotoElement.style.fontWeight = 'bold';
-                    userPhotoElement.textContent = currentUser.firstName.charAt(0);
-                }
-            }
-            
-            updateProfileStats();
-            updateReferralSystem();
-            updateLevelProgress();
-        }
-
-        // Обновление статистики профиля
-        function updateProfileStats() {
-            if (!currentUser) return;
-            
-            const stats = document.querySelectorAll('.profile-stat .stat-value');
-            if (stats.length >= 4) {
-                stats[0].textContent = `${currentUser.balance || 0} ⭐`; // Баланс
-                stats[1].textContent = currentUser.tasks_completed || 0; // Выполнено
-                stats[2].textContent = currentUser.active_tasks || 0; // Активных
-                stats[3].textContent = `${currentUser.quality_rate || 0}%`; // Качество
-            }
-        }
-
-        // Обновление реферальной системы
-        function updateReferralSystem() {
-            if (!currentUser) return;
-            
-            const referralLink = `https://t.me/LinkGoldMoney_bot?start=ref_${currentUser.id}`;
-            const referralInput = document.getElementById('referral-link');
-            if (referralInput) referralInput.value = referralLink;
-            
-            const refInvited = document.getElementById('ref-invited');
-            const refEarned = document.getElementById('ref-earned');
-            
-            if (refInvited) refInvited.textContent = currentUser.referral_count || 0;
-            if (refEarned) refEarned.textContent = `${currentUser.referral_earned || 0} ⭐`;
-        }
-
-        // Обновление прогресса уровня
-        function updateLevelProgress() {
-            if (!currentUser) return;
-            
-            const experience = currentUser.experience || 0;
-            const currentLevel = currentUser.level || 0;
-            const experienceForNextLevel = (currentLevel + 1) * 100;
-            const experienceInCurrentLevel = experience % 100;
-            const progressPercent = (experienceInCurrentLevel / 100) * 100;
-            
-            const progressBar = document.getElementById('level-progress-bar');
-            const levelCount = document.querySelector('.level-count');
-            
-            if (progressBar) {
-                progressBar.style.width = `${progressPercent}%`;
-            }
-            
-            if (levelCount) {
-                levelCount.textContent = `${experienceInCurrentLevel}/100 опыта`;
-            }
-        }
-
-        // Проверка прав администратора
-// Проверка прав администратора
-// Проверка прав администратора - ОБНОВЛЕННАЯ ВЕРСИЯ
-// Проверка прав администратора - ОБНОВЛЕННАЯ ВЕРСИЯ
-function checkAdminRights() {
-    const adminNavItem = document.getElementById('admin-nav-item');
-    
-    console.log('🔍 Checking admin rights for user:', {
-        id: currentUser?.id,
-        is_admin: currentUser?.is_admin,
-        isMainAdmin: parseInt(currentUser?.id) === ADMIN_ID
-    });
-    
-    // Проверяем главного администратора
-    const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
-    
-    // Проверяем обычного администратора
-    const isRegularAdmin = currentUser?.is_admin === true;
-    
-    if (currentUser && (isMainAdmin || isRegularAdmin)) {
-        if (adminNavItem) {
-            adminNavItem.style.display = 'flex';
-            console.log('✅ Admin nav item shown');
-        }
-        
-        console.log('👑 Admin access granted:', {
-            id: currentUser.id,
-            isMainAdmin: isMainAdmin,
-            isRegularAdmin: isRegularAdmin
-        });
-        
-    } else {
-        if (adminNavItem) {
-            adminNavItem.style.display = 'none';
-            console.log('❌ Admin nav item hidden');
-        }
-        
-        console.log('🚫 User is not admin');
-    }
-}
-// В функции инициализации админ-панели добавьте:
-if (parseInt(currentUser.id) === ADMIN_ID) {
-    // Показываем кнопку управления админами только главному админу
-    const adminButtons = document.querySelector('.admin-buttons');
-    if (adminButtons) {
-        adminButtons.innerHTML += `
-            <button class="admin-btn" onclick="showAdminSection('admins')">👥 Админы</button>
-        `;
-    }
-}
-// Обновите функцию инициализации приложения
-
-        // 🔧 ФУНКЦИИ ДЛЯ ВКЛАДОК ЗАДАНИЙ
-        function showTaskCategory(category) {
-            console.log('Switching to task category:', category);
-            
-            // Скрываем все контейнеры заданий
-            document.getElementById('new-tasks').style.display = 'none';
-            document.getElementById('confirmation-tasks').style.display = 'none';
-            document.getElementById('completed-tasks').style.display = 'none';
-            document.getElementById('rejected-tasks').style.display = 'none';
-            
-            // Убираем активный класс со всех вкладок
-            document.querySelectorAll('.task-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // Показываем выбранный контейнер и активируем вкладку
-            let targetContainer = null;
-            let targetTab = null;
-            
-            switch(category) {
-                case 'new':
-                    targetContainer = document.getElementById('new-tasks');
-                    targetTab = document.querySelector('.task-tab:nth-child(1)');
-                    targetContainer.style.display = 'block';
-                    // Загружаем новые задания если они еще не загружены
-                    if (allTasks.length === 0) {
-                        loadTasks();
-                    }
-                    break;
-                    
-                case 'confirmation':
-                    targetContainer = document.getElementById('confirmation-tasks');
-                    targetTab = document.querySelector('.task-tab:nth-child(2)');
-                    targetContainer.style.display = 'block';
-                    // Загружаем задания на подтверждение
-                    loadUserTasksForCategory('active');
-                    break;
-                    
-                case 'completed':
-                    targetContainer = document.getElementById('completed-tasks');
-                    targetTab = document.querySelector('.task-tab:nth-child(3)');
-                    targetContainer.style.display = 'block';
-                    // Загружаем выполненные задания
-                    loadUserTasksForCategory('completed');
-                    break;
-                    
-                case 'rejected':
-                    targetContainer = document.getElementById('rejected-tasks');
-                    targetTab = document.querySelector('.task-tab:nth-child(4)');
-                    targetContainer.style.display = 'block';
-                    // Загружаем отклоненные задания
-                    loadUserTasksForCategory('rejected');
-                    break;
-            }
-            
-            // Активируем вкладку
-            if (targetTab) {
-                targetTab.classList.add('active');
-            }
-        }
-
-        // Функция для загрузки заданий пользователя по категории
-        async function loadUserTasksForCategory(status) {
-            if (!currentUser) return;
-            
-            try {
-                const result = await makeRequest(`/user/${currentUser.id}/tasks?status=${status}`);
-                if (result.success) {
-                    displayUserTasksForCategory(result.tasks, status);
-                } else {
-                    showNotification('Ошибка загрузки заданий: ' + result.error, 'error');
-                }
-            } catch (error) {
-                console.error('Error loading user tasks for category:', error);
-                showNotification('Ошибка загрузки заданий', 'error');
-            }
-        }
-
-        // Функция для отображения заданий пользователя по категории
-        function displayUserTasksForCategory(tasks, status) {
-            let container = null;
-            
-            switch(status) {
-                case 'active':
-                    container = document.getElementById('confirmation-tasks');
-                    break;
-                case 'completed':
-                    container = document.getElementById('completed-tasks');
-                    break;
-                case 'rejected':
-                    container = document.getElementById('rejected-tasks');
-                    break;
-            }
-            
-            if (!container) return;
-            
-            container.innerHTML = '';
-
-            if (!tasks || tasks.length === 0) {
-                let message = '';
-                switch(status) {
-                    case 'active':
-                        message = 'Нет заданий на подтверждение';
-                        break;
-                    case 'completed':
-                        message = 'Нет выполненных заданий';
-                        break;
-                    case 'rejected':
-                        message = 'Нет отклоненных заданий';
-                        break;
-                }
-                
-                container.innerHTML = `
-                    <div class="no-tasks">
-                        <div class="no-tasks-icon">📝</div>
-                        <div>${message}</div>
-                    </div>
-                `;
-                return;
-            }
-
-            tasks.forEach(task => {
-                const taskElement = document.createElement('div');
-                taskElement.className = `task-card ${status === 'rejected' ? 'rejected-task' : ''}`;
-                
-                if (status === 'active') {
-                    // Задания на подтверждение
-                    taskElement.innerHTML = `
-                        <div class="task-header">
-                            <div>
-                                <div class="task-title">${escapeHtml(task.title)}</div>
-                                <div class="task-category">${task.category || 'Общее'}</div>
-                            </div>
-                            <div class="task-price">${task.price} ⭐</div>
-                        </div>
-                        <div class="task-description">${escapeHtml(task.description)}</div>
-                        <div class="task-footer">
-                            <div class="task-time">Ожидает подтверждения</div>
-                            <button class="task-btn" onclick="showTaskConfirmation(${task.id}, '${escapeHtml(task.title)}')">Подтвердить выполнение</button>
-                        </div>
-                    `;
-                } else if (status === 'completed') {
-                    // Выполненные задания
-                    taskElement.innerHTML = `
-                        <div class="task-header">
-                            <div>
-                                <div class="task-title">${escapeHtml(task.title)}</div>
-                                <div class="task-category">${task.category || 'Общее'}</div>
-                            </div>
-                            <div class="task-price">${task.price} ⭐</div>
-                        </div>
-                        <div class="task-description">${escapeHtml(task.description)}</div>
-                        <div class="task-footer">
-                            <div class="task-time">Выполнено</div>
-                            <div class="task-status completed">✅</div>
-                        </div>
-                    `;
-                } else if (status === 'rejected') {
-                    // Отклоненные задания
-                    taskElement.innerHTML = `
-                        <div class="task-header">
-                            <div>
-                                <div class="task-title">${escapeHtml(task.title)}</div>
-                                <div class="task-category">${task.category || 'Общее'}</div>
-                            </div>
-                            <div class="task-price">${task.price} ⭐</div>
-                        </div>
-                        <div class="task-description">${escapeHtml(task.description)}</div>
-                        <div class="task-footer">
-                            <div class="task-time">Отклонено</div>
-                            <button class="support-btn" onclick="openAdminChat()">Написать в поддержку</button>
-                        </div>
-                    `;
-                }
-                
-                container.appendChild(taskElement);
-            });
-        }
-
-        // Обновленная функция загрузки заданий пользователя
-        async function loadUserTasks() {
-            if (!currentUser) return;
-            
-            try {
-                // Загружаем активные задания (на подтверждение)
-                const activeResult = await makeRequest(`/user/${currentUser.id}/tasks?status=active`);
-                if (activeResult.success) {
-                    displayUserTasksForCategory(activeResult.tasks, 'active');
-                }
-                
-                // Загружаем выполненные задания
-                const completedResult = await makeRequest(`/user/${currentUser.id}/tasks?status=completed`);
-                if (completedResult.success) {
-                    displayUserTasksForCategory(completedResult.tasks, 'completed');
-                }
-                
-                // Загружаем отклоненные задания
-                const rejectedResult = await makeRequest(`/user/${currentUser.id}/tasks?status=rejected`);
-                if (rejectedResult.success) {
-                    displayUserTasksForCategory(rejectedResult.tasks, 'rejected');
-                }
-                
-            } catch (error) {
-                console.error('Error loading user tasks:', error);
-            }
-        }
-
-        // Инициализация поиска заданий
-        function initializeSearch() {
-            const searchInput = document.getElementById('task-search');
-            if (searchInput) {
-                let searchTimeout;
-                searchInput.addEventListener('input', function(e) {
-                    clearTimeout(searchTimeout);
-                    const searchText = e.target.value.trim();
-                    
-                    searchTimeout = setTimeout(() => {
-                        if (searchText.length >= 2 || searchText.length === 0) {
-                            loadTasks(searchText, getActiveFilter());
-                        }
-                    }, 300);
-                });
-            }
-            
-            const filterButtons = document.querySelectorAll('.filter-btn');
-            filterButtons.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const filter = this.getAttribute('data-filter');
-                    loadTasks('', filter);
-                    
-                    filterButtons.forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                });
-            });
-        }
-
-        function getActiveFilter() {
-            const activeFilter = document.querySelector('.filter-btn.active');
-            return activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
-        }
-
-        // Загрузка заданий
-        async function loadTasks(search = '', category = 'all') {
-            try {
-                let url = '/tasks';
-                const params = [];
-                
-                if (search) params.push(`search=${encodeURIComponent(search)}`);
-                if (category && category !== 'all') params.push(`category=${encodeURIComponent(category)}`);
-                
-                if (params.length > 0) {
-                    url += '?' + params.join('&');
-                }
-                
-                const result = await makeRequest(url);
-                
-                if (result.success) {
-                    allTasks = result.tasks;
-                    displayTasks(result.tasks, 'new');
-                }
-            } catch (error) {
-                console.error('Error loading tasks:', error);
-                showNotification('Ошибка загрузки заданий', 'error');
-            }
-        }
-
-        function displayTasks(tasks, category) {
-    const container = document.getElementById(category + '-tasks');
-    if (!container) return;
-    
-    // Сохраняем текущую прокрутку
-    const scrollPosition = container.scrollTop;
-    
-    container.innerHTML = '';
-
-    if (!tasks || tasks.length === 0) {
-        container.innerHTML = `
-            <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-                <div class="no-tasks-icon">📝</div>
-                <div>Заданий пока нет</div>
-            </div>
-        `;
-        return;
-    }
-
-    tasks.forEach(task => {
-        const taskElement = document.createElement('div');
-        taskElement.className = 'task-card fade-in';
-        taskElement.style.animationDelay = `${Math.random() * 0.3}s`; // Разное время появления
-        
-        taskElement.innerHTML = `
-            <div class="task-header">
-                <div style="flex: 1;">
-                    <div class="task-title">${escapeHtml(task.title)}</div>
-                    <div class="task-category">${task.category || 'Общее'}</div>
-                </div>
-                <div class="task-price">${task.price} ⭐</div>
-            </div>
-            <div class="task-description">${escapeHtml(task.description)}</div>
-            <div class="task-footer">
-                <div class="task-time">${task.time_to_complete || '5 минут'}</div>
-                <button class="task-btn" onclick="openTaskModal(${task.id})">Начать</button>
-            </div>
-        `;
-        container.appendChild(taskElement);
-    });
-    
-    // Восстанавливаем позицию прокрутки
-    container.scrollTop = scrollPosition;
-}
-
-        // Функция открытия модального окна задания
-        function openTaskModal(taskId) {
-            selectedTaskId = taskId;
-            
-            const task = allTasks.find(t => t.id === taskId);
-            if (task) {
-                document.getElementById('task-modal-title').textContent = task.title;
-                document.getElementById('task-modal-category').textContent = task.category || 'Общее';
-                document.getElementById('task-modal-price').textContent = `${task.price} ⭐`;
-                document.getElementById('task-modal-description').textContent = task.description;
-                document.getElementById('task-modal-time').textContent = task.time_to_complete || '5 минут';
-                document.getElementById('task-modal-difficulty').textContent = task.difficulty || 'Легкая';
-                
-                document.getElementById('task-modal').classList.add('active');
-            }
-        }
-
-        // Функция подтверждения выполнения задания
-        function showTaskConfirmation(userTaskId, taskName) {
-            currentUserTaskId = userTaskId;
-            document.getElementById('confirmation-task-name').textContent = taskName;
-            document.getElementById('confirmation-modal').classList.add('active');
-        }
-
-        // Функции для системы проверки заданий
-        function showScreenshotUpload() {
-            closeModal('confirmation-modal');
-            closeModal('cancel-confirmation-modal');
-            
-            // Сброс формы
-            document.getElementById('screenshot-file').value = '';
-            document.getElementById('screenshot-preview').style.display = 'none';
-            document.getElementById('file-name').textContent = '';
-            document.getElementById('submit-screenshot-btn').disabled = true;
-            
-            // Настройка обработчика файла
-            document.getElementById('screenshot-file').onchange = function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    document.getElementById('file-name').textContent = file.name;
-                    document.getElementById('submit-screenshot-btn').disabled = false;
-                    
-                    // Показать превью
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        const preview = document.getElementById('screenshot-preview');
-                        preview.src = e.target.result;
-                        preview.style.display = 'block';
-                    };
-                    reader.readAsDataURL(file);
-                }
-            };
-            
-            document.getElementById('screenshot-modal').classList.add('active');
-        }
-
-        function showCancelConfirmation() {
-            closeModal('confirmation-modal');
-            document.getElementById('cancel-confirmation-modal').classList.add('active');
-        }
-
-        async function submitScreenshot() {
-    const fileInput = document.getElementById('screenshot-file');
-    if (!fileInput.files[0]) {
-        showNotification('Выберите файл скриншота', 'error');
-        return;
-    }
-
-    const formData = new FormData();
-    formData.append('screenshot', fileInput.files[0]);
-    formData.append('userId', currentUser.id);
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/user/tasks/${currentUserTaskId}/submit`, {
-            method: 'POST',
-            body: formData
-            // Не устанавливаем Content-Type, браузер сам установит с boundary
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            showNotification('Скриншот отправлен на проверку!', 'success');
-            closeModal('screenshot-modal');
-            loadUserTasks();
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error submitting screenshot:', error);
-        showNotification('Ошибка отправки скриншота', 'error');
-    }
-}
-
-        async function cancelTask() {
-            if (!currentUserTaskId) return;
-
-            try {
-                const result = await makeRequest(`/user/tasks/${currentUserTaskId}/cancel`, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        userId: currentUser.id
-                    })
-                });
-
-                if (result.success) {
-                    showNotification('Задание отменено', 'success');
-                    closeModal('cancel-confirmation-modal');
-                    loadUserTasks();
-                } else {
-                    showNotification('Ошибка: ' + result.error, 'error');
-                }
-            } catch (error) {
-                console.error('Error cancelling task:', error);
-                showNotification('Ошибка отмены задания', 'error');
-            }
-        }
-
-        // Загрузка заданий на проверку для админа
-        async function loadTaskVerifications() {
-            if (!currentUser || !currentUser.isAdmin) return;
-
-            try {
-                const result = await makeRequest(`/admin/task-verifications?adminId=${ADMIN_ID}`);
-                if (result.success) {
-                    displayTaskVerifications(result.verifications);
-                }
-            } catch (error) {
-                console.error('Error loading task verifications:', error);
-            }
-        }
-
-        // Отображение заданий на проверку
-        function displayTaskVerifications(verifications) {
-            const container = document.getElementById('admin-verification-list');
-            if (!container) return;
-
-            container.innerHTML = '';
-
-            if (!verifications || verifications.length === 0) {
-                container.innerHTML = `
-                    <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
-                        <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
-                        <div>Нет заданий на проверке</div>
-                        <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
-                            Все задания проверены
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-
-            verifications.forEach(verification => {
-                const verificationElement = document.createElement('div');
-                verificationElement.className = 'verification-item';
-                verificationElement.onclick = () => openVerificationModal(verification);
-
-                const userAvatar = verification.user_name ? verification.user_name.charAt(0).toUpperCase() : 'U';
-                const submissionTime = formatPostDate(verification.submitted_at);
-
-                verificationElement.innerHTML = `
-                    <div class="verification-header">
-                        <div class="verification-avatar">
-                            ${userAvatar}
-                        </div>
-                        <div class="verification-user-info">
-                            <div class="verification-user-name">
-                                ${verification.user_name}
-                                ${verification.username ? `(@${verification.username})` : ''}
-                            </div>
-                            <div class="verification-task-title">${verification.task_title}</div>
-                        </div>
-                        <div class="verification-price">${verification.task_price} ⭐</div>
-                    </div>
-                    <div class="verification-time">Отправлено: ${submissionTime}</div>
-                `;
-
-                container.appendChild(verificationElement);
-            });
-        }
-
-        // Открыть модальное окно проверки задания
-        function openVerificationModal(verification) {
-            currentVerificationId = verification.id;
-
-            document.getElementById('verification-user-avatar').textContent = 
-                verification.user_name ? verification.user_name.charAt(0).toUpperCase() : 'U';
-            document.getElementById('verification-user-name').textContent = verification.user_name;
-            document.getElementById('verification-task-title').textContent = verification.task_title;
-            document.getElementById('verification-task-price').textContent = verification.task_price + ' ⭐';
-            
-            // Загрузка скриншота
-            const screenshotImg = document.getElementById('verification-screenshot');
-            screenshotImg.src = verification.screenshot_url;
-            screenshotImg.onerror = function() {
-                this.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjMWExYTNhIi8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM4YjlkZGEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4K';
-            };
-
-            document.getElementById('verification-modal').classList.add('active');
-        }
-
-        // Одобрить задание
-        async function approveVerification() {
-            if (!currentVerificationId) return;
-
-            try {
-                console.log(`🔄 Одобряем верификацию: ${currentVerificationId}`);
-                
-                const result = await makeRequest(`/admin/task-verifications/${currentVerificationId}/approve`, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        adminId: currentUser.id
-                    })
-                });
-
-                if (result.success) {
-                    console.log('✅ Одобрение успешно');
-                    showNotification(`✅ Задание одобрено! Пользователь получил ${result.amountAdded}⭐`, 'success');
-                    closeModal('verification-modal');
-                    
-                    // ОБНОВЛЯЕМ ДАННЫЕ ПОЛЬЗОВАТЕЛЯ
-                    await updateUserData();
-                    
-                    // Обновляем списки
-                    loadTaskVerifications();
-                    loadUserTasks();
-                    
-                } else {
-                    console.error('❌ Ошибка одобрения:', result.error);
-                    showNotification('Ошибка одобрения: ' + result.error, 'error');
-                }
-            } catch (error) {
-                console.error('❌ Сетевая ошибка при одобрении:', error);
-                showNotification('Сетевая ошибка при одобрении задания', 'error');
-            }
-        }
-
-        // Отклонить задание
-        async function rejectVerification() {
-            if (!currentVerificationId) return;
-
-            try {
-                const result = await makeRequest(`/admin/task-verifications/${currentVerificationId}/reject`, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        adminId: currentUser.id
-                    })
-                });
-
-                if (result.success) {
-                    showNotification('Задание отклонено', 'success');
-                    closeModal('verification-modal');
-                    loadTaskVerifications();
-                } else {
-                    showNotification('Ошибка: ' + result.error, 'error');
-                }
-            } catch (error) {
-                console.error('Error rejecting verification:', error);
-                showNotification('Ошибка отклонения задания', 'error');
-            }
-        }
-
-        // 🔧 АДМИН-ФУНКЦИИ
-        async function addNewPost() {
-            const title = document.getElementById('admin-post-title').value;
-            const content = document.getElementById('admin-post-content').value;
-            
-            if (!title || !content) {
-                showNotification('Заполните заголовок и содержание поста!', 'error');
-                return;
-            }
-            
-            if (!currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
-                showNotification('Только администратор может публиковать посты!', 'error');
-                return;
-            }
-            
-            try {
-                const result = await makeRequest('/posts', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        title: title,
-                        content: content,
-                        author: currentUser.firstName,
-                        authorId: currentUser.id
-                    })
-                });
-
-                if (result.success) {
-                    showNotification('Пост успешно опубликован!', 'success');
-                    document.getElementById('admin-post-title').value = '';
-                    document.getElementById('admin-post-content').value = '';
-                    loadMainPagePosts();
-                } else {
-                    showNotification('Ошибка: ' + result.error, 'error');
-                }
-                
-            } catch (error) {
-                console.error('Error adding post:', error);
-                showNotification('Ошибка соединения: ' + error.message, 'error');
-            }
-        }
-
-       async function addTask() {
-    console.log('🎯 ========== START addTask FUNCTION ==========');
-    
-    try {
-        // 1. Проверяем авторизацию
-        if (!currentUser) {
-            showNotification('Пользователь не авторизован', 'error');
-            return;
-        }
-        
-       
-
-        // 2. Собираем данные из формы
-        const getElementValue = (id) => {
-            const element = document.getElementById(id);
-            return element ? element.value : '';
-        };
-
-        const formData = {
-            title: getElementValue('admin-task-title'),
-            description: getElementValue('admin-task-description'),
-            price: getElementValue('admin-task-price'),
-            time_to_complete: getElementValue('admin-task-time'),
-            difficulty: getElementValue('admin-task-difficulty'),
-            people_required: getElementValue('admin-task-people'),
-            repost_time: getElementValue('admin-task-repost'),
-            task_url: getElementValue('admin-task-url'),
-            category: 'general', // добавляем категорию по умолчанию
-            created_by: currentUser.id
-        };
-
-        console.log('📋 Form data collected:', formData);
-
-        // 3. Валидация
-        if (!formData.title.trim() || !formData.description.trim() || !formData.price) {
-            showNotification('Заполните название, описание и цену задания!', 'error');
-            return;
-        }
-
-        // 4. Проверяем числовые поля
-        const price = parseFloat(formData.price);
-        if (isNaN(price) || price <= 0) {
-            showNotification('Цена должна быть положительным числом!', 'error');
-            return;
-        }
-
-        // 5. Подготавливаем данные для отправки
-       const requestData = {
-    title: formData.title.trim(),
-    description: formData.description.trim(),
-    price: price,
-    created_by: currentUser.id
-};
-
-        console.log('📤 Prepared request data:', requestData);
-
-        // 6. Отправляем запрос
-        console.log('🚀 Sending request to /api/tasks...');
-        const result = await makeRequest('/tasks', {
-            method: 'POST',
-            body: JSON.stringify(requestData)
-        });
-
-        console.log('📨 Server response:', result);
-
-        if (result.success) {
-            showNotification('✅ Задание успешно создано!', 'success');
-            
-            // Очищаем форму
-            const formFields = ['title', 'description', 'price', 'time', 'difficulty', 'people', 'repost', 'url'];
-            formFields.forEach(field => {
-                const element = document.getElementById(`admin-task-${field}`);
-                if (element) element.value = '';
-            });
-            
-            // Обновляем списки
-            setTimeout(() => {
-                loadAdminTasks();
-                loadTasks();
-            }, 1000);
-            
-        } else {
-            throw new Error(result.error || 'Unknown server error');
-        }
-
-    } catch (error) {
-        console.error('💥 Error in addTask:', error);
-        showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
-    } finally {
-        console.log('🎯 ========== END addTask FUNCTION ==========');
-    }
-}
-        // Load admin tasks
-async function loadAdminTasks() {
-    if (!currentUser || !currentUser.isAdmin) return;
-    
-    try {
-        const result = await makeRequest(`/admin/tasks?adminId=${ADMIN_ID}`);
-        if (result.success) {
-            displayAdminTasks(result.tasks);
-        }
-    } catch (error) {
-        console.error('Error loading admin tasks:', error);
-    }
-}
-
-// Display admin tasks
-function displayAdminTasks(tasks) {
-    const container = document.getElementById('admin-tasks-list');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    if (!tasks || tasks.length === 0) {
-        container.innerHTML = '<div class="no-tasks" style="text-align: center; padding: 20px;">Нет созданных заданий</div>';
-        return;
-    }
-    
-    tasks.forEach(task => {
-        const taskElement = document.createElement('div');
-        taskElement.className = 'admin-task-item';
-        taskElement.innerHTML = `
-            <div class="admin-task-header">
-                <div class="admin-task-title">${task.title}</div>
-                <div class="admin-task-actions">
-                    <button class="admin-task-delete" onclick="deleteTask(${task.id})">🗑️ Удалить</button>
-                </div>
-            </div>
-            <div class="admin-task-description">${task.description}</div>
-            <div class="admin-task-details">
-                <span class="admin-task-price">${task.price} ⭐</span>
-                <span class="admin-task-category">${task.category}</span>
-                <span class="admin-task-people">Нужно: ${task.people_required} чел.</span>
-            </div>
-        `;
-        container.appendChild(taskElement);
-    });
-}
-
-        async function deletePost(postId) {
-            if (!confirm('Удалить этот пост?')) return;
-            
-            if (!currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
-                showNotification('Только администратор может удалять посты!', 'error');
-                return;
-            }
-            
-            try {
-                const result = await makeRequest(`/posts/${postId}`, {
-                    method: 'DELETE',
-                    body: JSON.stringify({ authorId: currentUser.id })
-                });
-
-                if (result.success) {
-                    showNotification('Пост успешно удален!', 'success');
-                    loadMainPagePosts();
-                } else {
-                    showNotification('Ошибка: ' + result.error, 'error');
-                }
-            } catch (error) {
-                console.error('Error deleting post:', error);
-                showNotification('Ошибка соединения: ' + error.message, 'error');
-            }
-        }
-
-        async function deleteTask(taskId) {
-    if (!confirm('Удалить это задание?')) return;
-    
-    if (!currentUser || !currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
-        showNotification('Только администратор может удалять задания!', 'error');
+    if (!message) {
+        showNotification('Введите сообщение', 'error');
         return;
     }
     
     try {
-        const result = await makeRequest(`/tasks/${taskId}`, {
-            method: 'DELETE',
-            body: JSON.stringify({ adminId: currentUser.id })
-        });
-
-        if (result.success) {
-            showNotification('Задание успешно удалено!', 'success');
-            loadAdminTasks();
-            loadTasks();
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error deleting task:', error);
-        showNotification('Ошибка удаления задания: ' + error.message, 'error');
-    }
-}
-      async function openAdminChat() {
-    if (!currentUser) {
-        showNotification('Пользователь не авторизован', 'error');
-        return;
-    }
-    
-    try {
-        console.log('👤 User opening support chat, ID:', currentUser.id);
-        
-        // Получаем или создаем чат для пользователя
-        const chatResult = await makeRequest(`/support/user-chat/${currentUser.id}`);
-        
-        if (chatResult.success) {
-            currentChatId = chatResult.chat.id;
-            console.log('✅ Chat ID:', currentChatId);
-            
-            // Загружаем сообщения
-            try {
-                const messagesResult = await makeRequest(`/support/chats/${currentChatId}/messages`);
-                if (messagesResult.success) {
-                    displayChatMessages(messagesResult.messages);
-                }
-            } catch (messagesError) {
-                console.log('No messages yet or error loading messages:', messagesError);
-                // Показываем пустой чат с приветствием
-                displayChatMessages([]);
-            }
-            
-            // Показываем чат
-            document.getElementById('admin-chat').classList.add('active');
-            
-        } else {
-            throw new Error(chatResult.error || 'Failed to create chat');
-        }
-    } catch (error) {
-        console.error('❌ Error opening user chat:', error);
-        showNotification('Ошибка открытия чата: ' + error.message, 'error');
-        
-        // Показываем детали ошибки в консоли для отладки
-        console.error('Chat error details:', {
-            userId: currentUser?.id,
-            error: error.message,
-            stack: error.stack
-        });
-    }
-}
-        async function sendMessageToAdmin() {
-            if (!currentUser || !currentChatId) {
-                showNotification('Чат не открыт', 'error');
-                return;
-            }
-            
-            const input = document.getElementById('chat-input-field');
-            const message = input.value.trim();
-            
-            if (!message) {
-                showNotification('Введите сообщение', 'error');
-                return;
-            }
-            
-            try {
-                console.log(`✉️ User sending message to chat ${currentChatId}:`, message);
-                
-                const userFullName = currentUser.lastName ? 
-                    `${currentUser.firstName} ${currentUser.lastName}` : 
-                    currentUser.firstName;
-                
-                const result = await makeRequest(`/support/chats/${currentChatId}/messages`, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        user_id: currentUser.id,
-                        user_name: userFullName,
-                        message: message,
-                        is_admin: false
-                    })
-                });
-                
-                if (result.success) {
-                    // Добавляем сообщение в интерфейс
-                    const messagesContainer = document.getElementById('chat-messages');
-                    const messageElement = document.createElement('div');
-                    messageElement.className = 'message message-user';
-                    messageElement.innerHTML = `
-                        <div class="message-text">${escapeHtml(message)}</div>
-                        <div class="message-time">${new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}</div>
-                    `;
-                    messagesContainer.appendChild(messageElement);
-                    
-                    input.value = '';
-                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                    
-                    showNotification('Сообщение отправлено! Администратор ответит в ближайшее время.', 'success');
-                    
-                    // Если админ онлайн, обновляем его чаты
-                    if (currentUser.isAdmin) {
-                        setTimeout(loadAdminChats, 1000);
-                    }
-                } else {
-                    throw new Error(result.error);
-                }
-            } catch (error) {
-                console.error('❌ Error sending message:', error);
-                showNotification('Ошибка отправки: ' + error.message, 'error');
-            }
-        }
-
-        function displayChatMessages(messages) {
-            const messagesContainer = document.getElementById('chat-messages');
-            if (!messagesContainer) return;
-            
-            messagesContainer.innerHTML = '';
-            
-            // Если нет сообщений, показываем приветствие
-            if (!messages || messages.length === 0) {
-                const welcomeMessage = document.createElement('div');
-                welcomeMessage.className = 'message message-admin';
-                welcomeMessage.innerHTML = `
-                    <div class="message-text">Здравствуйте! Чем могу помочь?</div>
-                    <div class="message-time">${new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}</div>
-                `;
-                messagesContainer.appendChild(welcomeMessage);
-                return;
-            }
-            
-            // Показываем существующие сообщения
-            messages.forEach(message => {
-                const messageElement = document.createElement('div');
-                messageElement.className = message.is_admin ? 'message message-admin' : 'message message-user';
-                
-                messageElement.innerHTML = `
-                    <div class="message-text">${escapeHtml(message.message)}</div>
-                    <div class="message-time">${formatPostDate(message.sent_at)}</div>
-                `;
-                messagesContainer.appendChild(messageElement);
-            });
-            
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-
-        function closeChat() {
-            document.getElementById('admin-chat').classList.remove('active');
-            currentChatId = null;
-        }
-
-        // 🔧 ФУНКЦИИ НАВИГАЦИИ
-        function showMainTab() {
-            hideAllTabs();
-            document.getElementById('main-tab').classList.add('active');
-            updateNavState('main');
-        }
-
-        function showTasksTab() {
-            hideAllTabs();
-            document.getElementById('tasks-tab').classList.add('active');
-            updateNavState('tasks');
-        }
-
-        function showProfileTab() {
-            hideAllTabs();
-            document.getElementById('profile-tab').classList.add('active');
-            updateNavState('profile');
-        }
-
-        // Функция показа вкладки админа - ИСПРАВЛЕННАЯ ВЕРСИЯ
-function showAdminTab() {
-    console.log('👑 Checking admin access for tab...', {
-        id: currentUser?.id,
-        is_admin: currentUser?.is_admin,
-        isMainAdmin: parseInt(currentUser?.id) === ADMIN_ID
-    });
-    
-    // Проверяем права: главный админ ИЛИ нанятый админ
-    const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
-    const isRegularAdmin = currentUser?.is_admin === true;
-    
-    if (!currentUser || (!isMainAdmin && !isRegularAdmin)) {
-        showNotification('Доступ запрещен!', 'error');
-        return;
-    }
-    
-    hideAllTabs();
-    document.getElementById('admin-tab').classList.add('active');
-    updateNavState('admin');
-    
-    console.log('✅ Admin tab access granted');
-}
-
-        function showWithdrawPage() {
-            hideAllTabs();
-            document.getElementById('withdraw-page').classList.add('active');
-            
-            // Обновляем баланс на странице вывода
-            updateWithdrawPage();
-            loadWithdrawHistory();
-        }
-
-        function showHowItWorksPage() {
-            hideAllTabs();
-            document.getElementById('how-it-works-page').classList.add('active');
-        }
-
-        function showAboutPage() {
-            hideAllTabs();
-            document.getElementById('about-page').classList.add('active');
-        }
-
-        function goBackToProfile() {
-            showProfileTab();
-        }
-
-        function hideAllTabs() {
-            // Скрываем все вкладки и страницы
-            const allElements = document.querySelectorAll('.tab-content, .page');
-            allElements.forEach(element => {
-                element.classList.remove('active');
-            });
-        }
-
-        function updateNavState(activeTab) {
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            
-            const navItems = document.querySelectorAll('.nav-item');
-            switch(activeTab) {
-                case 'main': 
-                    if (navItems[0]) navItems[0].classList.add('active'); 
-                    break;
-                case 'tasks': 
-                    if (navItems[1]) navItems[1].classList.add('active'); 
-                    break;
-                case 'profile': 
-                    if (navItems[2]) navItems[2].classList.add('active'); 
-                    break;
-                case 'admin': 
-                    if (navItems[3]) navItems[3].classList.add('active'); 
-                    break;
-            }
-        }
-// Обновите функцию showAdminSection чтобы включить новую секцию
-// Показать секцию админ-панели - ОБНОВЛЕННАЯ ВЕРСИЯ
-function showAdminSection(section) {
-    console.log('🔄 Switching to admin section:', section);
-    
-    // Проверяем общие права администратора
-    const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
-    const isRegularAdmin = currentUser?.is_admin === true;
-    
-    if (!currentUser || (!isMainAdmin && !isRegularAdmin)) {
-        showNotification('❌ Доступ запрещен!', 'error');
-        return;
-    }
-    
-    // Проверяем права для раздела админов (только главный админ)
-    if (section === 'admins' && !isMainAdmin) {
-        showNotification('❌ Только главный администратор может управлять админами!', 'error');
-        return;
-    }
-    
-    // Скрываем все админ секции
-    document.querySelectorAll('.admin-section').forEach(sec => {
-        sec.style.display = 'none';
-    });
-    
-    // Показываем выбранную секцию
-    const targetSection = document.getElementById('admin-' + section + '-section');
-    if (targetSection) {
-        targetSection.style.display = 'block';
-        console.log('✅ Admin section shown:', section);
-    }
-    
-    // Загружаем данные для определенных секций
-    if (section === 'admins' && isMainAdmin) {
-        setTimeout(() => {
-            loadAdminsList();
-        }, 100);
-    } else if (section === 'verification') {
-        loadTaskVerifications();
-    } else if (section === 'support') {
-        loadAdminChats();
-    } else if (section === 'tasks') {
-        loadAdminTasks();
-    } else if (section === 'posts') {
-        // Можно добавить загрузку постов если нужно
-    }
-}
-        // АДМИН ФУНКЦИИ
-        function showAdminSection(section) {
-            // Скрываем все админ секции
-            document.querySelectorAll('.admin-section').forEach(sec => {
-                sec.style.display = 'none';
-            });
-            
-            // Показываем выбранную секцию
-            const targetSection = document.getElementById('admin-' + section + '-section');
-            if (targetSection) {
-                targetSection.style.display = 'block';
-            }
-        }
-
-        function showAdminChats() {
-            showAdminSection('support');
-        }
-
-        function showPostManagement() {
-            showAdminSection('posts');
-        }
-
-        function showTaskManagement() {
-            showAdminSection('tasks');
-        }
-
-        function showTaskVerification() {
-            showAdminSection('verification');
-        }
-
-        // 🎨 ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-        function escapeHtml(unsafe) {
-            if (!unsafe) return '';
-            return unsafe
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
-
-        function formatPostDate(timestamp) {
-            if (!timestamp) return '';
-            
-            const date = new Date(timestamp);
-            
-            // Московское время (UTC+3)
-            const moscowTime = new Date(date.getTime() + (3 * 60 * 60 * 1000));
-            
-            const now = new Date();
-            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            const postDate = new Date(moscowTime.getFullYear(), moscowTime.getMonth(), moscowTime.getDate());
-            
-            const diffTime = now - date;
-            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-            
-            if (diffDays === 0) {
-                // Сегодня
-                return `Сегодня, ${moscowTime.toLocaleTimeString('ru-RU', { 
-                    hour: '2-digit', 
-                    minute: '2-digit',
-                    timeZone: 'Europe/Moscow'
-                })} (МСК)`;
-            } else if (diffDays === 1) {
-                // Вчера
-                return `Вчера, ${moscowTime.toLocaleTimeString('ru-RU', { 
-                    hour: '2-digit', 
-                    minute: '2-digit',
-                    timeZone: 'Europe/Moscow'
-                })} (МСК)`;
-            } else {
-                // Раньше
-                return `${moscowTime.toLocaleDateString('ru-RU', {
-                    day: 'numeric',
-                    month: 'long',
-                    timeZone: 'Europe/Moscow'
-                })}, ${moscowTime.toLocaleTimeString('ru-RU', { 
-                    hour: '2-digit', 
-                    minute: '2-digit',
-                    timeZone: 'Europe/Moscow'
-                })} (МСК)`;
-            }
-        }
-
-// Обновленная функция запроса вывода
-async function requestWithdraw() {
-    if (!currentUser) {
-        showNotification('Пользователь не авторизован', 'error');
-        return;
-    }
-    
-    const currentBalance = currentUser.balance || 0;
-    
-    if (currentBalance <= 0) {
-        showNotification('Недостаточно средств для вывода', 'error');
-        return;
-    }
-    
-    // Подтверждение
-    if (!confirm(`Вы уверены, что хотите вывести ${currentBalance} ⭐?\n\nПосле подтверждения баланс будет обнулен и заявка отправлена на обработку.`)) {
-        return;
-    }
-    
-    try {
-        console.log('🔄 Отправка запроса на вывод...');
-        
-        const result = await makeRequest('/withdrawal/request', {
+        const result = await makeRequest(`/support/chats/${currentAdminChat.id}/messages`, {
             method: 'POST',
             body: JSON.stringify({
                 user_id: currentUser.id,
-                amount: currentBalance
+                user_name: 'Администратор',
+                message: message,
+                is_admin: true
             })
         });
         
         if (result.success) {
-            // Обновляем баланс пользователя
-            currentUser.balance = 0;
-            
-            // Обновляем отображение
-            displayUserProfile();
-            updateWithdrawPage();
-            
-            showNotification(`✅ Заявка на вывод ${currentBalance} ⭐ отправлена! Ожидайте подтверждения администратора.`, 'success');
-            
-            // Обновляем историю операций
-            setTimeout(() => {
-                loadWithdrawHistory();
-            }, 1000);
-            
+            // Добавляем сообщение в интерфейс
+            const messagesContainer = document.getElementById('admin-chat-messages');
+            if (messagesContainer) {
+                const messageElement = document.createElement('div');
+                messageElement.className = 'message message-admin';
+                messageElement.innerHTML = `
+                    <div class="message-text">${escapeHtml(message)}</div>
+                    <div class="message-time">${new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}</div>
+                `;
+                messagesContainer.appendChild(messageElement);
+                
+                input.value = '';
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
         } else {
-            showNotification('❌ Ошибка: ' + result.error, 'error');
+            throw new Error(result.error);
         }
     } catch (error) {
-        console.error('❌ Withdrawal error:', error);
-        showNotification('❌ Ошибка при выводе средств: ' + error.message, 'error');
+        console.error('Error sending admin message:', error);
+        showNotification('Ошибка отправки сообщения', 'error');
     }
 }
 
-// Обновленная функция отображения истории выводов
-function displayWithdrawHistory(operations) {
-    const container = document.getElementById('withdraw-history-list');
+// 🎨 Отображение сообщений в чате админа
+function displayAdminChatMessages(messages) {
+    const container = document.getElementById('admin-chat-messages');
     if (!container) return;
     
     container.innerHTML = '';
     
-    if (!operations || operations.length === 0) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
-                <div style="font-size: 48px; margin-bottom: 16px;">💫</div>
-                <div>Нет операций по выводу</div>
-                <div style="font-size: 12px; margin-top: 8px;">Здесь будут отображаться ваши запросы на вывод</div>
-            </div>
+    if (!messages || messages.length === 0) {
+        const welcomeMessage = document.createElement('div');
+        welcomeMessage.className = 'message message-admin';
+        welcomeMessage.innerHTML = `
+            <div class="message-text">Начните диалог с пользователем</div>
+            <div class="message-time">${new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}</div>
         `;
+        container.appendChild(welcomeMessage);
         return;
     }
     
-    // Сортируем по дате (новые сверху)
-    operations.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    
-    operations.forEach(operation => {
-        const operationElement = document.createElement('div');
-        operationElement.className = 'withdraw-operation';
-        operationElement.style.cssText = `
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: all 0.3s ease;
+    messages.forEach(message => {
+        const messageElement = document.createElement('div');
+        messageElement.className = message.is_admin ? 'message message-admin' : 'message message-user';
+        
+        messageElement.innerHTML = `
+            <div class="message-text">${escapeHtml(message.message)}</div>
+            <div class="message-time">${formatPostDate(message.sent_at)}</div>
         `;
-        
-        const statusText = operation.status === 'completed' ? 
-            '✅ Операция завершена' : 
-            '🔄 Операция осуществляется';
-            
-        const statusColor = operation.status === 'completed' ? 
-            'var(--success)' : 'var(--warning)';
-        
-        const date = new Date(operation.created_at).toLocaleDateString('ru-RU', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric'
-        });
-        
-        operationElement.innerHTML = `
-            <div style="flex: 1;">
-                <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">
-                    ${operation.amount} ⭐
-                </div>
-                <div style="font-size: 12px; color: var(--text-secondary);">
-                    ${date}
-                </div>
-            </div>
-            <div style="color: ${statusColor}; font-weight: 600; font-size: 13px; text-align: right;">
-                ${statusText}
-                ${operation.completed_at ? `
-                    <div style="font-size: 11px; font-weight: normal; margin-top: 2px;">
-                        Завершено: ${new Date(operation.completed_at).toLocaleDateString('ru-RU')}
-                    </div>
-                ` : ''}
-            </div>
-        `;
-        
-        container.appendChild(operationElement);
+        container.appendChild(messageElement);
     });
+    
+    container.scrollTop = container.scrollHeight;
 }
 
-        // Обновление страницы вывода
-        function updateWithdrawPage() {
-            const balanceDisplay = document.getElementById('withdraw-balance-display');
-            const withdrawBtn = document.getElementById('withdraw-btn');
-            
-            if (balanceDisplay && currentUser) {
-                balanceDisplay.textContent = `${currentUser.balance || 0} ⭐`;
-            }
-            
-            if (withdrawBtn && currentUser) {
-                if ((currentUser.balance || 0) <= 0) {
-                    withdrawBtn.disabled = true;
-                    withdrawBtn.style.opacity = '0.5';
-                    withdrawBtn.textContent = 'Недостаточно средств';
-                } else {
-                    withdrawBtn.disabled = false;
-                    withdrawBtn.style.opacity = '1';
-                    withdrawBtn.textContent = 'Вывести средства';
-                }
-            }
-        }
-
-        // Загрузка постов на главную
-        async function loadMainPagePosts() {
-            try {
-                const result = await makeRequest('/posts');
-                
-                if (result.success && result.posts && result.posts.length > 0) {
-                    displayMainPagePosts(result.posts);
-                } else {
-                    hidePostsSection();
-                }
-            } catch (error) {
-                console.error('Error loading posts:', error);
-                hidePostsSection();
-            }
-        }
-
-        function displayMainPagePosts(posts) {
-            const postsSection = document.getElementById('posts-section');
-            const postsContainer = document.getElementById('posts-container');
-            
-            if (!postsContainer) return;
-            
-            if (postsSection) postsSection.style.display = 'block';
-            
-            postsContainer.innerHTML = '';
-            
-            if (!posts || posts.length === 0) {
-                postsContainer.innerHTML = `
-                    <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
-                        <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
-                        <div>Пока нет публикаций</div>
-                        <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
-                            Следите за обновлениями
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-            
-            posts.forEach(post => {
-                const postElement = document.createElement('div');
-                postElement.className = 'post-item fade-in';
-                
-                const postDate = formatPostDate(post.timestamp);
-                const isAdmin = post.authorId === ADMIN_ID;
-                
-                postElement.innerHTML = `
-                    <div class="post-header">
-                        <div style="flex: 1;">
-                            <div class="post-title">${escapeHtml(post.title)}</div>
-                            <div class="post-author">
-                                ${escapeHtml(post.author || 'Администратор')}
-                            </div>
-                        </div>
-                        <div class="post-date">${postDate}</div>
-                    </div>
-                    
-                    <div class="post-content">${escapeHtml(post.content)}</div>
-                    
-                    ${post.image_url ? `
-                        <img src="${post.image_url}" alt="Изображение" class="post-image" onerror="this.style.display='none'">
-                    ` : ''}
-                    
-                    <div class="post-footer">
-                        <div class="post-actions">
-                            <button class="like-btn" onclick="handleLike(${post.id}, this)">
-                                <span class="like-icon">👍</span>
-                                <span class="like-count">${post.likes || 0}</span>
-                            </button>
-                            <button class="dislike-btn" onclick="handleDislike(${post.id}, this)">
-                                <span class="dislike-icon">👎</span>
-                                <span class="dislike-count">${post.dislikes || 0}</span>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    ${currentUser && currentUser.isAdmin && parseInt(currentUser.id) === ADMIN_ID ? `
-                        <div style="margin-top: 15px; text-align: right;">
-                            <button class="admin-task-delete" onclick="deletePost(${post.id})" style="font-size: 12px; padding: 6px 12px;">
-                                🗑️ Удалить пост
-                            </button>
-                        </div>
-                    ` : ''}
-                `;
-                
-                postsContainer.appendChild(postElement);
-            });
-        }
-
-        function hidePostsSection() {
-            const postsSection = document.getElementById('posts-section');
-            if (postsSection) postsSection.style.display = 'none';
-        }
-
-        // Функции для лайков и дизлайков
-        async function handleLike(postId, button) {
-            try {
-                const result = await makeRequest(`/posts/${postId}/like`, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        userId: currentUser.id
-                    })
-                });
-
-                if (result.success) {
-                    const countElement = button.querySelector('.like-count');
-                    countElement.textContent = result.likes;
-                    
-                    // Визуальная обратная связь
-                    button.style.transform = 'scale(1.1)';
-                    setTimeout(() => {
-                        button.style.transform = 'scale(1)';
-                    }, 200);
-                }
-            } catch (error) {
-                console.error('Error liking post:', error);
-                // Локальное обновление для демонстрации
-                const countElement = button.querySelector('.like-count');
-                countElement.textContent = parseInt(countElement.textContent) + 1;
-                
-                button.style.transform = 'scale(1.1)';
-                setTimeout(() => {
-                    button.style.transform = 'scale(1)';
-                }, 200);
-            }
-        }
-
-        async function handleDislike(postId, button) {
-            try {
-                const result = await makeRequest(`/posts/${postId}/dislike`, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        userId: currentUser.id
-                    })
-                });
-
-                if (result.success) {
-                    const countElement = button.querySelector('.dislike-count');
-                    countElement.textContent = result.dislikes;
-                    
-                    // Визуальная обратная связь
-                    button.style.transform = 'scale(1.1)';
-                    setTimeout(() => {
-                        button.style.transform = 'scale(1)';
-                    }, 200);
-                }
-            } catch (error) {
-                console.error('Error disliking post:', error);
-                // Локальное обновление для демонстрации
-                const countElement = button.querySelector('.dislike-count');
-                countElement.textContent = parseInt(countElement.textContent) + 1;
-                
-                button.style.transform = 'scale(1.1)';
-                setTimeout(() => {
-                    button.style.transform = 'scale(1)';
-                }, 200);
-            }
-        }
-
-        // Функция для отправки запроса на вывод
-        async function submitWithdraw() {
-            if (!currentUser) {
-                showNotification('Пользователь не авторизован', 'error');
-                return;
-            }
-            
-            const amountInput = document.getElementById('withdraw-amount');
-            const methodSelect = document.getElementById('withdraw-method');
-            const detailsInput = document.getElementById('withdraw-details');
-            
-            const amount = parseFloat(amountInput?.value);
-            const method = methodSelect?.value;
-            const details = detailsInput?.value?.trim();
-            
-            // Валидация
-            if (!amount || amount <= 0) {
-                showNotification('Введите корректную сумму', 'error');
-                return;
-            }
-            
-            if (amount < 50) {
-                showNotification('Минимальная сумма вывода: 150 ⭐', 'error');
-                return;
-            }
-            
-            if (amount > (currentUser.balance || 0)) {
-                showNotification('Недостаточно средств на балансе', 'error');
-                return;
-            }
-            
-            if (!method) {
-                showNotification('Выберите способ вывода', 'error');
-                return;
-            }
-            
-            if (!details) {
-                showNotification('Введите реквизиты для вывода', 'error');
-                return;
-            }
-            
-            try {
-                const result = await makeRequest('/withdrawal/request', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        user_id: currentUser.id,
-                        amount: amount,
-                        method: method,
-                        details: details
-                    })
-                });
-
-                if (result.success) {
-                    showNotification(`Запрос на вывод ${amount}⭐ отправлен! Ожидайте обработки в течение 24 часов.`, 'success');
-                    
-                    // Очищаем форму
-                    if (amountInput) amountInput.value = '';
-                    if (methodSelect) methodSelect.value = '';
-                    if (detailsInput) detailsInput.value = '';
-                    
-                    // Обновляем баланс пользователя
-                    if (currentUser.balance) {
-                        currentUser.balance -= amount;
-                    }
-                    
-                    // Обновляем отображение баланса
-                    displayUserProfile();
-                    
-                    // Возвращаемся в профиль
-                    setTimeout(() => {
-                        showProfileTab();
-                    }, 2000);
-                    
-                } else {
-                    showNotification('Ошибка: ' + (result.error || 'Неизвестная ошибка'), 'error');
-                }
-            } catch (error) {
-                console.error('Ошибка при выводе средств:', error);
-                showNotification('Ошибка соединения при отправке запроса', 'error');
-            }
-        }
-
-        function showNotification(message, type = 'info') {
-            // Удаляем существующие уведомления
-            document.querySelectorAll('.notification').forEach(notification => {
-                notification.remove();
-            });
-            
-            const notification = document.createElement('div');
-            notification.className = `notification notification-${type}`;
-            notification.innerHTML = `
-                <div class="notification-content">${message}</div>
-                <button class="notification-close" onclick="this.parentElement.remove()">×</button>
-            `;
-            
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                if (notification.parentElement) {
-                    notification.remove();
-                }
-            }, 5000);
-        }
-
-        function copyReferralLink() {
-            const referralInput = document.getElementById('referral-link');
-            if (!referralInput) return;
-            
-            referralInput.select();
-            referralInput.setSelectionRange(0, 99999);
-            
-            navigator.clipboard.writeText(referralInput.value).then(() => {
-                showNotification('Реферальная ссылка скопирована!', 'success');
-            }).catch(() => {
-                document.execCommand('copy');
-                showNotification('Реферальная ссылка скопирована!', 'success');
-            });
-        }
-
-        function showBalanceModal() {
-            document.getElementById('balance-modal').classList.add('active');
-        }
-
-        function showPrices() {
-            document.getElementById('prices-modal').classList.add('active');
-        }
-
-        function openAdminChatFromPrices() {
-            document.getElementById('prices-modal').classList.remove('active');
-            setTimeout(() => {
-                document.getElementById('admin-chat').classList.add('active');
-            }, 300);
-        }
-
-        function goToProfile() {
-            closeModal('balance-modal');
-            showProfileTab();
-        }
-
-        function closeModal(modalId) {
-            document.getElementById(modalId).classList.remove('active');
-        }
-
-        async function startTask() {
-    if (!currentUser || !selectedTaskId) {
-        showNotification('Ошибка: пользователь не авторизован или задание не выбрано', 'error');
-        return;
+// ❌ Закрытие чата админа
+function closeAdminChat() {
+    const chatWindow = document.getElementById('admin-chat-window');
+    if (chatWindow) {
+        chatWindow.classList.remove('active');
     }
+    currentAdminChat = null;
+}
 
+// ✅ Одобрить верификацию задания
+async function approveVerification(verificationId) {
+    if (!currentUser) return;
+    
     try {
-        const result = await makeRequest('/user/tasks/start', {
+        const result = await makeRequest(`/admin/task-verifications/${verificationId}/approve`, {
             method: 'POST',
             body: JSON.stringify({
-                userId: currentUser.id,
-                taskId: selectedTaskId
+                adminId: currentUser.id
             })
         });
 
         if (result.success) {
-            closeModal('task-modal');
-            showNotification('Задание начато! Выполните его и вернитесь для подтверждения.', 'success');
-            // Обновляем список заданий
-            loadUserTasks();
+            showNotification(`✅ Задание одобрено! Пользователь получил ${result.amountAdded}⭐`, 'success');
+            closeModal('verifications-modal');
+            loadTaskVerificationsForAdmin();
+        } else {
+            showNotification('Ошибка одобрения: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error approving verification:', error);
+        showNotification('Ошибка одобрения задания', 'error');
+    }
+}
+
+// ❌ Отклонить верификацию задания
+async function rejectVerification(verificationId) {
+    if (!currentUser) return;
+    
+    try {
+        const result = await makeRequest(`/admin/task-verifications/${verificationId}/reject`, {
+            method: 'POST',
+            body: JSON.stringify({
+                adminId: currentUser.id
+            })
+        });
+
+        if (result.success) {
+            showNotification('Задание отклонено', 'success');
+            closeModal('verifications-modal');
+            loadTaskVerificationsForAdmin();
         } else {
             showNotification('Ошибка: ' + result.error, 'error');
         }
     } catch (error) {
-        console.error('Error starting task:', error);
-        showNotification('Ошибка начала задания', 'error');
+        console.error('Error rejecting verification:', error);
+        showNotification('Ошибка отклонения задания', 'error');
     }
 }
 
-        // 🔧 ЗАГРУЗКА ЧАТОВ ДЛЯ АДМИНА
-        async function loadAdminChats() {
-            if (!currentUser || !currentUser.isAdmin) return;
-            
-            try {
-                console.log('📥 Loading admin chats...');
-                const result = await makeRequest(`/support/chats?adminId=${ADMIN_ID}`);
-                
-                if (result.success) {
-                    console.log(`✅ Loaded ${result.chats?.length || 0} active chats`);
-                    displayAdminChatsList(result.chats || []);
-                } else {
-                    console.error('❌ Failed to load chats:', result.error);
-                }
-            } catch (error) {
-                console.error('❌ Error loading admin chats:', error);
-            }
-        }
-
-        // Загрузка всех чатов (включая архивные)
-        async function loadAllAdminChats() {
-            if (!currentUser || !currentUser.isAdmin) return;
-            
-            try {
-                const result = await makeRequest(`/support/all-chats?adminId=${ADMIN_ID}`);
-                if (result.success) {
-                    displayAllAdminChats(result.chats || []);
-                }
-            } catch (error) {
-                console.error('Error loading all chats:', error);
-            }
-        }
-
-        // Загрузка архивных чатов
-        async function loadArchivedAdminChats() {
-            if (!currentUser || !currentUser.isAdmin) return;
-            
-            try {
-                const result = await makeRequest(`/support/archived-chats?adminId=${ADMIN_ID}`);
-                if (result.success) {
-                    displayArchivedAdminChats(result.chats || []);
-                }
-            } catch (error) {
-                console.error('Error loading archived chats:', error);
-            }
-        }
-
-        // Отображение списка активных чатов
-        function displayAdminChatsList(chats) {
-            const container = document.getElementById('active-chats-list');
-            if (!container) return;
-            
-            container.innerHTML = '';
-            
-            if (!chats || chats.length === 0) {
-                container.innerHTML = `
-                    <div class="no-tasks" style="text-align: center; padding: 20px;">
-                        <div style="font-size: 24px; margin-bottom: 10px;">💬</div>
-                        <div>Нет активных чатов</div>
-                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
-                            Чаты появятся когда пользователи напишут в поддержку
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-            
-            // Обновляем статистику
-            updateChatsStats(chats);
-            
-            chats.forEach(chat => {
-                const chatElement = createChatElement(chat, 'active');
-                container.appendChild(chatElement);
-            });
-        }
-
-        // Отображение всех чатов
-        function displayAllAdminChats(chats) {
-            const container = document.getElementById('all-chats-list');
-            if (!container) return;
-            
-            container.innerHTML = '';
-            
-            if (!chats || chats.length === 0) {
-                container.innerHTML = `
-                    <div class="no-tasks" style="text-align: center; padding: 20px;">
-                        <div>Нет чатов</div>
-                    </div>
-                `;
-                return;
-            }
-            
-            chats.forEach(chat => {
-                const chatElement = createChatElement(chat, 'all');
-                container.appendChild(chatElement);
-            });
-        }
-
-        // Отображение архивных чатов
-        function displayArchivedAdminChats(chats) {
-            const container = document.getElementById('archived-chats-list');
-            if (!container) return;
-            
-            container.innerHTML = '';
-            
-            if (!chats || chats.length === 0) {
-                container.innerHTML = `
-                    <div class="no-tasks" style="text-align: center; padding: 20px;">
-                        <div>Нет архивных чатов</div>
-                    </div>
-                `;
-                return;
-            }
-            
-            chats.forEach(chat => {
-                const chatElement = createChatElement(chat, 'archived');
-                container.appendChild(chatElement);
-            });
-        }
-
-        // Создание элемента чата
-        function createChatElement(chat, listType) {
-            const chatElement = document.createElement('div');
-            const isUnread = chat.unread_count > 0;
-            const isArchived = !chat.is_active;
-            
-            chatElement.className = `chat-item ${isUnread ? 'unread' : ''} ${isArchived ? 'archived' : ''}`;
-            chatElement.onclick = () => openAdminChatWindow(chat);
-            
-            const avatarText = chat.user_name ? chat.user_name.charAt(0).toUpperCase() : 'U';
-            const displayName = chat.user_name || `User_${chat.user_id}`;
-            const lastMessage = chat.last_message || 'Нет сообщений';
-            
-            chatElement.innerHTML = `
-                <div class="chat-avatar-small">
-                    ${avatarText}
-                </div>
-                <div class="chat-info-small">
-                    <div class="chat-name-small">
-                        ${displayName}
-                        ${isArchived ? '<span class="archived-badge">архив</span>' : ''}
-                    </div>
-                    <div class="chat-last-message">${lastMessage}</div>
-                </div>
-                <div class="chat-meta">
-                    <div class="chat-time">${chat.moscow_time || formatPostDate(chat.last_message_time)}</div>
-                    ${isUnread ? `<div class="unread-badge">${chat.unread_count}</div>` : ''}
-                </div>
-                ${listType === 'all' || listType === 'archived' ? `
-                    <div class="chat-actions">
-                        ${isArchived ? `
-                            <button class="chat-action-btn chat-restore-btn" onclick="event.stopPropagation(); restoreChat(${chat.id})" title="Восстановить">
-                                ↻
-                            </button>
-                        ` : `
-                            <button class="chat-action-btn chat-archive-btn" onclick="event.stopPropagation(); archiveChat(${chat.id})" title="В архив">
-                                📁
-                            </button>
-                        `}
-                        <button class="chat-action-btn chat-delete-btn" onclick="event.stopPropagation(); deleteAdminChat(${chat.id})" title="Удалить">
-                            🗑️
-                        </button>
-                    </div>
-                ` : ''}
-            `;
-            
-            return chatElement;
-        }
-
-        // Обновление статистики чатов
-        function updateChatsStats(chats) {
-            const activeChats = chats.filter(chat => chat.is_active).length;
-            const unreadChats = chats.filter(chat => chat.unread_count > 0).length;
-            const totalChats = chats.length;
-            
-            const activeCount = document.getElementById('active-chats-count');
-            const unreadCount = document.getElementById('unread-chats-count');
-            const totalCount = document.getElementById('total-chats-count');
-            
-            if (activeCount) activeCount.textContent = activeChats;
-            if (unreadCount) unreadCount.textContent = unreadChats;
-            if (totalCount) totalCount.textContent = totalChats;
-        }
-
-        // Переключение между вкладками чатов
-        function showChatTab(tab) {
-            // Скрываем все списки чатов
-            const activeList = document.getElementById('active-chats-list');
-            const archivedList = document.getElementById('archived-chats-list');
-            const allList = document.getElementById('all-chats-list');
-            
-            if (activeList) activeList.style.display = 'none';
-            if (archivedList) archivedList.style.display = 'none';
-            if (allList) allList.style.display = 'none';
-            
-            // Убираем активный класс со всех кнопок
-            document.querySelectorAll('.chat-tab-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            
-            // Показываем выбранный список и активируем кнопку
-            const buttons = document.querySelectorAll('.chat-tab-btn');
-            switch(tab) {
-                case 'active':
-                    if (activeList) activeList.style.display = 'block';
-                    buttons[0]?.classList.add('active');
-                    loadAdminChats();
-                    break;
-                case 'archived':
-                    if (archivedList) archivedList.style.display = 'block';
-                    buttons[1]?.classList.add('active');
-                    loadArchivedAdminChats();
-                    break;
-                case 'all':
-                    if (allList) allList.style.display = 'block';
-                    buttons[2]?.classList.add('active');
-                    loadAllAdminChats();
-                    break;
-            }
-        }
-
-        // Открытие окна чата админа с пользователем
-        async function openAdminChatWindow(chat) {
-            console.log('💬 Admin opening chat:', chat);
-            currentAdminChat = chat;
-            
-            try {
-                // Загружаем сообщения
-                const messagesResult = await makeRequest(`/support/chats/${chat.id}/messages`);
-                if (messagesResult.success) {
-                    console.log(`📨 Loaded ${messagesResult.messages.length} messages for admin chat`);
-                    
-                    // Помечаем как прочитанное
-                    try {
-                        await makeRequest(`/support/chats/${chat.id}/read`, {
-                            method: 'PUT'
-                        });
-                        // Обновляем список чатов (убираем уведомление)
-                        loadAdminChats();
-                    } catch (readError) {
-                        console.log('Mark as read not available');
-                    }
-                    
-                    // Показываем окно чата
-                    showAdminChatWindow(chat, messagesResult.messages);
-                } else {
-                    throw new Error('Failed to load messages');
-                }
-            } catch (error) {
-                console.error('❌ Error opening admin chat:', error);
-                showNotification('Ошибка открытия чата: ' + error.message, 'error');
-            }
-        }
-
-        // Показать окно чата админа
-        function showAdminChatWindow(chat, messages) {
-            // Создаем окно чата если не существует
-            let chatWindow = document.getElementById('admin-chat-window');
-            if (!chatWindow) {
-                createAdminChatWindow();
-                chatWindow = document.getElementById('admin-chat-window');
-            }
-            
-            // Обновляем информацию о пользователе
-            const chatUserName = document.getElementById('admin-chat-user-name');
-            const chatUserAvatar = document.getElementById('admin-chat-avatar');
-            
-            if (chatUserName) {
-                chatUserName.textContent = chat.user_name || `User_${chat.user_id}`;
-            }
-            
-            if (chatUserAvatar) {
-                chatUserAvatar.textContent = chat.user_name ? chat.user_name.charAt(0).toUpperCase() : 'U';
-            }
-            
-            // Отображаем сообщения
-            displayAdminChatMessages(messages);
-            
-            chatWindow.classList.add('active');
-        }
-
-        // Создание окна чата админа
-        function createAdminChatWindow() {
-            const chatWindowHTML = `
-                <div class="admin-chat-window" id="admin-chat-window">
-                    <div class="admin-chat-header">
-                        <div class="admin-chat-user">
-                            <div class="chat-avatar-small" id="admin-chat-avatar">U</div>
-                            <div class="chat-info-small">
-                                <div class="chat-name-small" id="admin-chat-user-name">User</div>
-                                <div class="chat-status">Онлайн</div>
-                            </div>
-                        </div>
-                        <button class="chat-close" onclick="closeAdminChat()">×</button>
-                    </div>
-                    <div class="admin-chat-messages" id="admin-chat-messages">
-                        <!-- Сообщения будут загружены здесь -->
-                    </div>
-                    <div class="admin-chat-input-container">
-                        <input type="text" id="admin-chat-input" placeholder="Введите сообщение..." onkeypress="if(event.key==='Enter') sendAdminMessage()">
-                        <button class="admin-chat-send" onclick="sendAdminMessage()">➤</button>
-                    </div>
-                </div>
-            `;
-            
-            document.body.insertAdjacentHTML('beforeend', chatWindowHTML);
-        }
-
-        // Отображение сообщений в чате админа
-        function displayAdminChatMessages(messages) {
-            const container = document.getElementById('admin-chat-messages');
-            if (!container) {
-                console.error('Admin chat messages container not found!');
-                return;
-            }
-            
-            container.innerHTML = '';
-            
-            if (!messages || messages.length === 0) {
-                const welcomeMessage = document.createElement('div');
-                welcomeMessage.className = 'message message-admin';
-                welcomeMessage.innerHTML = `
-                    <div class="message-text">Начните диалог с пользователем</div>
-                    <div class="message-time">${new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}</div>
-                `;
-                container.appendChild(welcomeMessage);
-                return;
-            }
-            
-            messages.forEach(message => {
-                const messageElement = document.createElement('div');
-                messageElement.className = message.is_admin ? 'message message-admin' : 'message message-user';
-                
-                let messageContent = '';
-                if (message.image_url) {
-                    messageContent = `
-                        <div class="message-image">
-                            <img src="${message.image_url}" alt="Фото" style="max-width: 200px; border-radius: 10px;">
-                        </div>
-                    `;
-                } else {
-                    messageContent = `<div class="message-text">${escapeHtml(message.message)}</div>`;
-                }
-                
-                messageElement.innerHTML = `
-                    ${messageContent}
-                    <div class="message-time">${message.moscow_time || formatPostDate(message.sent_at)}</div>
-                `;
-                container.appendChild(messageElement);
-            });
-            
-            container.scrollTop = container.scrollHeight;
-        }
-
-        // Отправка сообщения админом
-        async function sendAdminMessage() {
-            if (!currentAdminChat || !currentUser) {
-                console.error('No active chat or user');
-                showNotification('Чат не выбран', 'error');
-                return;
-            }
-            
-            const input = document.getElementById('admin-chat-input');
-            if (!input) {
-                console.error('Admin chat input not found');
-                return;
-            }
-            
-            const message = input.value.trim();
-            
-            if (!message) {
-                showNotification('Введите сообщение', 'error');
-                return;
-            }
-            
-            try {
-                console.log(`✉️ Admin sending message to chat ${currentAdminChat.id}:`, message);
-                
-                const result = await makeRequest(`/support/chats/${currentAdminChat.id}/messages`, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        user_id: currentUser.id,
-                        user_name: 'Администратор',
-                        message: message,
-                        is_admin: true
-                    })
-                });
-                
-                if (result.success) {
-                    // Добавляем сообщение в интерфейс
-                    const messagesContainer = document.getElementById('admin-chat-messages');
-                    if (messagesContainer) {
-                        const messageElement = document.createElement('div');
-                        messageElement.className = 'message message-admin';
-                        messageElement.innerHTML = `
-                            <div class="message-text">${escapeHtml(message)}</div>
-                            <div class="message-time">${new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}</div>
-                        `;
-                        messagesContainer.appendChild(messageElement);
-                        
-                        input.value = '';
-                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                        
-                        // Обновляем список чатов
-                        loadAdminChats();
-                        
-                        console.log('✅ Admin message sent successfully');
-                        showNotification('Сообщение отправлено', 'success');
-                    }
-                } else {
-                    throw new Error(result.error);
-                }
-            } catch (error) {
-                console.error('❌ Error sending admin message:', error);
-                showNotification('Ошибка отправки сообщения: ' + error.message, 'error');
-            }
-        }
-
-        // Закрытие чата админа
-        function closeAdminChat() {
-            const chatWindow = document.getElementById('admin-chat-window');
-            if (chatWindow) {
-                chatWindow.classList.remove('active');
-            }
-            currentAdminChat = null;
-        }
-
-        // Архивация чата
-        async function archiveChat(chatId) {
-            if (!confirm('Переместить чат в архив?')) return;
-
-            try {
-                const result = await makeRequest(`/support/chats/${chatId}/archive`, {
-                    method: 'PUT',
-                    body: JSON.stringify({ adminId: currentUser.id })
-                });
-
-                if (result.success) {
-                    showNotification('Чат перемещен в архив', 'success');
-                    loadAdminChats();
-                    loadAllAdminChats();
-                } else {
-                    showNotification('Ошибка: ' + result.error, 'error');
-                }
-            } catch (error) {
-                console.error('Error archiving chat:', error);
-                showNotification('Ошибка архивации чата', 'error');
-            }
-        }
-
-
-
-// Инициализируем тему при загрузке
-initTheme();
-        // Восстановление чата из архива
-        async function restoreChat(chatId) {
-            try {
-                const result = await makeRequest(`/support/chats/${chatId}/restore`, {
-                    method: 'PUT',
-                    body: JSON.stringify({ adminId: currentUser.id })
-                });
-
-                if (result.success) {
-                    showNotification('Чат восстановлен', 'success');
-                    loadAdminChats();
-                    loadAllAdminChats();
-                    loadArchivedAdminChats();
-                } else {
-                    showNotification('Ошибка: ' + result.error, 'error');
-                }
-            } catch (error) {
-                console.error('Error restoring chat:', error);
-                showNotification('Ошибка восстановления чата', 'error');
-            }
-        }
-
-        // Удаление чата
-        async function deleteAdminChat(chatId) {
-            if (!confirm('Удалить этот чат? Все сообщения будут удалены.')) return;
-
-            try {
-                const result = await makeRequest(`/support/chats/${chatId}`, {
-                    method: 'DELETE',
-                    body: JSON.stringify({ adminId: currentUser.id })
-                });
-
-                if (result.success) {
-                    showNotification('Чат удален', 'success');
-                    // Обновляем все списки чатов
-                    loadAdminChats();
-                    loadAllAdminChats();
-                    loadArchivedAdminChats();
-                    
-                    // Если удаленный чат был открыт - закрываем его
-                    if (currentAdminChat && currentAdminChat.id === chatId) {
-                        closeAdminChat();
-                    }
-                } else {
-                    showNotification('Ошибка: ' + result.error, 'error');
-                }
-            } catch (error) {
-                console.error('Error deleting chat:', error);
-                showNotification('Ошибка удаления чата', 'error');
-            }
-        }
-
-        // Функция для воспроизведения звука при начислении средств
-        function playMoneySound() {
-            try {
-                // Создаем простой звук средствами браузера
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
-                
-                oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-                
-                oscillator.frequency.value = 800;
-                oscillator.type = 'sine';
-                
-                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-                
-                oscillator.start(audioContext.currentTime);
-                oscillator.stop(audioContext.currentTime + 0.5);
-            } catch (error) {
-                console.log('Audio not supported');
-            }
-        }
-// Обработчик Enter для поля ввода имени администратора
-function initAdminInputHandlers() {
-    const usernameInput = document.getElementById('new-admin-username');
-    if (usernameInput) {
-        usernameInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                addNewAdmin();
-            }
-        });
-    }
-}
-
-// Инициализация после загрузки DOM
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initAdminInputHandlers);
-} else {
-    initAdminInputHandlers();
-}
-        // 🔧 ЭКСПОРТ ФУНКЦИЙ
-        window.showTaskCategory = showTaskCategory;
-        window.loadUserTasksForCategory = loadUserTasksForCategory;
-        window.displayUserTasksForCategory = displayUserTasksForCategory;
-        window.openAdminChat = openAdminChat;
-        window.closeChat = closeChat;
-        window.sendMessageToAdmin = sendMessageToAdmin;
-        window.openTaskModal = openTaskModal;
-        window.startTask = startTask;
-        window.closeModal = closeModal;
-        window.showBalanceModal = showBalanceModal;
-        window.showPrices = showPrices;
-        window.openAdminChatFromPrices = openAdminChatFromPrices;
-        window.goToProfile = goToProfile;
-        window.copyReferralLink = copyReferralLink;
-        window.submitWithdraw = submitWithdraw;
-        window.showMainTab = showMainTab;
-        window.showTasksTab = showTasksTab;
-        window.showProfileTab = showProfileTab;
-        window.showAdminTab = showAdminTab;
-        window.showHowItWorksPage = showHowItWorksPage;
-        window.showAboutPage = showAboutPage;
-        window.showWithdrawPage = showWithdrawPage;
-        window.showAdminSection = showAdminSection;
-        window.addNewPost = addNewPost;
-        window.addTask = addTask;
-        window.deletePost = deletePost;
-        window.deleteTask = deleteTask;
-        window.sendAdminMessage = sendAdminMessage;
-        window.closeAdminChat = closeAdminChat;
-        window.submitTaskCompletion = submitScreenshot;
-        window.deleteAdminChat = deleteAdminChat;
-        window.archiveChat = archiveChat;
-        window.restoreChat = restoreChat;
-        window.showChatTab = showChatTab;
-        window.handleLike = handleLike;
-        window.handleDislike = handleDislike;
-        window.showTaskConfirmation = showTaskConfirmation;
-        window.showScreenshotUpload = showScreenshotUpload;
-        window.showCancelConfirmation = showCancelConfirmation;
-        window.submitScreenshot = submitScreenshot;
-        window.cancelTask = cancelTask;
-        window.loadTaskVerifications = loadTaskVerifications;
-        window.openVerificationModal = openVerificationModal;
-        window.approveVerification = approveVerification;
-        window.rejectVerification = rejectVerification;
-        window.goBackToProfile = goBackToProfile;
-        window.loadAdminChats = loadAdminChats;
-        window.loadAllAdminChats = loadAllAdminChats;
-        window.loadArchivedAdminChats = loadArchivedAdminChats;
-        window.openAdminChatWindow = openAdminChatWindow;
-        window.requestWithdraw = requestWithdraw;
-        // 🔧 ЭКСПОРТ ФУНКЦИЙ
-window.showAdminAdminsSection = showAdminAdminsSection;
-window.loadAdminsList = loadAdminsList;
-window.addNewAdmin = addNewAdmin;
-window.removeAdmin = removeAdmin;
-// 🔧 ЭКСПОРТ ФУНКЦИЙ ДЛЯ УПРАВЛЕНИЯ АДМИНАМИ
-window.showAdminAdminsSection = showAdminAdminsSection;
-window.loadAdminsList = loadAdminsList;
-window.addNewAdmin = addNewAdmin;
-window.removeAdmin = removeAdmin;
-window.showAdminSection = showAdminSection;
-// 🔧 ЭКСПОРТ ФУНКЦИЙ ДЛЯ УПРАВЛЕНИЯ АДМИНАМИ
-window.showAdminAdminsSection = showAdminAdminsSection;
-window.loadAdminsList = loadAdminsList;
-window.addNewAdmin = addNewAdmin;
-window.removeAdmin = removeAdmin;
-window.showAdminSection = showAdminSection;
-window.refreshUserData = refreshUserData;
-window.showAdminAdminsSection = showAdminAdminsSection;
-window.loadAdminsList = loadAdminsList;
-window.addNewAdmin = addNewAdmin;
-window.removeAdmin = removeAdmin;
-window.showAdminSection = showAdminSection;
-window.refreshUserData = refreshUserData;
-window.checkAdminRights = checkAdminRights;
-// 🔧 ФУНКЦИИ ДЛЯ УПРАВЛЕНИЯ АДМИНАМИ
-// 🔧 ЭКСПОРТ ФУНКЦИЙ ДЛЯ УПРАВЛЕНИЯ АДМИНАМИ
-window.showAdminAdminsSection = showAdminAdminsSection;
-window.loadAdminsList = loadAdminsList;
-window.addNewAdmin = addNewAdmin;
-window.removeAdmin = removeAdmin;
-window.showAdminSection = showAdminSection;
-
-// 🔧 ЭКСПОРТ НОВЫХ ФУНКЦИЙ
-window.refreshAdminRights = refreshAdminRights;
-window.debugAdminRights = debugAdminRights;
-
-
-// Функции для управления администраторами
-function showAdminAdminsSection() {
-    showAdminSection('admins ');
-    loadAdminsList();
-}
-
-// Загрузка списка админов - ИСПРАВЛЕННАЯ ВЕРСИЯ
-// Загрузка списка админов - С ДИАГНОСТИКОЙ
-async function loadAdminsList() {
-    console.log('🔄 Loading admins list...');
-    
-    if (!currentUser) {
-        console.log('❌ User not authenticated');
-        return;
-    }
-    
-    // Проверяем, что это главный администратор
-    if (parseInt(currentUser.id) !== ADMIN_ID) {
-        console.log('❌ User is not main admin');
-        return;
-    }
-    
-    try {
-        console.log('🔍 Making request to /admin/admins-list...');
-        const url = `/admin/admins-list?adminId=${currentUser.id}`;
-        console.log('📤 Request URL:', url);
-        
-        const result = await makeRequest(url);
-        
-        console.log('✅ Admins list loaded successfully:', result);
-        displayAdminsList(result.admins);
-        
-    } catch (error) {
-        console.error('❌ Error loading admins list:', error);
-        
-        // Показываем более подробную информацию об ошибке
-        let errorMessage = 'Неизвестная ошибка';
-        if (error.message.includes('Unexpected token')) {
-            errorMessage = 'Сервер вернул HTML вместо JSON. Проверьте endpoint.';
-        } else if (error.message.includes('404')) {
-            errorMessage = 'Endpoint не найден (404). Проверьте серверные маршруты.';
-        } else if (error.message.includes('500')) {
-            errorMessage = 'Ошибка сервера (500). Проверьте логи сервера.';
-        } else {
-            errorMessage = error.message;
-        }
-        
-        showNotification('Ошибка загрузки списка админов: ' + errorMessage, 'error');
-    }
-}
-// Отображение списка админов
-function displayAdminsList(admins) {
-    const container = document.getElementById('admins-list');
-    if (!container) {
-        console.error('❌ Container #admins-list not found');
-        return;
-    }
-    
-    container.innerHTML = '';
-    
-    if (!admins || admins.length === 0) {
-        container.innerHTML = `
-            <div class="no-tasks" style="text-align: center; padding: 30px;">
-                <div style="font-size: 48px; margin-bottom: 16px;">👥</div>
-                <div>Нет администраторов</div>
-                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
-                    Добавьте первого администратора
-                </div>
-            </div>
-        `;
-        return;
-    }
-    
-    admins.forEach(admin => {
-        const adminElement = document.createElement('div');
-        adminElement.className = 'admin-task-item';
-        
-        const isMainAdmin = parseInt(admin.user_id) === ADMIN_ID;
-        const joinDate = new Date(admin.created_at).toLocaleDateString('ru-RU');
-        const fullName = `${admin.first_name} ${admin.last_name || ''}`.trim();
-        const displayName = fullName || `Пользователь ${admin.user_id}`;
-        
-        adminElement.innerHTML = `
-            <div class="admin-task-header">
-                <div class="admin-task-title">
-                    ${displayName}
-                    ${isMainAdmin ? ' <span style="color: var(--gold);">(Главный админ)</span>' : ''}
-                </div>
-                ${!isMainAdmin ? `
-                    <div class="admin-task-actions">
-                        <button class="admin-task-delete" onclick="removeAdmin(${admin.user_id})">
-                            🗑️ Удалить
-                        </button>
-                    </div>
-                ` : ''}
-            </div>
-            <div class="admin-task-description">
-                @${admin.username} • ID: ${admin.user_id} • Добавлен: ${joinDate}
-            </div>
-            <div style="margin-top: 8px; font-size: 12px; color: ${admin.is_admin ? 'var(--success)' : 'var(--error)'};">
-                ${admin.is_admin ? '✅ Права администратора активны' : '❌ Права администратора не активны'}
-            </div>
-        `;
-        
-        container.appendChild(adminElement);
-    });
-}
-// Функция для настройки админ-панели
-function setupAdminPanel() {
-    if (!currentUser) return;
-    
-    const isMainAdmin = parseInt(currentUser.id) === ADMIN_ID;
-    const adminButtons = document.querySelector('#admin-tab .admin-buttons');
-    
-    if (!adminButtons) return;
-    
-    // Удаляем существующую кнопку "Админы" если есть
-    const existingAdminsBtn = adminButtons.querySelector('[onclick*="admins"]');
-    if (existingAdminsBtn) {
-        existingAdminsBtn.remove();
-    }
-    
-    // Добавляем кнопку "Админы" только для главного админа
-    if (isMainAdmin) {
-        const adminsButton = document.createElement('button');
-        adminsButton.className = 'admin-btn';
-        adminsButton.onclick = () => showAdminSection('admins');
-        adminsButton.textContent = '👥 Админы';
-        adminsButton.style.background = 'var(--purple-gradient)';
-        adminButtons.appendChild(adminsButton);
-        
-        console.log('✅ Admins button added for main admin');
-    }
-}
-// Добавление нового админа - ИСПРАВЛЕННАЯ ВЕРСИЯ
-// Добавление нового админа - ОБНОВЛЕННАЯ ВЕРСИЯ
-async function addNewAdmin() {
-    console.log('🎯 Starting addNewAdmin function...');
-    
-    const usernameInput = document.getElementById('new-admin-username');
-    const messageDiv = document.getElementById('admin-form-message');
-    const submitBtn = document.getElementById('add-admin-btn');
-    
-    if (!usernameInput || !messageDiv) {
-        console.error('❌ Required elements not found');
-        showNotification('Ошибка: элементы формы не найдены', 'error');
-        return;
-    }
-    
-    const username = usernameInput.value.trim();
-    
-    // Валидация
-    if (!username) {
-        messageDiv.innerHTML = '<span style="color: var(--error);">Введите юзернейм пользователя</span>';
-        return;
-    }
-    
-    // Проверяем права доступа
-    if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) {
-        messageDiv.innerHTML = '<span style="color: var(--error);">Только главный администратор может добавлять админов!</span>';
-        return;
-    }
-    
-    console.log('👤 Attempting to add admin with username:', username);
-    
-    // Показываем загрузку
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Добавляем...';
-    messageDiv.innerHTML = '<span style="color: var(--warning);">Добавляем администратора...</span>';
-    
-    try {
-        const result = await makeRequest('/admin/add-admin', {
-            method: 'POST',
-            body: JSON.stringify({
-                adminId: currentUser.id,
-                username: username
-            })
-        });
-        
-        console.log('📨 Server response:', result);
-        
-        if (result.success) {
-            messageDiv.innerHTML = `<span style="color: var(--success);">${result.message}</span>`;
-            usernameInput.value = ''; // Очищаем поле ввода
-            
-            // Обновляем список админов
-            setTimeout(() => {
-                loadAdminsList();
-            }, 1000);
-            
-            showNotification(result.message, 'success');
-            
-            // Если добавленный админ - это текущий пользователь, обновляем его права
-            if (result.targetUserId && parseInt(result.targetUserId) === parseInt(currentUser.id)) {
-                console.log('🔄 Added admin is current user, refreshing rights...');
-                setTimeout(() => {
-                    refreshUserData();
-                }, 1500);
-            }
-            
-        } else {
-            messageDiv.innerHTML = `<span style="color: var(--error);">Ошибка: ${result.error}</span>`;
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-        
-    } catch (error) {
-        console.error('❌ Error adding admin:', error);
-        messageDiv.innerHTML = `<span style="color: var(--error);">Ошибка сети: ${error.message}</span>`;
-        showNotification('Ошибка сети при добавлении админа', 'error');
-    } finally {
-        // Восстанавливаем кнопку
-        submitBtn.disabled = false;
-        submitBtn.textContent = '➕ Добавить администратора';
-    }
-}
-
-// Принудительное обновление данных пользователя
-async function refreshUserData() {
-    if (!currentUser) return;
-    
-    try {
-        console.log('🔄 Refreshing user data...');
-        
-        const result = await makeRequest('/admin/refresh-rights', {
-            method: 'POST',
-            body: JSON.stringify({
-                userId: currentUser.id
-            })
-        });
-        
-        if (result.success) {
-            // Обновляем текущего пользователя
-            Object.assign(currentUser, result.user);
-            
-            // Обновляем отображение
-            displayUserProfile();
-            updateAdminPanel(); // Обновляем админ-панель
-            
-            console.log('✅ User data refreshed:', currentUser);
-            showNotification('Права администратора обновлены!', 'success');
-        }
-    } catch (error) {
-        console.error('❌ Error refreshing user data:', error);
-    }
-}
-
-// Удаление админа
-// Удаление админа - ИСПРАВЛЕННАЯ ВЕРСИЯ
-async function removeAdmin(targetAdminId) {
-    console.log('🗑️ Removing admin:', targetAdminId);
-    
-    if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) {
-        showNotification('Только главный администратор может удалять админов!', 'error');
-        return;
-    }
-    
-    if (!confirm('Вы уверены, что хотите удалить этого администратора?')) {
-        return;
-    }
-    
-    try {
-        const result = await makeRequest('/admin/remove-admin', {
-            method: 'POST',
-            body: JSON.stringify({
-                adminId: currentUser.id,
-                targetAdminId: targetAdminId
-            })
-        });
-        
-        if (result.success) {
-            showNotification(result.message, 'success');
-            loadAdminsList(); // Обновляем список админов
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('❌ Error removing admin:', error);
-        showNotification('Ошибка удаления админа: ' + error.message, 'error');
-    }
-}
-// Обновите функцию showAdminSection чтобы включить новую секцию
-
-// Обработчик Enter для поля ввода имени администратора
-function initAdminInputHandlers() {
-    const usernameInput = document.getElementById('new-admin-username');
-    if (usernameInput) {
-        usernameInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                addNewAdmin();
-            }
-        });
-    }
-}
-
-// Инициализация после загрузки DOM
-document.addEventListener('DOMContentLoaded', function() {
-    initAdminInputHandlers();
-});
-// Принудительное обновление прав администратора
-// Принудительное обновление прав администратора
-// Принудительное обновление прав администратора - ОБНОВЛЕННАЯ ВЕРСИЯ
-async function refreshAdminRights() {
-    if (!currentUser) return;
-    
-    try {
-        console.log('🔄 Refreshing admin rights for user:', currentUser.id);
-        
-        // Используем новый endpoint для обновления прав
-        const result = await makeRequest('/admin/refresh-rights', {
-            method: 'POST',
-            body: JSON.stringify({
-                userId: currentUser.id
-            })
-        });
-        
-        if (result.success) {
-            // Обновляем текущего пользователя
-            Object.assign(currentUser, result.user);
-            
-            console.log('✅ Admin rights refreshed:', {
-                id: currentUser.id,
-                is_admin: currentUser.is_admin,
-                isMainAdmin: parseInt(currentUser.id) === ADMIN_ID
-            });
-            
-            // Перепроверяем права администратора
-            checkAdminRights();
-            
-        } else {
-            // Если новый endpoint не работает, используем старый
-            const fallbackResult = await makeRequest(`/user/${currentUser.id}`);
-            if (fallbackResult.success) {
-                Object.assign(currentUser, fallbackResult.profile);
-                checkAdminRights();
-            }
-        }
-    } catch (error) {
-        console.error('Ошибка обновления прав администратора:', error);
-        // Пробуем старый метод как запасной вариант
-        try {
-            const fallbackResult = await makeRequest(`/user/${currentUser.id}`);
-            if (fallbackResult.success) {
-                Object.assign(currentUser, fallbackResult.profile);
-                checkAdminRights();
-            }
-        } catch (fallbackError) {
-            console.error('Fallback method also failed:', fallbackError);
-        }
-    }
-}
-// Функция для отладки прав администратора
-function debugAdminRights() {
-    console.log('🐛 DEBUG Admin Rights:');
-    console.log('- Current User:', currentUser);
-    console.log('- ADMIN_ID:', ADMIN_ID);
-    console.log('- is_admin:', currentUser?.is_admin);
-    console.log('- isMainAdmin:', parseInt(currentUser?.id) === ADMIN_ID);
-    console.log('- Admin Nav Visible:', document.getElementById('admin-nav-item')?.style.display);
-}
-
-// Вызов для отладки
-setTimeout(debugAdminRights, 2000);
-// Функция для тестирования прав администратора (только клиентская)
-async function testAdminRights() {
-    if (!currentUser) {
-        console.log('❌ No current user for rights test');
-        return;
-    }
-    
-    try {
-        const result = await makeRequest(`/admin/debug-rights?userId=${currentUser.id}`);
-        console.log('🔍 Admin rights debug:', result);
-    } catch (error) {
-        console.error('Error testing admin rights:', error);
-    }
-}
-
-// Вызов для отладки (только на клиенте)
-setTimeout(() => {
-    if (typeof currentUser !== 'undefined') {
-        testAdminRights();
-    }
-}, 3000);
-
-// 🔧 ЭКСПОРТ НОВЫХ ФУНКЦИЙ
+// 🔧 ЭКСПОРТ ФУНКЦИЙ
 window.addNewPostAsAdmin = addNewPostAsAdmin;
 window.deletePostAsAdmin = deletePostAsAdmin;
 window.addTaskAsAdmin = addTaskAsAdmin;
@@ -9065,6 +5931,9 @@ window.openAdminSupportChat = openAdminSupportChat;
 window.approveVerification = approveVerification;
 window.rejectVerification = rejectVerification;
 window.closeModal = closeModal;
+window.openChatWithUser = openChatWithUser;
+window.sendAdminMessage = sendAdminMessage;
+window.closeAdminChat = closeAdminChat;
 </script>
 </body>
 </html>
