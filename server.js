@@ -2250,7 +2250,25 @@ app.post('/api/admin/remove-admin', async (req, res) => {
         });
     }
 });
-
+// Добавьте временно в server.js для проверки
+app.get('/api/debug/user/:userId', async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT user_id, username, is_admin FROM user_profiles WHERE user_id = $1', 
+            [req.params.userId]
+        );
+        
+        res.json({
+            success: true,
+            user: result.rows[0] || 'Not found'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 // Получение списка всех админов
 // Получение списка всех администраторов
 app.get('/api/admin/admins-list', async (req, res) => {
