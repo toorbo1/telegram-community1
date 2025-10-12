@@ -5505,23 +5505,9 @@ async function initializeApp() {
     
     // Запускаем автообновление данных
     startUserDataAutoUpdate();
-        // Если пользователь админ, загружаем админ-данные
-    if (currentUser && currentUser.isAdmin) {
-        loadAdminChats();
-        loadAdminTasks();
-        loadTaskVerifications();
-        
-        // Если это главный админ, загружаем список админов
-        if (parseInt(currentUser.id) === ADMIN_ID) {
-            setTimeout(() => {
-                loadAdminsList();
-            }, 500);
-        }
-    }
     
     console.log('🎉 App initialized successfully');
 }
-
 // Функция для отладки прав администратора
 function debugAdminRights() {
     console.log('🐛 DEBUG Admin Rights:');
