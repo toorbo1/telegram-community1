@@ -1800,17 +1800,7 @@ function showAdminSection(section) {
         }, 100);
     }
 }
-// Добавьте обработчик события для поля ввода (в конце script)
-document.addEventListener('DOMContentLoaded', function() {
-    const usernameInput = document.getElementById('new-admin-username');
-    if (usernameInput) {
-        usernameInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                addNewAdmin();
-            }
-        });
-    }
-});
+
 // Restore chat
 app.put('/api/support/chats/:chatId/restore', async (req, res) => {
     const chatId = req.params.chatId;

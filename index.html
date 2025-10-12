@@ -7805,7 +7805,24 @@ initTheme();
                 console.log('Audio not supported');
             }
         }
+// Обработчик Enter для поля ввода имени администратора
+function initAdminInputHandlers() {
+    const usernameInput = document.getElementById('new-admin-username');
+    if (usernameInput) {
+        usernameInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addNewAdmin();
+            }
+        });
+    }
+}
 
+// Инициализация после загрузки DOM
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAdminInputHandlers);
+} else {
+    initAdminInputHandlers();
+}
         // 🔧 ЭКСПОРТ ФУНКЦИЙ
         window.showTaskCategory = showTaskCategory;
         window.loadUserTasksForCategory = loadUserTasksForCategory;
