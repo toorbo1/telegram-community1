@@ -5088,7 +5088,17 @@ input:checked + .theme-slider:before {
 <!-- Управление админами -->
 <!-- Добавьте эту секцию в админ-панель после других секций -->
 <!-- Управление админами -->
+<!-- Управление админами -->
 <div id="admin-admins-section" class="admin-section" style="display: none;">
+    <div style="margin-bottom: 20px; text-align: center;">
+        <button class="admin-btn" onclick="refreshUserData()" style="background: var(--teal-gradient);">
+            🔄 Обновить мои права
+        </button>
+        <p style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
+            Если вы были добавлены как администратор, нажмите эту кнопку чтобы обновить права
+        </p>
+    </div>
+    
     <div class="admin-form">
         <h3>👥 Добавление администраторов</h3>
         <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px;">
@@ -5113,6 +5123,8 @@ input:checked + .theme-slider:before {
         </div>
     </div>
 </div>
+
+
 <!-- Навигация -->
 <nav class="bottom-nav">
     <div class="nav-item active" onclick="showMainTab()">
