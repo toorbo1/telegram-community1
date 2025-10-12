@@ -1433,7 +1433,345 @@ app.put('/api/support/chats/:chatId/archive', async (req, res) => {
         });
     }
 });
+// Добавление админа по юзернейму (только для главного админа)
+app.post('/api/admin/add-admin', async (req, res) => {
+    const { adminId, username } = req.body;
+    
+    console.log('🛠️ Received add-admin request:', { adminId, username });
+    
+    // Проверяем права доступа - только главный админ
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied - only main admin can add admins'
+        });
+    }
+    
+    if (!username) {
+        return res.status(400).json({
+            success: false,
+            error: 'Username is required'
+        });
+    }
+    
+    try {
+        // Ищем пользователя по юзернейму (убираем @ если есть)
+        const cleanUsername = username.replace('@', '');
+        
+        const userResult = await pool.query(
+            'SELECT user_id, username, first_name FROM user_profiles WHERE username = $1',
+            [cleanUsername]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found with this username'
+            });
+        }
+        
+        const user = userResult.rows[0];
+        
+        // Проверяем, не является ли пользователь уже админом
+        if (user.is_admin) {
+            return res.status(400).json({
+                success: false,
+                error: 'User is already an admin'
+            });
+        }
+        
+        // Назначаем пользователя админом
+        await pool.query(
+            'UPDATE user_profiles SET is_admin = true WHERE user_id = $1',
+            [user.user_id]
+        );
+        
+        console.log(`✅ Admin added: ${user.username} (ID: ${user.user_id})`);
+        
+        res.json({
+            success: true,
+            message: `User @${user.username} (${user.first_name}) successfully added as admin`,
+            user: {
+                id: user.user_id,
+                username: user.username,
+                firstName: user.first_name
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Add admin error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
 
+// Удаление админа (только для главного админа)
+app.post('/api/admin/remove-admin', async (req, res) => {
+    const { adminId, targetAdminId } = req.body;
+    
+    console.log('🛠️ Received remove-admin request:', { adminId, targetAdminId });
+    
+    // Проверяем права доступа - только главный админ
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied - only main admin can remove admins'
+        });
+    }
+    
+    if (!targetAdminId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Target admin ID is required'
+        });
+    }
+    
+    // Нельзя удалить самого себя
+    if (parseInt(targetAdminId) === ADMIN_ID) {
+        return res.status(400).json({
+            success: false,
+            error: 'Cannot remove main admin'
+        });
+    }
+    
+    try {
+        // Проверяем существование пользователя
+        const userResult = await pool.query(
+            'SELECT user_id, username, first_name, is_admin FROM user_profiles WHERE user_id = $1',
+            [targetAdminId]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            });
+        }
+        
+        const user = userResult.rows[0];
+        
+        if (!user.is_admin) {
+            return res.status(400).json({
+                success: false,
+                error: 'User is not an admin'
+            });
+        }
+        
+        // Удаляем права админа
+        await pool.query(
+            'UPDATE user_profiles SET is_admin = false WHERE user_id = $1',
+            [targetAdminId]
+        );
+        
+        console.log(`✅ Admin removed: ${user.username} (ID: ${user.user_id})`);
+        
+        res.json({
+            success: true,
+            message: `Admin @${user.username} (${user.first_name}) successfully removed`,
+            user: {
+                id: user.user_id,
+                username: user.username,
+                firstName: user.first_name
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Remove admin error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Получение списка всех админов
+app.get('/api/admin/admins-list', async (req, res) => {
+    const { adminId } = req.query;
+    
+    // Проверяем права доступа - только главный админ
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied - only main admin can view admins list'
+        });
+    }
+    
+    try {
+        const result = await pool.query(`
+            SELECT user_id, username, first_name, last_name, created_at 
+            FROM user_profiles 
+            WHERE is_admin = true 
+            ORDER BY created_at DESC
+        `);
+        
+        res.json({
+            success: true,
+            admins: result.rows
+        });
+        
+    } catch (error) {
+        console.error('❌ Get admins list error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+// Функция для отображения секции управления админами
+function showAdminAdminsSection() {
+    showAdminSection('admins');
+    loadAdminsList();
+}
+
+// Загрузка списка админов
+async function loadAdminsList() {
+    if (!currentUser || !currentUser.isAdmin) return;
+    
+    try {
+        const result = await makeRequest(`/admin/admins-list?adminId=${ADMIN_ID}`);
+        
+        if (result.success) {
+            displayAdminsList(result.admins);
+        } else {
+            showNotification('Ошибка загрузки списка админов: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error loading admins list:', error);
+        showNotification('Ошибка загрузки списка админов', 'error');
+    }
+}
+
+// Отображение списка админов
+function displayAdminsList(admins) {
+    const container = document.getElementById('admins-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!admins || admins.length === 0) {
+        container.innerHTML = '<div class="no-tasks">Нет администраторов</div>';
+        return;
+    }
+    
+    admins.forEach(admin => {
+        const adminElement = document.createElement('div');
+        adminElement.className = 'admin-task-item';
+        
+        const isMainAdmin = parseInt(admin.user_id) === ADMIN_ID;
+        const joinDate = new Date(admin.created_at).toLocaleDateString('ru-RU');
+        
+        adminElement.innerHTML = `
+            <div class="admin-task-header">
+                <div class="admin-task-title">
+                    ${admin.first_name} ${admin.last_name || ''}
+                    ${isMainAdmin ? ' <span style="color: var(--gold);">(Главный админ)</span>' : ''}
+                </div>
+                ${!isMainAdmin ? `
+                    <div class="admin-task-actions">
+                        <button class="admin-task-delete" onclick="removeAdmin(${admin.user_id})">
+                            🗑️ Удалить
+                        </button>
+                    </div>
+                ` : ''}
+            </div>
+            <div class="admin-task-description">
+                @${admin.username} • ID: ${admin.user_id} • Добавлен: ${joinDate}
+            </div>
+        `;
+        
+        container.appendChild(adminElement);
+    });
+}
+
+// Добавление нового админа
+async function addNewAdmin() {
+    if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) {
+        showNotification('Только главный администратор может добавлять админов!', 'error');
+        return;
+    }
+    
+    const usernameInput = document.getElementById('new-admin-username');
+    const username = usernameInput?.value.trim();
+    
+    if (!username) {
+        showNotification('Введите юзернейм пользователя', 'error');
+        return;
+    }
+    
+    try {
+        const result = await makeRequest('/admin/add-admin', {
+            method: 'POST',
+            body: JSON.stringify({
+                adminId: currentUser.id,
+                username: username
+            })
+        });
+        
+        if (result.success) {
+            showNotification(result.message, 'success');
+            usernameInput.value = ''; // Очищаем поле ввода
+            loadAdminsList(); // Обновляем список админов
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error adding admin:', error);
+        showNotification('Ошибка добавления админа: ' + error.message, 'error');
+    }
+}
+
+// Удаление админа
+async function removeAdmin(targetAdminId) {
+    if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) {
+        showNotification('Только главный администратор может удалять админов!', 'error');
+        return;
+    }
+    
+    if (!confirm('Вы уверены, что хотите удалить этого администратора?')) {
+        return;
+    }
+    
+    try {
+        const result = await makeRequest('/admin/remove-admin', {
+            method: 'POST',
+            body: JSON.stringify({
+                adminId: currentUser.id,
+                targetAdminId: targetAdminId
+            })
+        });
+        
+        if (result.success) {
+            showNotification(result.message, 'success');
+            loadAdminsList(); // Обновляем список админов
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error removing admin:', error);
+        showNotification('Ошибка удаления админа: ' + error.message, 'error');
+    }
+}
+
+// Обновите функцию showAdminSection чтобы включить новую секцию
+function showAdminSection(section) {
+    // Скрываем все админ секции
+    document.querySelectorAll('.admin-section').forEach(sec => {
+        sec.style.display = 'none';
+    });
+    
+    // Показываем выбранную секцию
+    const targetSection = document.getElementById('admin-' + section + '-section');
+    if (targetSection) {
+        targetSection.style.display = 'block';
+    }
+    
+    // Загружаем данные для определенных секций
+    if (section === 'admins') {
+        loadAdminsList();
+    }
+}
 // Restore chat
 app.put('/api/support/chats/:chatId/restore', async (req, res) => {
     const chatId = req.params.chatId;

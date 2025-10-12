@@ -4375,6 +4375,42 @@ input:checked + .theme-slider:before {
     gap: 12px;
     max-height: calc(100vh - 200px);
 }
+/* Стили для списка админов */
+.admin-admins-list {
+    max-height: 400px;
+    overflow-y: auto;
+    margin-top: 15px;
+}
+
+.admin-admin-item {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border);
+}
+
+.admin-admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.admin-admin-name {
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.admin-admin-info {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.admin-admin-actions {
+    display: flex;
+    gap: 8px;
+}
     </style>
 </head>
 <body>
@@ -4694,13 +4730,14 @@ input:checked + .theme-slider:before {
             <div class="page-title">Панель администратора</div>
         </div>
 
-        <div class="admin-panel">
-            <div class="admin-buttons">
-                <button class="admin-btn" onclick="showAdminSection('posts')">Управление постами</button>
-                <button class="admin-btn" onclick="showAdminSection('tasks')">Управление заданиями</button>
-                <button class="admin-btn" onclick="showAdminSection('verification')">Проверка заданий</button>
-                <button class="admin-btn" onclick="showAdminSection('support')">Поддержка</button>
-            </div>
+        <div class="admin-buttons">
+    <button class="admin-btn" onclick="showAdminSection('posts')">Управление постами</button>
+    <button class="admin-btn" onclick="showAdminSection('tasks')">Управление заданиями</button>
+    <button class="admin-btn" onclick="showAdminSection('verification')">Проверка заданий</button>
+    <button class="admin-btn" onclick="showAdminSection('support')">Поддержка</button>
+    <!-- ДОБАВЬТЕ ЭТУ КНОПКУ -->
+    <button class="admin-btn" onclick="showAdminSection('admins')">Управление админами</button>
+</div>
             
             <!-- Управление постами -->
             <div id="admin-posts-section" class="admin-section">
@@ -5018,7 +5055,7 @@ input:checked + .theme-slider:before {
         </div>
     </div>
 
-    <!-- Страница вывода средств -->
+    <!-- Страница вывода средств
     <div id="withdraw-page" class="page">
         <div class="page-header">
             <button class="back-button" onclick="showProfileTab()">←</button>
@@ -5044,8 +5081,26 @@ input:checked + .theme-slider:before {
             </div>
         </div>
     </div>
-</main>
-
+</main> -->
+<!-- Секция управления админами -->
+<div id="admin-admins-section" class="admin-section" style="display: none;">
+    <h3>👥 Управление администраторами</h3>
+    
+    <!-- Форма добавления админа -->
+    <div class="admin-form">
+        <h4>Добавить администратора</h4>
+        <input type="text" class="admin-input" id="new-admin-username" placeholder="Введите юзернейм (без @)">
+        <button class="admin-submit" onclick="addNewAdmin()">Добавить администратора</button>
+    </div>
+    
+    <!-- Список текущих админов -->
+    <div class="admin-form" style="margin-top: 20px;">
+        <h4>Текущие администраторы</h4>
+        <div id="admins-list">
+            <!-- Список будет загружен здесь -->
+        </div>
+    </div>
+</div>
 <!-- Навигация -->
 <nav class="bottom-nav">
     <div class="nav-item active" onclick="showMainTab()">
@@ -5599,19 +5654,24 @@ async function makeRequest(endpoint, options = {}) {
         }
 
         // Проверка прав администратора
-        function checkAdminRights() {
-            const adminNavItem = document.getElementById('admin-nav-item');
-            const adminPanel = document.getElementById('admin-panel');
-            
-            if (currentUser && currentUser.isAdmin && parseInt(currentUser.id) === ADMIN_ID) {
-                if (adminNavItem) adminNavItem.style.display = 'flex';
-                if (adminPanel) adminPanel.style.display = 'block';
-            } else {
-                if (adminNavItem) adminNavItem.style.display = 'none';
-                if (adminPanel) adminPanel.style.display = 'none';
-            }
+function checkAdminRights() {
+    const adminNavItem = document.getElementById('admin-nav-item');
+    const adminPanel = document.getElementById('admin-panel');
+    
+    if (currentUser && currentUser.isAdmin) {
+        if (adminNavItem) adminNavItem.style.display = 'flex';
+        if (adminPanel) adminPanel.style.display = 'block';
+        
+        // Если это главный админ, показываем дополнительные функции
+        if (parseInt(currentUser.id) === ADMIN_ID) {
+            console.log('👑 Main admin detected');
+            // Здесь можно добавить специфичные для главного админа элементы
         }
-
+    } else {
+        if (adminNavItem) adminNavItem.style.display = 'none';
+        if (adminPanel) adminPanel.style.display = 'none';
+    }
+}
         // 🔧 ФУНКЦИИ ДЛЯ ВКЛАДОК ЗАДАНИЙ
         function showTaskCategory(category) {
             console.log('Switching to task category:', category);
