@@ -292,9 +292,9 @@ function generateReferralCode(userId) {
     return code + userId.toString().slice(-4);
 }
 
-// Обновленный endpoint аутентизации
+// User authentication - ОБНОВЛЕННАЯ ВЕРСИЯ
 app.post('/api/user/auth', async (req, res) => {
-    const { user, start_param } = req.body;
+    const { user } = req.body;
     
     if (!user) {
         return res.status(400).json({
@@ -304,36 +304,19 @@ app.post('/api/user/auth', async (req, res) => {
     }
     
     try {
-        const isAdmin = parseInt(user.id) === ADMIN_ID;
-        
-        // Генерируем реферальный код если его нет
-        let referralCode = null;
-        let referredBy = null;
-        
-        // Проверяем реферальную ссылку
-        if (start_param && start_param.startsWith('ref_')) {
-            const refCode = start_param.substring(4);
-            // Находим пользователя по реферальному коду
-            const referrer = await pool.query(
-                'SELECT user_id FROM user_profiles WHERE referral_code = $1',
-                [refCode]
-            );
-            if (referrer.rows.length > 0) {
-                referredBy = referrer.rows[0].user_id;
-            }
-        }
+        const isMainAdmin = parseInt(user.id) === ADMIN_ID;
         
         const result = await pool.query(`
             INSERT INTO user_profiles 
-            (user_id, username, first_name, last_name, photo_url, is_admin, referral_code, referred_by, updated_at) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
+            (user_id, username, first_name, last_name, photo_url, is_admin, updated_at) 
+            VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
             ON CONFLICT (user_id) 
             DO UPDATE SET 
                 username = EXCLUDED.username,
                 first_name = EXCLUDED.first_name,
                 last_name = EXCLUDED.last_name,
                 photo_url = EXCLUDED.photo_url,
-                is_admin = EXCLUDED.is_admin,
+                is_admin = COALESCE(user_profiles.is_admin, EXCLUDED.is_admin),
                 updated_at = CURRENT_TIMESTAMP
             RETURNING *
         `, [
@@ -342,34 +325,10 @@ app.post('/api/user/auth', async (req, res) => {
             user.first_name || 'Пользователь',
             user.last_name || '',
             user.photo_url || '',
-            isAdmin,
-            referralCode || generateReferralCode(user.id),
-            referredBy
+            isMainAdmin  // Только главный админ автоматически становится админом
         ]);
         
         const userProfile = result.rows[0];
-        
-        // Если это новый пользователь по реферальной ссылке - начисляем бонусы
-        if (referredBy && result.rows[0].was_created) {
-            // Начисляем 15 звезд приглашающему
-            await pool.query(`
-                UPDATE user_profiles 
-                SET 
-                    balance = COALESCE(balance, 0) + 15,
-                    referral_count = COALESCE(referral_count, 0) + 1,
-                    referral_earned = COALESCE(referral_earned, 0) + 15
-                WHERE user_id = $1
-            `, [referredBy]);
-            
-            // Начисляем 5 звезд приглашенному
-            await pool.query(`
-                UPDATE user_profiles 
-                SET balance = COALESCE(balance, 0) + 5
-                WHERE user_id = $1
-            `, [user.id]);
-            
-            console.log(`🎁 Реферальные бонусы начислены! Пригласивший: ${referredBy}, Новый пользователь: ${user.id}`);
-        }
         
         res.json({
             success: true,
@@ -625,114 +584,147 @@ app.get('/api/debug/tables', async (req, res) => {
 });
 // User authentication
 // User authentication
-app.post('/api/user/auth', async (req, res) => {
-    const { user } = req.body;
+// app.post('/api/user/auth', async (req, res) => {
+//     const { user } = req.body;
     
-    if (!user) {
-        return res.status(400).json({
-            success: false,
-            error: 'Missing required fields'
-        });
-    }
+//     if (!user) {
+//         return res.status(400).json({
+//             success: false,
+//             error: 'Missing required fields'
+//         });
+//     }
     
-    try {
-        const isMainAdmin = parseInt(user.id) === ADMIN_ID;
+//     try {
+//         const isMainAdmin = parseInt(user.id) === ADMIN_ID;
         
-        const result = await pool.query(`
-            INSERT INTO user_profiles 
-            (user_id, username, first_name, last_name, photo_url, is_admin, updated_at) 
-            VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
-            ON CONFLICT (user_id) 
-            DO UPDATE SET 
-                username = EXCLUDED.username,
-                first_name = EXCLUDED.first_name,
-                last_name = EXCLUDED.last_name,
-                photo_url = EXCLUDED.photo_url,
-                is_admin = COALESCE(EXCLUDED.is_admin, user_profiles.is_admin),
-                updated_at = CURRENT_TIMESTAMP
-            RETURNING *
-        `, [
-            user.id, 
-            user.username || `user_${user.id}`,
-            user.first_name || 'Пользователь',
-            user.last_name || '',
-            user.photo_url || '',
-            isMainAdmin  // Только главный админ автоматически становится админом
-        ]);
+//         const result = await pool.query(`
+//             INSERT INTO user_profiles 
+//             (user_id, username, first_name, last_name, photo_url, is_admin, updated_at) 
+//             VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+//             ON CONFLICT (user_id) 
+//             DO UPDATE SET 
+//                 username = EXCLUDED.username,
+//                 first_name = EXCLUDED.first_name,
+//                 last_name = EXCLUDED.last_name,
+//                 photo_url = EXCLUDED.photo_url,
+//                 is_admin = COALESCE(EXCLUDED.is_admin, user_profiles.is_admin),
+//                 updated_at = CURRENT_TIMESTAMP
+//             RETURNING *
+//         `, [
+//             user.id, 
+//             user.username || `user_${user.id}`,
+//             user.first_name || 'Пользователь',
+//             user.last_name || '',
+//             user.photo_url || '',
+//             isMainAdmin  // Только главный админ автоматически становится админом
+//         ]);
         
-        const userProfile = result.rows[0];
+//         const userProfile = result.rows[0];
         
-        res.json({
-            success: true,
-            user: userProfile
-        });
-    } catch (error) {
-        console.error('Auth error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
-// Diagnostic endpoint - check what's actually deployed
-app.get('/api/debug/info', async (req, res) => {
-    try {
-        const dbCheck = await pool.query('SELECT version()');
-        const tablesCheck = await pool.query(`
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public'
-        `);
+//         res.json({
+//             success: true,
+//             user: userProfile
+//         });
+//     } catch (error) {
+//         console.error('Auth error:', error);
+//         res.status(500).json({
+//             success: false,
+//             error: 'Database error: ' + error.message
+//         });
+//     }
+// });
+// // Diagnostic endpoint - check what's actually deployed
+// app.get('/api/debug/info', async (req, res) => {
+//     try {
+//         const dbCheck = await pool.query('SELECT version()');
+//         const tablesCheck = await pool.query(`
+//             SELECT table_name 
+//             FROM information_schema.tables 
+//             WHERE table_schema = 'public'
+//         `);
         
-        res.json({
-            success: true,
-            timestamp: new Date().toISOString(),
-            database: {
-                version: dbCheck.rows[0].version,
-                tables: tablesCheck.rows.map(row => row.table_name)
-            },
-            environment: {
-                node: process.version,
-                port: PORT,
-                admin_id: ADMIN_ID
-            }
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
+//         res.json({
+//             success: true,
+//             timestamp: new Date().toISOString(),
+//             database: {
+//                 version: dbCheck.rows[0].version,
+//                 tables: tablesCheck.rows.map(row => row.table_name)
+//             },
+//             environment: {
+//                 node: process.version,
+//                 port: PORT,
+//                 admin_id: ADMIN_ID
+//             }
+//         });
+//     } catch (error) {
+//         res.status(500).json({
+//             success: false,
+//             error: error.message
+//         });
+//     }
+// });
 
-// Get user profile
-app.get('/api/user/:userId', async (req, res) => {
+// // Get user profile
+// app.get('/api/user/:userId', async (req, res) => {
+//     try {
+//         const result = await pool.query(
+//             'SELECT * FROM user_profiles WHERE user_id = $1', 
+//             [req.params.userId]
+//         );
+        
+//         if (result.rows.length === 0) {
+//             return res.status(404).json({
+//                 success: false,
+//                 error: 'User not found'
+//             });
+//         }
+        
+//         res.json({
+//             success: true,
+//             profile: result.rows[0]
+//         });
+//     } catch (error) {
+//         console.error('Get user error:', error);
+//         res.status(500).json({
+//             success: false,
+//             error: 'Database error: ' + error.message
+//         });
+//     }
+// });
+// Endpoint для принудительного обновления прав администратора
+app.post('/api/admin/refresh-rights', async (req, res) => {
+    const { userId } = req.body;
+    
     try {
-        const result = await pool.query(
-            'SELECT * FROM user_profiles WHERE user_id = $1', 
-            [req.params.userId]
+        // Получаем актуальные данные пользователя из базы
+        const userResult = await pool.query(
+            'SELECT * FROM user_profiles WHERE user_id = $1',
+            [userId]
         );
         
-        if (result.rows.length === 0) {
+        if (userResult.rows.length === 0) {
             return res.status(404).json({
                 success: false,
                 error: 'User not found'
             });
         }
         
+        const user = userResult.rows[0];
+        
         res.json({
             success: true,
-            profile: result.rows[0]
+            user: user,
+            message: 'Admin rights refreshed'
         });
+        
     } catch (error) {
-        console.error('Get user error:', error);
+        console.error('Refresh rights error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
         });
     }
 });
-
 // Get all posts
 app.get('/api/posts', async (req, res) => {
     try {
@@ -1483,6 +1475,7 @@ app.put('/api/support/chats/:chatId/archive', async (req, res) => {
 // Добавление админа по юзернейму (только для главного админа)
 // Добавление админа по юзернейму (только для главного админа)
 // Добавление админа по юзернейму (только для главного админа) - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// Добавление админа по юзернейму - ОБНОВЛЕННАЯ ВЕРСИЯ
 app.post('/api/admin/add-admin', async (req, res) => {
     const { adminId, username } = req.body;
     
@@ -1535,20 +1528,25 @@ app.post('/api/admin/add-admin', async (req, res) => {
         
         // Назначаем пользователя админом
         await pool.query(
-            'UPDATE user_profiles SET is_admin = true WHERE user_id = $1',
+            'UPDATE user_profiles SET is_admin = true, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1',
             [user.user_id]
         );
         
         console.log(`✅ Admin added: ${user.username} (ID: ${user.user_id})`);
         
+        // Получаем обновленные данные пользователя
+        const updatedUserResult = await pool.query(
+            'SELECT * FROM user_profiles WHERE user_id = $1',
+            [user.user_id]
+        );
+        
+        const updatedUser = updatedUserResult.rows[0];
+        
         res.json({
             success: true,
             message: `Пользователь @${user.username} (${user.first_name}) успешно добавлен как администратор`,
-            user: {
-                id: user.user_id,
-                username: user.username,
-                firstName: user.first_name
-            }
+            user: updatedUser,
+            targetUserId: user.user_id
         });
         
     } catch (error) {
