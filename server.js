@@ -54,51 +54,7 @@ const pool = new Pool({
 });
 
 const ADMIN_ID = 8036875641;
-// Получение списка всех админов - ТОЛЬКО для главного админа
-app.get('/api/admin/admins-list', async (req, res) => {
-    const { adminId } = req.query;
-    
-    console.log('🛠️ Received admins-list request from:', adminId);
-    
-    // Проверяем права доступа - только главный админ
-    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied - only main admin can view admins list'
-        });
-    }
-    
-    try {
-        const result = await pool.query(`
-            SELECT 
-                user_id, 
-                username, 
-                first_name, 
-                last_name, 
-                is_admin,
-                created_at 
-            FROM user_profiles 
-            WHERE is_admin = true 
-            ORDER BY 
-                CASE WHEN user_id = $1 THEN 0 ELSE 1 END,
-                created_at DESC
-        `, [ADMIN_ID]);
-        
-        console.log(`✅ Found ${result.rows.length} admins`);
-        
-        res.json({
-            success: true,
-            admins: result.rows
-        });
-        
-    } catch (error) {
-        console.error('❌ Get admins list error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
+
 // Упрощенная инициализация базы данных
 async function initDatabase() {
     try {
@@ -118,32 +74,33 @@ async function initDatabase() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-// Добавьте эти колонки в таблицу user_profiles
-await pool.query(`
-    ALTER TABLE user_profiles 
-    ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE,
-    ADD COLUMN IF NOT EXISTS referred_by BIGINT,
-    ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS referral_earned REAL DEFAULT 0
-`);
+
+        // Добавьте эти колонки в таблицу user_profiles
+        await pool.query(`
+            ALTER TABLE user_profiles 
+            ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE,
+            ADD COLUMN IF NOT EXISTS referred_by BIGINT,
+            ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS referral_earned REAL DEFAULT 0
+        `);
 
         await pool.query(`
-    CREATE TABLE IF NOT EXISTS tasks (
-        id SERIAL PRIMARY KEY,
-        title TEXT NOT NULL,
-        description TEXT NOT NULL,
-        price REAL NOT NULL,
-        created_by BIGINT NOT NULL,
-        category TEXT DEFAULT 'general',
-        time_to_complete TEXT DEFAULT '5 минут',
-        difficulty TEXT DEFAULT 'Легкая',
-        people_required INTEGER DEFAULT 1,
-        repost_time TEXT DEFAULT '1 день',
-        task_url TEXT,
-        status TEXT DEFAULT 'active',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-`);
+            CREATE TABLE IF NOT EXISTS tasks (
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL,
+                price REAL NOT NULL,
+                created_by BIGINT NOT NULL,
+                category TEXT DEFAULT 'general',
+                time_to_complete TEXT DEFAULT '5 минут',
+                difficulty TEXT DEFAULT 'Легкая',
+                people_required INTEGER DEFAULT 1,
+                repost_time TEXT DEFAULT '1 день',
+                task_url TEXT,
+                status TEXT DEFAULT 'active',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
 
         // Упрощенная таблица постов
         await pool.query(`
@@ -158,62 +115,63 @@ await pool.query(`
         `);
 
         await pool.query(`
-    CREATE TABLE IF NOT EXISTS support_chats (
-        id SERIAL PRIMARY KEY,
-        user_id BIGINT NOT NULL,
-        user_name TEXT NOT NULL,
-        user_username TEXT,
-        last_message TEXT,
-        last_message_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        is_active BOOLEAN DEFAULT true,
-        unread_count INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-`);
-// Таблица для заданий пользователей
-await pool.query(`
-    CREATE TABLE IF NOT EXISTS user_tasks (
-        id SERIAL PRIMARY KEY,
-        user_id BIGINT NOT NULL,
-        task_id INTEGER NOT NULL,
-        status TEXT DEFAULT 'active',
-        started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        screenshot_url TEXT,
-        submitted_at TIMESTAMP,
-        completed_at TIMESTAMP
-    )
-`);
+            CREATE TABLE IF NOT EXISTS support_chats (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                user_name TEXT NOT NULL,
+                user_username TEXT,
+                last_message TEXT,
+                last_message_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                is_active BOOLEAN DEFAULT true,
+                unread_count INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
 
-// Таблица для проверки заданий
-await pool.query(`
-    CREATE TABLE IF NOT EXISTS task_verifications (
-        id SERIAL PRIMARY KEY,
-        user_task_id INTEGER NOT NULL,
-        user_id BIGINT NOT NULL,
-        task_id INTEGER NOT NULL,
-        user_name TEXT NOT NULL,
-        task_title TEXT NOT NULL,
-        task_price REAL NOT NULL,
-        screenshot_url TEXT NOT NULL,
-        status TEXT DEFAULT 'pending',
-        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        reviewed_at TIMESTAMP,
-        reviewed_by BIGINT
-    )
-`);
+        // Таблица для заданий пользователей
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS user_tasks (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                task_id INTEGER NOT NULL,
+                status TEXT DEFAULT 'active',
+                started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                screenshot_url TEXT,
+                submitted_at TIMESTAMP,
+                completed_at TIMESTAMP
+            )
+        `);
 
+        // Таблица для проверки заданий
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS task_verifications (
+                id SERIAL PRIMARY KEY,
+                user_task_id INTEGER NOT NULL,
+                user_id BIGINT NOT NULL,
+                task_id INTEGER NOT NULL,
+                user_name TEXT NOT NULL,
+                task_title TEXT NOT NULL,
+                task_price REAL NOT NULL,
+                screenshot_url TEXT NOT NULL,
+                status TEXT DEFAULT 'pending',
+                submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                reviewed_at TIMESTAMP,
+                reviewed_by BIGINT
+            )
+        `);
 
-// Таблица для запросов на вывод (если еще не добавлена)
-await pool.query(`
-    CREATE TABLE IF NOT EXISTS withdrawal_requests (
-        id SERIAL PRIMARY KEY,
-        user_id BIGINT NOT NULL,
-        amount REAL NOT NULL,
-        status TEXT DEFAULT 'pending',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        completed_at TIMESTAMP
-    )
-`);
+        // Таблица для запросов на вывод (если еще не добавлена)
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS withdrawal_requests (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                amount REAL NOT NULL,
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP
+            )
+        `);
+
         // Упрощенная таблица сообщений
         await pool.query(`
             CREATE TABLE IF NOT EXISTS support_messages (
@@ -225,38 +183,43 @@ await pool.query(`
                 is_admin BOOLEAN DEFAULT false,
                 sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
+        `);
 
-        `);
-// Функция для добавления недостающих колонок
-async function migrateDatabase() {
-    try {
-        console.log('🔄 Checking for database migrations...');
-        
-        // Добавляем недостающие колонки в support_chats
-        await pool.query(`
-            ALTER TABLE support_chats 
-            ADD COLUMN IF NOT EXISTS user_username TEXT,
-            ADD COLUMN IF NOT EXISTS unread_count INTEGER DEFAULT 0
-        `);
-        
-        // Добавляем недостающие колонки в tasks
-        await pool.query(`
-            ALTER TABLE tasks 
-            ADD COLUMN IF NOT EXISTS created_by BIGINT,
-            ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'general',
-            ADD COLUMN IF NOT EXISTS time_to_complete TEXT DEFAULT '5 минут',
-            ADD COLUMN IF NOT EXISTS difficulty TEXT DEFAULT 'Легкая',
-            ADD COLUMN IF NOT EXISTS people_required INTEGER DEFAULT 1,
-            ADD COLUMN IF NOT EXISTS repost_time TEXT DEFAULT '1 день',
-            ADD COLUMN IF NOT EXISTS task_url TEXT
-        `);
+        // Функция для добавления недостающих колонок
+        async function migrateDatabase() {
+            try {
+                console.log('🔄 Checking for database migrations...');
+                
+                // Добавляем недостающие колонки в support_chats
+                await pool.query(`
+                    ALTER TABLE support_chats 
+                    ADD COLUMN IF NOT EXISTS user_username TEXT,
+                    ADD COLUMN IF NOT EXISTS unread_count INTEGER DEFAULT 0
+                `);
+                
+                // Добавляем недостающие колонки в tasks
+                await pool.query(`
+                    ALTER TABLE tasks 
+                    ADD COLUMN IF NOT EXISTS created_by BIGINT,
+                    ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'general',
+                    ADD COLUMN IF NOT EXISTS time_to_complete TEXT DEFAULT '5 минут',
+                    ADD COLUMN IF NOT EXISTS difficulty TEXT DEFAULT 'Легкая',
+                    ADD COLUMN IF NOT EXISTS people_required INTEGER DEFAULT 1,
+                    ADD COLUMN IF NOT EXISTS repost_time TEXT DEFAULT '1 день',
+                    ADD COLUMN IF NOT EXISTS task_url TEXT
+                `);
+                
+                console.log('✅ Database migrations completed');
+            } catch (error) {
+                console.error('❌ Database migration error:', error);
+            }
+        }
+
+        await migrateDatabase();
+
+        // Гарантируем, что главный администратор существует и имеет права
         await ensureMainAdmin();
         
-        console.log('✅ Database migrations completed');
-    } catch (error) {
-        console.error('❌ Database migration error:', error);
-    }
-}
         // Добавляем примеры если таблицы пустые
         const tasksCount = await pool.query('SELECT COUNT(*) FROM tasks');
         if (parseInt(tasksCount.rows[0].count) === 0) {
@@ -282,6 +245,26 @@ async function migrateDatabase() {
         console.error('❌ Database initialization error:', error);
     }
 }
+
+// Убедитесь, что главный администратор всегда имеет права
+async function ensureMainAdmin() {
+    try {
+        const result = await pool.query(`
+            INSERT INTO user_profiles 
+            (user_id, username, first_name, last_name, is_admin) 
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (user_id) 
+            DO UPDATE SET 
+                is_admin = true,
+                updated_at = CURRENT_TIMESTAMP
+        `, [ADMIN_ID, 'linkgold_admin', 'Главный', 'Администратор', true]);
+        
+        console.log('✅ Main admin ensured');
+    } catch (error) {
+        console.error('❌ Error ensuring main admin:', error);
+    }
+}
+
 // Функция генерации реферального кода
 function generateReferralCode(userId) {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -292,246 +275,6 @@ function generateReferralCode(userId) {
     return code + userId.toString().slice(-4);
 }
 
-// User authentication - ОБНОВЛЕННАЯ ВЕРСИЯ
-app.post('/api/user/auth', async (req, res) => {
-    const { user } = req.body;
-    
-    if (!user) {
-        return res.status(400).json({
-            success: false,
-            error: 'Missing required fields'
-        });
-    }
-    
-    try {
-        const isMainAdmin = parseInt(user.id) === ADMIN_ID;
-        
-        const result = await pool.query(`
-            INSERT INTO user_profiles 
-            (user_id, username, first_name, last_name, photo_url, is_admin, updated_at) 
-            VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
-            ON CONFLICT (user_id) 
-            DO UPDATE SET 
-                username = EXCLUDED.username,
-                first_name = EXCLUDED.first_name,
-                last_name = EXCLUDED.last_name,
-                photo_url = EXCLUDED.photo_url,
-                is_admin = COALESCE(user_profiles.is_admin, EXCLUDED.is_admin),
-                updated_at = CURRENT_TIMESTAMP
-            RETURNING *
-        `, [
-            user.id, 
-            user.username || `user_${user.id}`,
-            user.first_name || 'Пользователь',
-            user.last_name || '',
-            user.photo_url || '',
-            isMainAdmin  // Только главный админ автоматически становится админом
-        ]);
-        
-        const userProfile = result.rows[0];
-        
-        res.json({
-            success: true,
-            user: userProfile
-        });
-    } catch (error) {
-        console.error('Auth error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
-
-// Получение реферальной статистики
-app.get('/api/user/:userId/referral-stats', async (req, res) => {
-    try {
-        const result = await pool.query(`
-            SELECT referral_count, referral_earned 
-            FROM user_profiles 
-            WHERE user_id = $1
-        `, [req.params.userId]);
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'User not found'
-            });
-        }
-        
-        res.json({
-            success: true,
-            stats: result.rows[0]
-        });
-    } catch (error) {
-        console.error('Get referral stats error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
-// Инициализируем базу данных при запуске
-initDatabase();
-// Упрощенное создание задания
-app.post('/api/simple/tasks', async (req, res) => {
-    const { title, description, price, created_by } = req.body;
-    
-    if (!title || !description || !price) {
-        return res.status(400).json({
-            success: false,
-            error: 'Заполните название, описание и цену'
-        });
-    }
-    
-    try {
-        const result = await pool.query(`
-            INSERT INTO tasks (title, description, price, created_by) 
-            VALUES ($1, $2, $3, $4)
-            RETURNING *
-        `, [title, description, parseFloat(price), created_by]);
-        
-        res.json({
-            success: true,
-            message: 'Задание создано!',
-            task: result.rows[0]
-        });
-    } catch (error) {
-        console.error('Create task error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Ошибка создания задания'
-        });
-    }
-});
-// Добавьте этот endpoint ПЕРВЫМ в server.js
-app.get('/api/debug/db-check', async (req, res) => {
-    try {
-        console.log('🔍 Checking database structure...');
-        
-        // Проверим существующие таблицы
-        const tables = await pool.query(`
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public'
-        `);
-        
-        const results = {};
-        
-        // Проверим структуру каждой таблицы
-        for (let table of tables.rows) {
-            const tableName = table.table_name;
-            const structure = await pool.query(`
-                SELECT column_name, data_type, is_nullable 
-                FROM information_schema.columns 
-                WHERE table_name = $1 
-                ORDER BY ordinal_position
-            `, [tableName]);
-            
-            results[tableName] = {
-                columns: structure.rows,
-                count: (await pool.query(`SELECT COUNT(*) FROM ${tableName}`)).rows[0].count
-            };
-        }
-        
-        res.json({
-            success: true,
-            database: results,
-            admin_id: ADMIN_ID,
-            timestamp: new Date().toISOString()
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message,
-            stack: error.stack
-        });
-    }
-});
-// Упрощенный чат
-app.get('/api/simple/chats/:userId', async (req, res) => {
-    const userId = req.params.userId;
-    
-    try {
-        // Создаем или получаем чат
-        let chat = await pool.query(
-            'SELECT * FROM support_chats WHERE user_id = $1', 
-            [userId]
-        );
-        
-        if (chat.rows.length === 0) {
-            const userResult = await pool.query(
-                'SELECT first_name FROM user_profiles WHERE user_id = $1',
-                [userId]
-            );
-            
-            const userName = userResult.rows[0]?.first_name || `User_${userId}`;
-            
-            chat = await pool.query(`
-                INSERT INTO support_chats (user_id, user_name, last_message) 
-                VALUES ($1, $2, $3)
-                RETURNING *
-            `, [userId, userName, 'Чат создан']);
-            
-            // Приветственное сообщение
-            await pool.query(`
-                INSERT INTO support_messages (chat_id, user_id, user_name, message, is_admin) 
-                VALUES ($1, $2, $3, $4, true)
-            `, [chat.rows[0].id, ADMIN_ID, 'Администратор', 'Здравствуйте! Чем могу помочь?']);
-        }
-        
-        // Получаем сообщения
-        const messages = await pool.query(`
-            SELECT * FROM support_messages 
-            WHERE chat_id = $1 
-            ORDER BY sent_at ASC
-        `, [chat.rows[0].id]);
-        
-        res.json({
-            success: true,
-            chat: chat.rows[0],
-            messages: messages.rows
-        });
-    } catch (error) {
-        console.error('Chat error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Ошибка чата'
-        });
-    }
-});
-
-// Отправка сообщения
-app.post('/api/simple/chats/:chatId/messages', async (req, res) => {
-    const chatId = req.params.chatId;
-    const { user_id, user_name, message, is_admin } = req.body;
-
-    try {
-        const result = await pool.query(`
-            INSERT INTO support_messages (chat_id, user_id, user_name, message, is_admin) 
-            VALUES ($1, $2, $3, $4, $5)
-            RETURNING *
-        `, [chatId, user_id, user_name, message, is_admin || false]);
-
-        // Обновляем последнее сообщение в чате
-        await pool.query(`
-            UPDATE support_chats 
-            SET last_message = $1, last_message_time = CURRENT_TIMESTAMP
-            WHERE id = $2
-        `, [message, chatId]);
-
-        res.json({
-            success: true,
-            message: 'Сообщение отправлено'
-        });
-    } catch (error) {
-        console.error('Send message error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Ошибка отправки'
-        });
-    }
-});
 // Health check
 app.get('/api/health', async (req, res) => {
     try {
@@ -551,180 +294,127 @@ app.get('/api/health', async (req, res) => {
         });
     }
 });
-// Debug endpoint to check database state
-app.get('/api/debug/tables', async (req, res) => {
-    try {
-        const tables = await pool.query(`
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public'
-        `);
-        
-        const results = {};
-        for (let table of tables.rows) {
-            const tableName = table.table_name;
-            const countResult = await pool.query(`SELECT COUNT(*) FROM ${tableName}`);
-            results[tableName] = {
-                count: parseInt(countResult.rows[0].count),
-                sample: countResult.rows[0].count > 0 ? 
-                    (await pool.query(`SELECT * FROM ${tableName} LIMIT 3`)).rows : []
-            };
-        }
-        
-        res.json({
-            success: true,
-            tables: results
-        });
-    } catch (error) {
-        res.status(500).json({
+
+// User authentication
+app.post('/api/user/auth', async (req, res) => {
+    const { user, start_param } = req.body;
+    
+    if (!user) {
+        return res.status(400).json({
             success: false,
-            error: error.message
+            error: 'Missing required fields'
         });
     }
-});
-// User authentication
-// User authentication
-// app.post('/api/user/auth', async (req, res) => {
-//     const { user } = req.body;
-    
-//     if (!user) {
-//         return res.status(400).json({
-//             success: false,
-//             error: 'Missing required fields'
-//         });
-//     }
-    
-//     try {
-//         const isMainAdmin = parseInt(user.id) === ADMIN_ID;
-        
-//         const result = await pool.query(`
-//             INSERT INTO user_profiles 
-//             (user_id, username, first_name, last_name, photo_url, is_admin, updated_at) 
-//             VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
-//             ON CONFLICT (user_id) 
-//             DO UPDATE SET 
-//                 username = EXCLUDED.username,
-//                 first_name = EXCLUDED.first_name,
-//                 last_name = EXCLUDED.last_name,
-//                 photo_url = EXCLUDED.photo_url,
-//                 is_admin = COALESCE(EXCLUDED.is_admin, user_profiles.is_admin),
-//                 updated_at = CURRENT_TIMESTAMP
-//             RETURNING *
-//         `, [
-//             user.id, 
-//             user.username || `user_${user.id}`,
-//             user.first_name || 'Пользователь',
-//             user.last_name || '',
-//             user.photo_url || '',
-//             isMainAdmin  // Только главный админ автоматически становится админом
-//         ]);
-        
-//         const userProfile = result.rows[0];
-        
-//         res.json({
-//             success: true,
-//             user: userProfile
-//         });
-//     } catch (error) {
-//         console.error('Auth error:', error);
-//         res.status(500).json({
-//             success: false,
-//             error: 'Database error: ' + error.message
-//         });
-//     }
-// });
-// // Diagnostic endpoint - check what's actually deployed
-// app.get('/api/debug/info', async (req, res) => {
-//     try {
-//         const dbCheck = await pool.query('SELECT version()');
-//         const tablesCheck = await pool.query(`
-//             SELECT table_name 
-//             FROM information_schema.tables 
-//             WHERE table_schema = 'public'
-//         `);
-        
-//         res.json({
-//             success: true,
-//             timestamp: new Date().toISOString(),
-//             database: {
-//                 version: dbCheck.rows[0].version,
-//                 tables: tablesCheck.rows.map(row => row.table_name)
-//             },
-//             environment: {
-//                 node: process.version,
-//                 port: PORT,
-//                 admin_id: ADMIN_ID
-//             }
-//         });
-//     } catch (error) {
-//         res.status(500).json({
-//             success: false,
-//             error: error.message
-//         });
-//     }
-// });
-
-// // Get user profile
-// app.get('/api/user/:userId', async (req, res) => {
-//     try {
-//         const result = await pool.query(
-//             'SELECT * FROM user_profiles WHERE user_id = $1', 
-//             [req.params.userId]
-//         );
-        
-//         if (result.rows.length === 0) {
-//             return res.status(404).json({
-//                 success: false,
-//                 error: 'User not found'
-//             });
-//         }
-        
-//         res.json({
-//             success: true,
-//             profile: result.rows[0]
-//         });
-//     } catch (error) {
-//         console.error('Get user error:', error);
-//         res.status(500).json({
-//             success: false,
-//             error: 'Database error: ' + error.message
-//         });
-//     }
-// });
-// Endpoint для принудительного обновления прав администратора
-app.post('/api/admin/refresh-rights', async (req, res) => {
-    const { userId } = req.body;
     
     try {
-        // Получаем актуальные данные пользователя из базы
-        const userResult = await pool.query(
-            'SELECT * FROM user_profiles WHERE user_id = $1',
-            [userId]
-        );
+        const isMainAdmin = parseInt(user.id) === ADMIN_ID;
         
-        if (userResult.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'User not found'
-            });
+        // Генерируем реферальный код если его нет
+        let referralCode = null;
+        let referredBy = null;
+        
+        // Проверяем реферальную ссылку
+        if (start_param && start_param.startsWith('ref_')) {
+            const refCode = start_param.substring(4);
+            // Находим пользователя по реферальному коду
+            const referrer = await pool.query(
+                'SELECT user_id FROM user_profiles WHERE referral_code = $1',
+                [refCode]
+            );
+            if (referrer.rows.length > 0) {
+                referredBy = referrer.rows[0].user_id;
+            }
         }
         
-        const user = userResult.rows[0];
+        const result = await pool.query(`
+            INSERT INTO user_profiles 
+            (user_id, username, first_name, last_name, photo_url, is_admin, referral_code, referred_by, updated_at) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
+            ON CONFLICT (user_id) 
+            DO UPDATE SET 
+                username = EXCLUDED.username,
+                first_name = EXCLUDED.first_name,
+                last_name = EXCLUDED.last_name,
+                photo_url = EXCLUDED.photo_url,
+                is_admin = COALESCE(user_profiles.is_admin, EXCLUDED.is_admin),
+                updated_at = CURRENT_TIMESTAMP
+            RETURNING *
+        `, [
+            user.id, 
+            user.username || `user_${user.id}`,
+            user.first_name || 'Пользователь',
+            user.last_name || '',
+            user.photo_url || '',
+            isMainAdmin,
+            referralCode || generateReferralCode(user.id),
+            referredBy
+        ]);
+        
+        const userProfile = result.rows[0];
+        
+        // Если это новый пользователь по реферальной ссылке - начисляем бонусы
+        if (referredBy && result.rows[0].was_created) {
+            // Начисляем 15 звезд приглашающему
+            await pool.query(`
+                UPDATE user_profiles 
+                SET 
+                    balance = COALESCE(balance, 0) + 15,
+                    referral_count = COALESCE(referral_count, 0) + 1,
+                    referral_earned = COALESCE(referral_earned, 0) + 15
+                WHERE user_id = $1
+            `, [referredBy]);
+            
+            // Начисляем 5 звезд приглашенному
+            await pool.query(`
+                UPDATE user_profiles 
+                SET balance = COALESCE(balance, 0) + 5
+                WHERE user_id = $1
+            `, [user.id]);
+            
+            console.log(`🎁 Реферальные бонусы начислены! Пригласивший: ${referredBy}, Новый пользователь: ${user.id}`);
+        }
         
         res.json({
             success: true,
-            user: user,
-            message: 'Admin rights refreshed'
+            user: userProfile
         });
-        
     } catch (error) {
-        console.error('Refresh rights error:', error);
+        console.error('Auth error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
         });
     }
 });
+
+// Get user profile
+app.get('/api/user/:userId', async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM user_profiles WHERE user_id = $1', 
+            [req.params.userId]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            });
+        }
+        
+        res.json({
+            success: true,
+            profile: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Get user error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
 // Get all posts
 app.get('/api/posts', async (req, res) => {
     try {
@@ -798,7 +488,7 @@ app.post('/api/posts', async (req, res) => {
         });
     }
 });
-// Delete post
+
 // Delete post - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.delete('/api/posts/:id', async (req, res) => {
     const { authorId } = req.body;
@@ -838,6 +528,7 @@ app.delete('/api/posts/:id', async (req, res) => {
         });
     }
 });
+
 // Like post
 app.post('/api/posts/:postId/like', async (req, res) => {
     const { userId } = req.body;
@@ -1040,7 +731,7 @@ app.post('/api/tasks', async (req, res) => {
         });
     }
 });
-// Delete task - UPDATED
+
 // Delete task - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.delete('/api/tasks/:id', async (req, res) => {
     const { adminId } = req.body;
@@ -1080,6 +771,7 @@ app.delete('/api/tasks/:id', async (req, res) => {
         });
     }
 });
+
 // Start task for user - ОБНОВЛЕННАЯ ВЕРСИЯ
 app.post('/api/user/tasks/start', async (req, res) => {
     const { userId, taskId } = req.body;
@@ -1150,6 +842,7 @@ app.post('/api/user/tasks/start', async (req, res) => {
         });
     }
 });
+
 // Get user tasks
 app.get('/api/user/:userId/tasks', async (req, res) => {
     const userId = req.params.userId;
@@ -1294,9 +987,33 @@ app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
     }
 });
 
-
+// Support chat system
 app.get('/api/support/user-chat/:userId', async (req, res) => {
     const userId = req.params.userId;
+    const { adminId } = req.query;
+    
+    // Check admin rights - разрешаем всем админам
+    if (adminId) {
+        try {
+            const userResult = await pool.query(
+                'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+                [adminId]
+            );
+            
+            if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Access denied - admin rights required'
+                });
+            }
+        } catch (error) {
+            console.error('Admin check error:', error);
+            return res.status(500).json({
+                success: false,
+                error: 'Database error during admin check'
+            });
+        }
+    }
     
     try {
         // Сначала проверяем существующий чат
@@ -1348,9 +1065,31 @@ app.get('/api/support/user-chat/:userId', async (req, res) => {
     }
 });
 
-// Get chat messages
+// Get chat messages - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.get('/api/support/chats/:chatId/messages', async (req, res) => {
     const chatId = req.params.chatId;
+    const { adminId } = req.query;
+    
+    // Check admin rights - разрешаем всем админам
+    try {
+        const userResult = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [adminId]
+        );
+        
+        if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied - admin rights required'
+            });
+        }
+    } catch (error) {
+        console.error('Admin check error:', error);
+        return res.status(500).json({
+            success: false,
+            error: 'Database error during admin check'
+        });
+    }
     
     try {
         const result = await pool.query(`
@@ -1372,7 +1111,7 @@ app.get('/api/support/chats/:chatId/messages', async (req, res) => {
     }
 });
 
-// Send message to chat (FIXED)
+// Send message to chat (admin) - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.post('/api/support/chats/:chatId/messages', async (req, res) => {
     const chatId = req.params.chatId;
     const { user_id, user_name, message, is_admin } = req.body;
@@ -1381,6 +1120,27 @@ app.post('/api/support/chats/:chatId/messages', async (req, res) => {
         return res.status(400).json({
             success: false,
             error: 'Message is required'
+        });
+    }
+
+    // Check admin rights - разрешаем всем админам
+    try {
+        const userResult = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [user_id]
+        );
+        
+        if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied - admin rights required'
+            });
+        }
+    } catch (error) {
+        console.error('Admin check error:', error);
+        return res.status(500).json({
+            success: false,
+            error: 'Database error during admin check'
         });
     }
 
@@ -1503,14 +1263,28 @@ app.get('/api/support/all-chats', async (req, res) => {
     }
 });
 
-// Get archived chats
+// Get archived chats - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.get('/api/support/archived-chats', async (req, res) => {
     const { adminId } = req.query;
     
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
+    // Check admin rights - разрешаем всем админам
+    try {
+        const userResult = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [adminId]
+        );
+        
+        if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied - admin rights required'
+            });
+        }
+    } catch (error) {
+        console.error('Admin check error:', error);
+        return res.status(500).json({
             success: false,
-            error: 'Access denied'
+            error: 'Database error during admin check'
         });
     }
 
@@ -1534,17 +1308,29 @@ app.get('/api/support/archived-chats', async (req, res) => {
     }
 });
 
-
-
-// Archive chat
+// Archive chat - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.put('/api/support/chats/:chatId/archive', async (req, res) => {
     const chatId = req.params.chatId;
     const { adminId } = req.body;
     
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
+    // Check admin rights - разрешаем всем админам
+    try {
+        const userResult = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [adminId]
+        );
+        
+        if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied - admin rights required'
+            });
+        }
+    } catch (error) {
+        console.error('Admin check error:', error);
+        return res.status(500).json({
             success: false,
-            error: 'Access denied'
+            error: 'Database error during admin check'
         });
     }
 
@@ -1567,442 +1353,30 @@ app.put('/api/support/chats/:chatId/archive', async (req, res) => {
         });
     }
 });
-// Добавление админа по юзернейму (только для главного админа)
-// Добавление админа по юзернейму (только для главного админа)
-// Добавление админа по юзернейму (только для главного админа) - ИСПРАВЛЕННАЯ ВЕРСИЯ
-// Добавление админа по юзернейму - ОБНОВЛЕННАЯ ВЕРСИЯ
-app.post('/api/admin/add-admin', async (req, res) => {
-    const { adminId, username } = req.body;
-    
-    console.log('🛠️ Received add-admin request:', { adminId, username });
-    
-    // Проверяем права доступа - только главный админ
-    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied - only main admin can add admins'
-        });
-    }
-    
-    if (!username) {
-        return res.status(400).json({
-            success: false,
-            error: 'Username is required'
-        });
-    }
-    
-    try {
-        // Ищем пользователя по юзернейму (убираем @ если есть)
-        const cleanUsername = username.replace('@', '').trim();
-        
-        console.log('🔍 Searching for user with username:', cleanUsername);
-        
-        const userResult = await pool.query(
-            'SELECT user_id, username, first_name, is_admin FROM user_profiles WHERE username = $1',
-            [cleanUsername]
-        );
-        
-        if (userResult.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'Пользователь с таким юзернеймом не найден'
-            });
-        }
-        
-        const user = userResult.rows[0];
-        
-        console.log('👤 Found user:', user);
-        
-        // Проверяем, не является ли пользователь уже админом
-        if (user.is_admin) {
-            return res.status(400).json({
-                success: false,
-                error: 'Этот пользователь уже является администратором'
-            });
-        }
-        
-        // Назначаем пользователя админом
-        await pool.query(
-            'UPDATE user_profiles SET is_admin = true, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1',
-            [user.user_id]
-        );
-        
-        console.log(`✅ Admin added: ${user.username} (ID: ${user.user_id})`);
-        
-        // Получаем обновленные данные пользователя
-        const updatedUserResult = await pool.query(
-            'SELECT * FROM user_profiles WHERE user_id = $1',
-            [user.user_id]
-        );
-        
-        const updatedUser = updatedUserResult.rows[0];
-        
-        res.json({
-            success: true,
-            message: `Пользователь @${user.username} (${user.first_name}) успешно добавлен как администратор`,
-            user: updatedUser,
-            targetUserId: user.user_id
-        });
-        
-    } catch (error) {
-        console.error('❌ Add admin error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
 
-// Удаление админа (только для главного админа)
-// Удаление админа (только для главного админа) - ИСПРАВЛЕННАЯ ВЕРСИЯ
-app.post('/api/admin/remove-admin', async (req, res) => {
-    const { adminId, targetAdminId } = req.body;
-    
-    console.log('🛠️ Received remove-admin request:', { adminId, targetAdminId });
-    
-    // Проверяем права доступа - только главный админ
-    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied - only main admin can remove admins'
-        });
-    }
-    
-    if (!targetAdminId) {
-        return res.status(400).json({
-            success: false,
-            error: 'Target admin ID is required'
-        });
-    }
-    
-    // Нельзя удалить самого себя
-    if (parseInt(targetAdminId) === ADMIN_ID) {
-        return res.status(400).json({
-            success: false,
-            error: 'Нельзя удалить главного администратора'
-        });
-    }
-    
-    try {
-        // Проверяем существование пользователя
-        const userResult = await pool.query(
-            'SELECT user_id, username, first_name, is_admin FROM user_profiles WHERE user_id = $1',
-            [targetAdminId]
-        );
-        
-        if (userResult.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'Пользователь не найден'
-            });
-        }
-        
-        const user = userResult.rows[0];
-        
-        if (!user.is_admin) {
-            return res.status(400).json({
-                success: false,
-                error: 'Этот пользователь не является администратором'
-            });
-        }
-        
-        // Удаляем права админа
-        await pool.query(
-            'UPDATE user_profiles SET is_admin = false WHERE user_id = $1',
-            [targetAdminId]
-        );
-        
-        console.log(`✅ Admin removed: ${user.username} (ID: ${user.user_id})`);
-        
-        res.json({
-            success: true,
-            message: `Администратор @${user.username} (${user.first_name}) успешно удален`,
-            user: {
-                id: user.user_id,
-                username: user.username,
-                firstName: user.first_name
-            }
-        });
-        
-    } catch (error) {
-        console.error('❌ Remove admin error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
-
-// Debug endpoint для проверки прав администратора (серверный)
-app.get('/api/admin/debug-rights', async (req, res) => {
-    const { userId } = req.query;
-    
-    try {
-        const userResult = await pool.query(
-            'SELECT user_id, username, first_name, is_admin FROM user_profiles WHERE user_id = $1',
-            [userId]
-        );
-        
-        if (userResult.rows.length === 0) {
-            return res.json({
-                success: true,
-                user: null,
-                isMainAdmin: false,
-                hasAdminRights: false
-            });
-        }
-        
-        const user = userResult.rows[0];
-        const isMainAdmin = parseInt(userId) === ADMIN_ID;
-        const hasAdminRights = user.is_admin || isMainAdmin;
-        
-        res.json({
-            success: true,
-            user: user,
-            isMainAdmin: isMainAdmin,
-            hasAdminRights: hasAdminRights
-        });
-        
-    } catch (error) {
-        console.error('Debug rights error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
-
-// Убедитесь, что главный администратор всегда имеет права
-// Убедитесь, что главный администратор всегда имеет права
-async function ensureMainAdmin() {
-    try {
-        const result = await pool.query(`
-            INSERT INTO user_profiles 
-            (user_id, username, first_name, last_name, is_admin) 
-            VALUES ($1, $2, $3, $4, $5)
-            ON CONFLICT (user_id) 
-            DO UPDATE SET 
-                is_admin = true,
-                updated_at = CURRENT_TIMESTAMP
-        `, [ADMIN_ID, 'linkgold_admin', 'Главный', 'Администратор', true]);
-        
-        console.log('✅ Main admin ensured');
-    } catch (error) {
-        console.error('❌ Error ensuring main admin:', error);
-    }
-}
-
-async function initDatabase() {
-    try {
-        console.log('🔄 Initializing simplified database...');
-        
-        // Только самые необходимые таблицы
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS user_profiles (
-                user_id BIGINT PRIMARY KEY,
-                username TEXT,
-                first_name TEXT,
-                last_name TEXT,
-                photo_url TEXT,
-                balance REAL DEFAULT 0,
-                level INTEGER DEFAULT 1,
-                is_admin BOOLEAN DEFAULT false,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        // ... остальной код инициализации базы данных ...
-
-        // Гарантируем, что главный администратор существует и имеет права
-        await ensureMainAdmin();
-        
-        console.log('✅ Simplified database initialized successfully');
-    } catch (error) {
-        console.error('❌ Database initialization error:', error);
-    }
-}
-// // Функция для отображения секции управления админами
-// function showAdminAdminsSection() {
-//     showAdminSection('admins');
-//     loadAdminsList();
-// }
-
-// // Загрузка списка админов
-// async function loadAdminsList() {
-//     if (!currentUser || !currentUser.isAdmin) return;
-    
-//     try {
-//         const result = await makeRequest(`/admin/admins-list?adminId=${ADMIN_ID}`);
-        
-//         if (result.success) {
-//             displayAdminsList(result.admins);
-//         } else {
-//             showNotification('Ошибка загрузки списка админов: ' + result.error, 'error');
-//         }
-//     } catch (error) {
-//         console.error('Error loading admins list:', error);
-//         showNotification('Ошибка загрузки списка админов', 'error');
-//     }
-// }
-
-// // Отображение списка админов
-// function displayAdminsList(admins) {
-//     const container = document.getElementById('admins-list');
-//     if (!container) return;
-    
-//     container.innerHTML = '';
-    
-//     if (!admins || admins.length === 0) {
-//         container.innerHTML = '<div class="no-tasks">Нет администраторов</div>';
-//         return;
-//     }
-    
-//     admins.forEach(admin => {
-//         const adminElement = document.createElement('div');
-//         adminElement.className = 'admin-task-item';
-        
-//         const isMainAdmin = parseInt(admin.user_id) === ADMIN_ID;
-//         const joinDate = new Date(admin.created_at).toLocaleDateString('ru-RU');
-        
-//         adminElement.innerHTML = `
-//             <div class="admin-task-header">
-//                 <div class="admin-task-title">
-//                     ${admin.first_name} ${admin.last_name || ''}
-//                     ${isMainAdmin ? ' <span style="color: var(--gold);">(Главный админ)</span>' : ''}
-//                 </div>
-//                 ${!isMainAdmin ? `
-//                     <div class="admin-task-actions">
-//                         <button class="admin-task-delete" onclick="removeAdmin(${admin.user_id})">
-//                             🗑️ Удалить
-//                         </button>
-//                     </div>
-//                 ` : ''}
-//             </div>
-//             <div class="admin-task-description">
-//                 @${admin.username} • ID: ${admin.user_id} • Добавлен: ${joinDate}
-//             </div>
-//         `;
-        
-//         container.appendChild(adminElement);
-//     });
-// }
-
-// // Добавление нового админа
-// async function addNewAdmin() {
-//     if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) {
-//         showNotification('Только главный администратор может добавлять админов!', 'error');
-//         return;
-//     }
-    
-//     const usernameInput = document.getElementById('new-admin-username');
-//     const username = usernameInput?.value.trim();
-    
-//     if (!username) {
-//         showNotification('Введите юзернейм пользователя', 'error');
-//         return;
-//     }
-    
-//     try {
-//         const result = await makeRequest('/admin/add-admin', {
-//             method: 'POST',
-//             body: JSON.stringify({
-//                 adminId: currentUser.id,
-//                 username: username
-//             })
-//         });
-        
-//         if (result.success) {
-//             showNotification(result.message, 'success');
-//             usernameInput.value = ''; // Очищаем поле ввода
-//             loadAdminsList(); // Обновляем список админов
-//         } else {
-//             showNotification('Ошибка: ' + result.error, 'error');
-//         }
-//     } catch (error) {
-//         console.error('Error adding admin:', error);
-//         showNotification('Ошибка добавления админа: ' + error.message, 'error');
-//     }
-// }
-
-// Удаление админа
-// async function removeAdmin(targetAdminId) {
-//     if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) {
-//         showNotification('Только главный администратор может удалять админов!', 'error');
-//         return;
-//     }
-    
-//     if (!confirm('Вы уверены, что хотите удалить этого администратора?')) {
-//         return;
-//     }
-    
-//     try {
-//         const result = await makeRequest('/admin/remove-admin', {
-//             method: 'POST',
-//             body: JSON.stringify({
-//                 adminId: currentUser.id,
-//                 targetAdminId: targetAdminId
-//             })
-//         });
-        
-//         if (result.success) {
-//             showNotification(result.message, 'success');
-//             loadAdminsList(); // Обновляем список админов
-//         } else {
-//             showNotification('Ошибка: ' + result.error, 'error');
-//         }
-//     } catch (error) {
-//         console.error('Error removing admin:', error);
-//         showNotification('Ошибка удаления админа: ' + error.message, 'error');
-//     }
-// }
-
-// Диагностический endpoint для проверки API
-app.get('/api/debug/endpoints', async (req, res) => {
-    try {
-        // Получаем список всех зарегистрированных маршрутов
-        const routes = [];
-        app._router.stack.forEach(middleware => {
-            if (middleware.route) {
-                // Маршруты, зарегистрированные напрямую
-                routes.push({
-                    path: middleware.route.path,
-                    methods: Object.keys(middleware.route.methods)
-                });
-            } else if (middleware.name === 'router') {
-                // Маршруты из роутеров
-                middleware.handle.stack.forEach(handler => {
-                    if (handler.route) {
-                        routes.push({
-                            path: handler.route.path,
-                            methods: Object.keys(handler.route.methods)
-                        });
-                    }
-                });
-            }
-        });
-
-        res.json({
-            success: true,
-            endpoints: routes,
-            timestamp: new Date().toISOString()
-        });
-    } catch (error) {
-        console.error('Debug endpoints error:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-// Restore chat
+// Restore chat - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.put('/api/support/chats/:chatId/restore', async (req, res) => {
     const chatId = req.params.chatId;
     const { adminId } = req.body;
     
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
+    // Check admin rights - разрешаем всем админам
+    try {
+        const userResult = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [adminId]
+        );
+        
+        if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied - admin rights required'
+            });
+        }
+    } catch (error) {
+        console.error('Admin check error:', error);
+        return res.status(500).json({
             success: false,
-            error: 'Access denied'
+            error: 'Database error during admin check'
         });
     }
 
@@ -2026,15 +1400,29 @@ app.put('/api/support/chats/:chatId/restore', async (req, res) => {
     }
 });
 
-// Delete chat
+// Delete chat - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.delete('/api/support/chats/:chatId', async (req, res) => {
     const chatId = req.params.chatId;
     const { adminId } = req.body;
     
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
+    // Check admin rights - разрешаем всем админам
+    try {
+        const userResult = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [adminId]
+        );
+        
+        if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied - admin rights required'
+            });
+        }
+    } catch (error) {
+        console.error('Admin check error:', error);
+        return res.status(500).json({
             success: false,
-            error: 'Access denied'
+            error: 'Database error during admin check'
         });
     }
 
@@ -2057,6 +1445,52 @@ app.delete('/api/support/chats/:chatId', async (req, res) => {
         });
     } catch (error) {
         console.error('Delete chat error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Mark chat as read - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
+app.put('/api/support/chats/:chatId/read', async (req, res) => {
+    const chatId = req.params.chatId;
+    const { adminId } = req.body;
+    
+    // Check admin rights - разрешаем всем админам
+    try {
+        const userResult = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [adminId]
+        );
+        
+        if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied - admin rights required'
+            });
+        }
+    } catch (error) {
+        console.error('Admin check error:', error);
+        return res.status(500).json({
+            success: false,
+            error: 'Database error during admin check'
+        });
+    }
+
+    try {
+        await pool.query(`
+            UPDATE support_chats 
+            SET unread_count = 0 
+            WHERE id = $1
+        `, [chatId]);
+        
+        res.json({
+            success: true,
+            message: 'Chat marked as read'
+        });
+    } catch (error) {
+        console.error('Mark chat as read error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
@@ -2192,49 +1626,7 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
         });
     }
 });
-// Function to check and remove completed tasks
-async function checkAndRemoveCompletedTasks() {
-    try {
-        console.log('🔍 Checking for completed tasks...');
-        
-        // Находим задания, где количество выполненных задач достигло people_required
-        const completedTasks = await pool.query(`
-            SELECT t.id, t.title, t.people_required,
-                   COUNT(ut.id) as completed_count
-            FROM tasks t
-            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
-            WHERE t.status = 'active'
-            GROUP BY t.id, t.title, t.people_required
-            HAVING COUNT(ut.id) >= t.people_required
-        `);
-        
-        if (completedTasks.rows.length > 0) {
-            console.log(`📊 Found ${completedTasks.rows.length} completed tasks to deactivate`);
-            
-            for (const task of completedTasks.rows) {
-                console.log(`🔄 Deactivating task: ${task.title} (ID: ${task.id})`);
-                
-                // Деактивируем задание
-                await pool.query(`
-                    UPDATE tasks 
-                    SET status = 'completed' 
-                    WHERE id = $1
-                `, [task.id]);
-                
-                console.log(`✅ Task ${task.id} deactivated - reached ${task.completed_count}/${task.people_required} completions`);
-            }
-        }
-    } catch (error) {
-        console.error('❌ Error checking completed tasks:', error);
-    }
-}
 
-// Запускаем проверку каждые 5 минут
-setInterval(checkAndRemoveCompletedTasks, 5 * 60 * 1000);
-
-// Также запускаем при старте сервера
-setTimeout(checkAndRemoveCompletedTasks, 10000);
-// Reject task verification
 // Reject task verification - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res) => {
     const verificationId = req.params.verificationId;
@@ -2297,6 +1689,249 @@ app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res
         });
     } catch (error) {
         console.error('Reject verification error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Получение списка всех админов - ТОЛЬКО для главного админа
+app.get('/api/admin/admins-list', async (req, res) => {
+    const { adminId } = req.query;
+    
+    console.log('🛠️ Received admins-list request from:', adminId);
+    
+    // Проверяем права доступа - только главный админ
+    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied - only main admin can view admins list'
+        });
+    }
+    
+    try {
+        const result = await pool.query(`
+            SELECT 
+                user_id, 
+                username, 
+                first_name, 
+                last_name, 
+                is_admin,
+                created_at 
+            FROM user_profiles 
+            WHERE is_admin = true 
+            ORDER BY 
+                CASE WHEN user_id = $1 THEN 0 ELSE 1 END,
+                created_at DESC
+        `, [ADMIN_ID]);
+        
+        console.log(`✅ Found ${result.rows.length} admins`);
+        
+        res.json({
+            success: true,
+            admins: result.rows
+        });
+        
+    } catch (error) {
+        console.error('❌ Get admins list error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Добавление админа по юзернейму (только для главного админа) - ОБНОВЛЕННАЯ ВЕРСИЯ
+app.post('/api/admin/add-admin', async (req, res) => {
+    const { adminId, username } = req.body;
+    
+    console.log('🛠️ Received add-admin request:', { adminId, username });
+    
+    // Проверяем права доступа - только главный админ
+    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied - only main admin can add admins'
+        });
+    }
+    
+    if (!username) {
+        return res.status(400).json({
+            success: false,
+            error: 'Username is required'
+        });
+    }
+    
+    try {
+        // Ищем пользователя по юзернейму (убираем @ если есть)
+        const cleanUsername = username.replace('@', '').trim();
+        
+        console.log('🔍 Searching for user with username:', cleanUsername);
+        
+        const userResult = await pool.query(
+            'SELECT user_id, username, first_name, is_admin FROM user_profiles WHERE username = $1',
+            [cleanUsername]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Пользователь с таким юзернеймом не найден'
+            });
+        }
+        
+        const user = userResult.rows[0];
+        
+        console.log('👤 Found user:', user);
+        
+        // Проверяем, не является ли пользователь уже админом
+        if (user.is_admin) {
+            return res.status(400).json({
+                success: false,
+                error: 'Этот пользователь уже является администратором'
+            });
+        }
+        
+        // Назначаем пользователя админом
+        await pool.query(
+            'UPDATE user_profiles SET is_admin = true, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1',
+            [user.user_id]
+        );
+        
+        console.log(`✅ Admin added: ${user.username} (ID: ${user.user_id})`);
+        
+        // Получаем обновленные данные пользователя
+        const updatedUserResult = await pool.query(
+            'SELECT * FROM user_profiles WHERE user_id = $1',
+            [user.user_id]
+        );
+        
+        const updatedUser = updatedUserResult.rows[0];
+        
+        res.json({
+            success: true,
+            message: `Пользователь @${user.username} (${user.first_name}) успешно добавлен как администратор`,
+            user: updatedUser,
+            targetUserId: user.user_id
+        });
+        
+    } catch (error) {
+        console.error('❌ Add admin error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Удаление админа (только для главного админа) - ОБНОВЛЕННАЯ ВЕРСИЯ
+app.post('/api/admin/remove-admin', async (req, res) => {
+    const { adminId, targetAdminId } = req.body;
+    
+    console.log('🛠️ Received remove-admin request:', { adminId, targetAdminId });
+    
+    // Проверяем права доступа - только главный админ
+    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied - only main admin can remove admins'
+        });
+    }
+    
+    if (!targetAdminId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Target admin ID is required'
+        });
+    }
+    
+    // Нельзя удалить самого себя
+    if (parseInt(targetAdminId) === ADMIN_ID) {
+        return res.status(400).json({
+            success: false,
+            error: 'Нельзя удалить главного администратора'
+        });
+    }
+    
+    try {
+        // Проверяем существование пользователя
+        const userResult = await pool.query(
+            'SELECT user_id, username, first_name, is_admin FROM user_profiles WHERE user_id = $1',
+            [targetAdminId]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Пользователь не найден'
+            });
+        }
+        
+        const user = userResult.rows[0];
+        
+        if (!user.is_admin) {
+            return res.status(400).json({
+                success: false,
+                error: 'Этот пользователь не является администратором'
+            });
+        }
+        
+        // Удаляем права админа
+        await pool.query(
+            'UPDATE user_profiles SET is_admin = false WHERE user_id = $1',
+            [targetAdminId]
+        );
+        
+        console.log(`✅ Admin removed: ${user.username} (ID: ${user.user_id})`);
+        
+        res.json({
+            success: true,
+            message: `Администратор @${user.username} (${user.first_name}) успешно удален`,
+            user: {
+                id: user.user_id,
+                username: user.username,
+                firstName: user.first_name
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Remove admin error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Endpoint для принудительного обновления прав администратора
+app.post('/api/admin/refresh-rights', async (req, res) => {
+    const { userId } = req.body;
+    
+    try {
+        // Получаем актуальные данные пользователя из базы
+        const userResult = await pool.query(
+            'SELECT * FROM user_profiles WHERE user_id = $1',
+            [userId]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            });
+        }
+        
+        const user = userResult.rows[0];
+        
+        res.json({
+            success: true,
+            user: user,
+            message: 'Admin rights refreshed'
+        });
+        
+    } catch (error) {
+        console.error('Refresh rights error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
@@ -2493,29 +2128,43 @@ app.get('/api/withdraw/history/:userId', async (req, res) => {
         });
     }
 });
-// Get withdrawal history
-app.get('/api/withdraw/history/:userId', async (req, res) => {
-    const userId = req.params.userId;
-    
+
+// Функция для проверки и удаления завершенных заданий
+async function checkAndRemoveCompletedTasks() {
     try {
-        const result = await pool.query(`
-            SELECT * FROM withdrawal_requests 
-            WHERE user_id = $1 
-            ORDER BY created_at DESC
-        `, [userId]);
+        console.log('🔍 Checking for completed tasks...');
         
-        res.json({
-            success: true,
-            operations: result.rows
-        });
+        // Находим задания, где количество выполненных задач достигло people_required
+        const completedTasks = await pool.query(`
+            SELECT t.id, t.title, t.people_required,
+                   COUNT(ut.id) as completed_count
+            FROM tasks t
+            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
+            WHERE t.status = 'active'
+            GROUP BY t.id, t.title, t.people_required
+            HAVING COUNT(ut.id) >= t.people_required
+        `);
+        
+        if (completedTasks.rows.length > 0) {
+            console.log(`📊 Found ${completedTasks.rows.length} completed tasks to deactivate`);
+            
+            for (const task of completedTasks.rows) {
+                console.log(`🔄 Deactivating task: ${task.title} (ID: ${task.id})`);
+                
+                // Деактивируем задание
+                await pool.query(`
+                    UPDATE tasks 
+                    SET status = 'completed' 
+                    WHERE id = $1
+                `, [task.id]);
+                
+                console.log(`✅ Task ${task.id} deactivated - reached ${task.completed_count}/${task.people_required} completions`);
+            }
+        }
     } catch (error) {
-        console.error('Get withdrawal history error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
+        console.error('❌ Error checking completed tasks:', error);
     }
-});
+}
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -2541,11 +2190,7 @@ app.use('/api/*', (req, res) => {
         error: 'API endpoint not found'
     });
 });
-// Получение списка всех админов
-// Этот должен быть ПОСЛЕДНИМ
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
+
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on port ${PORT}`);
@@ -2553,4 +2198,13 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🔐 Admin ID: ${ADMIN_ID}`);
     console.log(`🗄️ Database: PostgreSQL`);
     console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+    
+    // Инициализируем базу данных при запуске
+    initDatabase();
+    
+    // Запускаем проверку завершенных заданий каждые 5 минут
+    setInterval(checkAndRemoveCompletedTasks, 5 * 60 * 1000);
+    
+    // Также запускаем при старте сервера
+    setTimeout(checkAndRemoveCompletedTasks, 10000);
 });
