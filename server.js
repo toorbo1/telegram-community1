@@ -247,7 +247,7 @@ function generateReferralCode(userId) {
     return code + userId.toString().slice(-4);
 }
 
-// Обновленный endpoint аутентизации
+// Обновите endpoint аутентификации пользователя
 app.post('/api/user/auth', async (req, res) => {
     const { user, start_param } = req.body;
     
@@ -259,16 +259,27 @@ app.post('/api/user/auth', async (req, res) => {
     }
     
     try {
-        const isAdmin = parseInt(user.id) === ADMIN_ID;
+        const isMainAdmin = parseInt(user.id) === ADMIN_ID;
+        
+        // Сначала получаем текущие данные пользователя из базы
+        const existingUser = await pool.query(
+            'SELECT * FROM user_profiles WHERE user_id = $1', 
+            [user.id]
+        );
+        
+        let isAdmin = isMainAdmin;
+        
+        // Если пользователь уже существует и был назначен админом, сохраняем его права
+        if (existingUser.rows.length > 0) {
+            isAdmin = existingUser.rows[0].is_admin || isMainAdmin;
+        }
         
         // Генерируем реферальный код если его нет
         let referralCode = null;
         let referredBy = null;
         
-        // Проверяем реферальную ссылку
         if (start_param && start_param.startsWith('ref_')) {
             const refCode = start_param.substring(4);
-            // Находим пользователя по реферальному коду
             const referrer = await pool.query(
                 'SELECT user_id FROM user_profiles WHERE referral_code = $1',
                 [refCode]
@@ -276,6 +287,13 @@ app.post('/api/user/auth', async (req, res) => {
             if (referrer.rows.length > 0) {
                 referredBy = referrer.rows[0].user_id;
             }
+        }
+        
+        // Если пользователя нет, генерируем реферальный код
+        if (existingUser.rows.length === 0) {
+            referralCode = generateReferralCode(user.id);
+        } else {
+            referralCode = existingUser.rows[0].referral_code;
         }
         
         const result = await pool.query(`
@@ -288,8 +306,9 @@ app.post('/api/user/auth', async (req, res) => {
                 first_name = EXCLUDED.first_name,
                 last_name = EXCLUDED.last_name,
                 photo_url = EXCLUDED.photo_url,
-                is_admin = EXCLUDED.is_admin,
+                referral_code = EXCLUDED.referral_code,
                 updated_at = CURRENT_TIMESTAMP
+                ${isMainAdmin ? ', is_admin = true' : ''}  // Главный админ всегда остается админом
             RETURNING *
         `, [
             user.id, 
@@ -297,8 +316,8 @@ app.post('/api/user/auth', async (req, res) => {
             user.first_name || 'Пользователь',
             user.last_name || '',
             user.photo_url || '',
-            isAdmin,
-            referralCode || generateReferralCode(user.id),
+            isAdmin,  // Сохраняем текущие права админа
+            referralCode,
             referredBy
         ]);
         
@@ -306,7 +325,6 @@ app.post('/api/user/auth', async (req, res) => {
         
         // Если это новый пользователь по реферальной ссылке - начисляем бонусы
         if (referredBy && result.rows[0].was_created) {
-            // Начисляем 15 звезд приглашающему
             await pool.query(`
                 UPDATE user_profiles 
                 SET 
@@ -316,14 +334,11 @@ app.post('/api/user/auth', async (req, res) => {
                 WHERE user_id = $1
             `, [referredBy]);
             
-            // Начисляем 5 звезд приглашенному
             await pool.query(`
                 UPDATE user_profiles 
                 SET balance = COALESCE(balance, 0) + 5
                 WHERE user_id = $1
             `, [user.id]);
-            
-            console.log(`🎁 Реферальные бонусы начислены! Пригласивший: ${referredBy}, Новый пользователь: ${user.id}`);
         }
         
         res.json({
@@ -338,7 +353,6 @@ app.post('/api/user/auth', async (req, res) => {
         });
     }
 });
-
 // Получение реферальной статистики
 app.get('/api/user/:userId/referral-stats', async (req, res) => {
     try {
@@ -1433,7 +1447,7 @@ app.put('/api/support/chats/:chatId/archive', async (req, res) => {
         });
     }
 });
-// Добавление админа по юзернейму (только для главного админа)
+// Улучшенный endpoint добавления админа
 app.post('/api/admin/add-admin', async (req, res) => {
     const { adminId, username } = req.body;
     
@@ -1459,14 +1473,14 @@ app.post('/api/admin/add-admin', async (req, res) => {
         const cleanUsername = username.replace('@', '');
         
         const userResult = await pool.query(
-            'SELECT user_id, username, first_name FROM user_profiles WHERE username = $1',
+            'SELECT user_id, username, first_name, last_name, is_admin FROM user_profiles WHERE username = $1',
             [cleanUsername]
         );
         
         if (userResult.rows.length === 0) {
             return res.status(404).json({
                 success: false,
-                error: 'User not found with this username'
+                error: 'Пользователь с таким юзернеймом не найден'
             });
         }
         
@@ -1476,13 +1490,13 @@ app.post('/api/admin/add-admin', async (req, res) => {
         if (user.is_admin) {
             return res.status(400).json({
                 success: false,
-                error: 'User is already an admin'
+                error: 'Этот пользователь уже является администратором'
             });
         }
         
         // Назначаем пользователя админом
         await pool.query(
-            'UPDATE user_profiles SET is_admin = true WHERE user_id = $1',
+            'UPDATE user_profiles SET is_admin = true, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1',
             [user.user_id]
         );
         
@@ -1490,11 +1504,12 @@ app.post('/api/admin/add-admin', async (req, res) => {
         
         res.json({
             success: true,
-            message: `User @${user.username} (${user.first_name}) successfully added as admin`,
+            message: `Пользователь @${user.username} успешно добавлен как администратор!`,
             user: {
                 id: user.user_id,
                 username: user.username,
-                firstName: user.first_name
+                firstName: user.first_name,
+                lastName: user.last_name
             }
         });
         
@@ -1502,7 +1517,7 @@ app.post('/api/admin/add-admin', async (req, res) => {
         console.error('❌ Add admin error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error: ' + error.message
+            error: 'Ошибка базы данных: ' + error.message
         });
     }
 });
@@ -1618,7 +1633,7 @@ async function loadAdminsList() {
     }
 }
 
-// Отображение списка админов
+// Обновите функцию отображения списка админов
 function displayAdminsList(admins) {
     const container = document.getElementById('admins-list');
     if (!container) {
@@ -1648,11 +1663,12 @@ function displayAdminsList(admins) {
         const isMainAdmin = parseInt(admin.user_id) === ADMIN_ID;
         const joinDate = new Date(admin.created_at).toLocaleDateString('ru-RU');
         const fullName = `${admin.first_name} ${admin.last_name || ''}`.trim();
+        const displayName = fullName || `Пользователь ${admin.user_id}`;
         
         adminElement.innerHTML = `
             <div class="admin-task-header">
                 <div class="admin-task-title">
-                    ${fullName}
+                    ${displayName}
                     ${isMainAdmin ? ' <span style="color: var(--gold);">(Главный админ)</span>' : ''}
                 </div>
                 ${!isMainAdmin ? `
@@ -1665,6 +1681,9 @@ function displayAdminsList(admins) {
             </div>
             <div class="admin-task-description">
                 @${admin.username} • ID: ${admin.user_id} • Добавлен: ${joinDate}
+            </div>
+            <div style="margin-top: 8px; font-size: 12px; color: ${admin.is_admin ? 'var(--success)' : 'var(--error)'};">
+                ${admin.is_admin ? '✅ Права администратора активны' : '❌ Права администратора не активны'}
             </div>
         `;
         
@@ -1800,7 +1819,32 @@ function showAdminSection(section) {
         }, 100);
     }
 }
-
+// В функции addNewAdmin после успешного добавления
+if (result.success) {
+    messageDiv.innerHTML = `<span style="color: var(--success);">${result.message}</span>`;
+    usernameInput.value = '';
+    
+    // Обновляем список админов
+    setTimeout(() => {
+        loadAdminsList();
+    }, 1000);
+    
+    showNotification(result.message, 'success');
+    
+    // Отправляем уведомление новому админу (если он онлайн)
+    try {
+        await makeRequest('/admin/notify-new-admin', {
+            method: 'POST',
+            body: JSON.stringify({
+                adminId: currentUser.id,
+                newAdminId: result.user.id,
+                newAdminUsername: result.user.username
+            })
+        });
+    } catch (notifyError) {
+        console.log('Notify not available');
+    }
+}
 // Restore chat
 app.put('/api/support/chats/:chatId/restore', async (req, res) => {
     const chatId = req.params.chatId;
@@ -2258,6 +2302,107 @@ app.get('/api/admin/admins-list', async (req, res) => {
         });
     }
 });
+// Функция для принудительного обновления данных пользователя после добавления в админы
+async function refreshUserData() {
+    if (!currentUser) return;
+    
+    try {
+        const result = await makeRequest(`/user/${currentUser.id}`);
+        if (result.success) {
+            // Обновляем текущего пользователя
+            Object.assign(currentUser, result.profile);
+            
+            // Перепроверяем права администратора
+            checkAdminRights();
+            
+            // Обновляем отображение
+            displayUserProfile();
+            
+            console.log('✅ Данные пользователя обновлены, isAdmin:', currentUser.isAdmin);
+        }
+    } catch (error) {
+        console.error('Ошибка обновления данных пользователя:', error);
+    }
+}
+
+// Добавьте вызов этой функции после успешного добавления админа
+async function addNewAdmin() {
+    console.log('🎯 Starting addNewAdmin function...');
+    
+    const usernameInput = document.getElementById('new-admin-username');
+    const messageDiv = document.getElementById('admin-form-message');
+    const submitBtn = document.getElementById('add-admin-btn');
+    
+    if (!usernameInput || !messageDiv) {
+        console.error('❌ Required elements not found');
+        showNotification('Ошибка: элементы формы не найдены', 'error');
+        return;
+    }
+    
+    const username = usernameInput.value.trim();
+    
+    // Валидация
+    if (!username) {
+        messageDiv.innerHTML = '<span style="color: var(--error);">Введите юзернейм пользователя</span>';
+        return;
+    }
+    
+    // Проверяем права доступа
+    if (!currentUser || !currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+        messageDiv.innerHTML = '<span style="color: var(--error);">Только главный администратор может добавлять админов!</span>';
+        return;
+    }
+    
+    console.log('👤 Attempting to add admin with username:', username);
+    
+    // Показываем загрузку
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Добавляем...';
+    messageDiv.innerHTML = '<span style="color: var(--warning);">Добавляем администратора...</span>';
+    
+    try {
+        const result = await makeRequest('/admin/add-admin', {
+            method: 'POST',
+            body: JSON.stringify({
+                adminId: currentUser.id,
+                username: username
+            })
+        });
+        
+        console.log('📨 Server response:', result);
+        
+        if (result.success) {
+            messageDiv.innerHTML = `<span style="color: var(--success);">${result.message}</span>`;
+            usernameInput.value = ''; // Очищаем поле ввода
+            
+            // Обновляем список админов
+            setTimeout(() => {
+                loadAdminsList();
+            }, 1000);
+            
+            showNotification(result.message, 'success');
+            
+            // Если добавленный админ - это текущий пользователь, обновляем его права
+            if (result.user && parseInt(result.user.id) === parseInt(currentUser.id)) {
+                setTimeout(() => {
+                    refreshUserData();
+                }, 1500);
+            }
+        } else {
+            messageDiv.innerHTML = `<span style="color: var(--error);">Ошибка: ${result.error}</span>`;
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+        
+    } catch (error) {
+        console.error('❌ Error adding admin:', error);
+        messageDiv.innerHTML = `<span style="color: var(--error);">Ошибка сети: ${error.message}</span>`;
+        showNotification('Ошибка сети при добавлении админа', 'error');
+    } finally {
+        // Восстанавливаем кнопку
+        submitBtn.disabled = false;
+        submitBtn.textContent = '➕ Добавить администратора';
+    }
+}
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on port ${PORT}`);
