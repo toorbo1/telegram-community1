@@ -1819,32 +1819,7 @@ function showAdminSection(section) {
         }, 100);
     }
 }
-// В функции addNewAdmin после успешного добавления
-if (result.success) {
-    messageDiv.innerHTML = `<span style="color: var(--success);">${result.message}</span>`;
-    usernameInput.value = '';
-    
-    // Обновляем список админов
-    setTimeout(() => {
-        loadAdminsList();
-    }, 1000);
-    
-    showNotification(result.message, 'success');
-    
-    // Отправляем уведомление новому админу (если он онлайн)
-    try {
-        await makeRequest('/admin/notify-new-admin', {
-            method: 'POST',
-            body: JSON.stringify({
-                adminId: currentUser.id,
-                newAdminId: result.user.id,
-                newAdminUsername: result.user.username
-            })
-        });
-    } catch (notifyError) {
-        console.log('Notify not available');
-    }
-}
+
 // Restore chat
 app.put('/api/support/chats/:chatId/restore', async (req, res) => {
     const chatId = req.params.chatId;
