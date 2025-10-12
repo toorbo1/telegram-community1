@@ -322,14 +322,7 @@ app.post('/api/posts', async (req, res) => {
         });
     }
     
-    // Проверяем права - все админы могут создавать посты
-    const isAdmin = await checkAdminAccess(authorId);
-    if (!isAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Только администратор может публиковать посты!'
-        });
-    }
+    
     
     try {
         const result = await pool.query(`
