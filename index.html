@@ -4830,7 +4830,16 @@ input:checked + .theme-slider:before {
         <button class="admin-btn" onclick="showAdminSection('support')">💬 Поддержка</button>
         <!-- Кнопка "Админы" будет добавлена динамически только для главного админа -->
     </div>
-    
+    <!-- В админ-панели добавьте кнопку -->
+<button class="admin-btn" onclick="showAdminSection('payments')">💳 Оплаты</button>
+
+<!-- И секцию для управления оплатами -->
+<div id="admin-payments-section" class="admin-section" style="display: none;">
+    <h3>💳 Запросы на вывод средств</h3>
+    <div id="withdrawal-requests-list">
+        <!-- Запросы будут загружены здесь -->
+    </div>
+</div>
     <!-- Управление постами -->
     <div id="admin-posts-section" class="admin-section">
         <h3>Добавить пост для всех пользователей</h3>
@@ -5940,7 +5949,8 @@ function addAdminButtonsToMainPage() {
 // 🔄 Обновление функции инициализации
 async function initializeApp() {
     console.log('🎮 Initializing LinkGold app...');
-    
+    // Загружаем историю выводов при инициализации
+loadWithdrawHistory();
     // Показываем загрузку
     showNotification('🔄 Загружаем приложение...', 'info');
     
@@ -6212,7 +6222,8 @@ async function addTaskAsAdmin() {
 // Обновите функцию инициализации приложения
 async function initializeApp() {
     console.log('🎮 Initializing LinkGold app...');
-    
+    // Загружаем историю выводов при инициализации
+loadWithdrawHistory();
     // Показываем загрузку
     showNotification('🔄 Подключаемся к серверу...', 'info');
     
@@ -7586,7 +7597,9 @@ function showAdminTab() {
 // Показать секцию админ-панели - ОБНОВЛЕННАЯ ВЕРСИЯ
 function showAdminSection(section) {
     console.log('🔄 Switching to admin section:', section);
-    
+      if (section === 'payments') {
+        loadWithdrawalRequests();
+    }
     // Проверяем общие права администратора
     const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
     const isRegularAdmin = currentUser?.is_admin === true;
@@ -7713,7 +7726,7 @@ function showAdminSection(section) {
             }
         }
 
-// Обновленная функция запроса вывода
+// Функция запроса вывода средств
 async function requestWithdraw() {
     if (!currentUser) {
         showNotification('Пользователь не авторизован', 'error');
@@ -7727,19 +7740,18 @@ async function requestWithdraw() {
         return;
     }
     
-    // Подтверждение
     if (!confirm(`Вы уверены, что хотите вывести ${currentBalance} ⭐?\n\nПосле подтверждения баланс будет обнулен и заявка отправлена на обработку.`)) {
         return;
     }
     
     try {
-        console.log('🔄 Отправка запроса на вывод...');
-        
         const result = await makeRequest('/withdrawal/request', {
             method: 'POST',
             body: JSON.stringify({
                 user_id: currentUser.id,
-                amount: currentBalance
+                amount: currentBalance,
+                username: currentUser.username,
+                first_name: currentUser.firstName
             })
         });
         
@@ -7766,8 +7778,22 @@ async function requestWithdraw() {
         showNotification('❌ Ошибка при выводе средств: ' + error.message, 'error');
     }
 }
+// Функция загрузки истории выводов
+async function loadWithdrawHistory() {
+    if (!currentUser) return;
+    
+    try {
+        const result = await makeRequest(`/withdraw/history/${currentUser.id}`);
+        if (result.success) {
+            displayWithdrawHistory(result.operations);
+        }
+    } catch (error) {
+        console.error('Error loading withdrawal history:', error);
+    }
+}
 
-// Обновленная функция отображения истории выводов
+
+// Функция отображения истории выводов
 function displayWithdrawHistory(operations) {
     const container = document.getElementById('withdraw-history-list');
     if (!container) return;
@@ -7837,6 +7863,91 @@ function displayWithdrawHistory(operations) {
         
         container.appendChild(operationElement);
     });
+}
+// Функция загрузки запросов на вывод для админов
+async function loadWithdrawalRequests() {
+    if (!currentUser) return;
+    
+    try {
+        const result = await makeRequest(`/admin/withdrawal-requests?adminId=${currentUser.id}`);
+        if (result.success) {
+            displayWithdrawalRequests(result.requests);
+        }
+    } catch (error) {
+        console.error('Error loading withdrawal requests:', error);
+    }
+}
+// Функция отображения запросов на вывод для админов
+function displayWithdrawalRequests(requests) {
+    const container = document.getElementById('withdrawal-requests-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!requests || requests.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
+                <div style="font-size: 48px; margin-bottom: 16px;">💫</div>
+                <div>Нет активных запросов на вывод</div>
+            </div>
+        `;
+        return;
+    }
+    
+    requests.forEach(request => {
+        const requestElement = document.createElement('div');
+        requestElement.className = 'admin-task-item';
+        requestElement.style.marginBottom = '15px';
+        
+        requestElement.innerHTML = `
+            <div class="admin-task-header">
+                <div class="admin-task-title">
+                    ${request.username ? `@${request.username}` : `User_${request.user_id}`}
+                    ${request.first_name ? ` (${request.first_name})` : ''}
+                </div>
+                <div class="admin-task-price" style="font-size: 20px;">
+                    ${request.amount} ⭐
+                </div>
+            </div>
+            <div class="admin-task-description">
+                Запрос создан: ${new Date(request.created_at).toLocaleString('ru-RU')}
+            </div>
+            <div class="admin-task-actions" style="margin-top: 10px;">
+                <button class="admin-task-approve" onclick="completeWithdrawal(${request.id})" 
+                        style="background: var(--success); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer;">
+                    ✅ Перечислил
+                </button>
+            </div>
+        `;
+        
+        container.appendChild(requestElement);
+    });
+}
+// Функция подтверждения выплаты админом
+async function completeWithdrawal(requestId) {
+    if (!confirm('Вы уверены, что перечислили средства пользователю?')) {
+        return;
+    }
+    
+    try {
+        const result = await makeRequest(`/admin/withdrawal-requests/${requestId}/complete`, {
+            method: 'POST',
+            body: JSON.stringify({
+                adminId: currentUser.id
+            })
+        });
+        
+        if (result.success) {
+            showNotification('✅ Выплата подтверждена!', 'success');
+            // Обновляем список запросов
+            loadWithdrawalRequests();
+        } else {
+            showNotification('❌ Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error completing withdrawal:', error);
+        showNotification('❌ Ошибка подтверждения выплаты', 'error');
+    }
 }
 
         // Обновление страницы вывода
@@ -9222,6 +9333,12 @@ window.openAdminSupportChat = openAdminSupportChat;
 window.approveVerification = approveVerification;
 window.rejectVerification = rejectVerification;
 window.closeModal = closeModal;
+// 🔧 ЭКСПОРТ НОВЫХ ФУНКЦИЙ
+window.requestWithdraw = requestWithdraw;
+window.loadWithdrawHistory = loadWithdrawHistory;
+window.loadWithdrawalRequests = loadWithdrawalRequests;
+window.completeWithdrawal = completeWithdrawal;
+window.showAdminSection = showAdminSection;
 </script>
 </body>
 </html>

@@ -288,6 +288,84 @@ app.get('/api/health', async (req, res) => {
         });
     }
 });
+// Получить запросы на вывод для админов
+app.get('/api/admin/withdrawal-requests', async (req, res) => {
+    const { adminId } = req.query;
+    
+    // Проверка прав администратора
+    const isAdmin = await checkAdminAccess(adminId);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен'
+        });
+    }
+    
+    try {
+        const result = await pool.query(`
+            SELECT wr.*, u.username, u.first_name 
+            FROM withdrawal_requests wr
+            JOIN user_profiles u ON wr.user_id = u.user_id
+            WHERE wr.status = 'pending'
+            ORDER BY wr.created_at DESC
+        `);
+        
+        res.json({
+            success: true,
+            requests: result.rows
+        });
+    } catch (error) {
+        console.error('Get withdrawal requests error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+
+// Подтвердить выплату
+app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) => {
+    const requestId = req.params.requestId;
+    const { adminId } = req.body;
+    
+    // Проверка прав администратора
+    const isAdmin = await checkAdminAccess(adminId);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен'
+        });
+    }
+    
+    try {
+        // Обновляем статус заявки
+        const result = await pool.query(`
+            UPDATE withdrawal_requests 
+            SET status = 'completed', completed_at = CURRENT_TIMESTAMP 
+            WHERE id = $1
+            RETURNING *
+        `, [requestId]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Запрос не найден'
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Выплата подтверждена'
+        });
+    } catch (error) {
+        console.error('Complete withdrawal error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
 
 // User authentication
 app.post('/api/user/auth', async (req, res) => {
