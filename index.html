@@ -5845,32 +5845,32 @@ function addAdminButtonsToMainPage() {
     }
 }
 
-// 🔄 Обновление функции инициализации
-async function initializeApp() {
-    console.log('🎮 Initializing LinkGold app...');
+// // 🔄 Обновление функции инициализации
+// async function initializeApp() {
+//     console.log('🎮 Initializing LinkGold app...');
     
-    // Показываем загрузку
-    showNotification('🔄 Загружаем приложение...', 'info');
+//     // Показываем загрузку
+//     showNotification('🔄 Загружаем приложение...', 'info');
     
-    // Инициализируем пользователя
-    if (typeof tg !== 'undefined') {
-        await initializeTelegramUser();
-    } else {
-        initializeTestUser();
-    }
+//     // Инициализируем пользователя
+//     if (typeof tg !== 'undefined') {
+//         await initializeTelegramUser();
+//     } else {
+//         initializeTestUser();
+//     }
     
-    // Инициализируем приложение
-    displayUserProfile();
-    loadMainPagePosts();
-    loadTasks();
-    initializeSearch();
-    loadUserTasks();
+//     // Инициализируем приложение
+//     displayUserProfile();
+//     loadMainPagePosts();
+//     loadTasks();
+//     initializeSearch();
+//     loadUserTasks();
     
-    // Обновляем интерфейс для админов
-    updateAdminInterface();
+//     // Обновляем интерфейс для админов
+//     updateAdminInterface();
     
-    console.log('🎉 App initialized successfully');
-}
+//     console.log('🎉 App initialized successfully');
+// }
         // Функция для тестирования (без Telegram)
         function initializeTestUser() {
             currentUser = {
@@ -6145,7 +6145,7 @@ async function initializeApp() {
     
     // Инициализируем приложение
     displayUserProfile();
-    checkAdminRights();
+    checkAdminRights(); // 🔥 ВАЖНО: вызываем проверку прав
     loadMainPagePosts();
     loadTasks();
     initializeSearch();
@@ -6155,7 +6155,7 @@ async function initializeApp() {
     startUserDataAutoUpdate();
     
     // Если пользователь админ, загружаем админ-данные
-    if (currentUser && (currentUser.is_admin || parseInt(currentUser.id) === ADMIN_ID)) {
+    if (currentUser && currentUser.is_admin) {
         loadAdminChats();
         loadAdminTasks();
         loadTaskVerifications();
@@ -6170,6 +6170,31 @@ async function initializeApp() {
     
     console.log('🎉 App initialized successfully');
 }
+function debugAdminAccess() {
+    console.log('🔧 DEBUG Admin Access:');
+    console.log('- Current User ID:', currentUser?.id);
+    console.log('- is_admin:', currentUser?.is_admin);
+    console.log('- isMainAdmin:', parseInt(currentUser?.id) === ADMIN_ID);
+    console.log('- Admin Nav Visible:', document.getElementById('admin-nav-item')?.style.display);
+    
+    // Проверяем все элементы которые могут блокировать доступ
+    const adminElements = [
+        'admin-nav-item',
+        'admin-panel',
+        'admin-tab'
+    ];
+    
+    adminElements.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            console.log(`- ${id}:`, element.style.display);
+        }
+    });
+}
+
+// Вызовите эту функцию для отладки
+setTimeout(debugAdminAccess, 3000);
+
 // Функция для отладки прав администратора
 function debugAdminRights() {
     console.log('🐛 DEBUG Admin Rights:');
@@ -6328,10 +6353,7 @@ setTimeout(debugAdminRights, 2000);
             }
         }
 
-        // Проверка прав администратора
-// Проверка прав администратора
-// Проверка прав администратора - ОБНОВЛЕННАЯ ВЕРСИЯ
-// Проверка прав администратора - ОБНОВЛЕННАЯ ВЕРСИЯ
+
 function checkAdminRights() {
     const adminNavItem = document.getElementById('admin-nav-item');
     
@@ -6341,13 +6363,8 @@ function checkAdminRights() {
         isMainAdmin: parseInt(currentUser?.id) === ADMIN_ID
     });
     
-    // Проверяем главного администратора
-    const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
-    
-    // Проверяем обычного администратора
-    const isRegularAdmin = currentUser?.is_admin === true;
-    
-    if (currentUser && (isMainAdmin || isRegularAdmin)) {
+    // 🔥 ИСПРАВЛЕННАЯ ПРОВЕРКА: ВСЕ админы видят кнопку
+    if (currentUser && currentUser.is_admin) {
         if (adminNavItem) {
             adminNavItem.style.display = 'flex';
             console.log('✅ Admin nav item shown');
@@ -6355,8 +6372,7 @@ function checkAdminRights() {
         
         console.log('👑 Admin access granted:', {
             id: currentUser.id,
-            isMainAdmin: isMainAdmin,
-            isRegularAdmin: isRegularAdmin
+            is_admin: currentUser.is_admin
         });
         
     } else {
@@ -6953,48 +6969,48 @@ if (parseInt(currentUser.id) === ADMIN_ID) {
             }
         }
 
-        // 🔧 АДМИН-ФУНКЦИИ
         async function addNewPost() {
-            const title = document.getElementById('admin-post-title').value;
-            const content = document.getElementById('admin-post-content').value;
-            
-            if (!title || !content) {
-                showNotification('Заполните заголовок и содержание поста!', 'error');
-                return;
-            }
-            
-            if (!currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
-                showNotification('Только администратор может публиковать посты!', 'error');
-                return;
-            }
-            
-            try {
-                const result = await makeRequest('/posts', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        title: title,
-                        content: content,
-                        author: currentUser.firstName,
-                        authorId: currentUser.id
-                    })
-                });
+    const title = document.getElementById('admin-post-title').value;
+    const content = document.getElementById('admin-post-content').value;
+    
+    if (!title || !content) {
+        showNotification('Заполните заголовок и содержание поста!', 'error');
+        return;
+    }
+    
+    // 🔥 ИСПРАВЛЕННАЯ ПРОВЕРКА: разрешаем ВСЕМ админам
+    if (!currentUser || !currentUser.is_admin) {
+        showNotification('Только администратор может публиковать посты!', 'error');
+        return;
+    }
+    
+    try {
+        const result = await makeRequest('/posts', {
+            method: 'POST',
+            body: JSON.stringify({
+                title: title,
+                content: content,
+                author: currentUser.firstName,
+                authorId: currentUser.id
+            })
+        });
 
-                if (result.success) {
-                    showNotification('Пост успешно опубликован!', 'success');
-                    document.getElementById('admin-post-title').value = '';
-                    document.getElementById('admin-post-content').value = '';
-                    loadMainPagePosts();
-                } else {
-                    showNotification('Ошибка: ' + result.error, 'error');
-                }
-                
-            } catch (error) {
-                console.error('Error adding post:', error);
-                showNotification('Ошибка соединения: ' + error.message, 'error');
-            }
+        if (result.success) {
+            showNotification('Пост успешно опубликован!', 'success');
+            document.getElementById('admin-post-title').value = '';
+            document.getElementById('admin-post-content').value = '';
+            loadMainPagePosts();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
         }
+        
+    } catch (error) {
+        console.error('Error adding post:', error);
+        showNotification('Ошибка соединения: ' + error.message, 'error');
+    }
+}
 
-       async function addTask() {
+async function addTask() {
     console.log('🎯 ========== START addTask FUNCTION ==========');
     
     try {
@@ -7004,7 +7020,11 @@ if (parseInt(currentUser.id) === ADMIN_ID) {
             return;
         }
         
-       
+        // 🔥 ИСПРАВЛЕННАЯ ПРОВЕРКА: разрешаем ВСЕМ админам
+        if (!currentUser.is_admin) {
+            showNotification('Только администратор может создавать задания!', 'error');
+            return;
+        }
 
         // 2. Собираем данные из формы
         const getElementValue = (id) => {
@@ -7021,7 +7041,7 @@ if (parseInt(currentUser.id) === ADMIN_ID) {
             people_required: getElementValue('admin-task-people'),
             repost_time: getElementValue('admin-task-repost'),
             task_url: getElementValue('admin-task-url'),
-            category: 'general', // добавляем категорию по умолчанию
+            category: 'general',
             created_by: currentUser.id
         };
 
@@ -7041,12 +7061,12 @@ if (parseInt(currentUser.id) === ADMIN_ID) {
         }
 
         // 5. Подготавливаем данные для отправки
-       const requestData = {
-    title: formData.title.trim(),
-    description: formData.description.trim(),
-    price: price,
-    created_by: currentUser.id
-};
+        const requestData = {
+            title: formData.title.trim(),
+            description: formData.description.trim(),
+            price: price,
+            created_by: currentUser.id
+        };
 
         console.log('📤 Prepared request data:', requestData);
 
@@ -7086,6 +7106,7 @@ if (parseInt(currentUser.id) === ADMIN_ID) {
         console.log('🎯 ========== END addTask FUNCTION ==========');
     }
 }
+
         // Load admin tasks
 async function loadAdminTasks() {
     if (!currentUser || !currentUser.isAdmin) return;
@@ -7134,35 +7155,37 @@ function displayAdminTasks(tasks) {
 }
 
         async function deletePost(postId) {
-            if (!confirm('Удалить этот пост?')) return;
-            
-            if (!currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
-                showNotification('Только администратор может удалять посты!', 'error');
-                return;
-            }
-            
-            try {
-                const result = await makeRequest(`/posts/${postId}`, {
-                    method: 'DELETE',
-                    body: JSON.stringify({ authorId: currentUser.id })
-                });
+    if (!confirm('Удалить этот пост?')) return;
+    
+    // 🔥 ИСПРАВЛЕННАЯ ПРОВЕРКА: разрешаем ВСЕМ админам
+    if (!currentUser || !currentUser.is_admin) {
+        showNotification('Только администратор может удалять посты!', 'error');
+        return;
+    }
+    
+    try {
+        const result = await makeRequest(`/posts/${postId}`, {
+            method: 'DELETE',
+            body: JSON.stringify({ authorId: currentUser.id })
+        });
 
-                if (result.success) {
-                    showNotification('Пост успешно удален!', 'success');
-                    loadMainPagePosts();
-                } else {
-                    showNotification('Ошибка: ' + result.error, 'error');
-                }
-            } catch (error) {
-                console.error('Error deleting post:', error);
-                showNotification('Ошибка соединения: ' + error.message, 'error');
-            }
+        if (result.success) {
+            showNotification('Пост успешно удален!', 'success');
+            loadMainPagePosts();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
         }
+    } catch (error) {
+        console.error('Error deleting post:', error);
+        showNotification('Ошибка соединения: ' + error.message, 'error');
+    }
+}
 
-        async function deleteTask(taskId) {
+async function deleteTask(taskId) {
     if (!confirm('Удалить это задание?')) return;
     
-    if (!currentUser || !currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+    // 🔥 ИСПРАВЛЕННАЯ ПРОВЕРКА: разрешаем ВСЕМ админам
+    if (!currentUser || !currentUser.is_admin) {
         showNotification('Только администратор может удалять задания!', 'error');
         return;
     }
@@ -7185,6 +7208,7 @@ function displayAdminTasks(tasks) {
         showNotification('Ошибка удаления задания: ' + error.message, 'error');
     }
 }
+
       async function openAdminChat() {
     if (!currentUser) {
         showNotification('Пользователь не авторизован', 'error');
@@ -7348,19 +7372,14 @@ function displayAdminTasks(tasks) {
             updateNavState('profile');
         }
 
-        // Функция показа вкладки админа - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function showAdminTab() {
     console.log('👑 Checking admin access for tab...', {
         id: currentUser?.id,
-        is_admin: currentUser?.is_admin,
-        isMainAdmin: parseInt(currentUser?.id) === ADMIN_ID
+        is_admin: currentUser?.is_admin
     });
     
-    // Проверяем права: главный админ ИЛИ нанятый админ
-    const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
-    const isRegularAdmin = currentUser?.is_admin === true;
-    
-    if (!currentUser || (!isMainAdmin && !isRegularAdmin)) {
+    // 🔥 ИСПРАВЛЕННАЯ ПРОВЕРКА: разрешаем ВСЕМ админам
+    if (!currentUser || !currentUser.is_admin) {
         showNotification('Доступ запрещен!', 'error');
         return;
     }
@@ -7425,21 +7444,17 @@ function showAdminTab() {
             }
         }
 // Обновите функцию showAdminSection чтобы включить новую секцию
-// Показать секцию админ-панели - ОБНОВЛЕННАЯ ВЕРСИЯ
 function showAdminSection(section) {
     console.log('🔄 Switching to admin section:', section);
     
-    // Проверяем общие права администратора
-    const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
-    const isRegularAdmin = currentUser?.is_admin === true;
-    
-    if (!currentUser || (!isMainAdmin && !isRegularAdmin)) {
+    // 🔥 ИСПРАВЛЕННАЯ ПРОВЕРКА: разрешаем ВСЕМ админам
+    if (!currentUser || !currentUser.is_admin) {
         showNotification('❌ Доступ запрещен!', 'error');
         return;
     }
     
     // Проверяем права для раздела админов (только главный админ)
-    if (section === 'admins' && !isMainAdmin) {
+    if (section === 'admins' && parseInt(currentUser.id) !== ADMIN_ID) {
         showNotification('❌ Только главный администратор может управлять админами!', 'error');
         return;
     }
@@ -7457,7 +7472,7 @@ function showAdminSection(section) {
     }
     
     // Загружаем данные для определенных секций
-    if (section === 'admins' && isMainAdmin) {
+    if (section === 'admins' && parseInt(currentUser.id) === ADMIN_ID) {
         setTimeout(() => {
             loadAdminsList();
         }, 100);
@@ -7471,46 +7486,46 @@ function showAdminSection(section) {
         // Можно добавить загрузку постов если нужно
     }
 }
-        // АДМИН ФУНКЦИИ
-        function showAdminSection(section) {
-            // Скрываем все админ секции
-            document.querySelectorAll('.admin-section').forEach(sec => {
-                sec.style.display = 'none';
-            });
+        // // АДМИН ФУНКЦИИ
+        // function showAdminSection(section) {
+        //     // Скрываем все админ секции
+        //     document.querySelectorAll('.admin-section').forEach(sec => {
+        //         sec.style.display = 'none';
+        //     });
             
-            // Показываем выбранную секцию
-            const targetSection = document.getElementById('admin-' + section + '-section');
-            if (targetSection) {
-                targetSection.style.display = 'block';
-            }
-        }
+        //     // Показываем выбранную секцию
+        //     const targetSection = document.getElementById('admin-' + section + '-section');
+        //     if (targetSection) {
+        //         targetSection.style.display = 'block';
+        //     }
+        // }
 
-        function showAdminChats() {
-            showAdminSection('support');
-        }
+        // function showAdminChats() {
+        //     showAdminSection('support');
+        // }
 
-        function showPostManagement() {
-            showAdminSection('posts');
-        }
+        // function showPostManagement() {
+        //     showAdminSection('posts');
+        // }
 
-        function showTaskManagement() {
-            showAdminSection('tasks');
-        }
+        // function showTaskManagement() {
+        //     showAdminSection('tasks');
+        // }
 
-        function showTaskVerification() {
-            showAdminSection('verification');
-        }
+        // function showTaskVerification() {
+        //     showAdminSection('verification');
+        // }
 
-        // 🎨 ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-        function escapeHtml(unsafe) {
-            if (!unsafe) return '';
-            return unsafe
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
+        // // 🎨 ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+        // function escapeHtml(unsafe) {
+        //     if (!unsafe) return '';
+        //     return unsafe
+        //         .replace(/&/g, "&amp;")
+        //         .replace(/</g, "&lt;")
+        //         .replace(/>/g, "&gt;")
+        //         .replace(/"/g, "&quot;")
+        //         .replace(/'/g, "&#039;");
+        // }
 
         function formatPostDate(timestamp) {
             if (!timestamp) return '';
@@ -8782,7 +8797,6 @@ function displayAdminsList(admins) {
 function setupAdminPanel() {
     if (!currentUser) return;
     
-    const isMainAdmin = parseInt(currentUser.id) === ADMIN_ID;
     const adminButtons = document.querySelector('#admin-tab .admin-buttons');
     
     if (!adminButtons) return;
@@ -8793,8 +8807,8 @@ function setupAdminPanel() {
         existingAdminsBtn.remove();
     }
     
-    // Добавляем кнопку "Админы" только для главного админа
-    if (isMainAdmin) {
+    // 🔥 Добавляем кнопку "Админы" только для главного админа
+    if (parseInt(currentUser.id) === ADMIN_ID) {
         const adminsButton = document.createElement('button');
         adminsButton.className = 'admin-btn';
         adminsButton.onclick = () => showAdminSection('admins');
