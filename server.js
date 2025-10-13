@@ -215,6 +215,18 @@ async function initDatabase() {
             ADD COLUMN IF NOT EXISTS task_url TEXT
         `);
 
+        // Добавляем колонку user_username в task_verifications если ее нет
+        await pool.query(`
+            ALTER TABLE task_verifications 
+            ADD COLUMN IF NOT EXISTS user_username TEXT
+        `);
+
+        // Добавляем колонку user_username в support_messages если ее нет
+        await pool.query(`
+            ALTER TABLE support_messages 
+            ADD COLUMN IF NOT EXISTS user_username TEXT
+        `);
+
         // Гарантируем существование главного админа
         await pool.query(`
             INSERT INTO user_profiles 
