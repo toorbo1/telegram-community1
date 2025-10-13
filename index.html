@@ -6,112 +6,6 @@
     <title>LinkGold - Платформа для заработка</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        /* ПОЛНЫЙ ФИКС ДЛЯ ЗАДАНИЙ */
-.tasks-tab {
-    min-height: 500px;
-    position: relative;
-}
-
-.tasks-grid {
-    display: grid;
-    gap: 16px;
-    grid-template-columns: 1fr;
-    min-height: 200px;
-    position: relative;
-}
-
-/* УБИРАЕМ ВСЕ АНИМАЦИИ ДЛЯ ЗАДАНИЙ */
-.tasks-tab * {
-    animation: none !important;
-    transition: none !important;
-    transform: none !important;
-}
-
-.task-card {
-    background: var(--card-bg);
-    border-radius: 16px;
-    padding: 16px;
-    border: 1px solid var(--border);
-    cursor: pointer;
-    width: 100%;
-    box-sizing: border-box;
-    margin-bottom: 0;
-    opacity: 1 !important;
-    position: relative;
-    /* Фиксируем высоту */
-    min-height: 120px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-
-/* ФИКС ДЛЯ СОДЕРЖИМОГО КАРТОЧКИ */
-.task-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 12px;
-    flex-shrink: 0;
-}
-
-.task-description {
-    font-size: 13px;
-    color: var(--text-secondary);
-    margin-bottom: 16px;
-    line-height: 1.4;
-    flex-grow: 1;
-    /* Фиксируем высоту описания */
-    min-height: 40px;
-    max-height: 60px;
-    overflow: hidden;
-}
-
-.task-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-shrink: 0;
-    margin-top: auto;
-}
-
-/* ФИКС ДЛЯ КОНТЕЙНЕРОВ */
-#new-tasks,
-#confirmation-tasks, 
-#completed-tasks,
-#rejected-tasks {
-    position: relative;
-    min-height: 300px;
-    display: block !important;
-}
-
-/* УБИРАЕМ ПРОБЕЛЫ МЕЖДУ БЛОКАМИ */
-.tasks-grid {
-    gap: 16px !important;
-}
-
-.task-card {
-    margin-bottom: 0 !important;
-}
-
-/* ФИКС ДЛЯ ПУСТОГО СОСТОЯНИЯ */
-.no-tasks {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    text-align: center;
-    width: 100%;
-    padding: 40px 20px;
-}
-
-/* ОСТАНОВИМ ВСЕ ПЕРЕМЕЩЕНИЯ */
-.tasks-tab {
-    overflow: hidden;
-}
-
-.tasks-grid {
-    transform: none !important;
-}
          .tg-header {
             background: var(--bg-primary) !important;
         }
@@ -260,15 +154,7 @@ body {
             font-weight: 500;
             margin-bottom: 20px;
         }
-/* СРОЧНЫЙ ФИКС ДЛЯ ЗАДАНИЙ */
-.tasks-grid .task-card {
-    animation: none !important;
-    transition: none !important;
-    transform: none !important;
-}
-.tasks-tab * {
-    animation: none !important;
-}
+
         .video-icon {
             width: 100%;
             height: 100%;
@@ -4785,12 +4671,12 @@ input:checked + .theme-slider:before {
             <div class="task-tab" onclick="showTaskCategory('rejected')">Отклоненные</div>
         </div>
         
-        <div class="search-container">
+        <div class="search-container fade-in">
             <div class="search-icon">🔍</div>
             <input type="text" class="search-input" id="task-search" placeholder="Поиск заданий...">
         </div>
         
-        <div class="filters-container">
+        <div class="filters-container fade-in">
             <button class="filter-btn active" data-filter="all">Все</button>
             <button class="filter-btn" data-filter="social">Соцсети</button>
             <button class="filter-btn" data-filter="subscribe">Подписки</button>
@@ -6838,26 +6724,30 @@ function displayTasks(tasks, category) {
     const container = document.getElementById(category + '-tasks');
     if (!container) return;
     
-    // Полностью отключаем анимации
-    container.style.cssText = 'opacity: 1 !important; transform: none !important;';
+    // Временно отключаем анимации
+    container.style.opacity = '0.7';
     
     container.innerHTML = '';
 
     if (!tasks || tasks.length === 0) {
         container.innerHTML = `
-            <div class="no-tasks">
+            <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
                 <div class="no-tasks-icon">📝</div>
                 <div>Заданий пока нет</div>
             </div>
         `;
+        
+        // Восстанавливаем прозрачность
+        setTimeout(() => {
+            container.style.opacity = '1';
+        }, 50);
         return;
     }
 
     tasks.forEach(task => {
         const taskElement = document.createElement('div');
-        taskElement.className = 'task-card';
+        taskElement.className = 'task-card'; // Убрали fade-in
         
-        // Фиксированная структура без анимаций
         taskElement.innerHTML = `
             <div class="task-header">
                 <div style="flex: 1;">
@@ -6872,9 +6762,13 @@ function displayTasks(tasks, category) {
                 <button class="task-btn" onclick="openTaskModal(${task.id})">Начать</button>
             </div>
         `;
-        
         container.appendChild(taskElement);
     });
+    
+    // Восстанавливаем прозрачность
+    setTimeout(() => {
+        container.style.opacity = '1';
+    }, 50);
 }
 // Функция для принудительного исправления layout
 function fixTasksLayout() {
@@ -8932,7 +8826,7 @@ window.showAdminSection = showAdminSection;
 // 🔧 ЭКСПОРТ НОВЫХ ФУНКЦИЙ
 window.refreshAdminRights = refreshAdminRights;
 window.debugAdminRights = debugAdminRights;
-window.fixTasksLayout = fixTasksLayout;
+
 
 // Функции для управления администраторами
 function showAdminAdminsSection() {
