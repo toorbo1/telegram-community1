@@ -8828,7 +8828,7 @@ async function addNewAdmin() {
         return;
     }
     
-    // Проверяем права доступа
+    // Проверяем права доступа - ТОЛЬКО главный администратор
     if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) {
         messageDiv.innerHTML = '<span style="color: var(--error);">Только главный администратор может добавлять админов!</span>';
         return;
@@ -8862,14 +8862,6 @@ async function addNewAdmin() {
             }, 1000);
             
             showNotification(result.message, 'success');
-            
-            // Если добавленный админ - это текущий пользователь, обновляем его права
-            if (result.targetUserId && parseInt(result.targetUserId) === parseInt(currentUser.id)) {
-                console.log('🔄 Added admin is current user, refreshing rights...');
-                setTimeout(() => {
-                    refreshUserData();
-                }, 1500);
-            }
             
         } else {
             messageDiv.innerHTML = `<span style="color: var(--error);">Ошибка: ${result.error}</span>`;

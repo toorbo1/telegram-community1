@@ -757,7 +757,7 @@ app.post('/api/posts', async (req, res) => {
         });
     }
     
-    // Check admin rights - разрешаем главному админу И нанятым админам
+    // Check admin rights - разрешаем всем админам
     try {
         const userResult = await pool.query(
             'SELECT is_admin FROM user_profiles WHERE user_id = $1',
@@ -1041,6 +1041,7 @@ app.post('/api/tasks', async (req, res) => {
     }
 });
 // Delete task - UPDATED
+// Delete task - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 // Delete task - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.delete('/api/tasks/:id', async (req, res) => {
     const { adminId } = req.body;
@@ -1503,14 +1504,72 @@ app.get('/api/support/all-chats', async (req, res) => {
     }
 });
 
-// Get archived chats
+// Get all chats (including archived) - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
+app.get('/api/support/all-chats', async (req, res) => {
+    const { adminId } = req.query;
+    
+    // Check admin rights - разрешаем всем админам
+    try {
+        const userResult = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [adminId]
+        );
+        
+        if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied - admin rights required'
+            });
+        }
+    } catch (error) {
+        console.error('Admin check error:', error);
+        return res.status(500).json({
+            success: false,
+            error: 'Database error during admin check'
+        });
+    }
+
+    try {
+        const result = await pool.query(`
+            SELECT * FROM support_chats 
+            ORDER BY last_message_time DESC
+        `);
+        
+        res.json({
+            success: true,
+            chats: result.rows
+        });
+    } catch (error) {
+        console.error('Get all chats error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Get archived chats - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.get('/api/support/archived-chats', async (req, res) => {
     const { adminId } = req.query;
     
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
+    // Check admin rights - разрешаем всем админам
+    try {
+        const userResult = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [adminId]
+        );
+        
+        if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied - admin rights required'
+            });
+        }
+    } catch (error) {
+        console.error('Admin check error:', error);
+        return res.status(500).json({
             success: false,
-            error: 'Access denied'
+            error: 'Database error during admin check'
         });
     }
 
@@ -1535,16 +1594,29 @@ app.get('/api/support/archived-chats', async (req, res) => {
 });
 
 
-
-// Archive chat
+// Archive chat - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.put('/api/support/chats/:chatId/archive', async (req, res) => {
     const chatId = req.params.chatId;
     const { adminId } = req.body;
     
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
+    // Check admin rights - разрешаем всем админам
+    try {
+        const userResult = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [adminId]
+        );
+        
+        if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied - admin rights required'
+            });
+        }
+    } catch (error) {
+        console.error('Admin check error:', error);
+        return res.status(500).json({
             success: false,
-            error: 'Access denied'
+            error: 'Database error during admin check'
         });
     }
 
@@ -1567,9 +1639,7 @@ app.put('/api/support/chats/:chatId/archive', async (req, res) => {
         });
     }
 });
-// Добавление админа по юзернейму (только для главного админа)
-// Добавление админа по юзернейму (только для главного админа)
-// Добавление админа по юзернейму (только для главного админа) - ИСПРАВЛЕННАЯ ВЕРСИЯ
+
 // Добавление админа по юзернейму - ОБНОВЛЕННАЯ ВЕРСИЯ
 app.post('/api/admin/add-admin', async (req, res) => {
     const { adminId, username } = req.body;
@@ -1994,15 +2064,29 @@ app.get('/api/debug/endpoints', async (req, res) => {
         });
     }
 });
-// Restore chat
+// Restore chat - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.put('/api/support/chats/:chatId/restore', async (req, res) => {
     const chatId = req.params.chatId;
     const { adminId } = req.body;
     
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
+    // Check admin rights - разрешаем всем админам
+    try {
+        const userResult = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [adminId]
+        );
+        
+        if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied - admin rights required'
+            });
+        }
+    } catch (error) {
+        console.error('Admin check error:', error);
+        return res.status(500).json({
             success: false,
-            error: 'Access denied'
+            error: 'Database error during admin check'
         });
     }
 
@@ -2026,15 +2110,29 @@ app.put('/api/support/chats/:chatId/restore', async (req, res) => {
     }
 });
 
-// Delete chat
+// Delete chat - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.delete('/api/support/chats/:chatId', async (req, res) => {
     const chatId = req.params.chatId;
     const { adminId } = req.body;
     
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
+    // Check admin rights - разрешаем всем админам
+    try {
+        const userResult = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [adminId]
+        );
+        
+        if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied - admin rights required'
+            });
+        }
+    } catch (error) {
+        console.error('Admin check error:', error);
+        return res.status(500).json({
             success: false,
-            error: 'Access denied'
+            error: 'Database error during admin check'
         });
     }
 
@@ -2110,7 +2208,6 @@ app.get('/api/admin/task-verifications', async (req, res) => {
         });
     }
 });
-
 // Approve task verification - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const verificationId = req.params.verificationId;
@@ -2235,6 +2332,7 @@ setInterval(checkAndRemoveCompletedTasks, 5 * 60 * 1000);
 // Также запускаем при старте сервера
 setTimeout(checkAndRemoveCompletedTasks, 10000);
 // Reject task verification
+// Reject task verification - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 // Reject task verification - ОБНОВЛЕННАЯ ВЕРСИЯ для всех админов
 app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res) => {
     const verificationId = req.params.verificationId;
