@@ -6335,37 +6335,19 @@ setTimeout(debugAdminRights, 2000);
 function checkAdminRights() {
     const adminNavItem = document.getElementById('admin-nav-item');
     
-    console.log('🔍 Checking admin rights for user:', {
-        id: currentUser?.id,
-        is_admin: currentUser?.is_admin,
-        isMainAdmin: parseInt(currentUser?.id) === ADMIN_ID
-    });
-    
-    // Проверяем главного администратора
     const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
-    
-    // Проверяем обычного администратора
     const isRegularAdmin = currentUser?.is_admin === true;
     
     if (currentUser && (isMainAdmin || isRegularAdmin)) {
         if (adminNavItem) {
             adminNavItem.style.display = 'flex';
-            console.log('✅ Admin nav item shown');
+            console.log('✅ Admin nav item shown - user is admin');
         }
-        
-        console.log('👑 Admin access granted:', {
-            id: currentUser.id,
-            isMainAdmin: isMainAdmin,
-            isRegularAdmin: isRegularAdmin
-        });
-        
     } else {
         if (adminNavItem) {
             adminNavItem.style.display = 'none';
-            console.log('❌ Admin nav item hidden');
+            console.log('❌ Admin nav item hidden - user is not admin');
         }
-        
-        console.log('🚫 User is not admin');
     }
 }
 // В функции инициализации админ-панели добавьте:
@@ -7350,13 +7332,6 @@ function displayAdminTasks(tasks) {
 
         // Функция показа вкладки админа - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function showAdminTab() {
-    console.log('👑 Checking admin access for tab...', {
-        id: currentUser?.id,
-        is_admin: currentUser?.is_admin,
-        isMainAdmin: parseInt(currentUser?.id) === ADMIN_ID
-    });
-    
-    // Проверяем права: главный админ ИЛИ нанятый админ
     const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
     const isRegularAdmin = currentUser?.is_admin === true;
     
@@ -7368,8 +7343,6 @@ function showAdminTab() {
     hideAllTabs();
     document.getElementById('admin-tab').classList.add('active');
     updateNavState('admin');
-    
-    console.log('✅ Admin tab access granted');
 }
 
         function showWithdrawPage() {
