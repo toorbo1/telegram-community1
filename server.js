@@ -291,7 +291,6 @@ function generateReferralCode(userId) {
     }
     return code + userId.toString().slice(-4);
 }
-
 // User authentication - ОБНОВЛЕННАЯ ВЕРСИЯ
 app.post('/api/user/auth', async (req, res) => {
     const { user } = req.body;
