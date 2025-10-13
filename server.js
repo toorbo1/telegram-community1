@@ -389,7 +389,7 @@ app.get('/api/health', async (req, res) => {
         });
     }
 });
-// Get withdrawal requests for admin
+// Get withdrawal requests for admin - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.get('/api/admin/withdrawal-requests', async (req, res) => {
     const { adminId } = req.query;
     
@@ -427,8 +427,7 @@ app.get('/api/admin/withdrawal-requests', async (req, res) => {
         });
     }
 });
-
-// Complete withdrawal request
+// Complete withdrawal request - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) => {
     const requestId = req.params.requestId;
     const { adminId } = req.body;
@@ -478,48 +477,72 @@ app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) 
     }
 });
 
-// Подтвердить выплату
-app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) => {
-    const requestId = req.params.requestId;
-    const { adminId } = req.body;
-    
-    // Проверка прав администратора
-    const isAdmin = await checkAdminAccess(adminId);
-    if (!isAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Доступ запрещен'
-        });
-    }
-    
+// Функция для принудительного обновления структуры таблицы
+async function fixWithdrawalTable() {
     try {
-        // Обновляем статус заявки
-        const result = await pool.query(`
-            UPDATE withdrawal_requests 
-            SET status = 'completed', completed_at = CURRENT_TIMESTAMP 
-            WHERE id = $1
-            RETURNING *
-        `, [requestId]);
+        console.log('🔧 Проверка и исправление структуры таблицы withdrawal_requests...');
         
-        if (result.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'Запрос не найден'
-            });
+        // Проверяем существование таблицы
+        const tableExists = await pool.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = 'withdrawal_requests'
+            );
+        `);
+        
+        if (!tableExists.rows[0].exists) {
+            console.log('❌ Таблица withdrawal_requests не существует, создаем...');
+            await pool.query(`
+                CREATE TABLE withdrawal_requests (
+                    id SERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL,
+                    username TEXT,
+                    first_name TEXT,
+                    amount REAL NOT NULL,
+                    status TEXT DEFAULT 'pending',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    completed_at TIMESTAMP,
+                    completed_by BIGINT
+                )
+            `);
+            console.log('✅ Таблица создана');
+            return;
         }
         
-        res.json({
-            success: true,
-            message: 'Выплата подтверждена'
-        });
+        // Проверяем и добавляем отсутствующие колонки
+        const columnsToCheck = ['username', 'first_name', 'completed_by'];
+        
+        for (const column of columnsToCheck) {
+            const columnExists = await pool.query(`
+                SELECT EXISTS (
+                    SELECT FROM information_schema.columns 
+                    WHERE table_name = 'withdrawal_requests' AND column_name = $1
+                );
+            `, [column]);
+            
+            if (!columnExists.rows[0].exists) {
+                console.log(`❌ Колонка ${column} отсутствует, добавляем...`);
+                
+                if (column === 'completed_by') {
+                    await pool.query(`ALTER TABLE withdrawal_requests ADD COLUMN ${column} BIGINT`);
+                } else {
+                    await pool.query(`ALTER TABLE withdrawal_requests ADD COLUMN ${column} TEXT`);
+                }
+                
+                console.log(`✅ Колонка ${column} добавлена`);
+            } else {
+                console.log(`✅ Колонка ${column} существует`);
+            }
+        }
+        
+        console.log('✅ Структура таблицы проверена и исправлена');
     } catch (error) {
-        console.error('Complete withdrawal error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
+        console.error('❌ Ошибка при исправлении таблицы:', error);
     }
-});
+}
+
+// Вызовите эту функцию при инициализации сервера
+fixWithdrawalTable();
 
 // User authentication
 app.post('/api/user/auth', async (req, res) => {
@@ -1404,7 +1427,7 @@ app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res
 
 // ==================== WITHDRAWAL ENDPOINTS ====================
 
-// Request withdrawal - ОБНОВЛЕННАЯ ВЕРСИЯ
+// Request withdrawal - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.post('/api/withdrawal/request', async (req, res) => {
     const { user_id, amount, username, first_name } = req.body;
     

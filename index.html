@@ -5959,6 +5959,7 @@ async function initializeApp() {
     console.log('🎮 Initializing LinkGold app...');
     // Загружаем историю выводов при инициализации
 loadWithdrawHistory();
+  loadWithdrawHistory();
     // Показываем загрузку
     showNotification('🔄 Загружаем приложение...', 'info');
     
@@ -6232,6 +6233,7 @@ async function initializeApp() {
     console.log('🎮 Initializing LinkGold app...');
     // Загружаем историю выводов при инициализации
 loadWithdrawHistory();
+  loadWithdrawHistory();
     // Показываем загрузку
     showNotification('🔄 Подключаемся к серверу...', 'info');
     
@@ -7712,7 +7714,7 @@ function showAdminSection(section) {
             }
         }
 
-// Обновите функцию запроса вывода
+// Обновленная функция запроса вывода
 async function requestWithdraw() {
     if (!currentUser) {
         showNotification('Пользователь не авторизован', 'error');
@@ -7878,7 +7880,6 @@ async function loadWithdrawalRequests() {
         showNotification('Ошибка загрузки заявок на вывод', 'error');
     }
 }
-
 // Функция отображения запросов на вывод для админов
 function displayWithdrawalRequests(requests) {
     const container = document.getElementById('withdrawal-requests-list');
