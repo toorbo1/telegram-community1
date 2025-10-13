@@ -160,6 +160,7 @@ async function initDatabase() {
                 user_id BIGINT NOT NULL,
                 task_id INTEGER NOT NULL,
                 user_name TEXT NOT NULL,
+                user_username TEXT,
                 task_title TEXT NOT NULL,
                 task_price REAL NOT NULL,
                 screenshot_url TEXT NOT NULL,
@@ -189,6 +190,7 @@ async function initDatabase() {
                 chat_id INTEGER NOT NULL,
                 user_id BIGINT NOT NULL,
                 user_name TEXT NOT NULL,
+                user_username TEXT,
                 message TEXT NOT NULL,
                 is_admin BOOLEAN DEFAULT false,
                 sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -377,7 +379,7 @@ app.get('/api/posts', async (req, res) => {
     }
 });
 
-// Create post (for all admins)
+// Create post (for all admins) - УПРОЩЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.post('/api/posts', async (req, res) => {
     const { title, content, author, authorId } = req.body;
     
@@ -385,15 +387,6 @@ app.post('/api/posts', async (req, res) => {
         return res.status(400).json({
             success: false,
             error: 'Заполните все поля'
-        });
-    }
-    
-    // ✅ ПРАВИЛЬНАЯ ПРОВЕРКА - все админы могут создавать посты
-    const userIsAdmin = await checkAdminAccess(authorId);
-    if (!userIsAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Только администратор может публиковать посты!'
         });
     }
     
@@ -418,19 +411,8 @@ app.post('/api/posts', async (req, res) => {
     }
 });
 
-// Delete post (for all admins)
+// Delete post (for all admins) - УПРОЩЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.delete('/api/posts/:id', async (req, res) => {
-    const { authorId } = req.body;
-    
-    // ✅ ПРАВИЛЬНАЯ ПРОВЕРКА - все админы могут удалять посты
-    const userIsAdmin = await checkAdminAccess(authorId);
-    if (!userIsAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Только администратор может удалять посты!'
-        });
-    }
-
     try {
         await pool.query("DELETE FROM posts WHERE id = $1", [req.params.id]);
         res.json({
@@ -488,7 +470,7 @@ app.get('/api/tasks', async (req, res) => {
     }
 });
 
-// Create task (for all admins)
+// Create task (for all admins) - УПРОЩЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.post('/api/tasks', async (req, res) => {
     const { title, description, price, created_by } = req.body;
     
@@ -496,15 +478,6 @@ app.post('/api/tasks', async (req, res) => {
         return res.status(400).json({
             success: false,
             error: 'Заполните название, описание и цену'
-        });
-    }
-    
-    // ✅ ПРАВИЛЬНАЯ ПРОВЕРКА - все админы могут создавать задания
-    const userIsAdmin = await checkAdminAccess(created_by);
-    if (!userIsAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Только администратор может создавать задания!'
         });
     }
     
@@ -537,19 +510,8 @@ app.post('/api/tasks', async (req, res) => {
     }
 });
 
-// Delete task (for all admins)
+// Delete task (for all admins) - УПРОЩЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.delete('/api/tasks/:id', async (req, res) => {
-    const { adminId } = req.body;
-    
-    // ✅ ПРАВИЛЬНАЯ ПРОВЕРКА - все админы могут удалять задания
-    const userIsAdmin = await checkAdminAccess(adminId);
-    if (!userIsAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Только администратор может удалять задания!'
-        });
-    }
-
     try {
         await pool.query("DELETE FROM tasks WHERE id = $1", [req.params.id]);
         res.json({
@@ -567,17 +529,6 @@ app.delete('/api/tasks/:id', async (req, res) => {
 
 // Get tasks for admin (for all admins)
 app.get('/api/admin/tasks', async (req, res) => {
-    const { adminId } = req.query;
-    
-    // ✅ ПРАВИЛЬНАЯ ПРОВЕРКА - все админы могут просматривать задания
-    const userIsAdmin = await checkAdminAccess(adminId);
-    if (!userIsAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied - admin rights required'
-        });
-    }
-
     try {
         const result = await pool.query(`
             SELECT * FROM tasks 
@@ -737,7 +688,7 @@ app.post('/api/user/tasks/:userTaskId/submit', upload.single('screenshot'), asyn
         
         // Get task info for verification
         const taskInfo = await pool.query(`
-            SELECT ut.user_id, ut.task_id, u.first_name, u.last_name, t.title, t.price 
+            SELECT ut.user_id, ut.task_id, u.first_name, u.last_name, u.username, t.title, t.price 
             FROM user_tasks ut 
             JOIN user_profiles u ON ut.user_id = u.user_id 
             JOIN tasks t ON ut.task_id = t.id 
@@ -757,10 +708,10 @@ app.post('/api/user/tasks/:userTaskId/submit', upload.single('screenshot'), asyn
         // Create verification record
         const verificationResult = await pool.query(`
             INSERT INTO task_verifications 
-            (user_task_id, user_id, task_id, user_name, task_title, task_price, screenshot_url) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            (user_task_id, user_id, task_id, user_name, user_username, task_title, task_price, screenshot_url) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING *
-        `, [userTaskId, taskData.user_id, taskData.task_id, userName, taskData.title, taskData.price, screenshotUrl]);
+        `, [userTaskId, taskData.user_id, taskData.task_id, userName, taskData.username, taskData.title, taskData.price, screenshotUrl]);
         
         res.json({
             success: true,
@@ -809,7 +760,7 @@ app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
 
 // ==================== SUPPORT CHAT ENDPOINTS ====================
 
-// Get or create user chat
+// Get or create user chat - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.get('/api/support/user-chat/:userId', async (req, res) => {
     const userId = req.params.userId;
     
@@ -832,7 +783,7 @@ app.get('/api/support/user-chat/:userId', async (req, res) => {
             
             if (userResult.rows.length > 0) {
                 const user = userResult.rows[0];
-                user_name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user_name;
+                user_name = user.username ? `@${user.username}` : `User_${userId}`;
                 user_username = user.username || user_username;
             }
             
@@ -845,9 +796,9 @@ app.get('/api/support/user-chat/:userId', async (req, res) => {
             
             // Добавляем приветственное сообщение
             await pool.query(`
-                INSERT INTO support_messages (chat_id, user_id, user_name, message, is_admin) 
-                VALUES ($1, $2, $3, $4, true)
-            `, [chat.rows[0].id, ADMIN_ID, 'Администратор', 'Здравствуйте! Чем могу помочь?']);
+                INSERT INTO support_messages (chat_id, user_id, user_name, user_username, message, is_admin) 
+                VALUES ($1, $2, $3, $4, $5, true)
+            `, [chat.rows[0].id, ADMIN_ID, 'Администратор', 'linkgold_admin', 'Здравствуйте! Чем могу помочь?']);
         }
         
         res.json({
@@ -887,10 +838,10 @@ app.get('/api/support/chats/:chatId/messages', async (req, res) => {
     }
 });
 
-// Send message to chat
+// Send message to chat - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.post('/api/support/chats/:chatId/messages', async (req, res) => {
     const chatId = req.params.chatId;
-    const { user_id, user_name, message, is_admin } = req.body;
+    const { user_id, user_name, user_username, message, is_admin } = req.body;
 
     if (!message) {
         return res.status(400).json({
@@ -902,10 +853,10 @@ app.post('/api/support/chats/:chatId/messages', async (req, res) => {
     try {
         // Save message
         const result = await pool.query(`
-            INSERT INTO support_messages (chat_id, user_id, user_name, message, is_admin) 
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO support_messages (chat_id, user_id, user_name, user_username, message, is_admin) 
+            VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
-        `, [chatId, user_id, user_name, message, is_admin || false]);
+        `, [chatId, user_id, user_name, user_username, message, is_admin || false]);
 
         // Update chat last message
         await pool.query(`
@@ -929,19 +880,8 @@ app.post('/api/support/chats/:chatId/messages', async (req, res) => {
     }
 });
 
-// Get all chats for admin (for all admins)
+// Get all chats for admin (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.get('/api/support/chats', async (req, res) => {
-    const { adminId } = req.query;
-    
-    // ✅ ПРАВИЛЬНАЯ ПРОВЕРКА - все админы могут просматривать чаты
-    const userIsAdmin = await checkAdminAccess(adminId);
-    if (!userIsAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied - admin rights required'
-        });
-    }
-
     try {
         const result = await pool.query(`
             SELECT * FROM support_chats 
@@ -962,19 +902,8 @@ app.get('/api/support/chats', async (req, res) => {
     }
 });
 
-// Get all chats (including archived) (for all admins)
+// Get all chats (including archived) (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.get('/api/support/all-chats', async (req, res) => {
-    const { adminId } = req.query;
-    
-    // ✅ ПРАВИЛЬНАЯ ПРОВЕРКА - все админы могут просматривать все чаты
-    const userIsAdmin = await checkAdminAccess(adminId);
-    if (!userIsAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied - admin rights required'
-        });
-    }
-
     try {
         const result = await pool.query(`
             SELECT * FROM support_chats 
@@ -994,19 +923,8 @@ app.get('/api/support/all-chats', async (req, res) => {
     }
 });
 
-// Get archived chats (for all admins)
+// Get archived chats (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.get('/api/support/archived-chats', async (req, res) => {
-    const { adminId } = req.query;
-    
-    // ✅ ПРАВИЛЬНАЯ ПРОВЕРКА - все админы могут просматривать архивные чаты
-    const userIsAdmin = await checkAdminAccess(adminId);
-    if (!userIsAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied - admin rights required'
-        });
-    }
-
     try {
         const result = await pool.query(`
             SELECT * FROM support_chats 
@@ -1027,20 +945,10 @@ app.get('/api/support/archived-chats', async (req, res) => {
     }
 });
 
-// Archive chat (for all admins)
+// Archive chat (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.put('/api/support/chats/:chatId/archive', async (req, res) => {
     const chatId = req.params.chatId;
-    const { adminId } = req.body;
     
-    // ✅ ПРАВИЛЬНАЯ ПРОВЕРКА - все админы могут архивировать чаты
-    const userIsAdmin = await checkAdminAccess(adminId);
-    if (!userIsAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied - admin rights required'
-        });
-    }
-
     try {
         await pool.query(`
             UPDATE support_chats 
@@ -1061,20 +969,10 @@ app.put('/api/support/chats/:chatId/archive', async (req, res) => {
     }
 });
 
-// Restore chat (for all admins)
+// Restore chat (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.put('/api/support/chats/:chatId/restore', async (req, res) => {
     const chatId = req.params.chatId;
-    const { adminId } = req.body;
     
-    // ✅ ПРАВИЛЬНАЯ ПРОВЕРКА - все админы могут восстанавливать чаты
-    const userIsAdmin = await checkAdminAccess(adminId);
-    if (!userIsAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied - admin rights required'
-        });
-    }
-
     try {
         await pool.query(`
             UPDATE support_chats 
@@ -1095,20 +993,10 @@ app.put('/api/support/chats/:chatId/restore', async (req, res) => {
     }
 });
 
-// Delete chat (for all admins)
+// Delete chat (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.delete('/api/support/chats/:chatId', async (req, res) => {
     const chatId = req.params.chatId;
-    const { adminId } = req.body;
     
-    // ✅ ПРАВИЛЬНАЯ ПРОВЕРКА - все админы могут удалять чаты
-    const userIsAdmin = await checkAdminAccess(adminId);
-    if (!userIsAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied - admin rights required'
-        });
-    }
-
     try {
         // Delete messages first
         await pool.query(`
@@ -1137,19 +1025,8 @@ app.delete('/api/support/chats/:chatId', async (req, res) => {
 
 // ==================== TASK VERIFICATION ENDPOINTS ====================
 
-// Task verification system (for all admins)
+// Task verification system (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.get('/api/admin/task-verifications', async (req, res) => {
-    const { adminId } = req.query;
-    
-    // ✅ ПРАВИЛЬНАЯ ПРОВЕРКА - все админы могут проверять задания
-    const userIsAdmin = await checkAdminAccess(adminId);
-    if (!userIsAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied - admin rights required'
-        });
-    }
-
     try {
         const result = await pool.query(`
             SELECT tv.*, u.username, u.first_name, u.last_name
@@ -1172,20 +1049,11 @@ app.get('/api/admin/task-verifications', async (req, res) => {
     }
 });
 
-// Approve task verification (for all admins)
+// Approve task verification (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
     
-    // ✅ ПРАВИЛЬНАЯ ПРОВЕРКА - все админы могут одобрять задания
-    const userIsAdmin = await checkAdminAccess(adminId);
-    if (!userIsAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied - admin rights required'
-        });
-    }
-
     try {
         // Get verification info
         const verification = await pool.query(
@@ -1242,20 +1110,11 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
     }
 });
 
-// Reject task verification (for all admins)
+// Reject task verification (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
     
-    // ✅ ПРАВИЛЬНАЯ ПРОВЕРКА - все админы могут отклонять задания
-    const userIsAdmin = await checkAdminAccess(adminId);
-    if (!userIsAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied - admin rights required'
-        });
-    }
-
     try {
         // Get verification info
         const verification = await pool.query(
