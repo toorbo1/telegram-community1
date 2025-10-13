@@ -5104,17 +5104,20 @@ input:checked + .theme-slider:before {
         </p>
     </div>
     
-    <!-- Секция управления админами -->
-<div id="admin-admins-section" class="admin-section" style="display: none;">
     <div class="admin-form">
         <h3>👥 Добавление администраторов</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px;">
+            Только главный администратор (ID: 8036875641) может добавлять других админов
+        </p>
         
         <input type="text" class="admin-input" id="new-admin-username" 
-               placeholder="Введите юзернейм пользователя">
+               placeholder="Введите юзернейм пользователя (например: username или @username)">
         
-        <button class="admin-submit" onclick="addNewAdmin()">
+        <button class="admin-submit" onclick="addNewAdmin()" id="add-admin-btn">
             ➕ Добавить администратора
         </button>
+        
+        <div id="admin-form-message" style="margin-top: 12px; min-height: 20px;"></div>
     </div>
 
     <!-- Список текущих админов -->
@@ -5842,32 +5845,32 @@ function addAdminButtonsToMainPage() {
     }
 }
 
-// // 🔄 Обновление функции инициализации
-// async function initializeApp() {
-//     console.log('🎮 Initializing LinkGold app...');
+// 🔄 Обновление функции инициализации
+async function initializeApp() {
+    console.log('🎮 Initializing LinkGold app...');
     
-//     // Показываем загрузку
-//     showNotification('🔄 Загружаем приложение...', 'info');
+    // Показываем загрузку
+    showNotification('🔄 Загружаем приложение...', 'info');
     
-//     // Инициализируем пользователя
-//     if (typeof tg !== 'undefined') {
-//         await initializeTelegramUser();
-//     } else {
-//         initializeTestUser();
-//     }
+    // Инициализируем пользователя
+    if (typeof tg !== 'undefined') {
+        await initializeTelegramUser();
+    } else {
+        initializeTestUser();
+    }
     
-//     // Инициализируем приложение
-//     displayUserProfile();
-//     loadMainPagePosts();
-//     loadTasks();
-//     initializeSearch();
-//     loadUserTasks();
+    // Инициализируем приложение
+    displayUserProfile();
+    loadMainPagePosts();
+    loadTasks();
+    initializeSearch();
+    loadUserTasks();
     
-//     // Обновляем интерфейс для админов
-//     updateAdminInterface();
+    // Обновляем интерфейс для админов
+    updateAdminInterface();
     
-//     console.log('🎉 App initialized successfully');
-// }
+    console.log('🎉 App initialized successfully');
+}
         // Функция для тестирования (без Telegram)
         function initializeTestUser() {
             currentUser = {
@@ -6142,7 +6145,7 @@ async function initializeApp() {
     
     // Инициализируем приложение
     displayUserProfile();
-    checkAdminRights(); // 🔥 ВАЖНО: вызываем проверку прав
+    checkAdminRights();
     loadMainPagePosts();
     loadTasks();
     initializeSearch();
@@ -6152,7 +6155,7 @@ async function initializeApp() {
     startUserDataAutoUpdate();
     
     // Если пользователь админ, загружаем админ-данные
-    if (currentUser && currentUser.is_admin) {
+    if (currentUser && (currentUser.is_admin || parseInt(currentUser.id) === ADMIN_ID)) {
         loadAdminChats();
         loadAdminTasks();
         loadTaskVerifications();
@@ -6167,31 +6170,6 @@ async function initializeApp() {
     
     console.log('🎉 App initialized successfully');
 }
-function debugAdminAccess() {
-    console.log('🔧 DEBUG Admin Access:');
-    console.log('- Current User ID:', currentUser?.id);
-    console.log('- is_admin:', currentUser?.is_admin);
-    console.log('- isMainAdmin:', parseInt(currentUser?.id) === ADMIN_ID);
-    console.log('- Admin Nav Visible:', document.getElementById('admin-nav-item')?.style.display);
-    
-    // Проверяем все элементы которые могут блокировать доступ
-    const adminElements = [
-        'admin-nav-item',
-        'admin-panel',
-        'admin-tab'
-    ];
-    
-    adminElements.forEach(id => {
-        const element = document.getElementById(id);
-        if (element) {
-            console.log(`- ${id}:`, element.style.display);
-        }
-    });
-}
-
-// Вызовите эту функцию для отладки
-setTimeout(debugAdminAccess, 3000);
-
 // Функция для отладки прав администратора
 function debugAdminRights() {
     console.log('🐛 DEBUG Admin Rights:');
@@ -6350,16 +6328,44 @@ setTimeout(debugAdminRights, 2000);
             }
         }
 
-
-// 🔧 ПРОСТАЯ ФУНКЦИЯ: Проверка прав админа
+        // Проверка прав администратора
+// Проверка прав администратора
+// Проверка прав администратора - ОБНОВЛЕННАЯ ВЕРСИЯ
+// Проверка прав администратора - ОБНОВЛЕННАЯ ВЕРСИЯ
 function checkAdminRights() {
     const adminNavItem = document.getElementById('admin-nav-item');
     
-    if (currentUser && parseInt(currentUser.id) === 8036875641) {
-        if (adminNavItem) adminNavItem.style.display = 'flex';
-        console.log('✅ Главный админ вошел в систему');
+    console.log('🔍 Checking admin rights for user:', {
+        id: currentUser?.id,
+        is_admin: currentUser?.is_admin,
+        isMainAdmin: parseInt(currentUser?.id) === ADMIN_ID
+    });
+    
+    // Проверяем главного администратора
+    const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
+    
+    // Проверяем обычного администратора
+    const isRegularAdmin = currentUser?.is_admin === true;
+    
+    if (currentUser && (isMainAdmin || isRegularAdmin)) {
+        if (adminNavItem) {
+            adminNavItem.style.display = 'flex';
+            console.log('✅ Admin nav item shown');
+        }
+        
+        console.log('👑 Admin access granted:', {
+            id: currentUser.id,
+            isMainAdmin: isMainAdmin,
+            isRegularAdmin: isRegularAdmin
+        });
+        
     } else {
-        if (adminNavItem) adminNavItem.style.display = 'none';
+        if (adminNavItem) {
+            adminNavItem.style.display = 'none';
+            console.log('❌ Admin nav item hidden');
+        }
+        
+        console.log('🚫 User is not admin');
     }
 }
 // В функции инициализации админ-панели добавьте:
@@ -6947,46 +6953,60 @@ if (parseInt(currentUser.id) === ADMIN_ID) {
             }
         }
 
-// 🔧 ПРОСТАЯ ФУНКЦИЯ: Создание поста
-async function addNewPost() {
-    const title = document.getElementById('admin-post-title').value;
-    const content = document.getElementById('admin-post-content').value;
-    
-    if (!title || !content) {
-        showNotification('Заполните заголовок и содержание!', 'error');
-        return;
-    }
+        // 🔧 АДМИН-ФУНКЦИИ
+        async function addNewPost() {
+            const title = document.getElementById('admin-post-title').value;
+            const content = document.getElementById('admin-post-content').value;
+            
+            if (!title || !content) {
+                showNotification('Заполните заголовок и содержание поста!', 'error');
+                return;
+            }
+            
+            if (!currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+                showNotification('Только администратор может публиковать посты!', 'error');
+                return;
+            }
+            
+            try {
+                const result = await makeRequest('/posts', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        title: title,
+                        content: content,
+                        author: currentUser.firstName,
+                        authorId: currentUser.id
+                    })
+                });
+
+                if (result.success) {
+                    showNotification('Пост успешно опубликован!', 'success');
+                    document.getElementById('admin-post-title').value = '';
+                    document.getElementById('admin-post-content').value = '';
+                    loadMainPagePosts();
+                } else {
+                    showNotification('Ошибка: ' + result.error, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error adding post:', error);
+                showNotification('Ошибка соединения: ' + error.message, 'error');
+            }
+        }
+
+       async function addTask() {
+    console.log('🎯 ========== START addTask FUNCTION ==========');
     
     try {
-        const result = await makeRequest('/api/posts', {
-            method: 'POST',
-            body: JSON.stringify({
-                title: title,
-                content: content,
-                author: currentUser.firstName,
-                authorId: currentUser.id
-            })
-        });
-
-        if (result.success) {
-            showNotification('✅ Пост опубликован!', 'success');
-            document.getElementById('admin-post-title').value = '';
-            document.getElementById('admin-post-content').value = '';
-            loadMainPagePosts();
-        } else {
-            showNotification('❌ Ошибка: ' + result.error, 'error');
+        // 1. Проверяем авторизацию
+        if (!currentUser) {
+            showNotification('Пользователь не авторизован', 'error');
+            return;
         }
         
-    } catch (error) {
-        console.error('Error adding post:', error);
-        showNotification('❌ Ошибка публикации поста', 'error');
-    }
-}
+       
 
-// 🔧 ПРОСТАЯ ФУНКЦИЯ: Создание задания
-async function addTask() {
-    try {
-        // Собираем данные
+        // 2. Собираем данные из формы
         const getElementValue = (id) => {
             const element = document.getElementById(id);
             return element ? element.value : '';
@@ -6996,54 +7016,76 @@ async function addTask() {
             title: getElementValue('admin-task-title'),
             description: getElementValue('admin-task-description'),
             price: getElementValue('admin-task-price'),
+            time_to_complete: getElementValue('admin-task-time'),
+            difficulty: getElementValue('admin-task-difficulty'),
+            people_required: getElementValue('admin-task-people'),
+            repost_time: getElementValue('admin-task-repost'),
+            task_url: getElementValue('admin-task-url'),
+            category: 'general', // добавляем категорию по умолчанию
             created_by: currentUser.id
         };
 
-        // Валидация
+        console.log('📋 Form data collected:', formData);
+
+        // 3. Валидация
         if (!formData.title.trim() || !formData.description.trim() || !formData.price) {
-            showNotification('Заполните название, описание и цену!', 'error');
+            showNotification('Заполните название, описание и цену задания!', 'error');
             return;
         }
 
+        // 4. Проверяем числовые поля
         const price = parseFloat(formData.price);
         if (isNaN(price) || price <= 0) {
-            showNotification('Цена должна быть числом!', 'error');
+            showNotification('Цена должна быть положительным числом!', 'error');
             return;
         }
 
-        // Отправляем запрос
-        const result = await makeRequest('/api/tasks', {
+        // 5. Подготавливаем данные для отправки
+       const requestData = {
+    title: formData.title.trim(),
+    description: formData.description.trim(),
+    price: price,
+    created_by: currentUser.id
+};
+
+        console.log('📤 Prepared request data:', requestData);
+
+        // 6. Отправляем запрос
+        console.log('🚀 Sending request to /api/tasks...');
+        const result = await makeRequest('/tasks', {
             method: 'POST',
-            body: JSON.stringify({
-                title: formData.title.trim(),
-                description: formData.description.trim(),
-                price: price,
-                created_by: currentUser.id
-            })
+            body: JSON.stringify(requestData)
         });
 
+        console.log('📨 Server response:', result);
+
         if (result.success) {
-            showNotification('✅ Задание создано!', 'success');
+            showNotification('✅ Задание успешно создано!', 'success');
             
             // Очищаем форму
-            ['title', 'description', 'price', 'time', 'difficulty', 'people', 'repost', 'url'].forEach(field => {
+            const formFields = ['title', 'description', 'price', 'time', 'difficulty', 'people', 'repost', 'url'];
+            formFields.forEach(field => {
                 const element = document.getElementById(`admin-task-${field}`);
                 if (element) element.value = '';
             });
             
-            // Обновляем задания
-            loadTasks();
+            // Обновляем списки
+            setTimeout(() => {
+                loadAdminTasks();
+                loadTasks();
+            }, 1000);
+            
         } else {
-            showNotification('❌ Ошибка: ' + result.error, 'error');
+            throw new Error(result.error || 'Unknown server error');
         }
 
     } catch (error) {
-        console.error('Error creating task:', error);
-        showNotification('❌ Ошибка создания задания', 'error');
+        console.error('💥 Error in addTask:', error);
+        showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
+    } finally {
+        console.log('🎯 ========== END addTask FUNCTION ==========');
     }
 }
-
-
         // Load admin tasks
 async function loadAdminTasks() {
     if (!currentUser || !currentUser.isAdmin) return;
@@ -7090,46 +7132,57 @@ function displayAdminTasks(tasks) {
         container.appendChild(taskElement);
     });
 }
-// 🔧 ПРОСТАЯ ФУНКЦИЯ: Удаление поста
-async function deletePost(postId) {
-    if (!confirm('Удалить этот пост?')) return;
-    
-    try {
-        const result = await makeRequest(`/api/posts/${postId}`, {
-            method: 'DELETE'
-        });
 
-        if (result.success) {
-            showNotification('✅ Пост удален!', 'success');
-            loadMainPagePosts();
-        } else {
-            showNotification('❌ Ошибка: ' + result.error, 'error');
+        async function deletePost(postId) {
+            if (!confirm('Удалить этот пост?')) return;
+            
+            if (!currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+                showNotification('Только администратор может удалять посты!', 'error');
+                return;
+            }
+            
+            try {
+                const result = await makeRequest(`/posts/${postId}`, {
+                    method: 'DELETE',
+                    body: JSON.stringify({ authorId: currentUser.id })
+                });
+
+                if (result.success) {
+                    showNotification('Пост успешно удален!', 'success');
+                    loadMainPagePosts();
+                } else {
+                    showNotification('Ошибка: ' + result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting post:', error);
+                showNotification('Ошибка соединения: ' + error.message, 'error');
+            }
         }
-    } catch (error) {
-        console.error('Error deleting post:', error);
-        showNotification('❌ Ошибка удаления поста', 'error');
-    }
-}
 
-
-// 🔧 ПРОСТАЯ ФУНКЦИЯ: Удаление задания
-async function deleteTask(taskId) {
+        async function deleteTask(taskId) {
     if (!confirm('Удалить это задание?')) return;
     
+    if (!currentUser || !currentUser.isAdmin || parseInt(currentUser.id) !== ADMIN_ID) {
+        showNotification('Только администратор может удалять задания!', 'error');
+        return;
+    }
+    
     try {
-        const result = await makeRequest(`/api/tasks/${taskId}`, {
-            method: 'DELETE'
+        const result = await makeRequest(`/tasks/${taskId}`, {
+            method: 'DELETE',
+            body: JSON.stringify({ adminId: currentUser.id })
         });
 
         if (result.success) {
-            showNotification('✅ Задание удалено!', 'success');
+            showNotification('Задание успешно удалено!', 'success');
+            loadAdminTasks();
             loadTasks();
         } else {
-            showNotification('❌ Ошибка: ' + result.error, 'error');
+            showNotification('Ошибка: ' + result.error, 'error');
         }
     } catch (error) {
         console.error('Error deleting task:', error);
-        showNotification('❌ Ошибка удаления задания', 'error');
+        showNotification('Ошибка удаления задания: ' + error.message, 'error');
     }
 }
       async function openAdminChat() {
@@ -7295,14 +7348,19 @@ async function deleteTask(taskId) {
             updateNavState('profile');
         }
 
+        // Функция показа вкладки админа - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function showAdminTab() {
     console.log('👑 Checking admin access for tab...', {
         id: currentUser?.id,
-        is_admin: currentUser?.is_admin
+        is_admin: currentUser?.is_admin,
+        isMainAdmin: parseInt(currentUser?.id) === ADMIN_ID
     });
     
-    // 🔥 ИСПРАВЛЕННАЯ ПРОВЕРКА: разрешаем ВСЕМ админам
-    if (!currentUser || !currentUser.is_admin) {
+    // Проверяем права: главный админ ИЛИ нанятый админ
+    const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
+    const isRegularAdmin = currentUser?.is_admin === true;
+    
+    if (!currentUser || (!isMainAdmin && !isRegularAdmin)) {
         showNotification('Доступ запрещен!', 'error');
         return;
     }
@@ -7367,17 +7425,21 @@ function showAdminTab() {
             }
         }
 // Обновите функцию showAdminSection чтобы включить новую секцию
+// Показать секцию админ-панели - ОБНОВЛЕННАЯ ВЕРСИЯ
 function showAdminSection(section) {
     console.log('🔄 Switching to admin section:', section);
     
-    // 🔥 ИСПРАВЛЕННАЯ ПРОВЕРКА: разрешаем ВСЕМ админам
-    if (!currentUser || !currentUser.is_admin) {
+    // Проверяем общие права администратора
+    const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
+    const isRegularAdmin = currentUser?.is_admin === true;
+    
+    if (!currentUser || (!isMainAdmin && !isRegularAdmin)) {
         showNotification('❌ Доступ запрещен!', 'error');
         return;
     }
     
     // Проверяем права для раздела админов (только главный админ)
-    if (section === 'admins' && parseInt(currentUser.id) !== ADMIN_ID) {
+    if (section === 'admins' && !isMainAdmin) {
         showNotification('❌ Только главный администратор может управлять админами!', 'error');
         return;
     }
@@ -7395,7 +7457,7 @@ function showAdminSection(section) {
     }
     
     // Загружаем данные для определенных секций
-    if (section === 'admins' && parseInt(currentUser.id) === ADMIN_ID) {
+    if (section === 'admins' && isMainAdmin) {
         setTimeout(() => {
             loadAdminsList();
         }, 100);
@@ -7409,46 +7471,46 @@ function showAdminSection(section) {
         // Можно добавить загрузку постов если нужно
     }
 }
-        // // АДМИН ФУНКЦИИ
-        // function showAdminSection(section) {
-        //     // Скрываем все админ секции
-        //     document.querySelectorAll('.admin-section').forEach(sec => {
-        //         sec.style.display = 'none';
-        //     });
+        // АДМИН ФУНКЦИИ
+        function showAdminSection(section) {
+            // Скрываем все админ секции
+            document.querySelectorAll('.admin-section').forEach(sec => {
+                sec.style.display = 'none';
+            });
             
-        //     // Показываем выбранную секцию
-        //     const targetSection = document.getElementById('admin-' + section + '-section');
-        //     if (targetSection) {
-        //         targetSection.style.display = 'block';
-        //     }
-        // }
+            // Показываем выбранную секцию
+            const targetSection = document.getElementById('admin-' + section + '-section');
+            if (targetSection) {
+                targetSection.style.display = 'block';
+            }
+        }
 
-        // function showAdminChats() {
-        //     showAdminSection('support');
-        // }
+        function showAdminChats() {
+            showAdminSection('support');
+        }
 
-        // function showPostManagement() {
-        //     showAdminSection('posts');
-        // }
+        function showPostManagement() {
+            showAdminSection('posts');
+        }
 
-        // function showTaskManagement() {
-        //     showAdminSection('tasks');
-        // }
+        function showTaskManagement() {
+            showAdminSection('tasks');
+        }
 
-        // function showTaskVerification() {
-        //     showAdminSection('verification');
-        // }
+        function showTaskVerification() {
+            showAdminSection('verification');
+        }
 
-        // // 🎨 ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-        // function escapeHtml(unsafe) {
-        //     if (!unsafe) return '';
-        //     return unsafe
-        //         .replace(/&/g, "&amp;")
-        //         .replace(/</g, "&lt;")
-        //         .replace(/>/g, "&gt;")
-        //         .replace(/"/g, "&quot;")
-        //         .replace(/'/g, "&#039;");
-        // }
+        // 🎨 ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+        function escapeHtml(unsafe) {
+            if (!unsafe) return '';
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
 
         function formatPostDate(timestamp) {
             if (!timestamp) return '';
@@ -8616,27 +8678,69 @@ function showAdminAdminsSection() {
 }
 
 // Загрузка списка админов - ИСПРАВЛЕННАЯ ВЕРСИЯ
-
+// Загрузка списка админов - С ДИАГНОСТИКОЙ
 async function loadAdminsList() {
+    console.log('🔄 Loading admins list...');
+    
+    if (!currentUser) {
+        console.log('❌ User not authenticated');
+        return;
+    }
+    
+    // Проверяем, что это главный администратор
+    if (parseInt(currentUser.id) !== ADMIN_ID) {
+        console.log('❌ User is not main admin');
+        return;
+    }
+    
     try {
-        const result = await makeRequest(`/api/admin/admins-list?adminId=${currentUser.id}`);
+        console.log('🔍 Making request to /admin/admins-list...');
+        const url = `/admin/admins-list?adminId=${currentUser.id}`;
+        console.log('📤 Request URL:', url);
         
-        if (result.success) {
-            displayAdminsList(result.admins);
-        }
+        const result = await makeRequest(url);
+        
+        console.log('✅ Admins list loaded successfully:', result);
+        displayAdminsList(result.admins);
+        
     } catch (error) {
-        console.error('Error loading admins list:', error);
+        console.error('❌ Error loading admins list:', error);
+        
+        // Показываем более подробную информацию об ошибке
+        let errorMessage = 'Неизвестная ошибка';
+        if (error.message.includes('Unexpected token')) {
+            errorMessage = 'Сервер вернул HTML вместо JSON. Проверьте endpoint.';
+        } else if (error.message.includes('404')) {
+            errorMessage = 'Endpoint не найден (404). Проверьте серверные маршруты.';
+        } else if (error.message.includes('500')) {
+            errorMessage = 'Ошибка сервера (500). Проверьте логи сервера.';
+        } else {
+            errorMessage = error.message;
+        }
+        
+        showNotification('Ошибка загрузки списка админов: ' + errorMessage, 'error');
     }
 }
-// 🔧 ФУНКЦИЯ: Отображение списка админов
+// Отображение списка админов
 function displayAdminsList(admins) {
     const container = document.getElementById('admins-list');
-    if (!container) return;
+    if (!container) {
+        console.error('❌ Container #admins-list not found');
+        return;
+    }
     
     container.innerHTML = '';
     
     if (!admins || admins.length === 0) {
-        container.innerHTML = '<div class="no-tasks">Нет администраторов</div>';
+        container.innerHTML = `
+            <div class="no-tasks" style="text-align: center; padding: 30px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">👥</div>
+                <div>Нет администраторов</div>
+                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
+                    Добавьте первого администратора
+                </div>
+            </div>
+        `;
         return;
     }
     
@@ -8644,13 +8748,15 @@ function displayAdminsList(admins) {
         const adminElement = document.createElement('div');
         adminElement.className = 'admin-task-item';
         
-        const isMainAdmin = parseInt(admin.user_id) === 8036875641;
+        const isMainAdmin = parseInt(admin.user_id) === ADMIN_ID;
         const joinDate = new Date(admin.created_at).toLocaleDateString('ru-RU');
+        const fullName = `${admin.first_name} ${admin.last_name || ''}`.trim();
+        const displayName = fullName || `Пользователь ${admin.user_id}`;
         
         adminElement.innerHTML = `
             <div class="admin-task-header">
                 <div class="admin-task-title">
-                    ${admin.first_name} ${admin.last_name || ''}
+                    ${displayName}
                     ${isMainAdmin ? ' <span style="color: var(--gold);">(Главный админ)</span>' : ''}
                 </div>
                 ${!isMainAdmin ? `
@@ -8662,45 +8768,81 @@ function displayAdminsList(admins) {
                 ` : ''}
             </div>
             <div class="admin-task-description">
-                @${admin.username} • ID: ${admin.user_id}
+                @${admin.username} • ID: ${admin.user_id} • Добавлен: ${joinDate}
+            </div>
+            <div style="margin-top: 8px; font-size: 12px; color: ${admin.is_admin ? 'var(--success)' : 'var(--error)'};">
+                ${admin.is_admin ? '✅ Права администратора активны' : '❌ Права администратора не активны'}
             </div>
         `;
         
         container.appendChild(adminElement);
     });
 }
-
-// 🔧 ФУНКЦИЯ: Настройка админ-панели
+// Функция для настройки админ-панели
 function setupAdminPanel() {
     if (!currentUser) return;
     
+    const isMainAdmin = parseInt(currentUser.id) === ADMIN_ID;
     const adminButtons = document.querySelector('#admin-tab .admin-buttons');
+    
     if (!adminButtons) return;
     
+    // Удаляем существующую кнопку "Админы" если есть
+    const existingAdminsBtn = adminButtons.querySelector('[onclick*="admins"]');
+    if (existingAdminsBtn) {
+        existingAdminsBtn.remove();
+    }
+    
     // Добавляем кнопку "Админы" только для главного админа
-    if (parseInt(currentUser.id) === 8036875641) {
+    if (isMainAdmin) {
         const adminsButton = document.createElement('button');
         adminsButton.className = 'admin-btn';
         adminsButton.onclick = () => showAdminSection('admins');
         adminsButton.textContent = '👥 Админы';
         adminsButton.style.background = 'var(--purple-gradient)';
         adminButtons.appendChild(adminsButton);
+        
+        console.log('✅ Admins button added for main admin');
     }
 }
-
 // Добавление нового админа - ИСПРАВЛЕННАЯ ВЕРСИЯ
-// 🔧 ФУНКЦИЯ: Добавление админа
+// Добавление нового админа - ОБНОВЛЕННАЯ ВЕРСИЯ
 async function addNewAdmin() {
-    const usernameInput = document.getElementById('new-admin-username');
-    const username = usernameInput?.value.trim();
+    console.log('🎯 Starting addNewAdmin function...');
     
-    if (!username) {
-        showNotification('Введите юзернейм!', 'error');
+    const usernameInput = document.getElementById('new-admin-username');
+    const messageDiv = document.getElementById('admin-form-message');
+    const submitBtn = document.getElementById('add-admin-btn');
+    
+    if (!usernameInput || !messageDiv) {
+        console.error('❌ Required elements not found');
+        showNotification('Ошибка: элементы формы не найдены', 'error');
         return;
     }
     
+    const username = usernameInput.value.trim();
+    
+    // Валидация
+    if (!username) {
+        messageDiv.innerHTML = '<span style="color: var(--error);">Введите юзернейм пользователя</span>';
+        return;
+    }
+    
+    // Проверяем права доступа
+    if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) {
+        messageDiv.innerHTML = '<span style="color: var(--error);">Только главный администратор может добавлять админов!</span>';
+        return;
+    }
+    
+    console.log('👤 Attempting to add admin with username:', username);
+    
+    // Показываем загрузку
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Добавляем...';
+    messageDiv.innerHTML = '<span style="color: var(--warning);">Добавляем администратора...</span>';
+    
     try {
-        const result = await makeRequest('/api/admin/add-admin', {
+        const result = await makeRequest('/admin/add-admin', {
             method: 'POST',
             body: JSON.stringify({
                 adminId: currentUser.id,
@@ -8708,19 +8850,43 @@ async function addNewAdmin() {
             })
         });
         
+        console.log('📨 Server response:', result);
+        
         if (result.success) {
-            showNotification('✅ Админ добавлен!', 'success');
-            usernameInput.value = '';
-            loadAdminsList();
+            messageDiv.innerHTML = `<span style="color: var(--success);">${result.message}</span>`;
+            usernameInput.value = ''; // Очищаем поле ввода
+            
+            // Обновляем список админов
+            setTimeout(() => {
+                loadAdminsList();
+            }, 1000);
+            
+            showNotification(result.message, 'success');
+            
+            // Если добавленный админ - это текущий пользователь, обновляем его права
+            if (result.targetUserId && parseInt(result.targetUserId) === parseInt(currentUser.id)) {
+                console.log('🔄 Added admin is current user, refreshing rights...');
+                setTimeout(() => {
+                    refreshUserData();
+                }, 1500);
+            }
+            
         } else {
-            showNotification('❌ Ошибка: ' + result.error, 'error');
+            messageDiv.innerHTML = `<span style="color: var(--error);">Ошибка: ${result.error}</span>`;
+            showNotification('Ошибка: ' + result.error, 'error');
         }
         
     } catch (error) {
-        console.error('Error adding admin:', error);
-        showNotification('❌ Ошибка добавления админа', 'error');
+        console.error('❌ Error adding admin:', error);
+        messageDiv.innerHTML = `<span style="color: var(--error);">Ошибка сети: ${error.message}</span>`;
+        showNotification('Ошибка сети при добавлении админа', 'error');
+    } finally {
+        // Восстанавливаем кнопку
+        submitBtn.disabled = false;
+        submitBtn.textContent = '➕ Добавить администратора';
     }
 }
+
 // Принудительное обновление данных пользователя
 async function refreshUserData() {
     if (!currentUser) return;
@@ -8753,12 +8919,20 @@ async function refreshUserData() {
 
 // Удаление админа
 // Удаление админа - ИСПРАВЛЕННАЯ ВЕРСИЯ
-// 🔧 ФУНКЦИЯ: Удаление админа
 async function removeAdmin(targetAdminId) {
-    if (!confirm('Удалить этого администратора?')) return;
+    console.log('🗑️ Removing admin:', targetAdminId);
+    
+    if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) {
+        showNotification('Только главный администратор может удалять админов!', 'error');
+        return;
+    }
+    
+    if (!confirm('Вы уверены, что хотите удалить этого администратора?')) {
+        return;
+    }
     
     try {
-        const result = await makeRequest('/api/admin/remove-admin', {
+        const result = await makeRequest('/admin/remove-admin', {
             method: 'POST',
             body: JSON.stringify({
                 adminId: currentUser.id,
@@ -8767,14 +8941,14 @@ async function removeAdmin(targetAdminId) {
         });
         
         if (result.success) {
-            showNotification('✅ Админ удален!', 'success');
-            loadAdminsList();
+            showNotification(result.message, 'success');
+            loadAdminsList(); // Обновляем список админов
         } else {
-            showNotification('❌ Ошибка: ' + result.error, 'error');
+            showNotification('Ошибка: ' + result.error, 'error');
         }
     } catch (error) {
-        console.error('Error removing admin:', error);
-        showNotification('❌ Ошибка удаления админа', 'error');
+        console.error('❌ Error removing admin:', error);
+        showNotification('Ошибка удаления админа: ' + error.message, 'error');
     }
 }
 // Обновите функцию showAdminSection чтобы включить новую секцию
