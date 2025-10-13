@@ -306,7 +306,6 @@ await fixWithdrawalTable();
 // Инициализируем базу данных при запуске
 initDatabase();
 
-// ==================== BASIC ENDPOINTS ====================
 // Функция для принудительного обновления структуры таблицы
 async function fixWithdrawalTable() {
     try {
@@ -370,6 +369,13 @@ async function fixWithdrawalTable() {
         console.error('❌ Ошибка при исправлении таблицы:', error);
     }
 }
+
+// Вызовите эту функцию при инициализации сервера
+fixWithdrawalTable();
+
+// ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
+
+
 // Health check
 app.get('/api/health', async (req, res) => {
     try {
@@ -389,6 +395,8 @@ app.get('/api/health', async (req, res) => {
         });
     }
 });
+// ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
+
 // Get withdrawal requests for admin - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.get('/api/admin/withdrawal-requests', async (req, res) => {
     const { adminId } = req.query;
@@ -427,6 +435,7 @@ app.get('/api/admin/withdrawal-requests', async (req, res) => {
         });
     }
 });
+
 // Complete withdrawal request - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) => {
     const requestId = req.params.requestId;
@@ -476,7 +485,6 @@ app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) 
         });
     }
 });
-
 // Функция для принудительного обновления структуры таблицы
 async function fixWithdrawalTable() {
     try {
