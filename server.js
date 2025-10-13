@@ -110,7 +110,20 @@ async function initDatabase() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-
+// Таблица запросов на вывод
+await pool.query(`
+    CREATE TABLE IF NOT EXISTS withdrawal_requests (
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT NOT NULL,
+        username TEXT,
+        first_name TEXT,
+        amount REAL NOT NULL,
+        status TEXT DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        completed_at TIMESTAMP,
+        completed_by BIGINT
+    )
+`);
         // Таблица постов
         await pool.query(`
             CREATE TABLE IF NOT EXISTS posts (
@@ -288,9 +301,11 @@ app.get('/api/health', async (req, res) => {
         });
     }
 });
-// Получить запросы на вывод для админов
+// Get withdrawal requests for admin
 app.get('/api/admin/withdrawal-requests', async (req, res) => {
     const { adminId } = req.query;
+    
+    console.log('🔄 Запрос на получение заявок на вывод от админа:', adminId);
     
     // Проверка прав администратора
     const isAdmin = await checkAdminAccess(adminId);
@@ -305,17 +320,19 @@ app.get('/api/admin/withdrawal-requests', async (req, res) => {
         const result = await pool.query(`
             SELECT wr.*, u.username, u.first_name 
             FROM withdrawal_requests wr
-            JOIN user_profiles u ON wr.user_id = u.user_id
+            LEFT JOIN user_profiles u ON wr.user_id = u.user_id
             WHERE wr.status = 'pending'
             ORDER BY wr.created_at DESC
         `);
+        
+        console.log(`✅ Найдено ${result.rows.length} заявок на вывод`);
         
         res.json({
             success: true,
             requests: result.rows
         });
     } catch (error) {
-        console.error('Get withdrawal requests error:', error);
+        console.error('❌ Get withdrawal requests error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
@@ -323,6 +340,55 @@ app.get('/api/admin/withdrawal-requests', async (req, res) => {
     }
 });
 
+// Complete withdrawal request
+app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) => {
+    const requestId = req.params.requestId;
+    const { adminId } = req.body;
+    
+    console.log('✅ Подтверждение выплаты:', { requestId, adminId });
+    
+    // Проверка прав администратора
+    const isAdmin = await checkAdminAccess(adminId);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен'
+        });
+    }
+    
+    try {
+        // Обновляем статус заявки
+        const result = await pool.query(`
+            UPDATE withdrawal_requests 
+            SET status = 'completed', completed_at = CURRENT_TIMESTAMP, completed_by = $1
+            WHERE id = $2 AND status = 'pending'
+            RETURNING *
+        `, [adminId, requestId]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Запрос не найден или уже обработан'
+            });
+        }
+        
+        const request = result.rows[0];
+        
+        console.log(`✅ Выплата подтверждена: ${request.amount}⭐ для пользователя ${request.user_id}`);
+        
+        res.json({
+            success: true,
+            message: 'Выплата подтверждена'
+        });
+        
+    } catch (error) {
+        console.error('❌ Complete withdrawal error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
 
 // Подтвердить выплату
 app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) => {
@@ -1250,11 +1316,11 @@ app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res
 
 // ==================== WITHDRAWAL ENDPOINTS ====================
 
-// Request withdrawal
+// Request withdrawal - ОБНОВЛЕННАЯ ВЕРСИЯ
 app.post('/api/withdrawal/request', async (req, res) => {
-    const { user_id, amount } = req.body;
+    const { user_id, amount, username, first_name } = req.body;
     
-    console.log('📨 Получен запрос на вывод:', { user_id, amount });
+    console.log('📨 Получен запрос на вывод:', { user_id, amount, username, first_name });
     
     if (!user_id || !amount) {
         return res.status(400).json({
@@ -1266,7 +1332,7 @@ app.post('/api/withdrawal/request', async (req, res) => {
     try {
         // Проверяем баланс пользователя
         const userResult = await pool.query(
-            'SELECT balance, username, first_name FROM user_profiles WHERE user_id = $1',
+            'SELECT balance FROM user_profiles WHERE user_id = $1',
             [user_id]
         );
         
@@ -1279,8 +1345,6 @@ app.post('/api/withdrawal/request', async (req, res) => {
         
         const userBalance = parseFloat(userResult.rows[0].balance) || 0;
         const requestAmount = parseFloat(amount);
-        const username = userResult.rows[0].username || `user_${user_id}`;
-        const firstName = userResult.rows[0].first_name || 'Пользователь';
         
         console.log(`💰 Баланс пользователя: ${userBalance}, Запрошено: ${requestAmount}`);
         
@@ -1288,6 +1352,13 @@ app.post('/api/withdrawal/request', async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: 'Недостаточно средств на балансе'
+            });
+        }
+        
+        if (requestAmount <= 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'Сумма должна быть положительной'
             });
         }
         
@@ -1299,10 +1370,10 @@ app.post('/api/withdrawal/request', async (req, res) => {
         
         // Создаем запрос на вывод
         const result = await pool.query(`
-            INSERT INTO withdrawal_requests (user_id, amount, status) 
-            VALUES ($1, $2, 'pending')
+            INSERT INTO withdrawal_requests (user_id, username, first_name, amount, status) 
+            VALUES ($1, $2, $3, $4, 'pending')
             RETURNING *
-        `, [user_id, requestAmount]);
+        `, [user_id, username, first_name, requestAmount]);
         
         const requestId = result.rows[0].id;
         
