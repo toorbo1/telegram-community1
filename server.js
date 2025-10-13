@@ -110,7 +110,7 @@ async function initDatabase() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-// Таблица запросов на вывод
+// Таблица запросов на вывод - ИСПРАВЛЕННАЯ ВЕРСИЯ
 await pool.query(`
     CREATE TABLE IF NOT EXISTS withdrawal_requests (
         id SERIAL PRIMARY KEY,
@@ -123,6 +123,30 @@ await pool.query(`
         completed_at TIMESTAMP,
         completed_by BIGINT
     )
+`);
+
+// Добавляем недостающие колонки если таблица уже существует
+await pool.query(`
+    DO $$ 
+    BEGIN
+        -- Добавляем username если не существует
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='withdrawal_requests' AND column_name='username') THEN
+            ALTER TABLE withdrawal_requests ADD COLUMN username TEXT;
+        END IF;
+        
+        -- Добавляем first_name если не существует
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='withdrawal_requests' AND column_name='first_name') THEN
+            ALTER TABLE withdrawal_requests ADD COLUMN first_name TEXT;
+        END IF;
+        
+        -- Добавляем completed_by если не существует
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='withdrawal_requests' AND column_name='completed_by') THEN
+            ALTER TABLE withdrawal_requests ADD COLUMN completed_by BIGINT;
+        END IF;
+    END $$;
 `);
         // Таблица постов
         await pool.query(`
@@ -271,7 +295,9 @@ await pool.query(`
             `, [ADMIN_ID]);
         }
 
-        console.log('✅ Simplified database initialized successfully');
+await fixWithdrawalTable();
+
+         console.log('✅ Simplified database initialized successfully');
     } catch (error) {
         console.error('❌ Database initialization error:', error);
     }
@@ -281,7 +307,69 @@ await pool.query(`
 initDatabase();
 
 // ==================== BASIC ENDPOINTS ====================
-
+// Функция для принудительного обновления структуры таблицы
+async function fixWithdrawalTable() {
+    try {
+        console.log('🔧 Проверка и исправление структуры таблицы withdrawal_requests...');
+        
+        // Проверяем существование таблицы
+        const tableExists = await pool.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = 'withdrawal_requests'
+            );
+        `);
+        
+        if (!tableExists.rows[0].exists) {
+            console.log('❌ Таблица withdrawal_requests не существует, создаем...');
+            await pool.query(`
+                CREATE TABLE withdrawal_requests (
+                    id SERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL,
+                    username TEXT,
+                    first_name TEXT,
+                    amount REAL NOT NULL,
+                    status TEXT DEFAULT 'pending',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    completed_at TIMESTAMP,
+                    completed_by BIGINT
+                )
+            `);
+            console.log('✅ Таблица создана');
+            return;
+        }
+        
+        // Проверяем и добавляем отсутствующие колонки
+        const columnsToCheck = ['username', 'first_name', 'completed_by'];
+        
+        for (const column of columnsToCheck) {
+            const columnExists = await pool.query(`
+                SELECT EXISTS (
+                    SELECT FROM information_schema.columns 
+                    WHERE table_name = 'withdrawal_requests' AND column_name = $1
+                );
+            `, [column]);
+            
+            if (!columnExists.rows[0].exists) {
+                console.log(`❌ Колонка ${column} отсутствует, добавляем...`);
+                
+                if (column === 'completed_by') {
+                    await pool.query(`ALTER TABLE withdrawal_requests ADD COLUMN ${column} BIGINT`);
+                } else {
+                    await pool.query(`ALTER TABLE withdrawal_requests ADD COLUMN ${column} TEXT`);
+                }
+                
+                console.log(`✅ Колонка ${column} добавлена`);
+            } else {
+                console.log(`✅ Колонка ${column} существует`);
+            }
+        }
+        
+        console.log('✅ Структура таблицы проверена и исправлена');
+    } catch (error) {
+        console.error('❌ Ошибка при исправлении таблицы:', error);
+    }
+}
 // Health check
 app.get('/api/health', async (req, res) => {
     try {
