@@ -7714,7 +7714,7 @@ function showAdminSection(section) {
             }
         }
 
-// Обновленная функция запроса вывода
+// 🔄 Обновленная функция запроса вывода
 async function requestWithdraw() {
     if (!currentUser) {
         showNotification('Пользователь не авторизован', 'error');
@@ -7856,7 +7856,7 @@ function displayWithdrawHistory(operations) {
         container.appendChild(operationElement);
     });
 }
-// Функция загрузки запросов на вывод для админов - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// 🔄 Функция загрузки запросов на вывод для админов - ИСПРАВЛЕННАЯ ВЕРСИЯ
 async function loadWithdrawalRequests() {
     console.log('🔄 Загрузка запросов на вывод...');
     
@@ -7871,6 +7871,9 @@ async function loadWithdrawalRequests() {
         
         if (result.success) {
             displayWithdrawalRequests(result.requests);
+            
+            // Автоматическое обновление каждые 10 секунд
+            setTimeout(loadWithdrawalRequests, 10000);
         } else {
             console.error('❌ Ошибка загрузки:', result.error);
             showNotification('Ошибка загрузки заявок: ' + result.error, 'error');

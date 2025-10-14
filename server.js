@@ -110,7 +110,7 @@ async function initDatabase() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-// Таблица запросов на вывод - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// Таблица запросов на вывод
 await pool.query(`
     CREATE TABLE IF NOT EXISTS withdrawal_requests (
         id SERIAL PRIMARY KEY,
@@ -397,6 +397,8 @@ app.get('/api/health', async (req, res) => {
 });
 // ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
 
+// ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
+
 // Get withdrawal requests for admin - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.get('/api/admin/withdrawal-requests', async (req, res) => {
     const { adminId } = req.query;
@@ -485,6 +487,15 @@ app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) 
         });
     }
 });
+// 🔄 Функция обновления истории операций
+function updateWithdrawalHistory() {
+    if (document.getElementById('withdraw-page').classList.contains('active')) {
+        loadWithdrawHistory();
+    }
+}
+
+// 🔄 Автоматическое обновление истории каждые 5 секунд
+setInterval(updateWithdrawalHistory, 5000);
 // Функция для принудительного обновления структуры таблицы
 async function fixWithdrawalTable() {
     try {
