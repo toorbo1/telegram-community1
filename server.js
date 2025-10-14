@@ -55,7 +55,7 @@ const pool = new Pool({
 
 const ADMIN_ID = 8036875641;
 
-// Функция проверки прав администратора
+// 🔧 ФУНКЦИЯ ПРОВЕРКИ ПРАВ АДМИНИСТРАТОРА
 async function checkAdminAccess(userId) {
     try {
         const result = await pool.query(
@@ -373,81 +373,15 @@ async function addInitialData() {
         console.error('❌ Error adding initial data:', error);
     }
 }
-await fixWithdrawalTable();
-
 
 // Инициализируем базу данных при запуске
-initDatabase();
+initDatabase().then(() => {
+    console.log('✅ Database initialization completed');
+}).catch(error => {
+    console.error('❌ Database initialization failed:', error);
+});
 
-// Функция для принудительного обновления структуры таблицы
-async function fixWithdrawalTable() {
-    try {
-        console.log('🔧 Проверка и исправление структуры таблицы withdrawal_requests...');
-        
-        // Проверяем существование таблицы
-        const tableExists = await pool.query(`
-            SELECT EXISTS (
-                SELECT FROM information_schema.tables 
-                WHERE table_name = 'withdrawal_requests'
-            );
-        `);
-        
-        if (!tableExists.rows[0].exists) {
-            console.log('❌ Таблица withdrawal_requests не существует, создаем...');
-            await pool.query(`
-                CREATE TABLE withdrawal_requests (
-                    id SERIAL PRIMARY KEY,
-                    user_id BIGINT NOT NULL,
-                    username TEXT,
-                    first_name TEXT,
-                    amount REAL NOT NULL,
-                    status TEXT DEFAULT 'pending',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    completed_at TIMESTAMP,
-                    completed_by BIGINT
-                )
-            `);
-            console.log('✅ Таблица создана');
-            return;
-        }
-        
-        // Проверяем и добавляем отсутствующие колонки
-        const columnsToCheck = ['username', 'first_name', 'completed_by'];
-        
-        for (const column of columnsToCheck) {
-            const columnExists = await pool.query(`
-                SELECT EXISTS (
-                    SELECT FROM information_schema.columns 
-                    WHERE table_name = 'withdrawal_requests' AND column_name = $1
-                );
-            `, [column]);
-            
-            if (!columnExists.rows[0].exists) {
-                console.log(`❌ Колонка ${column} отсутствует, добавляем...`);
-                
-                if (column === 'completed_by') {
-                    await pool.query(`ALTER TABLE withdrawal_requests ADD COLUMN ${column} BIGINT`);
-                } else {
-                    await pool.query(`ALTER TABLE withdrawal_requests ADD COLUMN ${column} TEXT`);
-                }
-                
-                console.log(`✅ Колонка ${column} добавлена`);
-            } else {
-                console.log(`✅ Колонка ${column} существует`);
-            }
-        }
-        
-        console.log('✅ Структура таблицы проверена и исправлена');
-    } catch (error) {
-        console.error('❌ Ошибка при исправлении таблицы:', error);
-    }
-}
-
-// Вызовите эту функцию при инициализации сервера
-fixWithdrawalTable();
-
-// ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
-
+// ==================== BASIC ENDPOINTS ====================
 
 // Health check
 app.get('/api/health', async (req, res) => {
@@ -457,7 +391,8 @@ app.get('/api/health', async (req, res) => {
             status: 'OK', 
             message: 'LinkGold API is running!',
             timestamp: new Date().toISOString(),
-            database: 'PostgreSQL'
+            database: 'PostgreSQL',
+            admin_id: ADMIN_ID
         });
     } catch (error) {
         console.error('Health check error:', error);
@@ -468,173 +403,52 @@ app.get('/api/health', async (req, res) => {
         });
     }
 });
-// ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
 
-// ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
-
-// Get withdrawal requests for admin - ИСПРАВЛЕННАЯ ВЕРСИЯ
-app.get('/api/admin/withdrawal-requests', async (req, res) => {
-    const { adminId } = req.query;
-    
-    console.log('🔄 Запрос на получение заявок на вывод от админа:', adminId);
-    
-    // Проверка прав администратора
-    const isAdmin = await checkAdminAccess(adminId);
-    if (!isAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Доступ запрещен'
-        });
-    }
-    
+// Detailed health check
+app.get('/api/health/detailed', async (req, res) => {
     try {
-        const result = await pool.query(`
-            SELECT wr.*, u.username, u.first_name 
-            FROM withdrawal_requests wr
-            LEFT JOIN user_profiles u ON wr.user_id = u.user_id
-            WHERE wr.status = 'pending'
-            ORDER BY wr.created_at DESC
-        `);
+        await pool.query('SELECT 1');
         
-        console.log(`✅ Найдено ${result.rows.length} заявок на вывод`);
+        const tables = ['user_profiles', 'tasks', 'posts', 'withdrawal_requests'];
+        const tableStatus = {};
         
-        res.json({
-            success: true,
-            requests: result.rows
-        });
-    } catch (error) {
-        console.error('❌ Get withdrawal requests error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
-
-// Complete withdrawal request - ИСПРАВЛЕННАЯ ВЕРСИЯ
-app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) => {
-    const requestId = req.params.requestId;
-    const { adminId } = req.body;
-    
-    console.log('✅ Подтверждение выплаты:', { requestId, adminId });
-    
-    // Проверка прав администратора
-    const isAdmin = await checkAdminAccess(adminId);
-    if (!isAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Доступ запрещен'
-        });
-    }
-    
-    try {
-        // Обновляем статус заявки
-        const result = await pool.query(`
-            UPDATE withdrawal_requests 
-            SET status = 'completed', completed_at = CURRENT_TIMESTAMP, completed_by = $1
-            WHERE id = $2 AND status = 'pending'
-            RETURNING *
-        `, [adminId, requestId]);
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'Запрос не найден или уже обработан'
-            });
-        }
-        
-        const request = result.rows[0];
-        
-        console.log(`✅ Выплата подтверждена: ${request.amount}⭐ для пользователя ${request.user_id}`);
-        
-        res.json({
-            success: true,
-            message: 'Выплата подтверждена'
-        });
-        
-    } catch (error) {
-        console.error('❌ Complete withdrawal error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
-// 🔄 Функция обновления истории операций
-function updateWithdrawalHistory() {
-    if (document.getElementById('withdraw-page').classList.contains('active')) {
-        loadWithdrawHistory();
-    }
-}
-
-// 🔄 Автоматическое обновление истории каждые 5 секунд
-setInterval(updateWithdrawalHistory, 5000);
-// Функция для принудительного обновления структуры таблицы
-async function fixWithdrawalTable() {
-    try {
-        console.log('🔧 Проверка и исправление структуры таблицы withdrawal_requests...');
-        
-        // Проверяем существование таблицы
-        const tableExists = await pool.query(`
-            SELECT EXISTS (
-                SELECT FROM information_schema.tables 
-                WHERE table_name = 'withdrawal_requests'
-            );
-        `);
-        
-        if (!tableExists.rows[0].exists) {
-            console.log('❌ Таблица withdrawal_requests не существует, создаем...');
-            await pool.query(`
-                CREATE TABLE withdrawal_requests (
-                    id SERIAL PRIMARY KEY,
-                    user_id BIGINT NOT NULL,
-                    username TEXT,
-                    first_name TEXT,
-                    amount REAL NOT NULL,
-                    status TEXT DEFAULT 'pending',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    completed_at TIMESTAMP,
-                    completed_by BIGINT
-                )
-            `);
-            console.log('✅ Таблица создана');
-            return;
-        }
-        
-        // Проверяем и добавляем отсутствующие колонки
-        const columnsToCheck = ['username', 'first_name', 'completed_by'];
-        
-        for (const column of columnsToCheck) {
-            const columnExists = await pool.query(`
+        for (const table of tables) {
+            const exists = await pool.query(`
                 SELECT EXISTS (
-                    SELECT FROM information_schema.columns 
-                    WHERE table_name = 'withdrawal_requests' AND column_name = $1
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = $1
                 );
-            `, [column]);
+            `, [table]);
             
-            if (!columnExists.rows[0].exists) {
-                console.log(`❌ Колонка ${column} отсутствует, добавляем...`);
-                
-                if (column === 'completed_by') {
-                    await pool.query(`ALTER TABLE withdrawal_requests ADD COLUMN ${column} BIGINT`);
-                } else {
-                    await pool.query(`ALTER TABLE withdrawal_requests ADD COLUMN ${column} TEXT`);
-                }
-                
-                console.log(`✅ Колонка ${column} добавлена`);
-            } else {
-                console.log(`✅ Колонка ${column} существует`);
+            tableStatus[table] = exists.rows[0].exists;
+            
+            if (exists.rows[0].exists) {
+                const count = await pool.query(`SELECT COUNT(*) FROM ${table}`);
+                tableStatus[`${table}_count`] = parseInt(count.rows[0].count);
             }
         }
         
-        console.log('✅ Структура таблицы проверена и исправлена');
+        res.json({
+            status: 'OK',
+            database: 'PostgreSQL - Connected',
+            tables: tableStatus,
+            timestamp: new Date().toISOString(),
+            admin_id: ADMIN_ID
+        });
+        
     } catch (error) {
-        console.error('❌ Ошибка при исправлении таблицы:', error);
+        console.error('Detailed health check error:', error);
+        res.status(500).json({
+            status: 'ERROR',
+            database: 'PostgreSQL - Connection failed',
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
     }
-}
+});
 
-// Вызовите эту функцию при инициализации сервера
-fixWithdrawalTable();
+// ==================== USER ENDPOINTS ====================
 
 // User authentication
 app.post('/api/user/auth', async (req, res) => {
@@ -738,7 +552,7 @@ app.get('/api/posts', async (req, res) => {
     }
 });
 
-// Create post (for all admins) - УПРОЩЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
+// Create post (for all admins)
 app.post('/api/posts', async (req, res) => {
     const { title, content, author, authorId } = req.body;
     
@@ -770,7 +584,7 @@ app.post('/api/posts', async (req, res) => {
     }
 });
 
-// Delete post (for all admins) - УПРОЩЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
+// Delete post (for all admins)
 app.delete('/api/posts/:id', async (req, res) => {
     try {
         await pool.query("DELETE FROM posts WHERE id = $1", [req.params.id]);
@@ -829,7 +643,7 @@ app.get('/api/tasks', async (req, res) => {
     }
 });
 
-// Create task (for all admins) - УПРОЩЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
+// Create task (for all admins)
 app.post('/api/tasks', async (req, res) => {
     const { title, description, price, created_by } = req.body;
     
@@ -869,7 +683,7 @@ app.post('/api/tasks', async (req, res) => {
     }
 });
 
-// Delete task (for all admins) - УПРОЩЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
+// Delete task (for all admins)
 app.delete('/api/tasks/:id', async (req, res) => {
     try {
         await pool.query("DELETE FROM tasks WHERE id = $1", [req.params.id]);
@@ -1119,7 +933,7 @@ app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
 
 // ==================== SUPPORT CHAT ENDPOINTS ====================
 
-// Get or create user chat - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// Get or create user chat
 app.get('/api/support/user-chat/:userId', async (req, res) => {
     const userId = req.params.userId;
     
@@ -1197,7 +1011,7 @@ app.get('/api/support/chats/:chatId/messages', async (req, res) => {
     }
 });
 
-// Send message to chat - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// Send message to chat
 app.post('/api/support/chats/:chatId/messages', async (req, res) => {
     const chatId = req.params.chatId;
     const { user_id, user_name, user_username, message, is_admin } = req.body;
@@ -1239,7 +1053,7 @@ app.post('/api/support/chats/:chatId/messages', async (req, res) => {
     }
 });
 
-// Get all chats for admin (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
+// Get all chats for admin (for all admins)
 app.get('/api/support/chats', async (req, res) => {
     try {
         const result = await pool.query(`
@@ -1261,7 +1075,7 @@ app.get('/api/support/chats', async (req, res) => {
     }
 });
 
-// Get all chats (including archived) (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
+// Get all chats (including archived) (for all admins)
 app.get('/api/support/all-chats', async (req, res) => {
     try {
         const result = await pool.query(`
@@ -1282,7 +1096,7 @@ app.get('/api/support/all-chats', async (req, res) => {
     }
 });
 
-// Get archived chats (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
+// Get archived chats (for all admins)
 app.get('/api/support/archived-chats', async (req, res) => {
     try {
         const result = await pool.query(`
@@ -1304,7 +1118,7 @@ app.get('/api/support/archived-chats', async (req, res) => {
     }
 });
 
-// Archive chat (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
+// Archive chat (for all admins)
 app.put('/api/support/chats/:chatId/archive', async (req, res) => {
     const chatId = req.params.chatId;
     
@@ -1328,7 +1142,7 @@ app.put('/api/support/chats/:chatId/archive', async (req, res) => {
     }
 });
 
-// Restore chat (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
+// Restore chat (for all admins)
 app.put('/api/support/chats/:chatId/restore', async (req, res) => {
     const chatId = req.params.chatId;
     
@@ -1352,7 +1166,7 @@ app.put('/api/support/chats/:chatId/restore', async (req, res) => {
     }
 });
 
-// Delete chat (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
+// Delete chat (for all admins)
 app.delete('/api/support/chats/:chatId', async (req, res) => {
     const chatId = req.params.chatId;
     
@@ -1384,7 +1198,7 @@ app.delete('/api/support/chats/:chatId', async (req, res) => {
 
 // ==================== TASK VERIFICATION ENDPOINTS ====================
 
-// Task verification system (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
+// Task verification system (for all admins)
 app.get('/api/admin/task-verifications', async (req, res) => {
     try {
         const result = await pool.query(`
@@ -1408,7 +1222,7 @@ app.get('/api/admin/task-verifications', async (req, res) => {
     }
 });
 
-// Approve task verification (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
+// Approve task verification (for all admins)
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
@@ -1469,7 +1283,7 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
     }
 });
 
-// Reject task verification (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
+// Reject task verification (for all admins)
 app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
@@ -1519,7 +1333,7 @@ app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res
 
 // ==================== WITHDRAWAL ENDPOINTS ====================
 
-// Request withdrawal - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// Request withdrawal
 app.post('/api/withdrawal/request', async (req, res) => {
     const { user_id, amount, username, first_name } = req.body;
     
@@ -1615,6 +1429,97 @@ app.get('/api/withdraw/history/:userId', async (req, res) => {
         });
     } catch (error) {
         console.error('Get withdrawal history error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
+
+// Get withdrawal requests for admin
+app.get('/api/admin/withdrawal-requests', async (req, res) => {
+    const { adminId } = req.query;
+    
+    console.log('🔄 Запрос на получение заявок на вывод от админа:', adminId);
+    
+    // Проверка прав администратора
+    const isAdmin = await checkAdminAccess(adminId);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен'
+        });
+    }
+    
+    try {
+        const result = await pool.query(`
+            SELECT wr.*, u.username, u.first_name 
+            FROM withdrawal_requests wr
+            LEFT JOIN user_profiles u ON wr.user_id = u.user_id
+            WHERE wr.status = 'pending'
+            ORDER BY wr.created_at DESC
+        `);
+        
+        console.log(`✅ Найдено ${result.rows.length} заявок на вывод`);
+        
+        res.json({
+            success: true,
+            requests: result.rows
+        });
+    } catch (error) {
+        console.error('❌ Get withdrawal requests error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Complete withdrawal request
+app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) => {
+    const requestId = req.params.requestId;
+    const { adminId } = req.body;
+    
+    console.log('✅ Подтверждение выплаты:', { requestId, adminId });
+    
+    // Проверка прав администратора
+    const isAdmin = await checkAdminAccess(adminId);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен'
+        });
+    }
+    
+    try {
+        // Обновляем статус заявки
+        const result = await pool.query(`
+            UPDATE withdrawal_requests 
+            SET status = 'completed', completed_at = CURRENT_TIMESTAMP, completed_by = $1
+            WHERE id = $2 AND status = 'pending'
+            RETURNING *
+        `, [adminId, requestId]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Запрос не найден или уже обработан'
+            });
+        }
+        
+        const request = result.rows[0];
+        
+        console.log(`✅ Выплата подтверждена: ${request.amount}⭐ для пользователя ${request.user_id}`);
+        
+        res.json({
+            success: true,
+            message: 'Выплата подтверждена'
+        });
+        
+    } catch (error) {
+        console.error('❌ Complete withdrawal error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
@@ -1933,6 +1838,37 @@ app.get('/api/debug/endpoints', async (req, res) => {
         res.status(500).json({
             success: false,
             error: error.message
+        });
+    }
+});
+
+// Force reinitialization endpoint
+app.post('/api/admin/force-reinit', async (req, res) => {
+    const { adminId } = req.body;
+    
+    // Проверяем права доступа - только главный админ
+    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+    
+    try {
+        console.log('🔄 Force reinitialization requested by admin:', adminId);
+        
+        await initDatabase();
+        
+        res.json({
+            success: true,
+            message: 'Database reinitialized successfully'
+        });
+        
+    } catch (error) {
+        console.error('❌ Force reinit error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Reinitialization failed: ' + error.message
         });
     }
 });
