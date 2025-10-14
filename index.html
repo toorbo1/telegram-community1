@@ -6531,38 +6531,103 @@ setTimeout(debugAdminRights, 2000);
         }
 
         // Проверка прав администратора
-// Проверка прав администратора
-// Проверка прав администратора - ОБНОВЛЕННАЯ ВЕРСИЯ
-// Проверка прав администратора - ОБНОВЛЕННАЯ ВЕРСИЯ
+// ОБНОВЛЕННАЯ ФУНКЦИЯ ПРОВЕРКИ ПРАВ АДМИНИСТРАТОРА
 function checkAdminRights() {
     const adminNavItem = document.getElementById('admin-nav-item');
+    const adminPanel = document.getElementById('admin-panel');
     
-    const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
-    const isRegularAdmin = currentUser?.is_admin === true;
+    if (!currentUser) {
+        console.log('❌ No current user for admin check');
+        return;
+    }
     
-    if (currentUser && (isMainAdmin || isRegularAdmin)) {
+    const isMainAdmin = parseInt(currentUser.id) === ADMIN_ID;
+    const isRegularAdmin = currentUser.is_admin === true;
+    
+    console.log('🔍 Admin check:', {
+        userId: currentUser.id,
+        isMainAdmin: isMainAdmin,
+        isRegularAdmin: isRegularAdmin,
+        is_admin: currentUser.is_admin
+    });
+    
+    if (isMainAdmin || isRegularAdmin) {
         if (adminNavItem) {
             adminNavItem.style.display = 'flex';
-            console.log('✅ Admin nav item shown - user is admin');
+            console.log('✅ Admin nav item shown');
+        }
+        if (adminPanel) {
+            adminPanel.style.display = 'block';
+            console.log('✅ Admin panel shown');
         }
     } else {
         if (adminNavItem) {
             adminNavItem.style.display = 'none';
-            console.log('❌ Admin nav item hidden - user is not admin');
         }
+        if (adminPanel) {
+            adminPanel.style.display = 'none';
+        }
+        console.log('❌ User is not admin');
     }
 }
-// В функции инициализации админ-панели добавьте:
-if (parseInt(currentUser.id) === ADMIN_ID) {
-    // Показываем кнопку управления админами только главному админу
-    const adminButtons = document.querySelector('.admin-buttons');
-    if (adminButtons) {
-        adminButtons.innerHTML += `
-            <button class="admin-btn" onclick="showAdminSection('admins')">👥 Админы</button>
-        `;
+// ПРИНУДИТЕЛЬНОЕ ОБНОВЛЕНИЕ ДАННЫХ АДМИНИСТРАТОРА
+async function refreshAdminData() {
+    if (!currentUser) return;
+    
+    try {
+        console.log('🔄 Refreshing admin data...');
+        
+        const result = await makeRequest(`/user/${currentUser.id}`);
+        if (result.success) {
+            // Обновляем данные пользователя
+            Object.assign(currentUser, result.profile);
+            
+            console.log('✅ Admin data refreshed:', {
+                id: currentUser.id,
+                is_admin: currentUser.is_admin,
+                balance: currentUser.balance
+            });
+            
+            // Перепроверяем права
+            checkAdminRights();
+            
+            // Обновляем интерфейс
+            displayUserProfile();
+            
+            // Если пользователь админ, загружаем админ-данные
+            if (currentUser.is_admin || parseInt(currentUser.id) === ADMIN_ID) {
+                loadAdminData();
+            }
+        }
+    } catch (error) {
+        console.error('❌ Error refreshing admin data:', error);
     }
 }
-// Обновите функцию инициализации приложения
+
+// ФУНКЦИЯ ЗАГРУЗКИ ДАННЫХ АДМИНИСТРАТОРА
+async function loadAdminData() {
+    console.log('📥 Loading admin data...');
+    
+    try {
+        // Загружаем задачи для админа
+        await loadAdminTasks();
+        
+        // Загружаем чаты для админа
+        await loadAdminChats();
+        
+        // Загружаем проверки заданий
+        await loadTaskVerifications();
+        
+        // Если это главный админ, загружаем список админов
+        if (parseInt(currentUser.id) === ADMIN_ID) {
+            await loadAdminsList();
+        }
+        
+        console.log('✅ All admin data loaded');
+    } catch (error) {
+        console.error('❌ Error loading admin data:', error);
+    }
+}
 
 function showTaskCategory(category) {
     console.log('🔄 Переключение на категорию:', category);
@@ -6821,7 +6886,8 @@ async function initializeApp() {
     
     // Показываем загрузку
     showNotification('🔄 Подключаемся к серверу...', 'info');
-    
+      // 🔥 ВАЖНО: ПРИНУДИТЕЛЬНАЯ ПРОВЕРКА ПРАВ АДМИНИСТРАТОРА
+    await refreshAdminData();
         // 🔥 ВАЖНО: ЗАГРУЖАЕМ ЗАДАНИЯ ПРИ ЗАПУСКЕ ПРИЛОЖЕНИЯ
     console.log('🚀 Pre-loading tasks on app start...');
     
@@ -7799,21 +7865,26 @@ async function sendAdminMessage() {
             updateNavState('profile');
         }
 
-        // Функция показа вкладки админа - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// ОБНОВЛЕННАЯ ФУНКЦИЯ ПОКАЗА ВКЛАДКИ АДМИНА
 function showAdminTab() {
-    const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
-    const isRegularAdmin = currentUser?.is_admin === true;
-    
-    if (!currentUser || (!isMainAdmin && !isRegularAdmin)) {
-        showNotification('Доступ запрещен!', 'error');
-        return;
-    }
-    
-    hideAllTabs();
-    document.getElementById('admin-tab').classList.add('active');
-    updateNavState('admin');
+    // Сначала обновляем данные
+    refreshAdminData().then(() => {
+        const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
+        const isRegularAdmin = currentUser?.is_admin === true;
+        
+        if (!currentUser || (!isMainAdmin && !isRegularAdmin)) {
+            showNotification('Доступ запрещен!', 'error');
+            return;
+        }
+        
+        hideAllTabs();
+        document.getElementById('admin-tab').classList.add('active');
+        updateNavState('admin');
+        
+        // Показываем диагностическую информацию
+        showAdminDebugInfo();
+    });
 }
-
         function showWithdrawPage() {
             hideAllTabs();
             document.getElementById('withdraw-page').classList.add('active');
@@ -9226,12 +9297,50 @@ window.refreshAdminRights = refreshAdminRights;
 window.debugAdminRights = debugAdminRights;
 
 
-// Функции для управления администраторами
+// ОБНОВЛЕННАЯ СЕКЦИЯ УПРАВЛЕНИЯ АДМИНАМИ
 function showAdminAdminsSection() {
-    showAdminSection('admins ');
+    showAdminSection('admins');
+    
+    // Добавляем кнопку обновления
+    const adminsSection = document.getElementById('admin-admins-section');
+    if (adminsSection && !adminsSection.querySelector('.refresh-admin-btn')) {
+        const refreshBtn = document.createElement('button');
+        refreshBtn.className = 'admin-btn refresh-admin-btn';
+        refreshBtn.style.background = 'var(--teal-gradient)';
+        refreshBtn.style.marginBottom = '20px';
+        refreshBtn.innerHTML = '🔄 Обновить права администратора';
+        refreshBtn.onclick = refreshAdminData;
+        
+        adminsSection.insertBefore(refreshBtn, adminsSection.firstChild);
+    }
+    
     loadAdminsList();
 }
+// ФУНКЦИЯ ДИАГНОСТИКИ АДМИНИСТРАТОРА
+function showAdminDebugInfo() {
+    if (!currentUser) return;
+    
+    console.log('🐛 ADMIN DEBUG INFO:');
+    console.log('- User ID:', currentUser.id);
+    console.log('- Is Main Admin:', parseInt(currentUser.id) === ADMIN_ID);
+    console.log('- Is Regular Admin:', currentUser.is_admin);
+    console.log('- Balance:', currentUser.balance);
+    console.log('- Admin Nav Visible:', document.getElementById('admin-nav-item')?.style.display);
+    console.log('- Admin Panel Visible:', document.getElementById('admin-panel')?.style.display);
+    
+    // Показываем уведомление с информацией
+    const debugInfo = `
+        ID: ${currentUser.id}
+        Главный админ: ${parseInt(currentUser.id) === ADMIN_ID ? '✅' : '❌'}
+        Обычный админ: ${currentUser.is_admin ? '✅' : '❌'}
+        Баланс: ${currentUser.balance || 0}⭐
+    `;
+    
+    showNotification(`🔍 Информация об администраторе:\n${debugInfo}`, 'info');
+}
 
+// Добавьте эту функцию в глобальную область видимости
+window.showAdminDebugInfo = showAdminDebugInfo;
 // Загрузка списка админов - ИСПРАВЛЕННАЯ ВЕРСИЯ
 // Загрузка списка админов - С ДИАГНОСТИКОЙ
 async function loadAdminsList() {
