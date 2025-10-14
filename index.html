@@ -4514,8 +4514,12 @@ input:checked + .theme-slider:before {
     gap: 16px;
     grid-template-columns: 1fr;
     min-height: 200px;
-    position: relative;
-    height: auto !important; /* Гарантируем авто-высоту */
+    opacity: 1 !important;
+    transition: opacity 0.3s ease !important;
+}
+
+.tasks-grid.loading {
+    opacity: 0.7;
 }
 
 .task-card {
@@ -4528,13 +4532,10 @@ input:checked + .theme-slider:before {
     position: relative;
     width: 100%;
     box-sizing: border-box;
-    margin-bottom: 0;
-    /* Убираем анимацию fade-in чтобы не было смещения */
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
 }
-
 /* Убираем анимации для всех элементов в tasks-tab */
 .tasks-tab .fade-in {
     animation: none !important;
@@ -6522,7 +6523,6 @@ if (parseInt(currentUser.id) === ADMIN_ID) {
 }
 // Обновите функцию инициализации приложения
 
-// 🔧 ФУНКЦИИ ДЛЯ ВКЛАДОК ЗАДАНИЙ - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function showTaskCategory(category) {
     console.log('🔄 Переключение на категорию:', category);
     
@@ -6554,7 +6554,10 @@ function showTaskCategory(category) {
                 targetContainer.classList.add('active');
                 // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: ЗАГРУЖАЕМ ЗАДАНИЯ СРАЗУ ПРИ ПОКАЗЕ КОНТЕЙНЕРА
                 console.log('🚀 Загружаем новые задания...');
-                loadTasks();
+                // Добавляем небольшую задержку для гарантии отображения контейнера
+                setTimeout(() => {
+                    loadTasks();
+                }, 50);
             }
             break;
             
@@ -6565,7 +6568,9 @@ function showTaskCategory(category) {
                 targetContainer.style.display = 'block';
                 targetContainer.classList.add('active');
                 console.log('🔄 Загружаем задания на подтверждение...');
-                loadUserTasksForCategory('active');
+                setTimeout(() => {
+                    loadUserTasksForCategory('active');
+                }, 50);
             }
             break;
             
@@ -6576,7 +6581,9 @@ function showTaskCategory(category) {
                 targetContainer.style.display = 'block';
                 targetContainer.classList.add('active');
                 console.log('✅ Загружаем выполненные задания...');
-                loadUserTasksForCategory('completed');
+                setTimeout(() => {
+                    loadUserTasksForCategory('completed');
+                }, 50);
             }
             break;
             
@@ -6587,7 +6594,9 @@ function showTaskCategory(category) {
                 targetContainer.style.display = 'block';
                 targetContainer.classList.add('active');
                 console.log('❌ Загружаем отклоненные задания...');
-                loadUserTasksForCategory('rejected');
+                setTimeout(() => {
+                    loadUserTasksForCategory('rejected');
+                }, 50);
             }
             break;
     }
@@ -6597,7 +6606,6 @@ function showTaskCategory(category) {
         targetTab.classList.add('active');
     }
 }
-
 
 
 
@@ -6625,7 +6633,6 @@ function showTaskCategory(category) {
 // }
 
 // Вызывайте эту функцию при переключении на вкладку заданий
-// 🔧 ФУНКЦИЯ ДЛЯ ВКЛАДКИ ЗАДАНИЙ - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function showTasksTab() {
     console.log('🎯 Переход на вкладку заданий');
     
@@ -6633,21 +6640,22 @@ function showTasksTab() {
     document.getElementById('tasks-tab').classList.add('active');
     updateNavState('tasks');
     
-    // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Сразу показываем вкладку "Новые" и загружаем задания
+    // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Сразу показываем вкладку "Новые" и ЗАГРУЖАЕМ задания
     showTaskCategory('new');
     
-    // Исправляем layout
-    setTimeout(fixTasksLayout, 100);
+    // Принудительно загружаем задания
+    setTimeout(() => {
+        loadTasks();
+    }, 100);
 }
 
-// Обновленная функция загрузки заданий с улучшенной диагностикой
 async function loadTasks(search = '', category = 'all') {
     try {
         console.log('🔄 Начинаем загрузку заданий...', { search, category });
         
-        // Показываем индикатор загрузки
+        // Показываем индикатор загрузки ТОЛЬКО если контейнер пустой
         const container = document.getElementById('new-tasks');
-        if (container) {
+        if (container && container.children.length === 0) {
             container.innerHTML = `
                 <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
                     <div class="loading-spinner">⏳</div>
@@ -6769,6 +6777,14 @@ async function initializeApp() {
     // Показываем загрузку
     showNotification('🔄 Подключаемся к серверу...', 'info');
     
+        // 🔥 ВАЖНО: ЗАГРУЖАЕМ ЗАДАНИЯ ПРИ ЗАПУСКЕ ПРИЛОЖЕНИЯ
+    console.log('🚀 Pre-loading tasks on app start...');
+    
+    // Небольшая задержка для гарантии инициализации DOM
+    setTimeout(() => {
+        loadTasks();
+    }, 500);
+
     // Проверяем соединение с API
     try {
         console.log('🔍 Testing API connection...');
@@ -6971,7 +6987,21 @@ function displayUserTasksForCategory(tasks, status) {
                 console.error('Error loading user tasks:', error);
             }
         }
+// Добавьте эту функцию для гарантии загрузки заданий
+function ensureTasksLoaded() {
+    const tasksTab = document.getElementById('tasks-tab');
+    const newTasksContainer = document.getElementById('new-tasks');
+    
+    if (tasksTab && tasksTab.classList.contains('active') && 
+        newTasksContainer && newTasksContainer.classList.contains('active') && 
+        (!allTasks || allTasks.length === 0)) {
+        console.log('🔄 Ensuring tasks are loaded...');
+        loadTasks();
+    }
+}
 
+// Проверяем каждые 2 секунды, нужно ли загрузить задания
+setInterval(ensureTasksLoaded, 2000);
         // Инициализация поиска заданий
         function initializeSearch() {
             const searchInput = document.getElementById('task-search');
