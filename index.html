@@ -51,6 +51,7 @@ body {
         radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.05) 0%, transparent 25%);
 }
 
+/* ОБНОВЛЕННЫЕ СТИЛИ НИЖНЕЙ НАВИГАЦИИ */
 .bottom-nav {
     position: fixed;
     bottom: 16px;
@@ -58,20 +59,20 @@ body {
     right: 16px;
     background: var(--nav-bg);
     border-radius: 18px;
-    padding: 10px; /* Уменьшили padding */
+    padding: 10px;
     display: flex;
     justify-content: space-around;
     box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.3);
     border: 1px solid var(--border);
     z-index: 1000;
     backdrop-filter: blur(15px);
-    height: 100px; /* Уменьшили высоту */
+    height: 70px; /* Фиксированная высота */
 }
 
 .nav-item {
     text-align: center;
     cursor: pointer;
-    padding: 6px 8px; /* Уменьшили padding */
+    padding: 6px 8px;
     border-radius: 14px;
     flex: 1;
     opacity: 0.7;
@@ -80,33 +81,56 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 35px; /* Уменьшили минимальную высоту */
+    min-height: 50px;
 }
 
 .nav-icon {
-    font-size: 18px; /* Уменьшили размер иконок */
+    font-size: 18px;
     margin-bottom: 2px;
     color: var(--text-secondary);
 }
 
 .nav-label {
-    font-size: 10px; /* Уменьшили размер текста */
+    font-size: 10px;
     color: var(--text-secondary);
     font-weight: 500;
 }
-/* Убедимся что контент не перекрывается */
+
+.nav-item.active {
+    background: var(--accent);
+    opacity: 1;
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.25);
+    transform: translateY(-2px);
+}
+
+.nav-item.active .nav-icon,
+.nav-item.active .nav-label {
+    color: white;
+}
+/* ОБНОВЛЕННЫЕ СТИЛИ ДЛЯ ОСНОВНОГО КОНТЕНТА */
 .main-content {
-    min-height: calc(100vh - 200px);
+    min-height: calc(100vh - 120px); /* Учитываем высоту навигации */
     position: relative;
     padding-bottom: 100px; /* Добавляем отступ снизу равный высоте навигации */
 }
-/* Убедимся что контент не перекрывается */
+
 .tab-content {
-    min-height: calc(100vh - 250px);
-    padding-bottom: 20px;
-}
-.page {
+    min-height: calc(100vh - 200px);
     padding-bottom: 100px; /* Отступ для навигации */
+}
+
+.page {
+    padding-bottom: 120px; /* Отступ для навигации на страницах */
+}
+
+/* Убедитесь что контент не перекрывается навигацией */
+#profile-tab,
+#admin-tab,
+#withdraw-page,
+#how-it-works-page,
+#about-page {
+    padding-bottom: 120px;
+    min-height: calc(100vh - 120px);
 }
       
 
@@ -4691,6 +4715,60 @@ input:checked + .theme-slider:before {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+/* АДАПТИВНОСТЬ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ */
+@media (max-width: 768px) {
+    .bottom-nav {
+        bottom: 12px;
+        left: 12px;
+        right: 12px;
+        height: 65px;
+        padding: 8px;
+    }
+    
+    .nav-item {
+        padding: 4px 6px;
+        min-height: 45px;
+    }
+    
+    .nav-icon {
+        font-size: 16px;
+    }
+    
+    .nav-label {
+        font-size: 9px;
+    }
+    
+    .main-content {
+        padding-bottom: 90px;
+    }
+    
+    .tab-content {
+        padding-bottom: 90px;
+    }
+    
+    .page {
+        padding-bottom: 90px;
+    }
+}
+
+@media (max-width: 480px) {
+    .bottom-nav {
+        height: 60px;
+        padding: 6px;
+    }
+    
+    .nav-item {
+        padding: 3px 5px;
+    }
+    
+    .nav-icon {
+        font-size: 15px;
+    }
+    
+    .nav-label {
+        font-size: 8px;
+    }
 }
     </style>
 </head>
