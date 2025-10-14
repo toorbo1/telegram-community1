@@ -6552,10 +6552,11 @@ function showTaskCategory(category) {
             if (targetContainer) {
                 targetContainer.style.display = 'block';
                 targetContainer.classList.add('active');
+                // ЗАГРУЖАЕМ ЗАДАНИЯ СРАЗУ ПРИ ПОКАЗЕ КОНТЕЙНЕРА
+                if (targetContainer.children.length === 0) {
+                    loadTasks();
+                }
             }
-            
-            // ВСЕГДА загружаем задания при переходе на вкладку "Новые"
-            loadTasks();
             break;
             
         case 'confirmation':
@@ -6593,13 +6594,6 @@ function showTaskCategory(category) {
     if (targetTab) {
         targetTab.classList.add('active');
     }
-    
-    // Принудительно пересчитываем layout
-    setTimeout(() => {
-        if (targetContainer) {
-            targetContainer.style.opacity = '1';
-        }
-    }, 10);
 }
 
 // Функция для принудительного исправления layout
@@ -6641,6 +6635,8 @@ function showTasksTab() {
 // Обновленная функция загрузки заданий с индикацией загрузки
 async function loadTasks(search = '', category = 'all') {
     try {
+        console.log('🔄 Loading tasks...');
+        
         // Показываем индикатор загрузки
         const container = document.getElementById('new-tasks');
         if (container) {
@@ -6662,7 +6658,9 @@ async function loadTasks(search = '', category = 'all') {
             url += '?' + params.join('&');
         }
         
+        console.log('📡 Fetching tasks from:', url);
         const result = await makeRequest(url);
+        console.log('✅ Tasks loaded:', result);
         
         if (result.success) {
             allTasks = result.tasks;
@@ -6671,7 +6669,7 @@ async function loadTasks(search = '', category = 'all') {
             throw new Error(result.error || 'Failed to load tasks');
         }
     } catch (error) {
-        console.error('Error loading tasks:', error);
+        console.error('❌ Error loading tasks:', error);
         
         // Показываем сообщение об ошибке
         const container = document.getElementById('new-tasks');
@@ -6683,7 +6681,7 @@ async function loadTasks(search = '', category = 'all') {
                     <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
                         ${error.message}
                     </div>
-                    <button class="btn btn-primary" onclick="loadTasks()" style="margin-top: 16px; ">
+                    <button class="btn btn-primary" onclick="loadTasks()" style="margin-top: 16px;">
                         Попробовать снова
                     </button>
                 </div>
@@ -6697,7 +6695,12 @@ async function loadTasks(search = '', category = 'all') {
 // Обновленная функция отображения заданий
 function displayTasks(tasks, category) {
     const container = document.getElementById(category + '-tasks');
-    if (!container) return;
+    if (!container) {
+        console.error('❌ Container not found:', category + '-tasks');
+        return;
+    }
+    
+    console.log(`🎯 Displaying ${tasks ? tasks.length : 0} tasks in ${category}`);
     
     // Временно отключаем анимации
     container.style.opacity = '0.7';
@@ -6749,7 +6752,7 @@ function displayTasks(tasks, category) {
     }, 50);
 }
 
-// Также добавьте в функцию инициализации приложения вызов загрузки заданий
+// 🔧 ЗАГРУЗКА ЗАДАНИЙ ПРИ ЗАПУСКЕ ПРИЛОЖЕНИЯ
 async function initializeApp() {
     console.log('🎮 Initializing LinkGold app...');
     
@@ -6780,7 +6783,8 @@ async function initializeApp() {
     checkAdminRights();
     loadMainPagePosts();
     
-    // ЗАГРУЖАЕМ ЗАДАНИЯ ПРИ ЗАПУСКЕ ПРИЛОЖЕНИЯ
+    // 🔥 ВАЖНО: ЗАГРУЖАЕМ ЗАДАНИЯ ПРИ ЗАПУСКЕ ПРИЛОЖЕНИЯ
+    console.log('🚀 Pre-loading tasks on app start...');
     loadTasks();
     
     initializeSearch();
@@ -6806,106 +6810,124 @@ async function initializeApp() {
     console.log('🎉 App initialized successfully');
 }
 
-        // Функция для отображения заданий пользователя по категории
-        function displayUserTasksForCategory(tasks, status) {
-            let container = null;
-            
-            switch(status) {
-                case 'active':
-                    container = document.getElementById('confirmation-tasks');
-                    break;
-                case 'completed':
-                    container = document.getElementById('completed-tasks');
-                    break;
-                case 'rejected':
-                    container = document.getElementById('rejected-tasks');
-                    break;
-            }
-            
-            if (!container) return;
-            
-            container.innerHTML = '';
-
-            if (!tasks || tasks.length === 0) {
-                let message = '';
-                switch(status) {
-                    case 'active':
-                        message = 'Нет заданий на подтверждение';
-                        break;
-                    case 'completed':
-                        message = 'Нет выполненных заданий';
-                        break;
-                    case 'rejected':
-                        message = 'Нет отклоненных заданий';
-                        break;
-                }
-                
-                container.innerHTML = `
-                    <div class="no-tasks">
-                        <div class="no-tasks-icon">📝</div>
-                        <div>${message}</div>
-                    </div>
-                `;
-                return;
-            }
-
-            tasks.forEach(task => {
-                const taskElement = document.createElement('div');
-                taskElement.className = `task-card ${status === 'rejected' ? 'rejected-task' : ''}`;
-                
-                if (status === 'active') {
-                    // Задания на подтверждение
-                    taskElement.innerHTML = `
-                        <div class="task-header">
-                            <div>
-                                <div class="task-title">${escapeHtml(task.title)}</div>
-                                <div class="task-category">${task.category || 'Общее'}</div>
-                            </div>
-                            <div class="task-price">${task.price} ⭐</div>
-                        </div>
-                        <div class="task-description">${escapeHtml(task.description)}</div>
-                        <div class="task-footer">
-                            <div class="task-time">Ожидает подтверждения</div>
-                            <button class="task-btn" onclick="showTaskConfirmation(${task.id}, '${escapeHtml(task.title)}')">Подтвердить выполнение</button>
-                        </div>
-                    `;
-                } else if (status === 'completed') {
-                    // Выполненные задания
-                    taskElement.innerHTML = `
-                        <div class="task-header">
-                            <div>
-                                <div class="task-title">${escapeHtml(task.title)}</div>
-                                <div class="task-category">${task.category || 'Общее'}</div>
-                            </div>
-                            <div class="task-price">${task.price} ⭐</div>
-                        </div>
-                        <div class="task-description">${escapeHtml(task.description)}</div>
-                        <div class="task-footer">
-                            <div class="task-time">Выполнено</div>
-                            <div class="task-status completed">✅</div>
-                        </div>
-                    `;
-                } else if (status === 'rejected') {
-                    // Отклоненные задания
-                    taskElement.innerHTML = `
-                        <div class="task-header">
-                            <div>
-                                <div class="task-title">${escapeHtml(task.title)}</div>
-                                <div class="task-category">${task.category || 'Общее'}</div>
-                            </div>
-                            <div class="task-price">${task.price} ⭐</div>
-                        </div>
-                        <div class="task-description">${escapeHtml(task.description)}</div>
-                        <div class="task-footer">
-                            <div class="task-time">Отклонено</div>
-                            <button class="support-btn" onclick="openAdminChat()">Написать в поддержку</button>
-                        </div>
-                    `;
-                }
-                
-                container.appendChild(taskElement);
-            });
+// Функция для загрузки заданий пользователя по категории
+async function loadUserTasksForCategory(status) {
+    if (!currentUser) return;
+    
+    try {
+        console.log(`🔄 Loading user tasks for category: ${status}`);
+        const result = await makeRequest(`/user/${currentUser.id}/tasks?status=${status}`);
+        
+        if (result.success) {
+            displayUserTasksForCategory(result.tasks, status);
+        } else {
+            console.error('❌ Error loading user tasks:', result.error);
         }
+    } catch (error) {
+        console.error(`❌ Error loading ${status} tasks:`, error);
+    }
+}
+
+// Функция для отображения заданий пользователя по категории
+function displayUserTasksForCategory(tasks, status) {
+    let container = null;
+    
+    switch(status) {
+        case 'active':
+            container = document.getElementById('confirmation-tasks');
+            break;
+        case 'completed':
+            container = document.getElementById('completed-tasks');
+            break;
+        case 'rejected':
+            container = document.getElementById('rejected-tasks');
+            break;
+    }
+    
+    if (!container) return;
+    
+    container.innerHTML = '';
+
+    if (!tasks || tasks.length === 0) {
+        let message = '';
+        switch(status) {
+            case 'active':
+                message = 'Нет заданий на подтверждение';
+                break;
+            case 'completed':
+                message = 'Нет выполненных заданий';
+                break;
+            case 'rejected':
+                message = 'Нет отклоненных заданий';
+                break;
+        }
+        
+        container.innerHTML = `
+            <div class="no-tasks">
+                <div class="no-tasks-icon">📝</div>
+                <div>${message}</div>
+            </div>
+        `;
+        return;
+    }
+
+    tasks.forEach(task => {
+        const taskElement = document.createElement('div');
+        taskElement.className = `task-card ${status === 'rejected' ? 'rejected-task' : ''}`;
+        
+        if (status === 'active') {
+            // Задания на подтверждение
+            taskElement.innerHTML = `
+                <div class="task-header">
+                    <div>
+                        <div class="task-title">${escapeHtml(task.title)}</div>
+                        <div class="task-category">${task.category || 'Общее'}</div>
+                    </div>
+                    <div class="task-price">${task.price} ⭐</div>
+                </div>
+                <div class="task-description">${escapeHtml(task.description)}</div>
+                <div class="task-footer">
+                    <div class="task-time">Ожидает подтверждения</div>
+                    <button class="task-btn" onclick="showTaskConfirmation(${task.id}, '${escapeHtml(task.title)}')">Подтвердить выполнение</button>
+                </div>
+            `;
+        } else if (status === 'completed') {
+            // Выполненные задания
+            taskElement.innerHTML = `
+                <div class="task-header">
+                    <div>
+                        <div class="task-title">${escapeHtml(task.title)}</div>
+                        <div class="task-category">${task.category || 'Общее'}</div>
+                    </div>
+                    <div class="task-price">${task.price} ⭐</div>
+                </div>
+                <div class="task-description">${escapeHtml(task.description)}</div>
+                <div class="task-footer">
+                    <div class="task-time">Выполнено</div>
+                    <div class="task-status completed">✅</div>
+                </div>
+            `;
+        } else if (status === 'rejected') {
+            // Отклоненные задания
+            taskElement.innerHTML = `
+                <div class="task-header">
+                    <div>
+                        <div class="task-title">${escapeHtml(task.title)}</div>
+                        <div class="task-category">${task.category || 'Общее'}</div>
+                    </div>
+                    <div class="task-price">${task.price} ⭐</div>
+                </div>
+                <div class="task-description">${escapeHtml(task.description)}</div>
+                <div class="task-footer">
+                    <div class="task-time">Отклонено</div>
+                    <button class="support-btn" onclick="openAdminChat()">Написать в поддержку</button>
+                </div>
+            `;
+        }
+        
+        container.appendChild(taskElement);
+    });
+}
 
         // Обновленная функция загрузки заданий пользователя
         async function loadUserTasks() {
