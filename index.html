@@ -108,7 +108,78 @@ body {
 .page {
     padding-bottom: 100px; /* Отступ для навигации */
 }
-      
+      /* ДОБАВИТЬ В СЕКЦИЮ СТИЛЕЙ ДЛЯ ВКЛАДКИ ЗАДАНИЙ */
+
+/* ФИКС ДЛЯ КОНТЕЙНЕРОВ ЗАДАНИЙ */
+.tasks-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: 1fr;
+    min-height: 200px;
+    position: relative;
+    width: 100%;
+}
+
+/* УБИРАЕМ АНИМАЦИИ ДЛЯ ЭЛЕМЕНТОВ ВКЛАДКИ ЗАДАНИЙ */
+.tasks-tab .fade-in,
+#new-tasks .fade-in,
+#confirmation-tasks .fade-in,
+#completed-tasks .fade-in,
+#rejected-tasks .fade-in {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+}
+
+/* ФИКС ДЛЯ КАРТОЧЕК ЗАДАНИЙ */
+.task-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 0;
+    animation: none !important;
+    opacity: 1 !important;
+}
+
+/* ГАРАНТИРУЕМ ЧТО КОНТЕЙНЕРЫ НЕ ПЕРЕКРЫВАЮТСЯ */
+#new-tasks,
+#confirmation-tasks,
+#completed-tasks,
+#rejected-tasks {
+    position: relative;
+    min-height: 300px;
+    width: 100%;
+    display: none;
+}
+
+#new-tasks.active,
+#confirmation-tasks.active,
+#completed-tasks.active,
+#rejected-tasks.active {
+    display: block;
+}
+
+/* ФИКС ДЛЯ ПУСТОГО СОСТОЯНИЯ */
+.no-tasks {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    width: 100%;
+    padding: 40px 20px;
+}
+
+/* УБИРАЕМ ЗАДЕРЖКИ АНИМАЦИЙ */
+.task-card[style*="animation-delay"] {
+    animation-delay: 0s !important;
+}
 
         .container {
             max-width: 100%;
@@ -5956,7 +6027,17 @@ function addAdminButtonsToMainPage() {
 
 // 🔄 Обновление функции инициализации
 async function initializeApp() {
+
     console.log('🎮 Initializing LinkGold app...');
+   // Инициализируем фиксированный layout для заданий
+    setTimeout(() => {
+        const tasksTab = document.getElementById('tasks-tab');
+        if (tasksTab) {
+            tasksTab.style.minHeight = '500px';
+            tasksTab.style.position = 'relative';
+        }
+    }, 1000);
+
     // Загружаем историю выводов при инициализации
 loadWithdrawHistory();
   loadWithdrawHistory();
@@ -6231,6 +6312,7 @@ async function addTaskAsAdmin() {
 // Обновите функцию инициализации приложения
 async function initializeApp() {
     console.log('🎮 Initializing LinkGold app...');
+    
     // Загружаем историю выводов при инициализации
 loadWithdrawHistory();
   loadWithdrawHistory();
@@ -6475,66 +6557,86 @@ if (parseInt(currentUser.id) === ADMIN_ID) {
 }
 // Обновите функцию инициализации приложения
 
-        // 🔧 ФУНКЦИИ ДЛЯ ВКЛАДОК ЗАДАНИЙ
-        function showTaskCategory(category) {
-            console.log('Switching to task category:', category);
-            
-            // Скрываем все контейнеры заданий
-            document.getElementById('new-tasks').style.display = 'none';
-            document.getElementById('confirmation-tasks').style.display = 'none';
-            document.getElementById('completed-tasks').style.display = 'none';
-            document.getElementById('rejected-tasks').style.display = 'none';
-            
-            // Убираем активный класс со всех вкладок
-            document.querySelectorAll('.task-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // Показываем выбранный контейнер и активируем вкладку
-            let targetContainer = null;
-            let targetTab = null;
-            
-            switch(category) {
-                case 'new':
-                    targetContainer = document.getElementById('new-tasks');
-                    targetTab = document.querySelector('.task-tab:nth-child(1)');
-                    targetContainer.style.display = 'block';
-                    // Загружаем новые задания если они еще не загружены
-                    if (allTasks.length === 0) {
-                        loadTasks();
-                    }
-                    break;
-                    
-                case 'confirmation':
-                    targetContainer = document.getElementById('confirmation-tasks');
-                    targetTab = document.querySelector('.task-tab:nth-child(2)');
-                    targetContainer.style.display = 'block';
-                    // Загружаем задания на подтверждение
-                    loadUserTasksForCategory('active');
-                    break;
-                    
-                case 'completed':
-                    targetContainer = document.getElementById('completed-tasks');
-                    targetTab = document.querySelector('.task-tab:nth-child(3)');
-                    targetContainer.style.display = 'block';
-                    // Загружаем выполненные задания
-                    loadUserTasksForCategory('completed');
-                    break;
-                    
-                case 'rejected':
-                    targetContainer = document.getElementById('rejected-tasks');
-                    targetTab = document.querySelector('.task-tab:nth-child(4)');
-                    targetContainer.style.display = 'block';
-                    // Загружаем отклоненные задания
-                    loadUserTasksForCategory('rejected');
-                    break;
-            }
-            
-            // Активируем вкладку
-            if (targetTab) {
-                targetTab.classList.add('active');
-            }
+        // ОБНОВЛЕННАЯ ФУНКЦИЯ ДЛЯ ПЕРЕКЛЮЧЕНИЯ КАТЕГОРИЙ ЗАДАНИЙ
+function showTaskCategory(category) {
+    console.log('Switching to task category:', category);
+    
+    // Скрываем все контейнеры заданий
+    const containers = ['new-tasks', 'confirmation-tasks', 'completed-tasks', 'rejected-tasks'];
+    containers.forEach(containerId => {
+        const container = document.getElementById(containerId);
+        if (container) {
+            container.style.display = 'none';
+            container.classList.remove('active');
         }
+    });
+    
+    // Убираем активный класс со всех вкладок
+    document.querySelectorAll('.task-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Показываем выбранный контейнер и активируем вкладку
+    let targetContainer = null;
+    let targetTab = null;
+    
+    switch(category) {
+        case 'new':
+            targetContainer = document.getElementById('new-tasks');
+            targetTab = document.querySelector('.task-tab:nth-child(1)');
+            if (targetContainer) {
+                targetContainer.style.display = 'block';
+                targetContainer.classList.add('active');
+            }
+            // Загружаем новые задания если они еще не загружены
+            if (allTasks.length === 0) {
+                loadTasks();
+            }
+            break;
+            
+        case 'confirmation':
+            targetContainer = document.getElementById('confirmation-tasks');
+            targetTab = document.querySelector('.task-tab:nth-child(2)');
+            if (targetContainer) {
+                targetContainer.style.display = 'block';
+                targetContainer.classList.add('active');
+            }
+            // Загружаем задания на подтверждение
+            loadUserTasksForCategory('active');
+            break;
+            
+        case 'completed':
+            targetContainer = document.getElementById('completed-tasks');
+            targetTab = document.querySelector('.task-tab:nth-child(3)');
+            if (targetContainer) {
+                targetContainer.style.display = 'block';
+                targetContainer.classList.add('active');
+            }
+            // Загружаем выполненные задания
+            loadUserTasksForCategory('completed');
+            break;
+            
+        case 'rejected':
+            targetContainer = document.getElementById('rejected-tasks');
+            targetTab = document.querySelector('.task-tab:nth-child(4)');
+            if (targetContainer) {
+                targetContainer.style.display = 'block';
+                targetContainer.classList.add('active');
+            }
+            // Загружаем отклоненные задания
+            loadUserTasksForCategory('rejected');
+            break;
+    }
+    
+    // Активируем вкладку
+    if (targetTab) {
+        targetTab.classList.add('active');
+    }
+    
+    // Принудительное обновление layout
+    setTimeout(fixTasksLayout, 50);
+}
+
 
         // Функция для загрузки заданий пользователя по категории
         async function loadUserTasksForCategory(status) {
@@ -6741,13 +6843,13 @@ if (parseInt(currentUser.id) === ADMIN_ID) {
             }
         }
 
+// ОБНОВЛЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ЗАДАНИЙ
 function displayTasks(tasks, category) {
     const container = document.getElementById(category + '-tasks');
     if (!container) return;
     
-    // Временно отключаем анимации
-    container.style.opacity = '0.7';
-    
+    // Временно отключаем анимации и устанавливаем фиксированную структуру
+    container.style.opacity = '0.9';
     container.innerHTML = '';
 
     if (!tasks || tasks.length === 0) {
@@ -6767,7 +6869,7 @@ function displayTasks(tasks, category) {
 
     tasks.forEach(task => {
         const taskElement = document.createElement('div');
-        taskElement.className = 'task-card'; // Убрали fade-in
+        taskElement.className = 'task-card';
         
         taskElement.innerHTML = `
             <div class="task-header">
@@ -6791,7 +6893,7 @@ function displayTasks(tasks, category) {
         container.style.opacity = '1';
     }, 50);
 }
-// Функция для принудительного исправления layout
+// ФУНКЦИЯ ДЛЯ ПРИНУДИТЕЛЬНОГО ИСПРАВЛЕНИЯ LAYOUT
 function fixTasksLayout() {
     const tasksTab = document.getElementById('tasks-tab');
     if (!tasksTab) return;
@@ -6806,13 +6908,13 @@ function fixTasksLayout() {
         if (container) {
             container.style.position = 'relative';
             container.style.minHeight = '300px';
+            container.style.width = '100%';
         }
     });
     
     console.log('✅ Tasks layout fixed');
 }
 
-// Вызывайте эту функцию при переключении на вкладку заданий
 function showTasksTab() {
     hideAllTabs();
     document.getElementById('tasks-tab').classList.add('active');
@@ -6820,6 +6922,16 @@ function showTasksTab() {
     
     // Исправляем layout
     setTimeout(fixTasksLayout, 100);
+    
+    // Гарантируем что активная вкладка заданий отображается правильно
+    const activeTab = document.querySelector('.task-tab.active');
+    if (activeTab) {
+        const category = activeTab.textContent.trim().toLowerCase();
+        if (category === 'новые') showTaskCategory('new');
+        else if (category === 'подтверждение') showTaskCategory('confirmation');
+        else if (category === 'выполненные') showTaskCategory('completed');
+        else if (category === 'отклоненные') showTaskCategory('rejected');
+    }
 }
 
         // Функция открытия модального окна задания
