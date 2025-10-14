@@ -274,18 +274,32 @@ await pool.query(`
                 is_admin = true,
                 updated_at = CURRENT_TIMESTAMP
         `, [ADMIN_ID, 'linkgold_admin', 'Главный', 'Администратор', true]);
-
-        // Добавляем примеры если таблицы пустые
-        const tasksCount = await pool.query('SELECT COUNT(*) FROM tasks');
-        if (parseInt(tasksCount.rows[0].count) === 0) {
-            await pool.query(`
-                INSERT INTO tasks (title, description, price, created_by) 
-                VALUES 
-                ('Подписаться на канал', 'Подпишитесь на наш Telegram канал', 50, $1),
-                ('Посмотреть видео', 'Посмотрите видео до конца', 30, $1),
-                ('Сделать репост', 'Сделайте репост записи', 70, $1)
-            `, [ADMIN_ID]);
-        }
+// В функции initDatabase() убедитесь, что задания создаются
+const tasksCount = await pool.query('SELECT COUNT(*) FROM tasks WHERE status = $1', ['active']);
+if (parseInt(tasksCount.rows[0].count) === 0) {
+    console.log('📝 Создаем тестовые задания...');
+    await pool.query(`
+        INSERT INTO tasks (title, description, price, created_by, category) 
+        VALUES 
+        ('Подписаться на канал', 'Подпишитесь на наш Telegram канал и оставайтесь подписанным минимум 3 дня', 50, $1, 'subscribe'),
+        ('Посмотреть видео', 'Посмотрите видео до конца и поставьте лайк', 30, $1, 'view'),
+        ('Сделать репост', 'Сделайте репост записи в своем канале', 70, $1, 'repost'),
+        ('Оставить комментарий', 'Напишите содержательный комментарий под постом', 40, $1, 'comment'),
+        ('Вступить в группу', 'Вступите в нашу Telegram группу', 60, $1, 'social')
+    `, [ADMIN_ID]);
+    console.log('✅ Тестовые задания созданы');
+}
+        // // Добавляем примеры если таблицы пустые
+        // const tasksCount = await pool.query('SELECT COUNT(*) FROM tasks');
+        // if (parseInt(tasksCount.rows[0].count) === 0) {
+        //     await pool.query(`
+        //         INSERT INTO tasks (title, description, price, created_by) 
+        //         VALUES 
+        //         ('Подписаться на канал', 'Подпишитесь на наш Telegram канал', 50, $1),
+        //         ('Посмотреть видео', 'Посмотрите видео до конца', 30, $1),
+        //         ('Сделать репост', 'Сделайте репост записи', 70, $1)
+        //     `, [ADMIN_ID]);
+        // }
 
         const postsCount = await pool.query('SELECT COUNT(*) FROM posts');
         if (parseInt(postsCount.rows[0].count) === 0) {
@@ -705,9 +719,11 @@ app.delete('/api/posts/:id', async (req, res) => {
 
 // ==================== TASKS ENDPOINTS ====================
 
-// Get all tasks
+// Get all tasks - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.get('/api/tasks', async (req, res) => {
     const { search, category } = req.query;
+    
+    console.log('📥 Получен запрос на задания:', { search, category });
     
     try {
         let query = "SELECT * FROM tasks WHERE status = 'active'";
@@ -730,21 +746,44 @@ app.get('/api/tasks', async (req, res) => {
         
         query += " ORDER BY created_at DESC";
         
+        console.log('📊 Выполняем запрос:', query, params);
+        
         const result = await pool.query(query, params);
+        
+        console.log(`✅ Найдено заданий: ${result.rows.length}`);
         
         res.json({
             success: true,
             tasks: result.rows
         });
     } catch (error) {
-        console.error('Get tasks error:', error);
+        console.error('❌ Get tasks error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
         });
     }
 });
-
+// Debug endpoint for tasks
+app.get('/api/debug/tasks', async (req, res) => {
+    try {
+        const tasksCount = await pool.query('SELECT COUNT(*) FROM tasks WHERE status = $1', ['active']);
+        const tasks = await pool.query('SELECT * FROM tasks WHERE status = $1 ORDER BY created_at DESC LIMIT 10', ['active']);
+        
+        res.json({
+            success: true,
+            total_active_tasks: parseInt(tasksCount.rows[0].count),
+            sample_tasks: tasks.rows,
+            database_status: 'OK'
+        });
+    } catch (error) {
+        console.error('Debug tasks error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 // Create task (for all admins) - УПРОЩЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.post('/api/tasks', async (req, res) => {
     const { title, description, price, created_by } = req.body;
