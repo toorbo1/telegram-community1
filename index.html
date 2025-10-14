@@ -21,12 +21,12 @@
 
         :root {
             --bg-primary: #050510;
-            --bg-secondary:  #16213e;
+            --bg-secondary: #0a0a1a;
             --text-primary: #ffffff;
             --text-secondary: #8b9bda;
             --accent: #6366f1;
             --accent-hover: #4f46e5;
-            --card-bg: #1a1a2e; /* Более светлый оттенок */
+            --card-bg: #0f0f23;
             --border: #1a1a3a;
             --shadow: rgba(99, 102, 241, 0.1);
             --nav-bg: rgba(15, 15, 35, 0.85);
@@ -6404,29 +6404,21 @@ setTimeout(debugAdminRights, 2000);
             }
         }
 
-        // В функции updateReferralSystem() обновите текст:
-function updateReferralSystem() {
-    if (!currentUser) return;
-    
-    const referralLink = `https://t.me/LinkGoldMoney_bot?start=ref_${currentUser.id}`;
-    const referralInput = document.getElementById('referral-link');
-    if (referralInput) referralInput.value = referralLink;
-    
-    const refInvited = document.getElementById('ref-invited');
-    const refEarned = document.getElementById('ref-earned');
-    
-    if (refInvited) refInvited.textContent = currentUser.referral_count || 0;
-    if (refEarned) refEarned.textContent = `${currentUser.referral_earned || 0} ⭐`;
-    
-    // Обновите текст информации о реферальной системе
-    const referralInfo = document.querySelector('.referral-info');
-    if (referralInfo) {
-        referralInfo.innerHTML = `
-            Приглашайте друзей и получайте ${REFERRAL_BONUS_INVITER}⭐ за каждого приглашенного!<br>
-            Приглашенный получает ${REFERRAL_BONUS_INVITED}⭐ при регистрации.
-        `;
-    }
-}
+        // Обновление реферальной системы
+        function updateReferralSystem() {
+            if (!currentUser) return;
+            
+            const referralLink = `https://t.me/LinkGoldMoney_bot?start=ref_${currentUser.id}`;
+            const referralInput = document.getElementById('referral-link');
+            if (referralInput) referralInput.value = referralLink;
+            
+            const refInvited = document.getElementById('ref-invited');
+            const refEarned = document.getElementById('ref-earned');
+            
+            if (refInvited) refInvited.textContent = currentUser.referral_count || 0;
+            if (refEarned) refEarned.textContent = `${currentUser.referral_earned || 0} ⭐`;
+        }
+
         // Обновление прогресса уровня
         function updateLevelProgress() {
             if (!currentUser) return;
@@ -6830,25 +6822,22 @@ function showTasksTab() {
     setTimeout(fixTasksLayout, 100);
 }
 
+        // Функция открытия модального окна задания
         function openTaskModal(taskId) {
-    selectedTaskId = taskId;
-    
-    const task = allTasks.find(t => t.id === taskId);
-    if (task) {
-        document.getElementById('task-modal-title').textContent = task.title;
-        document.getElementById('task-modal-category').textContent = task.category || 'Общее';
-        document.getElementById('task-modal-price').textContent = `${task.price} ⭐`;
-        document.getElementById('task-modal-description').textContent = task.description;
-        
-        // РЕАЛЬНЫЕ ДАННЫЕ ИЗ АДМИН-ПАНЕЛИ
-        document.getElementById('task-modal-time').textContent = task.time_to_complete || '5 минут';
-        document.getElementById('task-modal-difficulty').textContent = task.difficulty || 'Легкая';
-        document.getElementById('task-modal-available').textContent = 
-            (task.people_required - (task.completed_count || 0)) + ' заданий';
-        
-        document.getElementById('task-modal').classList.add('active');
-    }
-}
+            selectedTaskId = taskId;
+            
+            const task = allTasks.find(t => t.id === taskId);
+            if (task) {
+                document.getElementById('task-modal-title').textContent = task.title;
+                document.getElementById('task-modal-category').textContent = task.category || 'Общее';
+                document.getElementById('task-modal-price').textContent = `${task.price} ⭐`;
+                document.getElementById('task-modal-description').textContent = task.description;
+                document.getElementById('task-modal-time').textContent = task.time_to_complete || '5 минут';
+                document.getElementById('task-modal-difficulty').textContent = task.difficulty || 'Легкая';
+                
+                document.getElementById('task-modal').classList.add('active');
+            }
+        }
 
         // Функция подтверждения выполнения задания
         function showTaskConfirmation(userTaskId, taskName) {
@@ -7686,20 +7675,13 @@ function showAdminSection(section) {
             if (!timestamp) return '';
             
             const date = new Date(timestamp);
-            // В функции displayMainPagePosts() обновите формат даты
-const postDate = new Date(post.created_at).toLocaleString('ru-RU', { 
-    timeZone: 'Europe/Moscow',
-    day: 'numeric',
-    month: 'long',
-    hour: '2-digit',
-    minute: '2-digit'
-}) + ' (МСК)';
+            
             // Московское время (UTC+3)
             const moscowTime = new Date(date.getTime() + (3 * 60 * 60 * 1000));
             
             const now = new Date();
             const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            
+            const postDate = new Date(moscowTime.getFullYear(), moscowTime.getMonth(), moscowTime.getDate());
             
             const diffTime = now - date;
             const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
@@ -7731,27 +7713,7 @@ const postDate = new Date(post.created_at).toLocaleString('ru-RU', {
                 })} (МСК)`;
             }
         }
-async function requestWithdraw() {
-    if (!currentUser) {
-        showNotification('Пользователь не авторизован', 'error');
-        return;
-    }
-    
-    const currentBalance = currentUser.balance || 0;
-    
-    // ПРОВЕРКА МИНИМАЛЬНОЙ СУММЫ
-    if (currentBalance < 200) {
-        showNotification('Минимальная сумма вывода - 200 звезд', 'error');
-        return;
-    }
-    
-    if (currentBalance <= 0) {
-        showNotification('Недостаточно средств для вывода', 'error');
-        return;
-    }
-    
-    // ... остальной код
-}
+
 // Обновленная функция запроса вывода
 async function requestWithdraw() {
     if (!currentUser) {

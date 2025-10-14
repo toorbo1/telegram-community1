@@ -54,9 +54,6 @@ const pool = new Pool({
 });
 
 const ADMIN_ID = 8036875641;
-const MIN_WITHDRAWAL_AMOUNT = 200; // Минимальная сумма вывода 200 звезд
-const REFERRAL_BONUS_INVITER = 15; // 15 звезд за приглашение
-const REFERRAL_BONUS_INVITED = 5;  // 5 звезд приглашенному
 
 // Функция проверки прав администратора
 async function checkAdminAccess(userId) {
@@ -75,11 +72,6 @@ async function checkAdminAccess(userId) {
     }
 }
 
-// Функция для получения московского времени
-function getMoscowTime() {
-    return new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' });
-}
-
 // Упрощенная инициализация базы данных
 async function initDatabase() {
     try {
@@ -96,12 +88,6 @@ async function initDatabase() {
                 balance REAL DEFAULT 0,
                 level INTEGER DEFAULT 1,
                 is_admin BOOLEAN DEFAULT false,
-                tasks_completed INTEGER DEFAULT 0,
-                active_tasks INTEGER DEFAULT 0,
-                quality_rate REAL DEFAULT 100,
-                referral_count INTEGER DEFAULT 0,
-                referral_earned REAL DEFAULT 0,
-                experience INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
@@ -118,29 +104,50 @@ async function initDatabase() {
                 time_to_complete TEXT DEFAULT '5 минут',
                 difficulty TEXT DEFAULT 'Легкая',
                 people_required INTEGER DEFAULT 1,
-                completed_count INTEGER DEFAULT 0,
                 repost_time TEXT DEFAULT '1 день',
                 task_url TEXT,
                 status TEXT DEFAULT 'active',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
+// Таблица запросов на вывод - ИСПРАВЛЕННАЯ ВЕРСИЯ
+await pool.query(`
+    CREATE TABLE IF NOT EXISTS withdrawal_requests (
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT NOT NULL,
+        username TEXT,
+        first_name TEXT,
+        amount REAL NOT NULL,
+        status TEXT DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        completed_at TIMESTAMP,
+        completed_by BIGINT
+    )
+`);
 
-        // Таблица запросов на вывод
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS withdrawal_requests (
-                id SERIAL PRIMARY KEY,
-                user_id BIGINT NOT NULL,
-                username TEXT,
-                first_name TEXT,
-                amount REAL NOT NULL,
-                status TEXT DEFAULT 'pending',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                completed_at TIMESTAMP,
-                completed_by BIGINT
-            )
-        `);
-
+// Добавляем недостающие колонки если таблица уже существует
+await pool.query(`
+    DO $$ 
+    BEGIN
+        -- Добавляем username если не существует
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='withdrawal_requests' AND column_name='username') THEN
+            ALTER TABLE withdrawal_requests ADD COLUMN username TEXT;
+        END IF;
+        
+        -- Добавляем first_name если не существует
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='withdrawal_requests' AND column_name='first_name') THEN
+            ALTER TABLE withdrawal_requests ADD COLUMN first_name TEXT;
+        END IF;
+        
+        -- Добавляем completed_by если не существует
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='withdrawal_requests' AND column_name='completed_by') THEN
+            ALTER TABLE withdrawal_requests ADD COLUMN completed_by BIGINT;
+        END IF;
+    END $$;
+`);
         // Таблица постов
         await pool.query(`
             CREATE TABLE IF NOT EXISTS posts (
@@ -178,8 +185,7 @@ async function initDatabase() {
                 started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 screenshot_url TEXT,
                 submitted_at TIMESTAMP,
-                completed_at TIMESTAMP,
-                rejected_at TIMESTAMP
+                completed_at TIMESTAMP
             )
         `);
 
@@ -202,6 +208,18 @@ async function initDatabase() {
             )
         `);
 
+        // Таблица запросов на вывод
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS withdrawal_requests (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                amount REAL NOT NULL,
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP
+            )
+        `);
+
         // Таблица сообщений
         await pool.query(`
             CREATE TABLE IF NOT EXISTS support_messages (
@@ -216,22 +234,34 @@ async function initDatabase() {
             )
         `);
 
-        // Таблица рефералов
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS referrals (
-                id SERIAL PRIMARY KEY,
-                inviter_id BIGINT NOT NULL,
-                invited_id BIGINT NOT NULL,
-                inviter_bonus_paid BOOLEAN DEFAULT false,
-                invited_bonus_paid BOOLEAN DEFAULT false,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
         // Добавляем недостающие колонки
         await pool.query(`
+            ALTER TABLE support_chats 
+            ADD COLUMN IF NOT EXISTS user_username TEXT,
+            ADD COLUMN IF NOT EXISTS unread_count INTEGER DEFAULT 0
+        `);
+        
+        await pool.query(`
             ALTER TABLE tasks 
-            ADD COLUMN IF NOT EXISTS completed_count INTEGER DEFAULT 0
+            ADD COLUMN IF NOT EXISTS created_by BIGINT,
+            ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'general',
+            ADD COLUMN IF NOT EXISTS time_to_complete TEXT DEFAULT '5 минут',
+            ADD COLUMN IF NOT EXISTS difficulty TEXT DEFAULT 'Легкая',
+            ADD COLUMN IF NOT EXISTS people_required INTEGER DEFAULT 1,
+            ADD COLUMN IF NOT EXISTS repost_time TEXT DEFAULT '1 день',
+            ADD COLUMN IF NOT EXISTS task_url TEXT
+        `);
+
+        // Добавляем колонку user_username в task_verifications если ее нет
+        await pool.query(`
+            ALTER TABLE task_verifications 
+            ADD COLUMN IF NOT EXISTS user_username TEXT
+        `);
+
+        // Добавляем колонку user_username в support_messages если ее нет
+        await pool.query(`
+            ALTER TABLE support_messages 
+            ADD COLUMN IF NOT EXISTS user_username TEXT
         `);
 
         // Гарантируем существование главного админа
@@ -249,11 +279,11 @@ async function initDatabase() {
         const tasksCount = await pool.query('SELECT COUNT(*) FROM tasks');
         if (parseInt(tasksCount.rows[0].count) === 0) {
             await pool.query(`
-                INSERT INTO tasks (title, description, price, created_by, time_to_complete, difficulty, people_required) 
+                INSERT INTO tasks (title, description, price, created_by) 
                 VALUES 
-                ('Подписаться на канал', 'Подпишитесь на наш Telegram канал', 50, $1, '2 минуты', 'Легкая', 10),
-                ('Посмотреть видео', 'Посмотрите видео до конца', 30, $1, '5 минут', 'Легкая', 15),
-                ('Сделать репост', 'Сделайте репост записи', 70, $1, '3 минуты', 'Средняя', 5)
+                ('Подписаться на канал', 'Подпишитесь на наш Telegram канал', 50, $1),
+                ('Посмотреть видео', 'Посмотрите видео до конца', 30, $1),
+                ('Сделать репост', 'Сделайте репост записи', 70, $1)
             `, [ADMIN_ID]);
         }
 
@@ -265,7 +295,9 @@ async function initDatabase() {
             `, [ADMIN_ID]);
         }
 
-        console.log('✅ Simplified database initialized successfully');
+await fixWithdrawalTable();
+
+         console.log('✅ Simplified database initialized successfully');
     } catch (error) {
         console.error('❌ Database initialization error:', error);
     }
@@ -274,6 +306,76 @@ async function initDatabase() {
 // Инициализируем базу данных при запуске
 initDatabase();
 
+// Функция для принудительного обновления структуры таблицы
+async function fixWithdrawalTable() {
+    try {
+        console.log('🔧 Проверка и исправление структуры таблицы withdrawal_requests...');
+        
+        // Проверяем существование таблицы
+        const tableExists = await pool.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = 'withdrawal_requests'
+            );
+        `);
+        
+        if (!tableExists.rows[0].exists) {
+            console.log('❌ Таблица withdrawal_requests не существует, создаем...');
+            await pool.query(`
+                CREATE TABLE withdrawal_requests (
+                    id SERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL,
+                    username TEXT,
+                    first_name TEXT,
+                    amount REAL NOT NULL,
+                    status TEXT DEFAULT 'pending',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    completed_at TIMESTAMP,
+                    completed_by BIGINT
+                )
+            `);
+            console.log('✅ Таблица создана');
+            return;
+        }
+        
+        // Проверяем и добавляем отсутствующие колонки
+        const columnsToCheck = ['username', 'first_name', 'completed_by'];
+        
+        for (const column of columnsToCheck) {
+            const columnExists = await pool.query(`
+                SELECT EXISTS (
+                    SELECT FROM information_schema.columns 
+                    WHERE table_name = 'withdrawal_requests' AND column_name = $1
+                );
+            `, [column]);
+            
+            if (!columnExists.rows[0].exists) {
+                console.log(`❌ Колонка ${column} отсутствует, добавляем...`);
+                
+                if (column === 'completed_by') {
+                    await pool.query(`ALTER TABLE withdrawal_requests ADD COLUMN ${column} BIGINT`);
+                } else {
+                    await pool.query(`ALTER TABLE withdrawal_requests ADD COLUMN ${column} TEXT`);
+                }
+                
+                console.log(`✅ Колонка ${column} добавлена`);
+            } else {
+                console.log(`✅ Колонка ${column} существует`);
+            }
+        }
+        
+        console.log('✅ Структура таблицы проверена и исправлена');
+    } catch (error) {
+        console.error('❌ Ошибка при исправлении таблицы:', error);
+    }
+}
+
+// Вызовите эту функцию при инициализации сервера
+fixWithdrawalTable();
+
+// ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
+
+
 // Health check
 app.get('/api/health', async (req, res) => {
     try {
@@ -281,7 +383,7 @@ app.get('/api/health', async (req, res) => {
         res.json({ 
             status: 'OK', 
             message: 'LinkGold API is running!',
-            timestamp: getMoscowTime(),
+            timestamp: new Date().toISOString(),
             database: 'PostgreSQL'
         });
     } catch (error) {
@@ -293,10 +395,166 @@ app.get('/api/health', async (req, res) => {
         });
     }
 });
+// ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
 
-// User authentication with referral support
+// Get withdrawal requests for admin - ИСПРАВЛЕННАЯ ВЕРСИЯ
+app.get('/api/admin/withdrawal-requests', async (req, res) => {
+    const { adminId } = req.query;
+    
+    console.log('🔄 Запрос на получение заявок на вывод от админа:', adminId);
+    
+    // Проверка прав администратора
+    const isAdmin = await checkAdminAccess(adminId);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен'
+        });
+    }
+    
+    try {
+        const result = await pool.query(`
+            SELECT wr.*, u.username, u.first_name 
+            FROM withdrawal_requests wr
+            LEFT JOIN user_profiles u ON wr.user_id = u.user_id
+            WHERE wr.status = 'pending'
+            ORDER BY wr.created_at DESC
+        `);
+        
+        console.log(`✅ Найдено ${result.rows.length} заявок на вывод`);
+        
+        res.json({
+            success: true,
+            requests: result.rows
+        });
+    } catch (error) {
+        console.error('❌ Get withdrawal requests error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Complete withdrawal request - ИСПРАВЛЕННАЯ ВЕРСИЯ
+app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) => {
+    const requestId = req.params.requestId;
+    const { adminId } = req.body;
+    
+    console.log('✅ Подтверждение выплаты:', { requestId, adminId });
+    
+    // Проверка прав администратора
+    const isAdmin = await checkAdminAccess(adminId);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен'
+        });
+    }
+    
+    try {
+        // Обновляем статус заявки
+        const result = await pool.query(`
+            UPDATE withdrawal_requests 
+            SET status = 'completed', completed_at = CURRENT_TIMESTAMP, completed_by = $1
+            WHERE id = $2 AND status = 'pending'
+            RETURNING *
+        `, [adminId, requestId]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Запрос не найден или уже обработан'
+            });
+        }
+        
+        const request = result.rows[0];
+        
+        console.log(`✅ Выплата подтверждена: ${request.amount}⭐ для пользователя ${request.user_id}`);
+        
+        res.json({
+            success: true,
+            message: 'Выплата подтверждена'
+        });
+        
+    } catch (error) {
+        console.error('❌ Complete withdrawal error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+// Функция для принудительного обновления структуры таблицы
+async function fixWithdrawalTable() {
+    try {
+        console.log('🔧 Проверка и исправление структуры таблицы withdrawal_requests...');
+        
+        // Проверяем существование таблицы
+        const tableExists = await pool.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = 'withdrawal_requests'
+            );
+        `);
+        
+        if (!tableExists.rows[0].exists) {
+            console.log('❌ Таблица withdrawal_requests не существует, создаем...');
+            await pool.query(`
+                CREATE TABLE withdrawal_requests (
+                    id SERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL,
+                    username TEXT,
+                    first_name TEXT,
+                    amount REAL NOT NULL,
+                    status TEXT DEFAULT 'pending',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    completed_at TIMESTAMP,
+                    completed_by BIGINT
+                )
+            `);
+            console.log('✅ Таблица создана');
+            return;
+        }
+        
+        // Проверяем и добавляем отсутствующие колонки
+        const columnsToCheck = ['username', 'first_name', 'completed_by'];
+        
+        for (const column of columnsToCheck) {
+            const columnExists = await pool.query(`
+                SELECT EXISTS (
+                    SELECT FROM information_schema.columns 
+                    WHERE table_name = 'withdrawal_requests' AND column_name = $1
+                );
+            `, [column]);
+            
+            if (!columnExists.rows[0].exists) {
+                console.log(`❌ Колонка ${column} отсутствует, добавляем...`);
+                
+                if (column === 'completed_by') {
+                    await pool.query(`ALTER TABLE withdrawal_requests ADD COLUMN ${column} BIGINT`);
+                } else {
+                    await pool.query(`ALTER TABLE withdrawal_requests ADD COLUMN ${column} TEXT`);
+                }
+                
+                console.log(`✅ Колонка ${column} добавлена`);
+            } else {
+                console.log(`✅ Колонка ${column} существует`);
+            }
+        }
+        
+        console.log('✅ Структура таблицы проверена и исправлена');
+    } catch (error) {
+        console.error('❌ Ошибка при исправлении таблицы:', error);
+    }
+}
+
+// Вызовите эту функцию при инициализации сервера
+fixWithdrawalTable();
+
+// User authentication
 app.post('/api/user/auth', async (req, res) => {
-    const { user, ref } = req.body;
+    const { user } = req.body;
     
     if (!user) {
         return res.status(400).json({
@@ -331,44 +589,6 @@ app.post('/api/user/auth', async (req, res) => {
         ]);
         
         const userProfile = result.rows[0];
-        
-        // Обработка реферальной системы
-        if (ref) {
-            const referrerId = ref.replace('ref_', '');
-            
-            // Проверяем, существует ли реферальная связь
-            const existingRef = await pool.query(
-                'SELECT id FROM referrals WHERE invited_id = $1',
-                [user.id]
-            );
-            
-            if (existingRef.rows.length === 0 && parseInt(referrerId) !== parseInt(user.id)) {
-                // Создаем реферальную связь
-                await pool.query(`
-                    INSERT INTO referrals (inviter_id, invited_id) 
-                    VALUES ($1, $2)
-                `, [referrerId, user.id]);
-                
-                // Начисляем бонус приглашенному
-                await pool.query(`
-                    UPDATE user_profiles 
-                    SET balance = COALESCE(balance, 0) + $1,
-                        referral_count = COALESCE(referral_count, 0) + 1
-                    WHERE user_id = $2
-                `, [REFERRAL_BONUS_INVITED, user.id]);
-                
-                // Начисляем бонус пригласившему
-                await pool.query(`
-                    UPDATE user_profiles 
-                    SET balance = COALESCE(balance, 0) + $1,
-                        referral_earned = COALESCE(referral_earned, 0) + $1,
-                        referral_count = COALESCE(referral_count, 0) + 1
-                    WHERE user_id = $2
-                `, [REFERRAL_BONUS_INVITER, referrerId]);
-                
-                console.log(`✅ Реферальные бонусы начислены: ${REFERRAL_BONUS_INVITED}⭐ пользователю ${user.id}, ${REFERRAL_BONUS_INVITER}⭐ пользователю ${referrerId}`);
-            }
-        }
         
         res.json({
             success: true,
@@ -417,9 +637,7 @@ app.get('/api/user/:userId', async (req, res) => {
 app.get('/api/posts', async (req, res) => {
     try {
         const result = await pool.query(`
-            SELECT *, 
-                   TO_CHAR(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Moscow', 'DD.MM.YYYY HH24:MI') as moscow_time
-            FROM posts 
+            SELECT * FROM posts 
             ORDER BY created_at DESC
         `);
         
@@ -436,7 +654,7 @@ app.get('/api/posts', async (req, res) => {
     }
 });
 
-// Create post (for all admins)
+// Create post (for all admins) - УПРОЩЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.post('/api/posts', async (req, res) => {
     const { title, content, author, authorId } = req.body;
     
@@ -448,14 +666,6 @@ app.post('/api/posts', async (req, res) => {
     }
     
     try {
-        const userIsAdmin = await checkAdminAccess(authorId);
-        if (!userIsAdmin) {
-            return res.status(403).json({
-                success: false,
-                error: 'Только администратор может публиковать посты!'
-            });
-        }
-        
         const result = await pool.query(`
             INSERT INTO posts (title, content, author, author_id) 
             VALUES ($1, $2, $3, $4)
@@ -476,19 +686,9 @@ app.post('/api/posts', async (req, res) => {
     }
 });
 
-// Delete post (for all admins)
+// Delete post (for all admins) - УПРОЩЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.delete('/api/posts/:id', async (req, res) => {
-    const { authorId } = req.body;
-    
     try {
-        const userIsAdmin = await checkAdminAccess(authorId);
-        if (!userIsAdmin) {
-            return res.status(403).json({
-                success: false,
-                error: 'Только администратор может удалять посты!'
-            });
-        }
-        
         await pool.query("DELETE FROM posts WHERE id = $1", [req.params.id]);
         res.json({
             success: true,
@@ -510,32 +710,25 @@ app.get('/api/tasks', async (req, res) => {
     const { search, category } = req.query;
     
     try {
-        let query = `
-            SELECT t.*, 
-                   COUNT(ut.id) as completed_count,
-                   (t.people_required - COUNT(ut.id)) as available_count
-            FROM tasks t
-            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
-            WHERE t.status = 'active'
-        `;
+        let query = "SELECT * FROM tasks WHERE status = 'active'";
         let params = [];
         
         if (search) {
-            query += " AND (t.title ILIKE $1 OR t.description ILIKE $2)";
+            query += " AND (title ILIKE $1 OR description ILIKE $2)";
             params.push(`%${search}%`, `%${search}%`);
         }
         
         if (category && category !== 'all') {
             if (params.length > 0) {
-                query += " AND t.category = $3";
+                query += " AND category = $3";
                 params.push(category);
             } else {
-                query += " AND t.category = $1";
+                query += " AND category = $1";
                 params.push(category);
             }
         }
         
-        query += " GROUP BY t.id ORDER BY t.created_at DESC";
+        query += " ORDER BY created_at DESC";
         
         const result = await pool.query(query, params);
         
@@ -552,9 +745,9 @@ app.get('/api/tasks', async (req, res) => {
     }
 });
 
-// Create task (for all admins)
+// Create task (for all admins) - УПРОЩЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.post('/api/tasks', async (req, res) => {
-    const { title, description, price, created_by, time_to_complete, difficulty, people_required } = req.body;
+    const { title, description, price, created_by } = req.body;
     
     if (!title || !description || !price) {
         return res.status(400).json({
@@ -564,14 +757,6 @@ app.post('/api/tasks', async (req, res) => {
     }
     
     try {
-        const userIsAdmin = await checkAdminAccess(created_by);
-        if (!userIsAdmin) {
-            return res.status(403).json({
-                success: false,
-                error: 'Только администратор может создавать задания!'
-            });
-        }
-        
         const taskPrice = parseFloat(price);
         if (isNaN(taskPrice) || taskPrice <= 0) {
             return res.status(400).json({
@@ -581,18 +766,10 @@ app.post('/api/tasks', async (req, res) => {
         }
 
         const result = await pool.query(`
-            INSERT INTO tasks (title, description, price, created_by, time_to_complete, difficulty, people_required) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            INSERT INTO tasks (title, description, price, created_by) 
+            VALUES ($1, $2, $3, $4)
             RETURNING *
-        `, [
-            title.trim(), 
-            description.trim(), 
-            taskPrice, 
-            created_by,
-            time_to_complete || '5 минут',
-            difficulty || 'Легкая',
-            people_required || 1
-        ]);
+        `, [title.trim(), description.trim(), taskPrice, created_by]);
         
         res.json({
             success: true,
@@ -608,19 +785,9 @@ app.post('/api/tasks', async (req, res) => {
     }
 });
 
-// Delete task (for all admins)
+// Delete task (for all admins) - УПРОЩЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.delete('/api/tasks/:id', async (req, res) => {
-    const { adminId } = req.body;
-    
     try {
-        const userIsAdmin = await checkAdminAccess(adminId);
-        if (!userIsAdmin) {
-            return res.status(403).json({
-                success: false,
-                error: 'Только администратор может удалять задания!'
-            });
-        }
-        
         await pool.query("DELETE FROM tasks WHERE id = $1", [req.params.id]);
         res.json({
             success: true,
@@ -637,17 +804,7 @@ app.delete('/api/tasks/:id', async (req, res) => {
 
 // Get tasks for admin (for all admins)
 app.get('/api/admin/tasks', async (req, res) => {
-    const { adminId } = req.query;
-    
     try {
-        const userIsAdmin = await checkAdminAccess(adminId);
-        if (!userIsAdmin) {
-            return res.status(403).json({
-                success: false,
-                error: 'Доступ запрещен'
-            });
-        }
-        
         const result = await pool.query(`
             SELECT * FROM tasks 
             ORDER BY created_at DESC
@@ -680,7 +837,7 @@ app.post('/api/user/tasks/start', async (req, res) => {
     }
     
     try {
-        // Проверяем, выполнял ли пользователь это задание ранее
+        // Проверяем, выполнял ли пользователь это задание ЛЮБОЙ раз
         const existingTask = await pool.query(`
             SELECT id FROM user_tasks 
             WHERE user_id = $1 AND task_id = $2
@@ -711,9 +868,7 @@ app.post('/api/user/tasks/start', async (req, res) => {
         }
         
         const task = taskInfo.rows[0];
-        const availableSlots = task.people_required - task.completed_count;
-        
-        if (availableSlots <= 0) {
+        if (task.completed_count >= task.people_required) {
             return res.status(400).json({
                 success: false,
                 error: 'Достигнут лимит выполнения этого задания'
@@ -880,7 +1035,7 @@ app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
 
 // ==================== SUPPORT CHAT ENDPOINTS ====================
 
-// Get or create user chat
+// Get or create user chat - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.get('/api/support/user-chat/:userId', async (req, res) => {
     const userId = req.params.userId;
     
@@ -903,7 +1058,7 @@ app.get('/api/support/user-chat/:userId', async (req, res) => {
             
             if (userResult.rows.length > 0) {
                 const user = userResult.rows[0];
-                user_name = `${user.first_name} ${user.last_name || ''}`.trim() || `User_${userId}`;
+                user_name = user.username ? `@${user.username}` : `User_${userId}`;
                 user_username = user.username || user_username;
             }
             
@@ -940,9 +1095,7 @@ app.get('/api/support/chats/:chatId/messages', async (req, res) => {
     
     try {
         const result = await pool.query(`
-            SELECT *, 
-                   TO_CHAR(sent_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Moscow', 'DD.MM.YYYY HH24:MI') as moscow_time
-            FROM support_messages 
+            SELECT * FROM support_messages 
             WHERE chat_id = $1 
             ORDER BY sent_at ASC
         `, [chatId]);
@@ -960,7 +1113,7 @@ app.get('/api/support/chats/:chatId/messages', async (req, res) => {
     }
 });
 
-// Send message to chat
+// Send message to chat - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.post('/api/support/chats/:chatId/messages', async (req, res) => {
     const chatId = req.params.chatId;
     const { user_id, user_name, user_username, message, is_admin } = req.body;
@@ -1002,23 +1155,11 @@ app.post('/api/support/chats/:chatId/messages', async (req, res) => {
     }
 });
 
-// Get all chats for admin
+// Get all chats for admin (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.get('/api/support/chats', async (req, res) => {
-    const { adminId } = req.query;
-    
     try {
-        const userIsAdmin = await checkAdminAccess(adminId);
-        if (!userIsAdmin) {
-            return res.status(403).json({
-                success: false,
-                error: 'Доступ запрещен'
-            });
-        }
-        
         const result = await pool.query(`
-            SELECT *, 
-                   TO_CHAR(last_message_time AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Moscow', 'DD.MM.YYYY HH24:MI') as moscow_time
-            FROM support_chats 
+            SELECT * FROM support_chats 
             WHERE is_active = true
             ORDER BY last_message_time DESC
         `);
@@ -1036,23 +1177,11 @@ app.get('/api/support/chats', async (req, res) => {
     }
 });
 
-// Get all chats (including archived)
+// Get all chats (including archived) (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.get('/api/support/all-chats', async (req, res) => {
-    const { adminId } = req.query;
-    
     try {
-        const userIsAdmin = await checkAdminAccess(adminId);
-        if (!userIsAdmin) {
-            return res.status(403).json({
-                success: false,
-                error: 'Доступ запрещен'
-            });
-        }
-        
         const result = await pool.query(`
-            SELECT *, 
-                   TO_CHAR(last_message_time AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Moscow', 'DD.MM.YYYY HH24:MI') as moscow_time
-            FROM support_chats 
+            SELECT * FROM support_chats 
             ORDER BY last_message_time DESC
         `);
         
@@ -1069,23 +1198,11 @@ app.get('/api/support/all-chats', async (req, res) => {
     }
 });
 
-// Get archived chats
+// Get archived chats (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.get('/api/support/archived-chats', async (req, res) => {
-    const { adminId } = req.query;
-    
     try {
-        const userIsAdmin = await checkAdminAccess(adminId);
-        if (!userIsAdmin) {
-            return res.status(403).json({
-                success: false,
-                error: 'Доступ запрещен'
-            });
-        }
-        
         const result = await pool.query(`
-            SELECT *, 
-                   TO_CHAR(last_message_time AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Moscow', 'DD.MM.YYYY HH24:MI') as moscow_time
-            FROM support_chats 
+            SELECT * FROM support_chats 
             WHERE is_active = false
             ORDER BY last_message_time DESC
         `);
@@ -1103,20 +1220,11 @@ app.get('/api/support/archived-chats', async (req, res) => {
     }
 });
 
-// Archive chat
+// Archive chat (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.put('/api/support/chats/:chatId/archive', async (req, res) => {
     const chatId = req.params.chatId;
-    const { adminId } = req.body;
     
     try {
-        const userIsAdmin = await checkAdminAccess(adminId);
-        if (!userIsAdmin) {
-            return res.status(403).json({
-                success: false,
-                error: 'Доступ запрещен'
-            });
-        }
-        
         await pool.query(`
             UPDATE support_chats 
             SET is_active = false 
@@ -1136,20 +1244,11 @@ app.put('/api/support/chats/:chatId/archive', async (req, res) => {
     }
 });
 
-// Restore chat
+// Restore chat (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.put('/api/support/chats/:chatId/restore', async (req, res) => {
     const chatId = req.params.chatId;
-    const { adminId } = req.body;
     
     try {
-        const userIsAdmin = await checkAdminAccess(adminId);
-        if (!userIsAdmin) {
-            return res.status(403).json({
-                success: false,
-                error: 'Доступ запрещен'
-            });
-        }
-        
         await pool.query(`
             UPDATE support_chats 
             SET is_active = true 
@@ -1169,20 +1268,11 @@ app.put('/api/support/chats/:chatId/restore', async (req, res) => {
     }
 });
 
-// Delete chat
+// Delete chat (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.delete('/api/support/chats/:chatId', async (req, res) => {
     const chatId = req.params.chatId;
-    const { adminId } = req.body;
     
     try {
-        const userIsAdmin = await checkAdminAccess(adminId);
-        if (!userIsAdmin) {
-            return res.status(403).json({
-                success: false,
-                error: 'Доступ запрещен'
-            });
-        }
-        
         // Delete messages first
         await pool.query(`
             DELETE FROM support_messages 
@@ -1210,22 +1300,11 @@ app.delete('/api/support/chats/:chatId', async (req, res) => {
 
 // ==================== TASK VERIFICATION ENDPOINTS ====================
 
-// Task verification system (for all admins)
+// Task verification system (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.get('/api/admin/task-verifications', async (req, res) => {
-    const { adminId } = req.query;
-    
     try {
-        const userIsAdmin = await checkAdminAccess(adminId);
-        if (!userIsAdmin) {
-            return res.status(403).json({
-                success: false,
-                error: 'Доступ запрещен'
-            });
-        }
-        
         const result = await pool.query(`
-            SELECT tv.*, u.username, u.first_name, u.last_name,
-                   TO_CHAR(tv.submitted_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Moscow', 'DD.MM.YYYY HH24:MI') as moscow_time
+            SELECT tv.*, u.username, u.first_name, u.last_name
             FROM task_verifications tv 
             JOIN user_profiles u ON tv.user_id = u.user_id 
             WHERE tv.status = 'pending' 
@@ -1245,20 +1324,12 @@ app.get('/api/admin/task-verifications', async (req, res) => {
     }
 });
 
-// Approve task verification (for all admins)
+// Approve task verification (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
     
     try {
-        const userIsAdmin = await checkAdminAccess(adminId);
-        if (!userIsAdmin) {
-            return res.status(403).json({
-                success: false,
-                error: 'Доступ запрещен'
-            });
-        }
-        
         // Get verification info
         const verification = await pool.query(
             'SELECT * FROM task_verifications WHERE id = $1', 
@@ -1288,13 +1359,6 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             WHERE id = $1
         `, [verificationData.user_task_id]);
         
-        // Update task completed count
-        await pool.query(`
-            UPDATE tasks 
-            SET completed_count = COALESCE(completed_count, 0) + 1 
-            WHERE id = $1
-        `, [verificationData.task_id]);
-        
         // Update user balance and stats
         await pool.query(`
             UPDATE user_profiles 
@@ -1321,20 +1385,12 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
     }
 });
 
-// Reject task verification (for all admins)
+// Reject task verification (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
     
     try {
-        const userIsAdmin = await checkAdminAccess(adminId);
-        if (!userIsAdmin) {
-            return res.status(403).json({
-                success: false,
-                error: 'Доступ запрещен'
-            });
-        }
-        
         // Get verification info
         const verification = await pool.query(
             'SELECT * FROM task_verifications WHERE id = $1', 
@@ -1379,7 +1435,7 @@ app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res
 
 // ==================== WITHDRAWAL ENDPOINTS ====================
 
-// Request withdrawal
+// Request withdrawal - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.post('/api/withdrawal/request', async (req, res) => {
     const { user_id, amount, username, first_name } = req.body;
     
@@ -1410,14 +1466,6 @@ app.post('/api/withdrawal/request', async (req, res) => {
         const requestAmount = parseFloat(amount);
         
         console.log(`💰 Баланс пользователя: ${userBalance}, Запрошено: ${requestAmount}`);
-        
-        // Проверка минимальной суммы вывода
-        if (requestAmount < MIN_WITHDRAWAL_AMOUNT) {
-            return res.status(400).json({
-                success: false,
-                error: `Минимальная сумма вывода - ${MIN_WITHDRAWAL_AMOUNT} звезд`
-            });
-        }
         
         if (requestAmount > userBalance) {
             return res.status(400).json({
@@ -1472,9 +1520,7 @@ app.get('/api/withdraw/history/:userId', async (req, res) => {
     
     try {
         const result = await pool.query(`
-            SELECT *, 
-                   TO_CHAR(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Moscow', 'DD.MM.YYYY HH24:MI') as moscow_time
-            FROM withdrawal_requests 
+            SELECT * FROM withdrawal_requests 
             WHERE user_id = $1 
             ORDER BY created_at DESC
         `, [userId]);
@@ -1492,99 +1538,9 @@ app.get('/api/withdraw/history/:userId', async (req, res) => {
     }
 });
 
-// Get withdrawal requests for admin
-app.get('/api/admin/withdrawal-requests', async (req, res) => {
-    const { adminId } = req.query;
-    
-    console.log('🔄 Запрос на получение заявок на вывод от админа:', adminId);
-    
-    // Проверка прав администратора
-    const isAdmin = await checkAdminAccess(adminId);
-    if (!isAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Доступ запрещен'
-        });
-    }
-    
-    try {
-        const result = await pool.query(`
-            SELECT wr.*, u.username, u.first_name,
-                   TO_CHAR(wr.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Moscow', 'DD.MM.YYYY HH24:MI') as moscow_time
-            FROM withdrawal_requests wr
-            LEFT JOIN user_profiles u ON wr.user_id = u.user_id
-            WHERE wr.status = 'pending'
-            ORDER BY wr.created_at DESC
-        `);
-        
-        console.log(`✅ Найдено ${result.rows.length} заявок на вывод`);
-        
-        res.json({
-            success: true,
-            requests: result.rows
-        });
-    } catch (error) {
-        console.error('❌ Get withdrawal requests error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
-
-// Complete withdrawal request
-app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) => {
-    const requestId = req.params.requestId;
-    const { adminId } = req.body;
-    
-    console.log('✅ Подтверждение выплаты:', { requestId, adminId });
-    
-    // Проверка прав администратора
-    const isAdmin = await checkAdminAccess(adminId);
-    if (!isAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Доступ запрещен'
-        });
-    }
-    
-    try {
-        // Обновляем статус заявки
-        const result = await pool.query(`
-            UPDATE withdrawal_requests 
-            SET status = 'completed', completed_at = CURRENT_TIMESTAMP, completed_by = $1
-            WHERE id = $2 AND status = 'pending'
-            RETURNING *
-        `, [adminId, requestId]);
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'Запрос не найден или уже обработан'
-            });
-        }
-        
-        const request = result.rows[0];
-        
-        console.log(`✅ Выплата подтверждена: ${request.amount}⭐ для пользователя ${request.user_id}`);
-        
-        res.json({
-            success: true,
-            message: 'Выплата подтверждена'
-        });
-        
-    } catch (error) {
-        console.error('❌ Complete withdrawal error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
-
 // ==================== ADMIN MANAGEMENT ENDPOINTS ====================
 
-// Получение списка всех админов
+// Получение списка всех админов - ТОЛЬКО для главного админа
 app.get('/api/admin/admins-list', async (req, res) => {
     const { adminId } = req.query;
     
@@ -1630,7 +1586,7 @@ app.get('/api/admin/admins-list', async (req, res) => {
     }
 });
 
-// Добавление нового админа по юзернейму
+// Добавление нового админа по юзернейму - ТОЛЬКО для главного админа
 app.post('/api/admin/add-admin', async (req, res) => {
     const { adminId, username } = req.body;
     
@@ -1713,7 +1669,7 @@ app.post('/api/admin/add-admin', async (req, res) => {
     }
 });
 
-// Удаление админа
+// Удаление админа (только для главного админа)
 app.post('/api/admin/remove-admin', async (req, res) => {
     const { adminId, targetAdminId } = req.body;
     
@@ -1886,7 +1842,7 @@ app.get('/api/debug/endpoints', async (req, res) => {
         res.json({
             success: true,
             endpoints: routes,
-            timestamp: getMoscowTime()
+            timestamp: new Date().toISOString()
         });
     } catch (error) {
         console.error('Debug endpoints error:', error);
@@ -1927,8 +1883,6 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📊 Health: http://localhost:${PORT}/api/health`);
     console.log(`🔐 Admin ID: ${ADMIN_ID}`);
-    console.log(`💰 Min withdrawal: ${MIN_WITHDRAWAL_AMOUNT} stars`);
-    console.log(`👥 Referral: ${REFERRAL_BONUS_INVITER}⭐ inviter, ${REFERRAL_BONUS_INVITED}⭐ invited`);
     console.log(`🗄️ Database: PostgreSQL`);
     console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
