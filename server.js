@@ -744,7 +744,7 @@ app.post('/api/user/tasks/start', async (req, res) => {
         if (existingTask.rows.length > 0) {
             return res.status(400).json({
                 success: false,
-                error: 'Вы уже выполняли это задание'
+                error: 'Вы уже выполняли это задание '
             });
         }
         
