@@ -6552,10 +6552,8 @@ function showTaskCategory(category) {
             if (targetContainer) {
                 targetContainer.style.display = 'block';
                 targetContainer.classList.add('active');
-                // ЗАГРУЖАЕМ ЗАДАНИЯ СРАЗУ ПРИ ПОКАЗЕ КОНТЕЙНЕРА
-                if (targetContainer.children.length === 0) {
-                    loadTasks();
-                }
+                // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: ЗАГРУЖАЕМ ЗАДАНИЯ СРАЗУ ПРИ ПОКАЗЕ КОНТЕЙНЕРА
+                loadTasks();
             }
             break;
             
@@ -6565,8 +6563,8 @@ function showTaskCategory(category) {
             if (targetContainer) {
                 targetContainer.style.display = 'block';
                 targetContainer.classList.add('active');
+                loadUserTasksForCategory('active');
             }
-            loadUserTasksForCategory('active');
             break;
             
         case 'completed':
@@ -6575,8 +6573,8 @@ function showTaskCategory(category) {
             if (targetContainer) {
                 targetContainer.style.display = 'block';
                 targetContainer.classList.add('active');
+                loadUserTasksForCategory('completed');
             }
-            loadUserTasksForCategory('completed');
             break;
             
         case 'rejected':
@@ -6585,8 +6583,8 @@ function showTaskCategory(category) {
             if (targetContainer) {
                 targetContainer.style.display = 'block';
                 targetContainer.classList.add('active');
+                loadUserTasksForCategory('rejected');
             }
-            loadUserTasksForCategory('rejected');
             break;
     }
     
@@ -6596,28 +6594,30 @@ function showTaskCategory(category) {
     }
 }
 
-// Функция для принудительного исправления layout
-function fixTasksLayout() {
-    const tasksTab = document.getElementById('tasks-tab');
-    if (!tasksTab) return;
+
+
+// // Функция для принудительного исправления layout
+// function fixTasksLayout() {
+//     const tasksTab = document.getElementById('tasks-tab');
+//     if (!tasksTab) return;
     
-    // Принудительно устанавливаем высоту
-    tasksTab.style.minHeight = '500px';
+//     // Принудительно устанавливаем высоту
+//     tasksTab.style.minHeight = '500px';
     
-    // Обновляем все контейнеры заданий
-    const containers = ['new-tasks', 'confirmation-tasks', 'completed-tasks', 'rejected-tasks'];
-    containers.forEach(containerId => {
-        const container = document.getElementById(containerId);
-        if (container) {
-            container.style.position = 'relative';
-            container.style.minHeight = '300px';
-            // Убираем все transition
-            container.style.transition = 'none';
-        }
-    });
+//     // Обновляем все контейнеры заданий
+//     const containers = ['new-tasks', 'confirmation-tasks', 'completed-tasks', 'rejected-tasks'];
+//     containers.forEach(containerId => {
+//         const container = document.getElementById(containerId);
+//         if (container) {
+//             container.style.position = 'relative';
+//             container.style.minHeight = '300px';
+//             // Убираем все transition
+//             container.style.transition = 'none';
+//         }
+//     });
     
-    console.log('✅ Tasks layout fixed');
-}
+//     console.log('✅ Tasks layout fixed');
+// }
 
 // Вызывайте эту функцию при переключении на вкладку заданий
 function showTasksTab() {
@@ -6625,7 +6625,7 @@ function showTasksTab() {
     document.getElementById('tasks-tab').classList.add('active');
     updateNavState('tasks');
     
-    // Активируем вкладку "Новые" по умолчанию и загружаем задания
+    // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Активируем вкладку "Новые" по умолчанию и ЗАГРУЖАЕМ задания
     showTaskCategory('new');
     
     // Исправляем layout
@@ -6809,7 +6809,6 @@ async function initializeApp() {
     
     console.log('🎉 App initialized successfully');
 }
-
 // Функция для загрузки заданий пользователя по категории
 async function loadUserTasksForCategory(status) {
     if (!currentUser) return;
