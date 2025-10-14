@@ -4668,6 +4668,83 @@ input:checked + .theme-slider:before {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+/* 🔧 ДОПОЛНИТЕЛЬНЫЕ ФИКСЫ ДЛЯ НЕМЕДЛЕННОГО ОТОБРАЖЕНИЯ */
+.tasks-tab {
+    min-height: 500px;
+    position: relative;
+    overflow: visible !important;
+}
+
+.tasks-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: 1fr;
+    min-height: 200px;
+    position: relative;
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+}
+
+/* Гарантируем, что активный контейнер всегда видим */
+#new-tasks.active,
+#confirmation-tasks.active, 
+#completed-tasks.active,
+#rejected-tasks.active {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Убираем все анимации для задач */
+.task-card {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+}
+
+/* Стиль для индикатора загрузки */
+.loading-spinner {
+    font-size: 32px;
+    margin-bottom: 16px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Фикс для мгновенного переключения вкладок */
+.tasks-tabs {
+    display: flex;
+    margin-bottom: 20px;
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 6px;
+    border: 1px solid var(--border);
+    overflow-x: auto;
+    white-space: nowrap;
+    position: relative;
+    z-index: 2;
+}
+
+.task-tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px 8px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    min-width: 80px;
+}
+
+.task-tab.active {
+    background: var(--accent);
+    color: white;
+}
     </style>
 </head>
 <body>
