@@ -4875,26 +4875,24 @@ input:checked + .theme-slider:before {
         </div>
         
         <!-- Новые задания -->
-        <div id="new-tasks" class="tasks-grid">
-            <!-- Задания будут добавлены через JavaScript -->
-        </div>
-        
-        <!-- Задания на подтверждение -->
-        <div id="confirmation-tasks" class="tasks-grid" style="display: none;">
-            <!-- Задания будут добавлены через JavaScript -->
-        </div>
-        
-        <!-- Выполненные задания -->
-        <div id="completed-tasks" class="tasks-grid" style="display: none;">
-            <!-- Задания будут добавлены через JavaScript -->
-        </div>
+<div id="new-tasks" class="tasks-grid active">
+    <!-- Задания будут добавлены через JavaScript -->
+</div>
 
-        <!-- Отклоненные задания -->
-        <div id="rejected-tasks" class="tasks-grid" style="display: none;">
-            <!-- Задания будут добавлены через JavaScript -->
-        </div>
-    </div>
-    
+<!-- Задания на подтверждение -->
+<div id="confirmation-tasks" class="tasks-grid" style="display: none;">
+    <!-- Задания будут добавлены через JavaScript -->
+</div>
+
+<!-- Выполненные задания -->
+<div id="completed-tasks" class="tasks-grid" style="display: none;">
+    <!-- Задания будут добавлены через JavaScript -->
+</div>
+
+<!-- Отклоненные задания -->
+<div id="rejected-tasks" class="tasks-grid" style="display: none;">
+    <!-- Задания будут добавлены через JavaScript -->
+</div>
     <!-- Вкладка профиля -->
     <div id="profile-tab" class="tab-content">
         <!-- Заголовок профиля -->
@@ -5999,7 +5997,17 @@ async function loadTaskVerificationsForAdmin() {
         console.error('Error loading verifications:', error);
     }
 }
+// Функция для отладки состояния заданий
+function debugTasksState() {
+    console.log('🐛 DEBUG Tasks State:');
+    console.log('- tasks-tab active:', document.getElementById('tasks-tab').classList.contains('active'));
+    console.log('- new-tasks visible:', document.getElementById('new-tasks').style.display);
+    console.log('- new-tasks active:', document.getElementById('new-tasks').classList.contains('active'));
+    console.log('- allTasks length:', allTasks ? allTasks.length : 0);
+}
 
+// Вызов для отладки
+setTimeout(debugTasksState, 3000);
 // 🎨 Модальное окно проверки заданий
 function showVerificationsModal(verifications) {
     let modalHTML = `
