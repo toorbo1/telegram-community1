@@ -55,7 +55,7 @@ const pool = new Pool({
 
 const ADMIN_ID = 8036875641;
 
-// 🔧 ФУНКЦИЯ ПРОВЕРКИ ПРАВ АДМИНИСТРАТОРА
+// Функция проверки прав администратора
 async function checkAdminAccess(userId) {
     try {
         const result = await pool.query(
@@ -72,266 +72,199 @@ async function checkAdminAccess(userId) {
     }
 }
 
-// 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ БАЗЫ ДАННЫХ
+// Упрощенная инициализация базы данных
 async function initDatabase() {
     try {
-        console.log('🔄 Checking database initialization...');
+        console.log('🔄 Initializing simplified database...');
         
-        // Проверяем существование основных таблиц
-        const tablesToCheck = [
-            'user_profiles', 'tasks', 'posts', 'support_chats', 
-            'user_tasks', 'task_verifications', 'withdrawal_requests', 'support_messages'
-        ];
-        
-        let missingTables = [];
-        
-        for (const table of tablesToCheck) {
-            const tableExists = await pool.query(`
-                SELECT EXISTS (
-                    SELECT FROM information_schema.tables 
-                    WHERE table_schema = 'public' 
-                    AND table_name = $1
-                );
-            `, [table]);
-            
-            if (!tableExists.rows[0].exists) {
-                missingTables.push(table);
-                console.log(`❌ Table missing: ${table}`);
-            } else {
-                console.log(`✅ Table exists: ${table}`);
-            }
-        }
-        
-        if (missingTables.length > 0) {
-            console.log(`🔄 Creating missing tables: ${missingTables.join(', ')}`);
-            await createMissingTables(missingTables);
-        } else {
-            console.log('✅ All tables exist, initialization skipped');
-        }
-        
-        // Всегда проверяем и добавляем недостающие колонки
-        await checkAndFixTableStructure();
-        
-    } catch (error) {
-        console.error('❌ Database initialization error:', error);
-    }
-}
+        // Таблица пользователей
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS user_profiles (
+                user_id BIGINT PRIMARY KEY,
+                username TEXT,
+                first_name TEXT,
+                last_name TEXT,
+                photo_url TEXT,
+                balance REAL DEFAULT 0,
+                level INTEGER DEFAULT 1,
+                is_admin BOOLEAN DEFAULT false,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
 
-// 🔧 СОЗДАНИЕ ОТСУТСТВУЮЩИХ ТАБЛИЦ
-async function createMissingTables(missingTables) {
-    try {
-        for (const table of missingTables) {
-            console.log(`🔄 Creating table: ${table}`);
-            
-            switch(table) {
-                case 'user_profiles':
-                    await pool.query(`
-                        CREATE TABLE user_profiles (
-                            user_id BIGINT PRIMARY KEY,
-                            username TEXT,
-                            first_name TEXT,
-                            last_name TEXT,
-                            photo_url TEXT,
-                            balance REAL DEFAULT 0,
-                            level INTEGER DEFAULT 1,
-                            is_admin BOOLEAN DEFAULT false,
-                            tasks_completed INTEGER DEFAULT 0,
-                            active_tasks INTEGER DEFAULT 0,
-                            quality_rate REAL DEFAULT 0,
-                            referral_count INTEGER DEFAULT 0,
-                            referral_earned REAL DEFAULT 0,
-                            experience INTEGER DEFAULT 0,
-                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                        )
-                    `);
-                    break;
-                    
-                case 'tasks':
-                    await pool.query(`
-                        CREATE TABLE tasks (
-                            id SERIAL PRIMARY KEY,
-                            title TEXT NOT NULL,
-                            description TEXT NOT NULL,
-                            price REAL NOT NULL,
-                            created_by BIGINT NOT NULL,
-                            category TEXT DEFAULT 'general',
-                            time_to_complete TEXT DEFAULT '5 минут',
-                            difficulty TEXT DEFAULT 'Легкая',
-                            people_required INTEGER DEFAULT 1,
-                            repost_time TEXT DEFAULT '1 день',
-                            task_url TEXT,
-                            status TEXT DEFAULT 'active',
-                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                        )
-                    `);
-                    break;
-                    
-                case 'posts':
-                    await pool.query(`
-                        CREATE TABLE posts (
-                            id SERIAL PRIMARY KEY,
-                            title TEXT NOT NULL,
-                            content TEXT NOT NULL,
-                            author TEXT NOT NULL,
-                            author_id BIGINT NOT NULL,
-                            image_url TEXT,
-                            likes INTEGER DEFAULT 0,
-                            dislikes INTEGER DEFAULT 0,
-                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                        )
-                    `);
-                    break;
-                    
-                case 'support_chats':
-                    await pool.query(`
-                        CREATE TABLE support_chats (
-                            id SERIAL PRIMARY KEY,
-                            user_id BIGINT NOT NULL,
-                            user_name TEXT NOT NULL,
-                            user_username TEXT,
-                            last_message TEXT,
-                            last_message_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                            is_active BOOLEAN DEFAULT true,
-                            unread_count INTEGER DEFAULT 0,
-                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                        )
-                    `);
-                    break;
-                    
-                case 'user_tasks':
-                    await pool.query(`
-                        CREATE TABLE user_tasks (
-                            id SERIAL PRIMARY KEY,
-                            user_id BIGINT NOT NULL,
-                            task_id INTEGER NOT NULL,
-                            status TEXT DEFAULT 'active',
-                            screenshot_url TEXT,
-                            started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                            submitted_at TIMESTAMP,
-                            completed_at TIMESTAMP,
-                            rejected_at TIMESTAMP
-                        )
-                    `);
-                    break;
-                    
-                case 'task_verifications':
-                    await pool.query(`
-                        CREATE TABLE task_verifications (
-                            id SERIAL PRIMARY KEY,
-                            user_task_id INTEGER NOT NULL,
-                            user_id BIGINT NOT NULL,
-                            task_id INTEGER NOT NULL,
-                            user_name TEXT NOT NULL,
-                            user_username TEXT,
-                            task_title TEXT NOT NULL,
-                            task_price REAL NOT NULL,
-                            screenshot_url TEXT NOT NULL,
-                            status TEXT DEFAULT 'pending',
-                            submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                            reviewed_at TIMESTAMP,
-                            reviewed_by BIGINT
-                        )
-                    `);
-                    break;
-                    
-                case 'withdrawal_requests':
-                    await pool.query(`
-                        CREATE TABLE withdrawal_requests (
-                            id SERIAL PRIMARY KEY,
-                            user_id BIGINT NOT NULL,
-                            username TEXT,
-                            first_name TEXT,
-                            amount REAL NOT NULL,
-                            status TEXT DEFAULT 'pending',
-                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                            completed_at TIMESTAMP,
-                            completed_by BIGINT
-                        )
-                    `);
-                    break;
-                    
-                case 'support_messages':
-                    await pool.query(`
-                        CREATE TABLE support_messages (
-                            id SERIAL PRIMARY KEY,
-                            chat_id INTEGER NOT NULL,
-                            user_id BIGINT NOT NULL,
-                            user_name TEXT NOT NULL,
-                            user_username TEXT,
-                            message TEXT NOT NULL,
-                            image_url TEXT,
-                            is_admin BOOLEAN DEFAULT false,
-                            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                        )
-                    `);
-                    break;
-            }
-            
-            console.log(`✅ Table ${table} created successfully`);
-        }
-        
-        // Добавляем начальные данные
-        await addInitialData();
-        
-    } catch (error) {
-        console.error('❌ Error creating tables:', error);
-        throw error;
-    }
-}
+        // Таблица заданий
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS tasks (
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL,
+                price REAL NOT NULL,
+                created_by BIGINT NOT NULL,
+                category TEXT DEFAULT 'general',
+                time_to_complete TEXT DEFAULT '5 минут',
+                difficulty TEXT DEFAULT 'Легкая',
+                people_required INTEGER DEFAULT 1,
+                repost_time TEXT DEFAULT '1 день',
+                task_url TEXT,
+                status TEXT DEFAULT 'active',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+// Таблица запросов на вывод - ИСПРАВЛЕННАЯ ВЕРСИЯ
+await pool.query(`
+    CREATE TABLE IF NOT EXISTS withdrawal_requests (
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT NOT NULL,
+        username TEXT,
+        first_name TEXT,
+        amount REAL NOT NULL,
+        status TEXT DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        completed_at TIMESTAMP,
+        completed_by BIGINT
+    )
+`);
 
-// 🔧 ПРОВЕРКА И ИСПРАВЛЕНИЕ СТРУКТУРЫ ТАБЛИЦ
-async function checkAndFixTableStructure() {
-    console.log('🔧 Checking table structure...');
-    
-    try {
-        // Проверяем и добавляем недостающие колонки для user_profiles
-        await addColumnIfNotExists('user_profiles', 'tasks_completed', 'INTEGER DEFAULT 0');
-        await addColumnIfNotExists('user_profiles', 'active_tasks', 'INTEGER DEFAULT 0');
-        await addColumnIfNotExists('user_profiles', 'quality_rate', 'REAL DEFAULT 0');
-        await addColumnIfNotExists('user_profiles', 'referral_count', 'INTEGER DEFAULT 0');
-        await addColumnIfNotExists('user_profiles', 'referral_earned', 'REAL DEFAULT 0');
-        await addColumnIfNotExists('user_profiles', 'experience', 'INTEGER DEFAULT 0');
-        await addColumnIfNotExists('user_profiles', 'updated_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
+// Добавляем недостающие колонки если таблица уже существует
+await pool.query(`
+    DO $$ 
+    BEGIN
+        -- Добавляем username если не существует
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='withdrawal_requests' AND column_name='username') THEN
+            ALTER TABLE withdrawal_requests ADD COLUMN username TEXT;
+        END IF;
         
-        // Проверяем withdrawal_requests
-        await addColumnIfNotExists('withdrawal_requests', 'username', 'TEXT');
-        await addColumnIfNotExists('withdrawal_requests', 'first_name', 'TEXT');
-        await addColumnIfNotExists('withdrawal_requests', 'completed_by', 'BIGINT');
+        -- Добавляем first_name если не существует
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='withdrawal_requests' AND column_name='first_name') THEN
+            ALTER TABLE withdrawal_requests ADD COLUMN first_name TEXT;
+        END IF;
         
-        console.log('✅ Table structure checked and fixed');
-        
-    } catch (error) {
-        console.error('❌ Error checking table structure:', error);
-    }
-}
+        -- Добавляем completed_by если не существует
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='withdrawal_requests' AND column_name='completed_by') THEN
+            ALTER TABLE withdrawal_requests ADD COLUMN completed_by BIGINT;
+        END IF;
+    END $$;
+`);
+        // Таблица постов
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS posts (
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                content TEXT NOT NULL,
+                author TEXT NOT NULL,
+                author_id BIGINT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
 
-// 🔧 ДОБАВЛЕНИЕ КОЛОНКИ ЕСЛИ ОНА ОТСУТСТВУЕТ
-async function addColumnIfNotExists(tableName, columnName, columnDefinition) {
-    try {
-        const columnExists = await pool.query(`
-            SELECT EXISTS (
-                SELECT FROM information_schema.columns 
-                WHERE table_name = $1 AND column_name = $2
-            );
-        `, [tableName, columnName]);
-        
-        if (!columnExists.rows[0].exists) {
-            console.log(`🔄 Adding column ${columnName} to table ${tableName}`);
-            await pool.query(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDefinition}`);
-            console.log(`✅ Column ${columnName} added to ${tableName}`);
-        }
-    } catch (error) {
-        console.error(`❌ Error adding column ${columnName} to ${tableName}:`, error);
-    }
-}
+        // Таблица чатов поддержки
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS support_chats (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                user_name TEXT NOT NULL,
+                user_username TEXT,
+                last_message TEXT,
+                last_message_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                is_active BOOLEAN DEFAULT true,
+                unread_count INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
 
-// 🔧 ДОБАВЛЕНИЕ НАЧАЛЬНЫХ ДАННЫХ
-async function addInitialData() {
-    try {
-        console.log('🔄 Adding initial data...');
+        // Таблица заданий пользователей
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS user_tasks (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                task_id INTEGER NOT NULL,
+                status TEXT DEFAULT 'active',
+                started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                screenshot_url TEXT,
+                submitted_at TIMESTAMP,
+                completed_at TIMESTAMP
+            )
+        `);
+
+        // Таблица проверки заданий
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS task_verifications (
+                id SERIAL PRIMARY KEY,
+                user_task_id INTEGER NOT NULL,
+                user_id BIGINT NOT NULL,
+                task_id INTEGER NOT NULL,
+                user_name TEXT NOT NULL,
+                user_username TEXT,
+                task_title TEXT NOT NULL,
+                task_price REAL NOT NULL,
+                screenshot_url TEXT NOT NULL,
+                status TEXT DEFAULT 'pending',
+                submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                reviewed_at TIMESTAMP,
+                reviewed_by BIGINT
+            )
+        `);
+
+        // Таблица запросов на вывод
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS withdrawal_requests (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                amount REAL NOT NULL,
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP
+            )
+        `);
+
+        // Таблица сообщений
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS support_messages (
+                id SERIAL PRIMARY KEY,
+                chat_id INTEGER NOT NULL,
+                user_id BIGINT NOT NULL,
+                user_name TEXT NOT NULL,
+                user_username TEXT,
+                message TEXT NOT NULL,
+                is_admin BOOLEAN DEFAULT false,
+                sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Добавляем недостающие колонки
+        await pool.query(`
+            ALTER TABLE support_chats 
+            ADD COLUMN IF NOT EXISTS user_username TEXT,
+            ADD COLUMN IF NOT EXISTS unread_count INTEGER DEFAULT 0
+        `);
         
-        // Добавляем главного администратора
+        await pool.query(`
+            ALTER TABLE tasks 
+            ADD COLUMN IF NOT EXISTS created_by BIGINT,
+            ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'general',
+            ADD COLUMN IF NOT EXISTS time_to_complete TEXT DEFAULT '5 минут',
+            ADD COLUMN IF NOT EXISTS difficulty TEXT DEFAULT 'Легкая',
+            ADD COLUMN IF NOT EXISTS people_required INTEGER DEFAULT 1,
+            ADD COLUMN IF NOT EXISTS repost_time TEXT DEFAULT '1 день',
+            ADD COLUMN IF NOT EXISTS task_url TEXT
+        `);
+
+        // Добавляем колонку user_username в task_verifications если ее нет
+        await pool.query(`
+            ALTER TABLE task_verifications 
+            ADD COLUMN IF NOT EXISTS user_username TEXT
+        `);
+
+        // Добавляем колонку user_username в support_messages если ее нет
+        await pool.query(`
+            ALTER TABLE support_messages 
+            ADD COLUMN IF NOT EXISTS user_username TEXT
+        `);
+
+        // Гарантируем существование главного админа
         await pool.query(`
             INSERT INTO user_profiles 
             (user_id, username, first_name, last_name, is_admin) 
@@ -341,47 +274,107 @@ async function addInitialData() {
                 is_admin = true,
                 updated_at = CURRENT_TIMESTAMP
         `, [ADMIN_ID, 'linkgold_admin', 'Главный', 'Администратор', true]);
-        
-        // Добавляем примеры заданий если их нет
+
+        // Добавляем примеры если таблицы пустые
         const tasksCount = await pool.query('SELECT COUNT(*) FROM tasks');
         if (parseInt(tasksCount.rows[0].count) === 0) {
             await pool.query(`
-                INSERT INTO tasks (title, description, price, created_by, category) 
+                INSERT INTO tasks (title, description, price, created_by) 
                 VALUES 
-                ('Подписаться на канал', 'Подпишитесь на наш Telegram канал и оставайтесь подписанным минимум 3 дня', 50, $1, 'subscribe'),
-                ('Посмотреть видео', 'Посмотрите видео до конца и оставьте комментарий', 30, $1, 'view'),
-                ('Сделать репост', 'Сделайте репост записи в своем канале или чате', 70, $1, 'repost'),
-                ('Поставить лайк', 'Поставьте лайк на последней записи канала', 25, $1, 'social'),
-                ('Написать комментарий', 'Напишите содержательный комментарий под постом', 40, $1, 'comment')
+                ('Подписаться на канал', 'Подпишитесь на наш Telegram канал', 50, $1),
+                ('Посмотреть видео', 'Посмотрите видео до конца', 30, $1),
+                ('Сделать репост', 'Сделайте репост записи', 70, $1)
             `, [ADMIN_ID]);
-            console.log('✅ Sample tasks added');
         }
-        
-        // Добавляем пример поста если нет постов
+
         const postsCount = await pool.query('SELECT COUNT(*) FROM posts');
         if (parseInt(postsCount.rows[0].count) === 0) {
             await pool.query(`
                 INSERT INTO posts (title, content, author, author_id) 
-                VALUES ('Добро пожаловать в LinkGold!', 'Мы рады приветствовать вас в нашем сервисе заработка! Здесь вы можете выполнять простые задания и получать за это вознаграждение.\n\n📋 Как начать:\n1. Перейдите в раздел "Задания"\n2. Выберите подходящее задание\n3. Выполните его согласно инструкции\n4. Получите оплату после проверки\n\n💫 Удачи в заработке!', 'Администратор', $1)
+                VALUES ('Добро пожаловать!', 'Начните зарабатывать выполняя простые задания!', 'Администратор', $1)
             `, [ADMIN_ID]);
-            console.log('✅ Sample post added');
         }
-        
-        console.log('✅ Initial data added successfully');
-        
+
+await fixWithdrawalTable();
+
+         console.log('✅ Simplified database initialized successfully');
     } catch (error) {
-        console.error('❌ Error adding initial data:', error);
+        console.error('❌ Database initialization error:', error);
     }
 }
 
 // Инициализируем базу данных при запуске
-initDatabase().then(() => {
-    console.log('✅ Database initialization completed');
-}).catch(error => {
-    console.error('❌ Database initialization failed:', error);
-});
+initDatabase();
 
-// ==================== BASIC ENDPOINTS ====================
+// Функция для принудительного обновления структуры таблицы
+async function fixWithdrawalTable() {
+    try {
+        console.log('🔧 Проверка и исправление структуры таблицы withdrawal_requests...');
+        
+        // Проверяем существование таблицы
+        const tableExists = await pool.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = 'withdrawal_requests'
+            );
+        `);
+        
+        if (!tableExists.rows[0].exists) {
+            console.log('❌ Таблица withdrawal_requests не существует, создаем...');
+            await pool.query(`
+                CREATE TABLE withdrawal_requests (
+                    id SERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL,
+                    username TEXT,
+                    first_name TEXT,
+                    amount REAL NOT NULL,
+                    status TEXT DEFAULT 'pending',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    completed_at TIMESTAMP,
+                    completed_by BIGINT
+                )
+            `);
+            console.log('✅ Таблица создана');
+            return;
+        }
+        
+        // Проверяем и добавляем отсутствующие колонки
+        const columnsToCheck = ['username', 'first_name', 'completed_by'];
+        
+        for (const column of columnsToCheck) {
+            const columnExists = await pool.query(`
+                SELECT EXISTS (
+                    SELECT FROM information_schema.columns 
+                    WHERE table_name = 'withdrawal_requests' AND column_name = $1
+                );
+            `, [column]);
+            
+            if (!columnExists.rows[0].exists) {
+                console.log(`❌ Колонка ${column} отсутствует, добавляем...`);
+                
+                if (column === 'completed_by') {
+                    await pool.query(`ALTER TABLE withdrawal_requests ADD COLUMN ${column} BIGINT`);
+                } else {
+                    await pool.query(`ALTER TABLE withdrawal_requests ADD COLUMN ${column} TEXT`);
+                }
+                
+                console.log(`✅ Колонка ${column} добавлена`);
+            } else {
+                console.log(`✅ Колонка ${column} существует`);
+            }
+        }
+        
+        console.log('✅ Структура таблицы проверена и исправлена');
+    } catch (error) {
+        console.error('❌ Ошибка при исправлении таблицы:', error);
+    }
+}
+
+// Вызовите эту функцию при инициализации сервера
+fixWithdrawalTable();
+
+// ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
+
 
 // Health check
 app.get('/api/health', async (req, res) => {
@@ -391,8 +384,7 @@ app.get('/api/health', async (req, res) => {
             status: 'OK', 
             message: 'LinkGold API is running!',
             timestamp: new Date().toISOString(),
-            database: 'PostgreSQL',
-            admin_id: ADMIN_ID
+            database: 'PostgreSQL'
         });
     } catch (error) {
         console.error('Health check error:', error);
@@ -403,52 +395,162 @@ app.get('/api/health', async (req, res) => {
         });
     }
 });
+// ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
 
-// Detailed health check
-app.get('/api/health/detailed', async (req, res) => {
+// Get withdrawal requests for admin - ИСПРАВЛЕННАЯ ВЕРСИЯ
+app.get('/api/admin/withdrawal-requests', async (req, res) => {
+    const { adminId } = req.query;
+    
+    console.log('🔄 Запрос на получение заявок на вывод от админа:', adminId);
+    
+    // Проверка прав администратора
+    const isAdmin = await checkAdminAccess(adminId);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен'
+        });
+    }
+    
     try {
-        await pool.query('SELECT 1');
+        const result = await pool.query(`
+            SELECT wr.*, u.username, u.first_name 
+            FROM withdrawal_requests wr
+            LEFT JOIN user_profiles u ON wr.user_id = u.user_id
+            WHERE wr.status = 'pending'
+            ORDER BY wr.created_at DESC
+        `);
         
-        const tables = ['user_profiles', 'tasks', 'posts', 'withdrawal_requests'];
-        const tableStatus = {};
-        
-        for (const table of tables) {
-            const exists = await pool.query(`
-                SELECT EXISTS (
-                    SELECT FROM information_schema.tables 
-                    WHERE table_schema = 'public' 
-                    AND table_name = $1
-                );
-            `, [table]);
-            
-            tableStatus[table] = exists.rows[0].exists;
-            
-            if (exists.rows[0].exists) {
-                const count = await pool.query(`SELECT COUNT(*) FROM ${table}`);
-                tableStatus[`${table}_count`] = parseInt(count.rows[0].count);
-            }
-        }
+        console.log(`✅ Найдено ${result.rows.length} заявок на вывод`);
         
         res.json({
-            status: 'OK',
-            database: 'PostgreSQL - Connected',
-            tables: tableStatus,
-            timestamp: new Date().toISOString(),
-            admin_id: ADMIN_ID
+            success: true,
+            requests: result.rows
         });
-        
     } catch (error) {
-        console.error('Detailed health check error:', error);
+        console.error('❌ Get withdrawal requests error:', error);
         res.status(500).json({
-            status: 'ERROR',
-            database: 'PostgreSQL - Connection failed',
-            error: error.message,
-            timestamp: new Date().toISOString()
+            success: false,
+            error: 'Database error: ' + error.message
         });
     }
 });
 
-// ==================== USER ENDPOINTS ====================
+// Complete withdrawal request - ИСПРАВЛЕННАЯ ВЕРСИЯ
+app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) => {
+    const requestId = req.params.requestId;
+    const { adminId } = req.body;
+    
+    console.log('✅ Подтверждение выплаты:', { requestId, adminId });
+    
+    // Проверка прав администратора
+    const isAdmin = await checkAdminAccess(adminId);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен'
+        });
+    }
+    
+    try {
+        // Обновляем статус заявки
+        const result = await pool.query(`
+            UPDATE withdrawal_requests 
+            SET status = 'completed', completed_at = CURRENT_TIMESTAMP, completed_by = $1
+            WHERE id = $2 AND status = 'pending'
+            RETURNING *
+        `, [adminId, requestId]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Запрос не найден или уже обработан'
+            });
+        }
+        
+        const request = result.rows[0];
+        
+        console.log(`✅ Выплата подтверждена: ${request.amount}⭐ для пользователя ${request.user_id}`);
+        
+        res.json({
+            success: true,
+            message: 'Выплата подтверждена'
+        });
+        
+    } catch (error) {
+        console.error('❌ Complete withdrawal error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+// Функция для принудительного обновления структуры таблицы
+async function fixWithdrawalTable() {
+    try {
+        console.log('🔧 Проверка и исправление структуры таблицы withdrawal_requests...');
+        
+        // Проверяем существование таблицы
+        const tableExists = await pool.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = 'withdrawal_requests'
+            );
+        `);
+        
+        if (!tableExists.rows[0].exists) {
+            console.log('❌ Таблица withdrawal_requests не существует, создаем...');
+            await pool.query(`
+                CREATE TABLE withdrawal_requests (
+                    id SERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL,
+                    username TEXT,
+                    first_name TEXT,
+                    amount REAL NOT NULL,
+                    status TEXT DEFAULT 'pending',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    completed_at TIMESTAMP,
+                    completed_by BIGINT
+                )
+            `);
+            console.log('✅ Таблица создана');
+            return;
+        }
+        
+        // Проверяем и добавляем отсутствующие колонки
+        const columnsToCheck = ['username', 'first_name', 'completed_by'];
+        
+        for (const column of columnsToCheck) {
+            const columnExists = await pool.query(`
+                SELECT EXISTS (
+                    SELECT FROM information_schema.columns 
+                    WHERE table_name = 'withdrawal_requests' AND column_name = $1
+                );
+            `, [column]);
+            
+            if (!columnExists.rows[0].exists) {
+                console.log(`❌ Колонка ${column} отсутствует, добавляем...`);
+                
+                if (column === 'completed_by') {
+                    await pool.query(`ALTER TABLE withdrawal_requests ADD COLUMN ${column} BIGINT`);
+                } else {
+                    await pool.query(`ALTER TABLE withdrawal_requests ADD COLUMN ${column} TEXT`);
+                }
+                
+                console.log(`✅ Колонка ${column} добавлена`);
+            } else {
+                console.log(`✅ Колонка ${column} существует`);
+            }
+        }
+        
+        console.log('✅ Структура таблицы проверена и исправлена');
+    } catch (error) {
+        console.error('❌ Ошибка при исправлении таблицы:', error);
+    }
+}
+
+// Вызовите эту функцию при инициализации сервера
+fixWithdrawalTable();
 
 // User authentication
 app.post('/api/user/auth', async (req, res) => {
@@ -552,7 +654,7 @@ app.get('/api/posts', async (req, res) => {
     }
 });
 
-// Create post (for all admins)
+// Create post (for all admins) - УПРОЩЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.post('/api/posts', async (req, res) => {
     const { title, content, author, authorId } = req.body;
     
@@ -584,7 +686,7 @@ app.post('/api/posts', async (req, res) => {
     }
 });
 
-// Delete post (for all admins)
+// Delete post (for all admins) - УПРОЩЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.delete('/api/posts/:id', async (req, res) => {
     try {
         await pool.query("DELETE FROM posts WHERE id = $1", [req.params.id]);
@@ -643,7 +745,7 @@ app.get('/api/tasks', async (req, res) => {
     }
 });
 
-// Create task (for all admins)
+// Create task (for all admins) - УПРОЩЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.post('/api/tasks', async (req, res) => {
     const { title, description, price, created_by } = req.body;
     
@@ -683,7 +785,7 @@ app.post('/api/tasks', async (req, res) => {
     }
 });
 
-// Delete task (for all admins)
+// Delete task (for all admins) - УПРОЩЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.delete('/api/tasks/:id', async (req, res) => {
     try {
         await pool.query("DELETE FROM tasks WHERE id = $1", [req.params.id]);
@@ -744,7 +846,7 @@ app.post('/api/user/tasks/start', async (req, res) => {
         if (existingTask.rows.length > 0) {
             return res.status(400).json({
                 success: false,
-                error: 'Вы уже выполняли это задание '
+                error: 'Вы уже выполняли это задание'
             });
         }
         
@@ -933,7 +1035,7 @@ app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
 
 // ==================== SUPPORT CHAT ENDPOINTS ====================
 
-// Get or create user chat
+// Get or create user chat - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.get('/api/support/user-chat/:userId', async (req, res) => {
     const userId = req.params.userId;
     
@@ -1011,7 +1113,7 @@ app.get('/api/support/chats/:chatId/messages', async (req, res) => {
     }
 });
 
-// Send message to chat
+// Send message to chat - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.post('/api/support/chats/:chatId/messages', async (req, res) => {
     const chatId = req.params.chatId;
     const { user_id, user_name, user_username, message, is_admin } = req.body;
@@ -1053,7 +1155,7 @@ app.post('/api/support/chats/:chatId/messages', async (req, res) => {
     }
 });
 
-// Get all chats for admin (for all admins)
+// Get all chats for admin (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.get('/api/support/chats', async (req, res) => {
     try {
         const result = await pool.query(`
@@ -1075,7 +1177,7 @@ app.get('/api/support/chats', async (req, res) => {
     }
 });
 
-// Get all chats (including archived) (for all admins)
+// Get all chats (including archived) (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.get('/api/support/all-chats', async (req, res) => {
     try {
         const result = await pool.query(`
@@ -1096,7 +1198,7 @@ app.get('/api/support/all-chats', async (req, res) => {
     }
 });
 
-// Get archived chats (for all admins)
+// Get archived chats (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.get('/api/support/archived-chats', async (req, res) => {
     try {
         const result = await pool.query(`
@@ -1118,7 +1220,7 @@ app.get('/api/support/archived-chats', async (req, res) => {
     }
 });
 
-// Archive chat (for all admins)
+// Archive chat (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.put('/api/support/chats/:chatId/archive', async (req, res) => {
     const chatId = req.params.chatId;
     
@@ -1142,7 +1244,7 @@ app.put('/api/support/chats/:chatId/archive', async (req, res) => {
     }
 });
 
-// Restore chat (for all admins)
+// Restore chat (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.put('/api/support/chats/:chatId/restore', async (req, res) => {
     const chatId = req.params.chatId;
     
@@ -1166,7 +1268,7 @@ app.put('/api/support/chats/:chatId/restore', async (req, res) => {
     }
 });
 
-// Delete chat (for all admins)
+// Delete chat (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.delete('/api/support/chats/:chatId', async (req, res) => {
     const chatId = req.params.chatId;
     
@@ -1198,7 +1300,7 @@ app.delete('/api/support/chats/:chatId', async (req, res) => {
 
 // ==================== TASK VERIFICATION ENDPOINTS ====================
 
-// Task verification system (for all admins)
+// Task verification system (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.get('/api/admin/task-verifications', async (req, res) => {
     try {
         const result = await pool.query(`
@@ -1222,7 +1324,7 @@ app.get('/api/admin/task-verifications', async (req, res) => {
     }
 });
 
-// Approve task verification (for all admins)
+// Approve task verification (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
@@ -1283,7 +1385,7 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
     }
 });
 
-// Reject task verification (for all admins)
+// Reject task verification (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
@@ -1333,7 +1435,7 @@ app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res
 
 // ==================== WITHDRAWAL ENDPOINTS ====================
 
-// Request withdrawal
+// Request withdrawal - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.post('/api/withdrawal/request', async (req, res) => {
     const { user_id, amount, username, first_name } = req.body;
     
@@ -1429,97 +1531,6 @@ app.get('/api/withdraw/history/:userId', async (req, res) => {
         });
     } catch (error) {
         console.error('Get withdrawal history error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
-
-// ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
-
-// Get withdrawal requests for admin
-app.get('/api/admin/withdrawal-requests', async (req, res) => {
-    const { adminId } = req.query;
-    
-    console.log('🔄 Запрос на получение заявок на вывод от админа:', adminId);
-    
-    // Проверка прав администратора
-    const isAdmin = await checkAdminAccess(adminId);
-    if (!isAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Доступ запрещен'
-        });
-    }
-    
-    try {
-        const result = await pool.query(`
-            SELECT wr.*, u.username, u.first_name 
-            FROM withdrawal_requests wr
-            LEFT JOIN user_profiles u ON wr.user_id = u.user_id
-            WHERE wr.status = 'pending'
-            ORDER BY wr.created_at DESC
-        `);
-        
-        console.log(`✅ Найдено ${result.rows.length} заявок на вывод`);
-        
-        res.json({
-            success: true,
-            requests: result.rows
-        });
-    } catch (error) {
-        console.error('❌ Get withdrawal requests error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
-
-// Complete withdrawal request
-app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) => {
-    const requestId = req.params.requestId;
-    const { adminId } = req.body;
-    
-    console.log('✅ Подтверждение выплаты:', { requestId, adminId });
-    
-    // Проверка прав администратора
-    const isAdmin = await checkAdminAccess(adminId);
-    if (!isAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Доступ запрещен'
-        });
-    }
-    
-    try {
-        // Обновляем статус заявки
-        const result = await pool.query(`
-            UPDATE withdrawal_requests 
-            SET status = 'completed', completed_at = CURRENT_TIMESTAMP, completed_by = $1
-            WHERE id = $2 AND status = 'pending'
-            RETURNING *
-        `, [adminId, requestId]);
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'Запрос не найден или уже обработан'
-            });
-        }
-        
-        const request = result.rows[0];
-        
-        console.log(`✅ Выплата подтверждена: ${request.amount}⭐ для пользователя ${request.user_id}`);
-        
-        res.json({
-            success: true,
-            message: 'Выплата подтверждена'
-        });
-        
-    } catch (error) {
-        console.error('❌ Complete withdrawal error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
@@ -1838,37 +1849,6 @@ app.get('/api/debug/endpoints', async (req, res) => {
         res.status(500).json({
             success: false,
             error: error.message
-        });
-    }
-});
-
-// Force reinitialization endpoint
-app.post('/api/admin/force-reinit', async (req, res) => {
-    const { adminId } = req.body;
-    
-    // Проверяем права доступа - только главный админ
-    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied'
-        });
-    }
-    
-    try {
-        console.log('🔄 Force reinitialization requested by admin:', adminId);
-        
-        await initDatabase();
-        
-        res.json({
-            success: true,
-            message: 'Database reinitialized successfully'
-        });
-        
-    } catch (error) {
-        console.error('❌ Force reinit error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Reinitialization failed: ' + error.message
         });
     }
 });
