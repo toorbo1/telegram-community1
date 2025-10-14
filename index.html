@@ -6522,7 +6522,7 @@ if (parseInt(currentUser.id) === ADMIN_ID) {
 }
 // Обновите функцию инициализации приложения
 
-// 🔧 ФУНКЦИИ ДЛЯ ВКЛАДОК ЗАДАНИЙ - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// 🔧 ФУНКЦИИ ДЛЯ ВКЛАДОК ЗАДАНИЙ - ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ ВЕРСИЯ
 function showTaskCategory(category) {
     console.log('Switching to task category:', category);
     
@@ -6532,7 +6532,6 @@ function showTaskCategory(category) {
         const container = document.getElementById(containerId);
         if (container) {
             container.style.display = 'none';
-            container.classList.remove('active');
         }
     });
     
@@ -6549,100 +6548,55 @@ function showTaskCategory(category) {
         case 'new':
             targetContainer = document.getElementById('new-tasks');
             targetTab = document.querySelector('.task-tab:nth-child(1)');
-            if (targetContainer) {
-                targetContainer.style.display = 'block';
-                targetContainer.classList.add('active');
-            }
-            
-            // ВСЕГДА загружаем задания при переходе на вкладку "Новые"
-            loadTasks();
             break;
-            
         case 'confirmation':
             targetContainer = document.getElementById('confirmation-tasks');
             targetTab = document.querySelector('.task-tab:nth-child(2)');
-            if (targetContainer) {
-                targetContainer.style.display = 'block';
-                targetContainer.classList.add('active');
-            }
-            loadUserTasksForCategory('active');
             break;
-            
         case 'completed':
             targetContainer = document.getElementById('completed-tasks');
             targetTab = document.querySelector('.task-tab:nth-child(3)');
-            if (targetContainer) {
-                targetContainer.style.display = 'block';
-                targetContainer.classList.add('active');
-            }
-            loadUserTasksForCategory('completed');
             break;
-            
         case 'rejected':
             targetContainer = document.getElementById('rejected-tasks');
             targetTab = document.querySelector('.task-tab:nth-child(4)');
-            if (targetContainer) {
-                targetContainer.style.display = 'block';
-                targetContainer.classList.add('active');
-            }
-            loadUserTasksForCategory('rejected');
             break;
     }
     
-    // Активируем вкладку
+    // Активируем контейнер и вкладку
+    if (targetContainer) {
+        targetContainer.style.display = 'block';
+    }
+    
     if (targetTab) {
         targetTab.classList.add('active');
     }
     
-    // Принудительно пересчитываем layout
-    setTimeout(() => {
-        if (targetContainer) {
-            targetContainer.style.opacity = '1';
-        }
-    }, 10);
+    // Загружаем данные для выбранной категории
+    switch(category) {
+        case 'new':
+            loadTasks();
+            break;
+        case 'confirmation':
+            loadUserTasksForCategory('active');
+            break;
+        case 'completed':
+            loadUserTasksForCategory('completed');
+            break;
+        case 'rejected':
+            loadUserTasksForCategory('rejected');
+            break;
+    }
 }
 
-// Функция для принудительного исправления layout
-function fixTasksLayout() {
-    const tasksTab = document.getElementById('tasks-tab');
-    if (!tasksTab) return;
-    
-    // Принудительно устанавливаем высоту
-    tasksTab.style.minHeight = '500px';
-    
-    // Обновляем все контейнеры заданий
-    const containers = ['new-tasks', 'confirmation-tasks', 'completed-tasks', 'rejected-tasks'];
-    containers.forEach(containerId => {
-        const container = document.getElementById(containerId);
-        if (container) {
-            container.style.position = 'relative';
-            container.style.minHeight = '300px';
-            // Убираем все transition
-            container.style.transition = 'none';
-        }
-    });
-    
-    console.log('✅ Tasks layout fixed');
-}
-
-// Вызывайте эту функцию при переключении на вкладку заданий
-function showTasksTab() {
-    hideAllTabs();
-    document.getElementById('tasks-tab').classList.add('active');
-    updateNavState('tasks');
-    
-    // Активируем вкладку "Новые" по умолчанию и загружаем задания
-    showTaskCategory('new');
-    
-    // Исправляем layout
-    setTimeout(fixTasksLayout, 100);
-}
-// Обновленная функция загрузки заданий с индикацией загрузки
+// ОБНОВЛЕННАЯ функция загрузки заданий
 async function loadTasks(search = '', category = 'all') {
     try {
-        // Показываем индикатор загрузки
+        console.log('🔄 Loading tasks...');
+        
+        // Показываем индикатор загрузки в КОНКРЕТНОМ контейнере
         const container = document.getElementById('new-tasks');
-        if (container) {
+        if (container && container.style.display !== 'none') {
             container.innerHTML = `
                 <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
                     <div class="loading-spinner">⏳</div>
@@ -6651,7 +6605,7 @@ async function loadTasks(search = '', category = 'all') {
             `;
         }
         
-        let url = '/tasks';
+        let url = '/api/tasks';
         const params = [];
         
         if (search) params.push(`search=${encodeURIComponent(search)}`);
@@ -6665,16 +6619,17 @@ async function loadTasks(search = '', category = 'all') {
         
         if (result.success) {
             allTasks = result.tasks;
+            console.log('✅ Tasks loaded:', allTasks.length);
             displayTasks(result.tasks, 'new');
         } else {
             throw new Error(result.error || 'Failed to load tasks');
         }
     } catch (error) {
-        console.error('Error loading tasks:', error);
+        console.error('❌ Error loading tasks:', error);
         
-        // Показываем сообщение об ошибке
+        // Показываем сообщение об ошибке в КОНКРЕТНОМ контейнере
         const container = document.getElementById('new-tasks');
-        if (container) {
+        if (container && container.style.display !== 'none') {
             container.innerHTML = `
                 <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
                     <div style="font-size: 48px; margin-bottom: 16px;">❌</div>
@@ -6688,18 +6643,24 @@ async function loadTasks(search = '', category = 'all') {
                 </div>
             `;
         }
-        
-        showNotification('Ошибка загрузки заданий', 'error');
     }
 }
 
-// Обновленная функция отображения заданий
+// ОБНОВЛЕННАЯ функция отображения заданий
 function displayTasks(tasks, category) {
     const container = document.getElementById(category + '-tasks');
-    if (!container) return;
+    if (!container) {
+        console.error('❌ Container not found:', category + '-tasks');
+        return;
+    }
     
-    // Временно отключаем анимации
-    container.style.opacity = '0.7';
+    // Проверяем, видим ли контейнер
+    if (container.style.display === 'none') {
+        console.log('⚠️ Container is hidden, skipping display');
+        return;
+    }
+    
+    console.log('🎯 Displaying tasks in container:', container.id, 'Tasks count:', tasks?.length);
     
     container.innerHTML = '';
 
@@ -6713,15 +6674,10 @@ function displayTasks(tasks, category) {
                 </div>
             </div>
         `;
-        
-        // Восстанавливаем прозрачность
-        setTimeout(() => {
-            container.style.opacity = '1';
-        }, 50);
         return;
     }
 
-    tasks.forEach(task => {
+    tasks.forEach((task, index) => {
         const taskElement = document.createElement('div');
         taskElement.className = 'task-card';
         
@@ -6742,69 +6698,115 @@ function displayTasks(tasks, category) {
         container.appendChild(taskElement);
     });
     
-    // Восстанавливаем прозрачность
-    setTimeout(() => {
-        container.style.opacity = '1';
-    }, 50);
+    console.log('✅ Tasks displayed successfully');
 }
 
-// Также добавьте в функцию инициализации приложения вызов загрузки заданий
+// ОБНОВЛЕННАЯ функция показа вкладки заданий
+function showTasksTab() {
+    console.log('🎯 Opening tasks tab...');
+    hideAllTabs();
+    document.getElementById('tasks-tab').classList.add('active');
+    updateNavState('tasks');
+    
+    // Активируем вкладку "Новые" по умолчанию
+    showTaskCategory('new');
+    
+    // Принудительно исправляем layout
+    setTimeout(fixTasksLayout, 50);
+}
+
+// Функция для принудительного исправления layout
+function fixTasksLayout() {
+    const tasksTab = document.getElementById('tasks-tab');
+    if (!tasksTab) return;
+    
+    tasksTab.style.minHeight = '500px';
+    
+    const containers = ['new-tasks', 'confirmation-tasks', 'completed-tasks', 'rejected-tasks'];
+    containers.forEach(containerId => {
+        const container = document.getElementById(containerId);
+        if (container) {
+            container.style.position = 'relative';
+            container.style.minHeight = '300px';
+        }
+    });
+}
+
+// ОБНОВЛЕННАЯ функция инициализации приложения
 async function initializeApp() {
     console.log('🎮 Initializing LinkGold app...');
     
-    // Показываем загрузку
-    showNotification('🔄 Подключаемся к серверу...', 'info');
-    
-    // Проверяем соединение с API
     try {
         console.log('🔍 Testing API connection...');
-        const health = await makeRequest('/health');
-        console.log('✅ API connection successful:', health);
-        showNotification('✅ Соединение с сервером установлено!', 'success');
+        const health = await makeRequest('/api/health');
+        console.log('✅ API connection successful');
     } catch (error) {
         console.error('❌ API connection failed:', error);
         showNotification('❌ Не удалось подключиться к серверу', 'error');
-        showRetryButton();
         return;
     }
     
-    // Принудительно обновляем права администратора
-    await refreshAdminRights();
-    
-    // Настраиваем админ-панель
-    setupAdminPanel();
-    
-    // Инициализируем приложение
+    // Инициализируем базовые функции
     displayUserProfile();
     checkAdminRights();
     loadMainPagePosts();
-    
-    // ЗАГРУЖАЕМ ЗАДАНИЯ ПРИ ЗАПУСКЕ ПРИЛОЖЕНИЯ
-    loadTasks();
-    
     initializeSearch();
-    loadUserTasks();
+    
+    // НЕ загружаем задания сразу - загрузим при первом переходе на вкладку
+    console.log('⏳ Tasks will be loaded when opening tasks tab');
     
     // Запускаем автообновление данных
     startUserDataAutoUpdate();
     
-    // Если пользователь админ, загружаем админ-данные
-    if (currentUser && (currentUser.is_admin || parseInt(currentUser.id) === ADMIN_ID)) {
-        loadAdminChats();
-        loadAdminTasks();
-        loadTaskVerifications();
-        
-        // Если это главный админ, загружаем список админов
-        if (parseInt(currentUser.id) === ADMIN_ID) {
-            setTimeout(() => {
-                loadAdminsList();
-            }, 500);
-        }
-    }
-    
     console.log('🎉 App initialized successfully');
 }
-
+// ОБНОВЛЕННАЯ функция загрузки заданий пользователя по категории
+async function loadUserTasksForCategory(status) {
+    if (!currentUser) return;
+    
+    let containerId = '';
+    switch(status) {
+        case 'active': containerId = 'confirmation-tasks'; break;
+        case 'completed': containerId = 'completed-tasks'; break;
+        case 'rejected': containerId = 'rejected-tasks'; break;
+    }
+    
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    try {
+        // Показываем индикатор загрузки
+        if (container.style.display !== 'none') {
+            container.innerHTML = `
+                <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                    <div class="loading-spinner">⏳</div>
+                    <div style="margin-top: 16px;">Загружаем задания...</div>
+                </div>
+            `;
+        }
+        
+        const result = await makeRequest(`/api/user/${currentUser.id}/tasks?status=${status}`);
+        if (result.success) {
+            displayUserTasksForCategory(result.tasks, status);
+        } else {
+            throw new Error(result.error || 'Failed to load tasks');
+        }
+    } catch (error) {
+        console.error('Error loading user tasks for category:', error);
+        
+        if (container.style.display !== 'none') {
+            container.innerHTML = `
+                <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">❌</div>
+                    <div>Ошибка загрузки заданий</div>
+                    <button class="btn btn-primary" onclick="loadUserTasksForCategory('${status}')" style="margin-top: 16px;">
+                        Попробовать снова
+                    </button>
+                </div>
+            `;
+        }
+    }
+}
         // Функция для отображения заданий пользователя по категории
         function displayUserTasksForCategory(tasks, status) {
             let container = null;
