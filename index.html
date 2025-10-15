@@ -51,7 +51,6 @@ body {
         radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.05) 0%, transparent 25%);
 }
 
-/* ОБНОВЛЕННЫЕ СТИЛИ НИЖНЕЙ НАВИГАЦИИ */
 .bottom-nav {
     position: fixed;
     bottom: 16px;
@@ -59,20 +58,20 @@ body {
     right: 16px;
     background: var(--nav-bg);
     border-radius: 18px;
-    padding: 10px;
+    padding: 10px; /* Уменьшили padding */
     display: flex;
     justify-content: space-around;
     box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.3);
     border: 1px solid var(--border);
     z-index: 1000;
     backdrop-filter: blur(15px);
-    height: 70px; /* Фиксированная высота */
+    height: 100px; /* Уменьшили высоту */
 }
 
 .nav-item {
     text-align: center;
     cursor: pointer;
-    padding: 6px 8px;
+    padding: 6px 8px; /* Уменьшили padding */
     border-radius: 14px;
     flex: 1;
     opacity: 0.7;
@@ -81,56 +80,33 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 50px;
+    min-height: 35px; /* Уменьшили минимальную высоту */
 }
 
 .nav-icon {
-    font-size: 18px;
+    font-size: 18px; /* Уменьшили размер иконок */
     margin-bottom: 2px;
     color: var(--text-secondary);
 }
 
 .nav-label {
-    font-size: 10px;
+    font-size: 10px; /* Уменьшили размер текста */
     color: var(--text-secondary);
     font-weight: 500;
 }
-
-.nav-item.active {
-    background: var(--accent);
-    opacity: 1;
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.25);
-    transform: translateY(-2px);
-}
-
-.nav-item.active .nav-icon,
-.nav-item.active .nav-label {
-    color: white;
-}
-/* ОБНОВЛЕННЫЕ СТИЛИ ДЛЯ ОСНОВНОГО КОНТЕНТА */
+/* Убедимся что контент не перекрывается */
 .main-content {
-    min-height: calc(100vh - 120px); /* Учитываем высоту навигации */
+    min-height: calc(100vh - 200px);
     position: relative;
     padding-bottom: 100px; /* Добавляем отступ снизу равный высоте навигации */
 }
-
+/* Убедимся что контент не перекрывается */
 .tab-content {
-    min-height: calc(100vh - 200px);
-    padding-bottom: 100px; /* Отступ для навигации */
+    min-height: calc(100vh - 250px);
+    padding-bottom: 20px;
 }
-
 .page {
-    padding-bottom: 120px; /* Отступ для навигации на страницах */
-}
-
-/* Убедитесь что контент не перекрывается навигацией */
-#profile-tab,
-#admin-tab,
-#withdraw-page,
-#how-it-works-page,
-#about-page {
-    padding-bottom: 120px;
-    min-height: calc(100vh - 120px);
+    padding-bottom: 100px; /* Отступ для навигации */
 }
       
 
@@ -751,38 +727,15 @@ body {
     z-index: 2;
 }
 
-/* Гарантируем что контейнеры не перекрываются
+/* Гарантируем что контейнеры не перекрываются */
 #new-tasks,
 #confirmation-tasks,
 #completed-tasks,
 #rejected-tasks {
     position: relative;
     min-height: 300px;
-} */
-/* Исправление для контейнеров заданий */
-#new-tasks,
-#confirmation-tasks,
-#completed-tasks,
-#rejected-tasks {
-    display: none;
-    position: relative;
-    min-height: 400px;
 }
 
-#new-tasks.active,
-#confirmation-tasks.active,
-#completed-tasks.active,
-#rejected-tasks.active {
-    display: grid !important;
-    grid-template-columns: 1fr;
-    gap: 16px;
-    animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
 /* Фикс для пустого состояния */
 .no-tasks {
     position: absolute;
@@ -4561,12 +4514,8 @@ input:checked + .theme-slider:before {
     gap: 16px;
     grid-template-columns: 1fr;
     min-height: 200px;
-    opacity: 1 !important;
-    transition: opacity 0.3s ease !important;
-}
-
-.tasks-grid.loading {
-    opacity: 0.7;
+    position: relative;
+    height: auto !important; /* Гарантируем авто-высоту */
 }
 
 .task-card {
@@ -4579,10 +4528,13 @@ input:checked + .theme-slider:before {
     position: relative;
     width: 100%;
     box-sizing: border-box;
+    margin-bottom: 0;
+    /* Убираем анимацию fade-in чтобы не было смещения */
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
 }
+
 /* Убираем анимации для всех элементов в tasks-tab */
 .tasks-tab .fade-in {
     animation: none !important;
@@ -4715,79 +4667,6 @@ input:checked + .theme-slider:before {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
-}
-/* АДАПТИВНОСТЬ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ */
-@media (max-width: 768px) {
-    .bottom-nav {
-        bottom: 12px;
-        left: 12px;
-        right: 12px;
-        height: 65px;
-        padding: 8px;
-    }
-    
-    .nav-item {
-        padding: 4px 6px;
-        min-height: 45px;
-    }
-    
-    .nav-icon {
-        font-size: 16px;
-    }
-    
-    .nav-label {
-        font-size: 9px;
-    }
-    
-    .main-content {
-        padding-bottom: 90px;
-    }
-    
-    .tab-content {
-        padding-bottom: 90px;
-    }
-    
-    .page {
-        padding-bottom: 90px;
-    }
-}
-
-@media (max-width: 480px) {
-    .bottom-nav {
-        height: 60px;
-        padding: 6px;
-    }
-    
-    .nav-item {
-        padding: 3px 5px;
-    }
-    
-    .nav-icon {
-        font-size: 15px;
-    }
-    
-    .nav-label {
-        font-size: 8px;
-    }
-}
-#force-refresh-btn {
-    background: var(--teal-gradient);
-    color: white;
-    border: none;
-    padding: 12px 20px;
-    border-radius: 12px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    margin: 15px auto;
-    display: block;
-    width: 200px;
-    text-align: center;
-    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
-}
-
-#force-refresh-btn:active {
-    transform: scale(0.95);
 }
     </style>
 </head>
@@ -4972,24 +4851,26 @@ input:checked + .theme-slider:before {
         </div>
         
         <!-- Новые задания -->
-<div id="new-tasks" class="tasks-grid active">
-    <!-- Задания будут добавлены через JavaScript -->
-</div>
+        <div id="new-tasks" class="tasks-grid">
+            <!-- Задания будут добавлены через JavaScript -->
+        </div>
+        
+        <!-- Задания на подтверждение -->
+        <div id="confirmation-tasks" class="tasks-grid" style="display: none;">
+            <!-- Задания будут добавлены через JavaScript -->
+        </div>
+        
+        <!-- Выполненные задания -->
+        <div id="completed-tasks" class="tasks-grid" style="display: none;">
+            <!-- Задания будут добавлены через JavaScript -->
+        </div>
 
-<!-- Задания на подтверждение -->
-<div id="confirmation-tasks" class="tasks-grid" style="display: none;">
-    <!-- Задания будут добавлены через JavaScript -->
-</div>
-
-<!-- Выполненные задания -->
-<div id="completed-tasks" class="tasks-grid" style="display: none;">
-    <!-- Задания будут добавлены через JavaScript -->
-</div>
-
-<!-- Отклоненные задания -->
-<div id="rejected-tasks" class="tasks-grid" style="display: none;">
-    <!-- Задания будут добавлены через JavaScript -->
-</div>
+        <!-- Отклоненные задания -->
+        <div id="rejected-tasks" class="tasks-grid" style="display: none;">
+            <!-- Задания будут добавлены через JavaScript -->
+        </div>
+    </div>
+    
     <!-- Вкладка профиля -->
     <div id="profile-tab" class="tab-content">
         <!-- Заголовок профиля -->
@@ -5736,7 +5617,7 @@ input:checked + .theme-slider:before {
         const ADMIN_ID = 8036875641;
 
         // Глобальные переменные
-        
+        let currentUser = null;
         let currentChatId = null;
         let currentAdminChat = null;
         let selectedTaskId = null;
@@ -5746,9 +5627,10 @@ input:checked + .theme-slider:before {
         let currentVerificationId = null;
 
 // Улучшенная функция для запросов
-// Улучшенная функция для запросов
+// Улучшенная функция для запросов с диагностикой
 async function makeRequest(endpoint, options = {}) {
     try {
+        // Формируем полный URL
         let url;
         if (endpoint.startsWith('http')) {
             url = endpoint;
@@ -5768,45 +5650,60 @@ async function makeRequest(endpoint, options = {}) {
             ...options
         });
 
+        console.log(`📨 Response status: ${response.status}`);
+        
+        // Проверяем Content-Type
+        const contentType = response.headers.get('content-type');
+        console.log(`📋 Content-Type: ${contentType}`);
+        
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.log('📝 Non-JSON response:', text.substring(0, 200));
+            throw new Error(`Server returned non-JSON response: ${contentType}`);
+        }
+        
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            let errorMessage = `HTTP error! status: ${response.status}`;
+            try {
+                const errorData = await response.json();
+                if (errorData.error) {
+                    errorMessage = errorData.error;
+                }
+                if (errorData.details) {
+                    errorMessage += ` - ${errorData.details}`;
+                }
+            } catch (parseError) {
+                // If response is not JSON, use text
+                const errorText = await response.text();
+                if (errorText) {
+                    errorMessage += ` - ${errorText}`;
+                }
+            }
+            throw new Error(errorMessage);
         }
 
         const data = await response.json();
+        console.log('✅ Request successful');
         return data;
-        
     } catch (error) {
         console.error('💥 Request failed:', error);
         
-        // Для критичных запросов показываем уведомление
-        if (endpoint.includes('/user/') || endpoint.includes('/auth')) {
-            showNotification('Ошибка загрузки данных пользователя', 'error');
+        // Более информативные сообщения об ошибках
+        if (error.message.includes('non-JSON response')) {
+            showNotification('❌ Сервер вернул неверный формат данных. Возможно, endpoint не существует.', 'error');
+        } else if (error.message.includes('Failed to fetch')) {
+            showNotification('❌ Не удалось подключиться к серверу. Проверьте интернет.', 'error');
+        } else if (error.message.includes('404')) {
+            showNotification('🔍 Endpoint не найден. Возможно, сервер перезагружается.', 'error');
+        } else if (error.message.includes('500')) {
+            showNotification('⚙️ Ошибка на сервере. Попробуйте позже.', 'error');
+        } else {
+            showNotification(`⚠️ Ошибка: ${error.message}`, 'error');
         }
         
         throw error;
     }
 }
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('📱 DOM Content Loaded - Starting LinkGold app...');
-    
-    // Показываем уведомление о загрузке
-    showNotification('🔄 Загружаем приложение...', 'info');
-    
-    // Инициализируем Telegram Web App
-    if (typeof tg !== 'undefined') {
-        tg.expand();
-        tg.ready();
-        console.log('✅ Telegram Web App initialized');
-    }
-    
-    // Запускаем инициализацию с небольшой задержкой
-    setTimeout(() => {
-        initializeTelegramUser();
-        
-        // Добавляем кнопку обновления через 3 секунды
-        setTimeout(addRefreshButton, 3000);
-    }, 1000);
-});
 // Функция для тестирования endpoint'ов
 async function testEndpoints() {
     if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) return;
@@ -5851,85 +5748,48 @@ setTimeout(() => {
             }
         });
 
-        // В начале файла, после объявления переменных, добавьте:
-let currentUser = null;
-let isInitialized = false;
-
-// Обновите функцию initializeTelegramUser
-async function initializeTelegramUser() {
-    try {
-        if (typeof tg !== 'undefined' && tg.initDataUnsafe && tg.initDataUnsafe.user) {
-            const tgUser = tg.initDataUnsafe.user;
-            
-            currentUser = {
-                id: tgUser.id,
-                firstName: tgUser.first_name || 'Пользователь',
-                lastName: tgUser.last_name || '',
-                username: tgUser.username || `user_${tgUser.id}`,
-                photoUrl: tgUser.photo_url || '',
-                isAdmin: parseInt(tgUser.id) === ADMIN_ID,
-                balance: 0,
-                level: 1,
-                tasks_completed: 0,
-                active_tasks: 0,
-                quality_rate: 0,
-                experience: 0,
-                referral_count: 0,
-                referral_earned: 0
-            };
-            
-            console.log('✅ Telegram user initialized:', currentUser);
-            
-            // Принудительная аутентификация на сервере
+        // Инициализация пользователя Telegram
+        async function initializeTelegramUser() {
             try {
-                const authResult = await makeRequest('/user/auth', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        user: currentUser
-                    })
-                });
-                
-                if (authResult.success) {
-                    console.log('✅ User authenticated on server');
+                if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                    const tgUser = tg.initDataUnsafe.user;
+                    
+                    currentUser = {
+                        id: tgUser.id,
+                        firstName: tgUser.first_name || 'Пользователь',
+                        lastName: tgUser.last_name || '',
+                        username: tgUser.username || `user_${tgUser.id}`,
+                        photoUrl: tgUser.photo_url || '',
+                        isAdmin: parseInt(tgUser.id) === ADMIN_ID
+                    };
+                    
+                    // Аутентифицируем пользователя на сервере
+                    try {
+                        const authResult = await makeRequest('/user/auth', {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                user: currentUser
+                            })
+                        });
+                        
+                        if (authResult.success) {
+                            Object.assign(currentUser, authResult.user);
+                        }
+                    } catch (authError) {
+                        console.log('Auth endpoint not available, continuing with basic user data');
+                    }
+                    
+                    initializeApp();
+                    
+                } else {
+                    console.log('Telegram user data not available');
+                    initializeTestUser();
                 }
-            } catch (authError) {
-                console.log('Auth endpoint not available, continuing with local data');
+            } catch (error) {
+                console.error('Error initializing Telegram user:', error);
+                initializeTestUser();
             }
-            
-            await initializeApp();
-            
-        } else {
-            console.log('Telegram user data not available, using test mode');
-            initializeTestUser();
         }
-    } catch (error) {
-        console.error('Error initializing Telegram user:', error);
-        initializeTestUser();
-    }
-}
-
-// Обновите функцию initializeTestUser
-function initializeTestUser() {
-    currentUser = {
-        id: 123456789,
-        firstName: 'Тестовый',
-        lastName: 'Пользователь',
-        username: 'test_user',
-        photoUrl: '',
-        isAdmin: false,
-        balance: 150,
-        level: 2,
-        tasks_completed: 5,
-        active_tasks: 2,
-        quality_rate: 85,
-        experience: 45,
-        referral_count: 3,
-        referral_earned: 25
-    };
-    
-    console.log('✅ Test user initialized:', currentUser);
-    initializeApp();
-}
 // 🔍 Проверка прав администратора
 async function checkAdminAccess(userId) {
     try {
@@ -6105,17 +5965,7 @@ async function loadTaskVerificationsForAdmin() {
         console.error('Error loading verifications:', error);
     }
 }
-// Функция для отладки состояния заданий
-function debugTasksState() {
-    console.log('🐛 DEBUG Tasks State:');
-    console.log('- tasks-tab active:', document.getElementById('tasks-tab').classList.contains('active'));
-    console.log('- new-tasks visible:', document.getElementById('new-tasks').style.display);
-    console.log('- new-tasks active:', document.getElementById('new-tasks').classList.contains('active'));
-    console.log('- allTasks length:', allTasks ? allTasks.length : 0);
-}
 
-// Вызов для отладки
-setTimeout(debugTasksState, 3000);
 // 🎨 Модальное окно проверки заданий
 function showVerificationsModal(verifications) {
     let modalHTML = `
@@ -6539,76 +6389,55 @@ setTimeout(debugAdminRights, 2000);
             }
         }
 
-function displayUserProfile() {
-    if (!currentUser) {
-        console.error('❌ No current user to display');
-        return;
-    }
-    
-    console.log('🔄 Displaying user profile:', currentUser);
-    
-    try {
-        // Обновляем основную информацию
-        const firstNameElement = document.getElementById('user-first-name');
-        const usernameElement = document.getElementById('user-username');
-        const levelElement = document.getElementById('user-level');
-        const balanceElement = document.getElementById('user-balance-main');
-        const withdrawBalanceElement = document.getElementById('withdraw-balance');
-        const withdrawBalanceDisplay = document.getElementById('withdraw-balance-display');
-        
-        if (firstNameElement) {
-            const fullName = currentUser.lastName ? 
-                `${currentUser.firstName} ${currentUser.lastName}` : 
-                currentUser.firstName;
-            firstNameElement.textContent = fullName;
-        }
-        
-        if (usernameElement) usernameElement.textContent = currentUser.username || 'username';
-        if (levelElement) levelElement.textContent = currentUser.level || 1;
-        
-        // Обновляем баланс во всех местах
-        const userBalance = currentUser.balance || 0;
-        if (balanceElement) balanceElement.textContent = `${userBalance} ⭐`;
-        if (withdrawBalanceElement) withdrawBalanceElement.textContent = `${userBalance} ⭐`;
-        if (withdrawBalanceDisplay) withdrawBalanceDisplay.textContent = `${userBalance} ⭐`;
-        
-        // Обновляем аватар
-        updateUserAvatar();
-        
-        // Обновляем статистику
-        updateProfileStats();
-        updateReferralSystem();
-        updateLevelProgress();
-        
-        console.log('✅ User profile displayed successfully');
-        
-    } catch (error) {
-        console.error('❌ Error displaying user profile:', error);
-    }
-}
+        // Отображение профиля пользователя
+        function displayUserProfile() {
+            if (!currentUser) return;
 
-// Функция для обновления аватара
-function updateUserAvatar() {
-    const userPhotoElement = document.getElementById('user-photo');
-    if (!userPhotoElement) return;
-    
-    if (currentUser.photoUrl) {
-        userPhotoElement.src = currentUser.photoUrl;
-        userPhotoElement.alt = 'Фото профиля';
-        userPhotoElement.style.display = 'block';
-    } else {
-        // Показываем инициалы если нет фото
-        userPhotoElement.style.display = 'flex';
-        userPhotoElement.style.alignItems = 'center';
-        userPhotoElement.style.justifyContent = 'center';
-        userPhotoElement.style.backgroundColor = '#6366f1';
-        userPhotoElement.style.color = 'white';
-        userPhotoElement.style.fontWeight = 'bold';
-        userPhotoElement.style.fontSize = '18px';
-        userPhotoElement.textContent = currentUser.firstName ? currentUser.firstName.charAt(0).toUpperCase() : 'U';
-        userPhotoElement.src = '';
-    }
-}
+            const firstNameElement = document.getElementById('user-first-name');
+            const usernameElement = document.getElementById('user-username');
+            const levelElement = document.getElementById('user-level');
+            const balanceElement = document.getElementById('user-balance-main');
+            const withdrawBalanceElement = document.getElementById('withdraw-balance');
+            const withdrawBalanceDisplay = document.getElementById('withdraw-balance-display');
+            
+            if (firstNameElement) {
+                const fullName = currentUser.lastName ? 
+                    `${currentUser.firstName} ${currentUser.lastName}` : 
+                    currentUser.firstName;
+                firstNameElement.textContent = fullName;
+            }
+            
+            if (usernameElement) usernameElement.textContent = currentUser.username;
+            if (levelElement) levelElement.textContent = currentUser.level || 0;
+            
+            // ОБНОВЛЯЕМ БАЛАНС ВО ВСЕХ МЕСТАХ
+            const userBalance = currentUser.balance || 0;
+            if (balanceElement) balanceElement.textContent = `${userBalance} ⭐`;
+            if (withdrawBalanceElement) withdrawBalanceElement.textContent = `${userBalance} ⭐`;
+            if (withdrawBalanceDisplay) withdrawBalanceDisplay.textContent = `${userBalance} ⭐`;
+            
+            // Обновляем аватар
+            const userPhotoElement = document.getElementById('user-photo');
+            if (userPhotoElement) {
+                if (currentUser.photoUrl) {
+                    userPhotoElement.src = currentUser.photoUrl;
+                    userPhotoElement.alt = 'Фото профиля';
+                } else {
+                    userPhotoElement.style.display = 'flex';
+                    userPhotoElement.style.alignItems = 'center';
+                    userPhotoElement.style.justifyContent = 'center';
+                    userPhotoElement.style.backgroundColor = '#6366f1';
+                    userPhotoElement.style.color = 'white';
+                    userPhotoElement.style.fontWeight = 'bold';
+                    userPhotoElement.textContent = currentUser.firstName.charAt(0);
+                }
+            }
+            
+            updateProfileStats();
+            updateReferralSystem();
+            updateLevelProgress();
+        }
+
         // Обновление статистики профиля
         function updateProfileStats() {
             if (!currentUser) return;
@@ -6621,41 +6450,7 @@ function updateUserAvatar() {
                 stats[3].textContent = `${currentUser.quality_rate || 0}%`; // Качество
             }
         }
-// Добавьте эту функцию для принудительной проверки
-function forceRefreshUserData() {
-    console.log('🔄 Force refreshing user data...');
-    
-    if (!currentUser) {
-        console.error('❌ No current user to refresh');
-        return;
-    }
-    
-    // Сбрасываем флаг инициализации
-    isInitialized = false;
-    
-    // Переинициализируем приложение
-    initializeApp();
-}
 
-// Добавьте кнопку обновления в интерфейс
-function addRefreshButton() {
-    // Проверяем, не добавлена ли уже кнопка
-    if (document.getElementById('force-refresh-btn')) return;
-    
-    const refreshBtn = document.createElement('button');
-    refreshBtn.id = 'force-refresh-btn';
-    refreshBtn.textContent = '🔄 Обновить данные';
-    refreshBtn.className = 'btn btn-primary';
-    refreshBtn.style.margin = '10px auto';
-    refreshBtn.style.display = 'block';
-    refreshBtn.onclick = forceRefreshUserData;
-    
-    // Добавляем кнопку в профиль
-    const profileTab = document.getElementById('profile-tab');
-    if (profileTab) {
-        profileTab.appendChild(refreshBtn);
-    }
-}
         // Обновление реферальной системы
         function updateReferralSystem() {
             if (!currentUser) return;
@@ -6694,104 +6489,40 @@ function addRefreshButton() {
         }
 
         // Проверка прав администратора
-// ОБНОВЛЕННАЯ ФУНКЦИЯ ПРОВЕРКИ ПРАВ АДМИНИСТРАТОРА
+// Проверка прав администратора
+// Проверка прав администратора - ОБНОВЛЕННАЯ ВЕРСИЯ
+// Проверка прав администратора - ОБНОВЛЕННАЯ ВЕРСИЯ
 function checkAdminRights() {
     const adminNavItem = document.getElementById('admin-nav-item');
-    const adminPanel = document.getElementById('admin-panel');
     
-    if (!currentUser) {
-        console.log('❌ No current user for admin check');
-        return;
-    }
+    const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
+    const isRegularAdmin = currentUser?.is_admin === true;
     
-    const isMainAdmin = parseInt(currentUser.id) === ADMIN_ID;
-    const isRegularAdmin = currentUser.is_admin === true;
-    
-    console.log('🔍 Admin check:', {
-        userId: currentUser.id,
-        isMainAdmin: isMainAdmin,
-        isRegularAdmin: isRegularAdmin,
-        is_admin: currentUser.is_admin
-    });
-    
-    if (isMainAdmin || isRegularAdmin) {
+    if (currentUser && (isMainAdmin || isRegularAdmin)) {
         if (adminNavItem) {
             adminNavItem.style.display = 'flex';
-            console.log('✅ Admin nav item shown');
-        }
-        if (adminPanel) {
-            adminPanel.style.display = 'block';
-            console.log('✅ Admin panel shown');
+            console.log('✅ Admin nav item shown - user is admin');
         }
     } else {
         if (adminNavItem) {
             adminNavItem.style.display = 'none';
+            console.log('❌ Admin nav item hidden - user is not admin');
         }
-        if (adminPanel) {
-            adminPanel.style.display = 'none';
-        }
-        console.log('❌ User is not admin');
     }
 }
-// ПРИНУДИТЕЛЬНОЕ ОБНОВЛЕНИЕ ДАННЫХ АДМИНИСТРАТОРА
-async function refreshAdminData() {
-    if (!currentUser) return;
-    
-    try {
-        console.log('🔄 Refreshing admin data...');
-        
-        const result = await makeRequest(`/user/${currentUser.id}`);
-        if (result.success) {
-            // Обновляем данные пользователя
-            Object.assign(currentUser, result.profile);
-            
-            console.log('✅ Admin data refreshed:', {
-                id: currentUser.id,
-                is_admin: currentUser.is_admin,
-                balance: currentUser.balance
-            });
-            
-            // Перепроверяем права
-            checkAdminRights();
-            
-            // Обновляем интерфейс
-            displayUserProfile();
-            
-            // Если пользователь админ, загружаем админ-данные
-            if (currentUser.is_admin || parseInt(currentUser.id) === ADMIN_ID) {
-                loadAdminData();
-            }
-        }
-    } catch (error) {
-        console.error('❌ Error refreshing admin data:', error);
+// В функции инициализации админ-панели добавьте:
+if (parseInt(currentUser.id) === ADMIN_ID) {
+    // Показываем кнопку управления админами только главному админу
+    const adminButtons = document.querySelector('.admin-buttons');
+    if (adminButtons) {
+        adminButtons.innerHTML += `
+            <button class="admin-btn" onclick="showAdminSection('admins')">👥 Админы</button>
+        `;
     }
 }
+// Обновите функцию инициализации приложения
 
-// ФУНКЦИЯ ЗАГРУЗКИ ДАННЫХ АДМИНИСТРАТОРА
-async function loadAdminData() {
-    console.log('📥 Loading admin data...');
-    
-    try {
-        // Загружаем задачи для админа
-        await loadAdminTasks();
-        
-        // Загружаем чаты для админа
-        await loadAdminChats();
-        
-        // Загружаем проверки заданий
-        await loadTaskVerifications();
-        
-        // Если это главный админ, загружаем список админов
-        if (parseInt(currentUser.id) === ADMIN_ID) {
-            await loadAdminsList();
-        }
-        
-        console.log('✅ All admin data loaded');
-    } catch (error) {
-        console.error('❌ Error loading admin data:', error);
-    }
-}
-
+// 🔧 ФУНКЦИИ ДЛЯ ВКЛАДОК ЗАДАНИЙ - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function showTaskCategory(category) {
     console.log('🔄 Переключение на категорию:', category);
     
@@ -6804,64 +6535,71 @@ function showTaskCategory(category) {
             container.classList.remove('active');
         }
     });
- // Убираем активный класс со всех вкладок
+    
+    // Убираем активный класс со всех вкладок
     document.querySelectorAll('.task-tab').forEach(tab => {
         tab.classList.remove('active');
     });
     
     // Показываем выбранный контейнер и активируем вкладку
     let targetContainer = null;
+    let targetTab = null;
     
     switch(category) {
         case 'new':
             targetContainer = document.getElementById('new-tasks');
-            document.querySelector('.task-tab:nth-child(1)').classList.add('active');
+            targetTab = document.querySelector('.task-tab:nth-child(1)');
+            if (targetContainer) {
+                targetContainer.style.display = 'block';
+                targetContainer.classList.add('active');
+                // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: ЗАГРУЖАЕМ ЗАДАНИЯ СРАЗУ ПРИ ПОКАЗЕ КОНТЕЙНЕРА
+                console.log('🚀 Загружаем новые задания...');
+                loadTasks();
+            }
             break;
+            
         case 'confirmation':
             targetContainer = document.getElementById('confirmation-tasks');
-            document.querySelector('.task-tab:nth-child(2)').classList.add('active');
+            targetTab = document.querySelector('.task-tab:nth-child(2)');
+            if (targetContainer) {
+                targetContainer.style.display = 'block';
+                targetContainer.classList.add('active');
+                console.log('🔄 Загружаем задания на подтверждение...');
+                loadUserTasksForCategory('active');
+            }
             break;
+            
         case 'completed':
             targetContainer = document.getElementById('completed-tasks');
-            document.querySelector('.task-tab:nth-child(3)').classList.add('active');
+            targetTab = document.querySelector('.task-tab:nth-child(3)');
+            if (targetContainer) {
+                targetContainer.style.display = 'block';
+                targetContainer.classList.add('active');
+                console.log('✅ Загружаем выполненные задания...');
+                loadUserTasksForCategory('completed');
+            }
             break;
+            
         case 'rejected':
             targetContainer = document.getElementById('rejected-tasks');
-            document.querySelector('.task-tab:nth-child(4)').classList.add('active');
+            targetTab = document.querySelector('.task-tab:nth-child(4)');
+            if (targetContainer) {
+                targetContainer.style.display = 'block';
+                targetContainer.classList.add('active');
+                console.log('❌ Загружаем отклоненные задания...');
+                loadUserTasksForCategory('rejected');
+            }
             break;
     }
     
-    if (targetContainer) {
-        // Показываем контейнер
-        targetContainer.style.display = 'block';
-        targetContainer.classList.add('active');
-        
-        // Загружаем данные для категории
-        setTimeout(() => {
-            loadCategoryData(category);
-        }, 10);
+    // Активируем вкладку
+    if (targetTab) {
+        targetTab.classList.add('active');
     }
 }
 
-// Новая функция для загрузки данных категории
-async function loadCategoryData(category) {
-    console.log(`🚀 Загружаем данные для категории: ${category}`);
-    
-    switch(category) {
-        case 'new':
-            await loadTasks();
-            break;
-        case 'confirmation':
-            await loadUserTasksForCategory('active');
-            break;
-        case 'completed':
-            await loadUserTasksForCategory('completed');
-            break;
-        case 'rejected':
-            await loadUserTasksForCategory('rejected');
-            break;
-    }
-}
+
+
 
 // // Функция для принудительного исправления layout
 // function fixTasksLayout() {
@@ -6886,6 +6624,8 @@ async function loadCategoryData(category) {
 //     console.log('✅ Tasks layout fixed');
 // }
 
+// Вызывайте эту функцию при переключении на вкладку заданий
+// 🔧 ФУНКЦИЯ ДЛЯ ВКЛАДКИ ЗАДАНИЙ - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function showTasksTab() {
     console.log('🎯 Переход на вкладку заданий');
     
@@ -6893,66 +6633,41 @@ function showTasksTab() {
     document.getElementById('tasks-tab').classList.add('active');
     updateNavState('tasks');
     
-    // Принудительно показываем и загружаем новые задания
-    forceShowNewTasks();
-}
-function forceShowNewTasks() {
-    // Скрываем все контейнеры
-    const containers = ['new-tasks', 'confirmation-tasks', 'completed-tasks', 'rejected-tasks'];
-    containers.forEach(containerId => {
-        const container = document.getElementById(containerId);
-        if (container) {
-            container.style.display = 'none';
-            container.classList.remove('active');
-        }
-    });
-       // Убираем активные классы с вкладок
-    document.querySelectorAll('.task-tab').forEach(tab => {
-        tab.classList.remove('active');
-    });
+    // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Сразу показываем вкладку "Новые" и загружаем задания
+    showTaskCategory('new');
     
-    // Показываем новые задания
-    const newTasksContainer = document.getElementById('new-tasks');
-    const newTasksTab = document.querySelector('.task-tab:nth-child(1)');
-    
-    if (newTasksContainer && newTasksTab) {
-        newTasksContainer.style.display = 'block';
-        newTasksContainer.classList.add('active');
-        newTasksTab.classList.add('active');
-        
-        // Принудительно загружаем задания
-        console.log('🚀 Принудительная загрузка новых заданий');
-        loadTasks();
-    }
+    // Исправляем layout
+    setTimeout(fixTasksLayout, 100);
 }
+
+// Обновленная функция загрузки заданий с улучшенной диагностикой
 async function loadTasks(search = '', category = 'all') {
     try {
         console.log('🔄 Начинаем загрузку заданий...', { search, category });
         
+        // Показываем индикатор загрузки
         const container = document.getElementById('new-tasks');
-        if (!container) {
-            console.error('❌ Контейнер new-tasks не найден!');
-            return;
+        if (container) {
+            container.innerHTML = `
+                <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                    <div class="loading-spinner">⏳</div>
+                    <div style="margin-top: 16px;">Загружаем задания...</div>
+                </div>
+            `;
         }
         
-        // Показываем индикатор загрузки
-        container.innerHTML = `
-            <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-                <div class="loading-spinner">⏳</div>
-                <div style="margin-top: 16px;">Загружаем задания...</div>
-            </div>
-        `;
-        
-        // Формируем URL
         let url = '/api/tasks';
         const params = [];
+        
         if (search) params.push(`search=${encodeURIComponent(search)}`);
         if (category && category !== 'all') params.push(`category=${encodeURIComponent(category)}`);
-        if (params.length > 0) url += '?' + params.join('&');
+        
+        if (params.length > 0) {
+            url += '?' + params.join('&');
+        }
         
         console.log('📡 Запрос к серверу:', url);
         
-        // Делаем запрос
         const result = await makeRequest(url);
         console.log('✅ Ответ от сервера:', result);
         
@@ -6965,7 +6680,6 @@ async function loadTasks(search = '', category = 'all') {
         }
     } catch (error) {
         console.error('❌ Ошибка загрузки заданий:', error);
-        showNotification('Ошибка загрузки заданий: ' + error.message, 'error');
         
         // Показываем сообщение об ошибке
         const container = document.getElementById('new-tasks');
@@ -6974,12 +6688,17 @@ async function loadTasks(search = '', category = 'all') {
                 <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
                     <div style="font-size: 48px; margin-bottom: 16px;">❌</div>
                     <div>Ошибка загрузки заданий</div>
+                    <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
+                        ${error.message}
+                    </div>
                     <button class="btn btn-primary" onclick="loadTasks()" style="margin-top: 16px;">
                         Попробовать снова
                     </button>
                 </div>
             `;
         }
+        
+        showNotification('Ошибка загрузки заданий: ' + error.message, 'error');
     }
 }
 
@@ -7043,63 +6762,68 @@ function displayTasks(tasks, category) {
     }, 50);
 }
 
+// 🔧 ЗАГРУЗКА ЗАДАНИЙ ПРИ ЗАПУСКЕ ПРИЛОЖЕНИЯ
 async function initializeApp() {
-    if (isInitialized) {
-        console.log('🔄 App already initialized, skipping...');
+    console.log('🎮 Initializing LinkGold app...');
+    
+    // Показываем загрузку
+    showNotification('🔄 Подключаемся к серверу...', 'info');
+    
+    // Проверяем соединение с API
+    try {
+        console.log('🔍 Testing API connection...');
+        const health = await makeRequest('/api/health');
+        console.log('✅ API connection successful:', health);
+        showNotification('✅ Соединение с сервером установлено!', 'success');
+        
+        // 🔥 ДИАГНОСТИКА: Проверяем доступность заданий
+        console.log('🔍 Проверяем доступность заданий...');
+        const debugResult = await makeRequest('/api/debug/tasks');
+        console.log('📊 Статус заданий:', debugResult);
+        
+    } catch (error) {
+        console.error('❌ API connection failed:', error);
+        showNotification('❌ Не удалось подключиться к серверу', 'error');
+        showRetryButton();
         return;
     }
     
-    console.log('🎮 Initializing LinkGold app...');
+    // Принудительно обновляем права администратора
+    await refreshAdminRights();
     
-    try {
-        // Сначала отображаем базовые данные пользователя
-        displayUserProfile();
-        checkAdminRights();
+    // Настраиваем админ-панель
+    setupAdminPanel();
+    
+    // Инициализируем приложение
+    displayUserProfile();
+    checkAdminRights();
+    loadMainPagePosts();
+    
+    // 🔥 ВАЖНО: ЗАГРУЖАЕМ ЗАДАНИЯ ПРИ ЗАПУСКЕ ПРИЛОЖЕНИЯ
+    console.log('🚀 Pre-loading tasks on app start...');
+    loadTasks();
+    
+    initializeSearch();
+    loadUserTasks();
+    
+    // Запускаем автообновление данных
+    startUserDataAutoUpdate();
+    
+    // Если пользователь админ, загружаем админ-данные
+    if (currentUser && (currentUser.is_admin || parseInt(currentUser.id) === ADMIN_ID)) {
+        loadAdminChats();
+        loadAdminTasks();
+        loadTaskVerifications();
         
-        // Затем пытаемся загрузить данные с сервера
-        try {
-            const userResult = await makeRequest(`/user/${currentUser.id}`);
-            if (userResult.success) {
-                // Обновляем данные пользователя с сервера
-                Object.assign(currentUser, userResult.profile);
-                console.log('✅ User data loaded from server:', currentUser);
-                
-                // Обновляем отображение
-                displayUserProfile();
-                checkAdminRights();
-            }
-        } catch (userError) {
-            console.log('Using local user data');
+        // Если это главный админ, загружаем список админов
+        if (parseInt(currentUser.id) === ADMIN_ID) {
+            setTimeout(() => {
+                loadAdminsList();
+            }, 500);
         }
-        
-        // Загружаем остальные данные
-        await loadEssentialData();
-        
-        isInitialized = true;
-        console.log('🎉 App initialized successfully');
-        
-    } catch (error) {
-        console.error('❌ App initialization failed:', error);
-        // Показываем уведомление с кнопкой повтора
-        showNotification('Ошибка инициализации приложения', 'error');
-        showRetryButton();
     }
-}
-
-// Новая функция для загрузки основных данных
-async function loadEssentialData() {
-    try {
-        // Параллельная загрузка основных данных
-        await Promise.allSettled([
-            loadMainPagePosts(),
-            loadTasks(),
-            loadUserTasks()
-        ]);
-        
-        console.log('✅ Essential data loaded');
-    } catch (error) {
-        console.error('Error loading essential data:', error);
-    }
+    
+    console.log('🎉 App initialized successfully');
 }
 // Функция для загрузки заданий пользователя по категории
 async function loadUserTasksForCategory(status) {
@@ -7247,21 +6971,7 @@ function displayUserTasksForCategory(tasks, status) {
                 console.error('Error loading user tasks:', error);
             }
         }
-// Добавьте эту функцию для гарантии загрузки заданий
-function ensureTasksLoaded() {
-    const tasksTab = document.getElementById('tasks-tab');
-    const newTasksContainer = document.getElementById('new-tasks');
-    
-    if (tasksTab && tasksTab.classList.contains('active') && 
-        newTasksContainer && newTasksContainer.classList.contains('active') && 
-        (!allTasks || allTasks.length === 0)) {
-        console.log('🔄 Ensuring tasks are loaded...');
-        loadTasks();
-    }
-}
 
-// Проверяем каждые 2 секунды, нужно ли загрузить задания
-setInterval(ensureTasksLoaded, 2000);
         // Инициализация поиска заданий
         function initializeSearch() {
             const searchInput = document.getElementById('task-search');
@@ -8014,26 +7724,21 @@ async function sendAdminMessage() {
             updateNavState('profile');
         }
 
-// ОБНОВЛЕННАЯ ФУНКЦИЯ ПОКАЗА ВКЛАДКИ АДМИНА
+        // Функция показа вкладки админа - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function showAdminTab() {
-    // Сначала обновляем данные
-    refreshAdminData().then(() => {
-        const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
-        const isRegularAdmin = currentUser?.is_admin === true;
-        
-        if (!currentUser || (!isMainAdmin && !isRegularAdmin)) {
-            showNotification('Доступ запрещен!', 'error');
-            return;
-        }
-        
-        hideAllTabs();
-        document.getElementById('admin-tab').classList.add('active');
-        updateNavState('admin');
-        
-        // Показываем диагностическую информацию
-        showAdminDebugInfo();
-    });
+    const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
+    const isRegularAdmin = currentUser?.is_admin === true;
+    
+    if (!currentUser || (!isMainAdmin && !isRegularAdmin)) {
+        showNotification('Доступ запрещен!', 'error');
+        return;
+    }
+    
+    hideAllTabs();
+    document.getElementById('admin-tab').classList.add('active');
+    updateNavState('admin');
 }
+
         function showWithdrawPage() {
             hideAllTabs();
             document.getElementById('withdraw-page').classList.add('active');
@@ -9446,50 +9151,12 @@ window.refreshAdminRights = refreshAdminRights;
 window.debugAdminRights = debugAdminRights;
 
 
-// ОБНОВЛЕННАЯ СЕКЦИЯ УПРАВЛЕНИЯ АДМИНАМИ
+// Функции для управления администраторами
 function showAdminAdminsSection() {
-    showAdminSection('admins');
-    
-    // Добавляем кнопку обновления
-    const adminsSection = document.getElementById('admin-admins-section');
-    if (adminsSection && !adminsSection.querySelector('.refresh-admin-btn')) {
-        const refreshBtn = document.createElement('button');
-        refreshBtn.className = 'admin-btn refresh-admin-btn';
-        refreshBtn.style.background = 'var(--teal-gradient)';
-        refreshBtn.style.marginBottom = '20px';
-        refreshBtn.innerHTML = '🔄 Обновить права администратора';
-        refreshBtn.onclick = refreshAdminData;
-        
-        adminsSection.insertBefore(refreshBtn, adminsSection.firstChild);
-    }
-    
+    showAdminSection('admins ');
     loadAdminsList();
 }
-// ФУНКЦИЯ ДИАГНОСТИКИ АДМИНИСТРАТОРА
-function showAdminDebugInfo() {
-    if (!currentUser) return;
-    
-    console.log('🐛 ADMIN DEBUG INFO:');
-    console.log('- User ID:', currentUser.id);
-    console.log('- Is Main Admin:', parseInt(currentUser.id) === ADMIN_ID);
-    console.log('- Is Regular Admin:', currentUser.is_admin);
-    console.log('- Balance:', currentUser.balance);
-    console.log('- Admin Nav Visible:', document.getElementById('admin-nav-item')?.style.display);
-    console.log('- Admin Panel Visible:', document.getElementById('admin-panel')?.style.display);
-    
-    // Показываем уведомление с информацией
-    const debugInfo = `
-        ID: ${currentUser.id}
-        Главный админ: ${parseInt(currentUser.id) === ADMIN_ID ? '✅' : '❌'}
-        Обычный админ: ${currentUser.is_admin ? '✅' : '❌'}
-        Баланс: ${currentUser.balance || 0}⭐
-    `;
-    
-    showNotification(`🔍 Информация об администраторе:\n${debugInfo}`, 'info');
-}
 
-// Добавьте эту функцию в глобальную область видимости
-window.showAdminDebugInfo = showAdminDebugInfo;
 // Загрузка списка админов - ИСПРАВЛЕННАЯ ВЕРСИЯ
 // Загрузка списка админов - С ДИАГНОСТИКОЙ
 async function loadAdminsList() {
