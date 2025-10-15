@@ -6522,7 +6522,7 @@ if (parseInt(currentUser.id) === ADMIN_ID) {
 }
 // Обновите функцию инициализации приложения
 
-// 🔧 ФУНКЦИИ ДЛЯ ВКЛАДОК ЗАДАНИЙ - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// 🔧 ФУНКЦИЯ ПЕРЕКЛЮЧЕНИЯ КАТЕГОРИЙ - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function showTaskCategory(category) {
     console.log('🔄 Переключение на категорию:', category);
     
@@ -6554,7 +6554,10 @@ function showTaskCategory(category) {
                 targetContainer.classList.add('active');
                 // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: ЗАГРУЖАЕМ ЗАДАНИЯ СРАЗУ ПРИ ПОКАЗЕ КОНТЕЙНЕРА
                 console.log('🚀 Загружаем новые задания...');
-                loadTasks();
+                // Добавляем небольшую задержку для гарантии отображения контейнера
+                setTimeout(() => {
+                    loadTasks();
+                }, 50);
             }
             break;
             
@@ -6565,7 +6568,9 @@ function showTaskCategory(category) {
                 targetContainer.style.display = 'block';
                 targetContainer.classList.add('active');
                 console.log('🔄 Загружаем задания на подтверждение...');
-                loadUserTasksForCategory('active');
+                setTimeout(() => {
+                    loadUserTasksForCategory('active');
+                }, 50);
             }
             break;
             
@@ -6576,7 +6581,9 @@ function showTaskCategory(category) {
                 targetContainer.style.display = 'block';
                 targetContainer.classList.add('active');
                 console.log('✅ Загружаем выполненные задания...');
-                loadUserTasksForCategory('completed');
+                setTimeout(() => {
+                    loadUserTasksForCategory('completed');
+                }, 50);
             }
             break;
             
@@ -6587,7 +6594,9 @@ function showTaskCategory(category) {
                 targetContainer.style.display = 'block';
                 targetContainer.classList.add('active');
                 console.log('❌ Загружаем отклоненные задания...');
-                loadUserTasksForCategory('rejected');
+                setTimeout(() => {
+                    loadUserTasksForCategory('rejected');
+                }, 50);
             }
             break;
     }
@@ -6601,30 +6610,29 @@ function showTaskCategory(category) {
 
 
 
-// // Функция для принудительного исправления layout
-// function fixTasksLayout() {
-//     const tasksTab = document.getElementById('tasks-tab');
-//     if (!tasksTab) return;
-    
-//     // Принудительно устанавливаем высоту
-//     tasksTab.style.minHeight = '500px';
-    
-//     // Обновляем все контейнеры заданий
-//     const containers = ['new-tasks', 'confirmation-tasks', 'completed-tasks', 'rejected-tasks'];
-//     containers.forEach(containerId => {
-//         const container = document.getElementById(containerId);
-//         if (container) {
-//             container.style.position = 'relative';
-//             container.style.minHeight = '300px';
-//             // Убираем все transition
-//             container.style.transition = 'none';
-//         }
-//     });
-    
-//     console.log('✅ Tasks layout fixed');
-// }
 
-// Вызывайте эту функцию при переключении на вкладку заданий
+// 🔧 ФУНКЦИЯ ДЛЯ ПРИНУДИТЕЛЬНОГО ИСПРАВЛЕНИЯ LAYOUT
+function fixTasksLayout() {
+    const tasksTab = document.getElementById('tasks-tab');
+    if (!tasksTab) return;
+    
+    // Принудительно устанавливаем высоту
+    tasksTab.style.minHeight = '500px';
+    
+    // Обновляем все контейнеры заданий
+    const containers = ['new-tasks', 'confirmation-tasks', 'completed-tasks', 'rejected-tasks'];
+    containers.forEach(containerId => {
+        const container = document.getElementById(containerId);
+        if (container) {
+            container.style.position = 'relative';
+            container.style.minHeight = '300px';
+            // Убираем все transition
+            container.style.transition = 'none';
+        }
+    });
+    
+    console.log('✅ Tasks layout fixed');
+}
 // 🔧 ФУНКЦИЯ ДЛЯ ВКЛАДКИ ЗАДАНИЙ - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function showTasksTab() {
     console.log('🎯 Переход на вкладку заданий');
@@ -6636,19 +6644,35 @@ function showTasksTab() {
     // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Сразу показываем вкладку "Новые" и загружаем задания
     showTaskCategory('new');
     
+    // 🔥 ДОПОЛНИТЕЛЬНОЕ ИСПРАВЛЕНИЕ: Принудительно загружаем задания
+    setTimeout(() => {
+        console.log('🚀 Принудительная загрузка заданий при открытии вкладки');
+        loadTasks();
+    }, 100);
+    
     // Исправляем layout
     setTimeout(fixTasksLayout, 100);
 }
 
-// Обновленная функция загрузки заданий с улучшенной диагностикой
+// 🔧 ФУНКЦИЯ ЗАГРУЗКИ ЗАДАНИЙ - УЛУЧШЕННАЯ ВЕРСИЯ
 async function loadTasks(search = '', category = 'all') {
     try {
         console.log('🔄 Начинаем загрузку заданий...', { search, category });
         
+        // Проверяем, активна ли вкладка новых заданий
+        const newTasksContainer = document.getElementById('new-tasks');
+        const isNewTasksActive = newTasksContainer && 
+                                newTasksContainer.style.display === 'block' && 
+                                newTasksContainer.classList.contains('active');
+        
+        if (!isNewTasksActive) {
+            console.log('📌 Вкладка новых заданий не активна, отменяем загрузку');
+            return;
+        }
+        
         // Показываем индикатор загрузки
-        const container = document.getElementById('new-tasks');
-        if (container) {
-            container.innerHTML = `
+        if (newTasksContainer) {
+            newTasksContainer.innerHTML = `
                 <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
                     <div class="loading-spinner">⏳</div>
                     <div style="margin-top: 16px;">Загружаем задания...</div>
@@ -6681,10 +6705,10 @@ async function loadTasks(search = '', category = 'all') {
     } catch (error) {
         console.error('❌ Ошибка загрузки заданий:', error);
         
-        // Показываем сообщение об ошибке
-        const container = document.getElementById('new-tasks');
-        if (container) {
-            container.innerHTML = `
+        // Показываем сообщение об ошибке только если вкладка активна
+        const newTasksContainer = document.getElementById('new-tasks');
+        if (newTasksContainer && newTasksContainer.style.display === 'block') {
+            newTasksContainer.innerHTML = `
                 <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
                     <div style="font-size: 48px; margin-bottom: 16px;">❌</div>
                     <div>Ошибка загрузки заданий</div>
