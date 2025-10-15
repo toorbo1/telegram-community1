@@ -389,66 +389,7 @@ fixWithdrawalTable();
 
 // ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
 
-// Get complete user data with stats
-app.get('/api/user/:userId/full', async (req, res) => {
-    try {
-        const userId = req.params.userId;
-        
-        const userResult = await pool.query(
-            'SELECT * FROM user_profiles WHERE user_id = $1', 
-            [userId]
-        );
-        
-        if (userResult.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'User not found'
-            });
-        }
-        
-        const user = userResult.rows[0];
-        
-        // Get user stats
-        const tasksStats = await pool.query(`
-            SELECT 
-                COUNT(*) as total_tasks,
-                COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_tasks,
-                COUNT(CASE WHEN status = 'active' THEN 1 END) as active_tasks
-            FROM user_tasks 
-            WHERE user_id = $1
-        `, [userId]);
-        
-        const referralStats = await pool.query(`
-            SELECT 
-                COUNT(*) as referral_count,
-                COALESCE(SUM(referral_bonus), 0) as referral_earned
-            FROM user_profiles 
-            WHERE referred_by = $1
-        `, [userId]);
-        
-        const stats = tasksStats.rows[0];
-        const referral = referralStats.rows[0];
-        
-        res.json({
-            success: true,
-            profile: {
-                ...user,
-                tasks_completed: parseInt(stats.completed_tasks) || 0,
-                active_tasks: parseInt(stats.active_tasks) || 0,
-                referral_count: parseInt(referral.referral_count) || 0,
-                referral_earned: parseFloat(referral.referral_earned) || 0,
-                quality_rate: stats.total_tasks > 0 ? 
-                    Math.round((parseInt(stats.completed_tasks) / parseInt(stats.total_tasks)) * 100) : 100
-            }
-        });
-    } catch (error) {
-        console.error('Get full user error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
+
 // Health check
 app.get('/api/health', async (req, res) => {
     try {
