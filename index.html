@@ -6179,54 +6179,7 @@ app.post('/api/posts', async (req, res) => {
     }
 });
 
-// Создание задания - для всех админов
-app.post('/api/tasks', async (req, res) => {
-    const { title, description, price, created_by } = req.body;
-    
-    if (!title || !description || !price) {
-        return res.status(400).json({
-            success: false,
-            error: 'Заполните название, описание и цену'
-        });
-    }
-    
-    // ✅ ПРАВИЛЬНАЯ ПРОВЕРКА - все админы могут создавать задания
-    const userIsAdmin = await isUserAdmin(created_by);
-    if (!userIsAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Только администратор может создавать задания!'
-        });
-    }
-    
-    try {
-        const taskPrice = parseFloat(price);
-        if (isNaN(taskPrice) || taskPrice <= 0) {
-            return res.status(400).json({
-                success: false,
-                error: 'Цена должна быть положительным числом!'
-            });
-        }
 
-        const result = await pool.query(`
-            INSERT INTO tasks (title, description, price, created_by) 
-            VALUES ($1, $2, $3, $4)
-            RETURNING *
-        `, [title.trim(), description.trim(), taskPrice, created_by]);
-        
-        res.json({
-            success: true,
-            message: 'Задание успешно создано!',
-            task: result.rows[0]
-        });
-    } catch (error) {
-        console.error('Create task error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Ошибка создания задания'
-        });
-    }
-});
 // 🔍 Функция проверки прав администратора
 async function checkUserIsAdmin(userId) {
     try {
@@ -6522,7 +6475,6 @@ if (parseInt(currentUser.id) === ADMIN_ID) {
 }
 // Обновите функцию инициализации приложения
 
-// 🔧 ФУНКЦИЯ ПЕРЕКЛЮЧЕНИЯ КАТЕГОРИЙ - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function showTaskCategory(category) {
     console.log('🔄 Переключение на категорию:', category);
     
@@ -6552,12 +6504,9 @@ function showTaskCategory(category) {
             if (targetContainer) {
                 targetContainer.style.display = 'block';
                 targetContainer.classList.add('active');
-                // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: ЗАГРУЖАЕМ ЗАДАНИЯ СРАЗУ ПРИ ПОКАЗЕ КОНТЕЙНЕРА
+                // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Загружаем задания сразу
                 console.log('🚀 Загружаем новые задания...');
-                // Добавляем небольшую задержку для гарантии отображения контейнера
-                setTimeout(() => {
-                    loadTasks();
-                }, 50);
+                loadTasks();
             }
             break;
             
@@ -6568,9 +6517,7 @@ function showTaskCategory(category) {
                 targetContainer.style.display = 'block';
                 targetContainer.classList.add('active');
                 console.log('🔄 Загружаем задания на подтверждение...');
-                setTimeout(() => {
-                    loadUserTasksForCategory('active');
-                }, 50);
+                loadUserTasksForCategory('active');
             }
             break;
             
@@ -6581,9 +6528,7 @@ function showTaskCategory(category) {
                 targetContainer.style.display = 'block';
                 targetContainer.classList.add('active');
                 console.log('✅ Загружаем выполненные задания...');
-                setTimeout(() => {
-                    loadUserTasksForCategory('completed');
-                }, 50);
+                loadUserTasksForCategory('completed');
             }
             break;
             
@@ -6594,9 +6539,7 @@ function showTaskCategory(category) {
                 targetContainer.style.display = 'block';
                 targetContainer.classList.add('active');
                 console.log('❌ Загружаем отклоненные задания...');
-                setTimeout(() => {
-                    loadUserTasksForCategory('rejected');
-                }, 50);
+                loadUserTasksForCategory('rejected');
             }
             break;
     }
@@ -6606,7 +6549,6 @@ function showTaskCategory(category) {
         targetTab.classList.add('active');
     }
 }
-
 
 
 
@@ -6633,7 +6575,6 @@ function fixTasksLayout() {
     
     console.log('✅ Tasks layout fixed');
 }
-// 🔧 ФУНКЦИЯ ДЛЯ ВКЛАДКИ ЗАДАНИЙ - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function showTasksTab() {
     console.log('🎯 Переход на вкладку заданий');
     
@@ -6641,17 +6582,14 @@ function showTasksTab() {
     document.getElementById('tasks-tab').classList.add('active');
     updateNavState('tasks');
     
-    // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Сразу показываем вкладку "Новые" и загружаем задания
+    // Сразу показываем вкладку "Новые" и загружаем задания
     showTaskCategory('new');
     
-    // 🔥 ДОПОЛНИТЕЛЬНОЕ ИСПРАВЛЕНИЕ: Принудительно загружаем задания
+    // Принудительно загружаем задания сразу
     setTimeout(() => {
         console.log('🚀 Принудительная загрузка заданий при открытии вкладки');
         loadTasks();
     }, 100);
-    
-    // Исправляем layout
-    setTimeout(fixTasksLayout, 100);
 }
 
 // 🔧 ФУНКЦИЯ ЗАГРУЗКИ ЗАДАНИЙ - УЛУЧШЕННАЯ ВЕРСИЯ
@@ -7034,22 +6972,29 @@ function displayUserTasksForCategory(tasks, status) {
 
 
 
-        // Функция открытия модального окна задания
-        function openTaskModal(taskId) {
-            selectedTaskId = taskId;
-            
-            const task = allTasks.find(t => t.id === taskId);
-            if (task) {
-                document.getElementById('task-modal-title').textContent = task.title;
-                document.getElementById('task-modal-category').textContent = task.category || 'Общее';
-                document.getElementById('task-modal-price').textContent = `${task.price} ⭐`;
-                document.getElementById('task-modal-description').textContent = task.description;
-                document.getElementById('task-modal-time').textContent = task.time_to_complete || '5 минут';
-                document.getElementById('task-modal-difficulty').textContent = task.difficulty || 'Легкая';
-                
-                document.getElementById('task-modal').classList.add('active');
-            }
-        }
+     function openTaskModal(taskId) {
+    selectedTaskId = taskId;
+    
+    const task = allTasks.find(t => t.id === taskId);
+    if (task) {
+        document.getElementById('task-modal-title').textContent = task.title;
+        document.getElementById('task-modal-category').textContent = task.category || 'Общее';
+        document.getElementById('task-modal-price').textContent = `${task.price} ⭐`;
+        document.getElementById('task-modal-description').textContent = task.description;
+        
+        // 🔥 ИСПРАВЛЕНИЕ: Отображаем реальные данные из базы
+        document.getElementById('task-modal-time').textContent = task.time_to_complete || '5 минут';
+        document.getElementById('task-modal-difficulty').textContent = task.difficulty || 'Легкая';
+        
+        // 🔥 ИСПРАВЛЕНИЕ: Рассчитываем сколько заданий осталось
+        const peopleRequired = task.people_required || 1;
+        const completedCount = task.completed_count || 0;
+        const availableTasks = Math.max(0, peopleRequired - completedCount);
+        document.getElementById('task-modal-available').textContent = `${availableTasks} заданий`;
+        
+        document.getElementById('task-modal').classList.add('active');
+    }
+}
 
         // Функция подтверждения выполнения задания
         function showTaskConfirmation(userTaskId, taskName) {
@@ -7337,19 +7282,15 @@ function displayUserTasksForCategory(tasks, status) {
             }
         }
 
-       async function addTask() {
+      async function addTask() {
     console.log('🎯 ========== START addTask FUNCTION ==========');
     
     try {
-        // 1. Проверяем авторизацию
         if (!currentUser) {
             showNotification('Пользователь не авторизован', 'error');
             return;
         }
-        
-       
 
-        // 2. Собираем данные из формы
         const getElementValue = (id) => {
             const element = document.getElementById(id);
             return element ? element.value : '';
@@ -7364,37 +7305,39 @@ function displayUserTasksForCategory(tasks, status) {
             people_required: getElementValue('admin-task-people'),
             repost_time: getElementValue('admin-task-repost'),
             task_url: getElementValue('admin-task-url'),
-            category: 'general', // добавляем категорию по умолчанию
+            category: 'general',
             created_by: currentUser.id
         };
 
         console.log('📋 Form data collected:', formData);
 
-        // 3. Валидация
         if (!formData.title.trim() || !formData.description.trim() || !formData.price) {
             showNotification('Заполните название, описание и цену задания!', 'error');
             return;
         }
 
-        // 4. Проверяем числовые поля
         const price = parseFloat(formData.price);
         if (isNaN(price) || price <= 0) {
             showNotification('Цена должна быть положительным числом!', 'error');
             return;
         }
 
-        // 5. Подготавливаем данные для отправки
-       const requestData = {
-    title: formData.title.trim(),
-    description: formData.description.trim(),
-    price: price,
-    created_by: currentUser.id
-};
+        // 🔥 ИСПРАВЛЕНИЕ: Отправляем все данные на сервер
+        const requestData = {
+            title: formData.title.trim(),
+            description: formData.description.trim(),
+            price: price,
+            time_to_complete: formData.time_to_complete || '5 минут',
+            difficulty: formData.difficulty || 'Легкая',
+            people_required: parseInt(formData.people_required) || 1,
+            repost_time: formData.repost_time || '1 день',
+            task_url: formData.task_url || '',
+            category: formData.category,
+            created_by: currentUser.id
+        };
 
         console.log('📤 Prepared request data:', requestData);
 
-        // 6. Отправляем запрос
-        console.log('🚀 Sending request to /api/tasks...');
         const result = await makeRequest('/tasks', {
             method: 'POST',
             body: JSON.stringify(requestData)
@@ -8510,7 +8453,7 @@ async function completeWithdrawal(requestId) {
             document.getElementById(modalId).classList.remove('active');
         }
 
-        async function startTask() {
+ async function startTask() {
     if (!currentUser || !selectedTaskId) {
         showNotification('Ошибка: пользователь не авторизован или задание не выбрано', 'error');
         return;
@@ -8529,6 +8472,7 @@ async function completeWithdrawal(requestId) {
             closeModal('task-modal');
             showNotification('Задание начато! Выполните его и вернитесь для подтверждения.', 'success');
             // Обновляем список заданий
+            loadTasks();
             loadUserTasks();
         } else {
             showNotification('Ошибка: ' + result.error, 'error');

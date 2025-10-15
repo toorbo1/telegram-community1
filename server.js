@@ -719,32 +719,37 @@ app.delete('/api/posts/:id', async (req, res) => {
 
 // ==================== TASKS ENDPOINTS ====================
 
-// Get all tasks - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// Get all tasks - ИСПРАВЛЕННАЯ ВЕРСИЯ С ДАННЫМИ ДЛЯ МОДАЛЬНОГО ОКНА
 app.get('/api/tasks', async (req, res) => {
     const { search, category } = req.query;
     
     console.log('📥 Получен запрос на задания:', { search, category });
     
     try {
-        let query = "SELECT * FROM tasks WHERE status = 'active'";
+        let query = `
+            SELECT t.*, 
+                   COUNT(ut.id) as completed_count
+            FROM tasks t 
+            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
+            WHERE t.status = 'active'
+        `;
         let params = [];
+        let paramCount = 0;
         
         if (search) {
-            query += " AND (title ILIKE $1 OR description ILIKE $2)";
+            paramCount++;
+            query += ` AND (t.title ILIKE $${paramCount} OR t.description ILIKE $${paramCount + 1})`;
             params.push(`%${search}%`, `%${search}%`);
+            paramCount += 2;
         }
         
         if (category && category !== 'all') {
-            if (params.length > 0) {
-                query += " AND category = $3";
-                params.push(category);
-            } else {
-                query += " AND category = $1";
-                params.push(category);
-            }
+            paramCount++;
+            query += ` AND t.category = $${paramCount}`;
+            params.push(category);
         }
         
-        query += " ORDER BY created_at DESC";
+        query += ` GROUP BY t.id ORDER BY t.created_at DESC`;
         
         console.log('📊 Выполняем запрос:', query, params);
         
@@ -784,9 +789,20 @@ app.get('/api/debug/tasks', async (req, res) => {
         });
     }
 });
-// Create task (for all admins) - УПРОЩЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
+// Create task (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ С ВСЕМИ ПОЛЯМИ
 app.post('/api/tasks', async (req, res) => {
-    const { title, description, price, created_by } = req.body;
+    const { 
+        title, 
+        description, 
+        price, 
+        created_by,
+        category,
+        time_to_complete,
+        difficulty,
+        people_required,
+        repost_time,
+        task_url
+    } = req.body;
     
     if (!title || !description || !price) {
         return res.status(400).json({
@@ -805,10 +821,24 @@ app.post('/api/tasks', async (req, res) => {
         }
 
         const result = await pool.query(`
-            INSERT INTO tasks (title, description, price, created_by) 
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO tasks (
+                title, description, price, created_by, category,
+                time_to_complete, difficulty, people_required, repost_time, task_url
+            ) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING *
-        `, [title.trim(), description.trim(), taskPrice, created_by]);
+        `, [
+            title.trim(), 
+            description.trim(), 
+            taskPrice, 
+            created_by,
+            category || 'general',
+            time_to_complete || '5 минут',
+            difficulty || 'Легкая',
+            people_required || 1,
+            repost_time || '1 день',
+            task_url || ''
+        ]);
         
         res.json({
             success: true,
@@ -864,7 +894,7 @@ app.get('/api/admin/tasks', async (req, res) => {
 
 // ==================== USER TASKS ENDPOINTS ====================
 
-// Start task for user
+// Start task for user - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.post('/api/user/tasks/start', async (req, res) => {
     const { userId, taskId } = req.body;
     
@@ -876,10 +906,10 @@ app.post('/api/user/tasks/start', async (req, res) => {
     }
     
     try {
-        // Проверяем, выполнял ли пользователь это задание ЛЮБОЙ раз
+        // 🔥 ИСПРАВЛЕНИЕ: Проверяем, выполнял ли пользователь это задание конкретно сейчас
         const existingTask = await pool.query(`
             SELECT id FROM user_tasks 
-            WHERE user_id = $1 AND task_id = $2
+            WHERE user_id = $1 AND task_id = $2 AND status IN ('active', 'pending_review', 'completed')
         `, [userId, taskId]);
         
         if (existingTask.rows.length > 0) {
@@ -889,7 +919,7 @@ app.post('/api/user/tasks/start', async (req, res) => {
             });
         }
         
-        // Проверяем, доступно ли задание (не достигнут лимит)
+        // 🔥 ИСПРАВЛЕНИЕ: Проверяем лимит выполнений на основе people_required
         const taskInfo = await pool.query(`
             SELECT t.*, 
                    COUNT(ut.id) as completed_count
@@ -907,7 +937,9 @@ app.post('/api/user/tasks/start', async (req, res) => {
         }
         
         const task = taskInfo.rows[0];
-        if (task.completed_count >= task.people_required) {
+        const peopleRequired = task.people_required || 1;
+        
+        if (task.completed_count >= peopleRequired) {
             return res.status(400).json({
                 success: false,
                 error: 'Достигнут лимит выполнения этого задания'
