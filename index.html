@@ -39,18 +39,99 @@
             --error: #ef4444;
             --warning: #f59e0b;
         }
+/* Фикс для body */
 body {
     background: var(--bg-primary);
     color: var(--text-primary);
     min-height: 100vh;
     padding: 16px;
-    padding-bottom: 12px; /* Увеличил отступ снизу */
+    padding-bottom: 120px;
     line-height: 1.6;
     background-image: 
         radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.05) 0%, transparent 25%),
         radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.05) 0%, transparent 25%);
+    /* Гарантируем что body не создает лишних отступов */
+    margin: 0;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+}
+/* Мобильная адаптация */
+@media (max-width: 768px) {
+    .main-content {
+        padding: 12px;
+        padding-bottom: 90px;
+    }
+    
+    .tasks-tab {
+        min-height: 400px;
+    }
+    
+    .task-card {
+        padding: 14px;
+        min-height: 160px;
+        width: 100%;
+        max-width: 100%;
+    }
+    
+    .task-title {
+        font-size: 15px;
+        
+    }
+    
+    .task-header {
+        gap: 8px;
+    }
+    
+    .task-price {
+        font-size: 16px;
+        margin-left: 5px;
+    }
 }
 
+@media (max-width: 480px) {
+    .main-content {
+        padding: 10px;
+        padding-bottom: 80px;
+    }
+    
+    body {
+        padding: 10px;
+        padding-bottom: 100px;
+    }
+    
+    .tasks-tab {
+        min-height: 350px;
+    }
+    
+    .task-card {
+        padding: 12px;
+        min-height: 150px;
+        width: 100%;
+    }
+    
+    .task-header {
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-start;
+    }
+    
+    .task-price {
+        margin-left: 0;
+        align-self: flex-start;
+    }
+    
+    .task-footer {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .task-btn {
+        width: 100%;
+        text-align: center;
+    }
+}
 .bottom-nav {
     position: fixed;
     bottom: 16px;
@@ -94,11 +175,14 @@ body {
     color: var(--text-secondary);
     font-weight: 500;
 }
-/* Убедимся что контент не перекрывается */
 .main-content {
     min-height: calc(100vh - 200px);
     position: relative;
-    padding-bottom: 100px; /* Добавляем отступ снизу равный высоте навигации */
+    padding: 16px;
+    padding-bottom: 100px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 /* Убедимся что контент не перекрывается */
 .tab-content {
@@ -110,11 +194,15 @@ body {
 }
       
 
-        .container {
-            max-width: 100%;
-            margin: 0 auto;
-            position: relative;
-        }
+       .container {
+    max-width: 100%;
+    margin: 0 auto;
+    position: relative;
+    padding: 0;
+    box-sizing: border-box;
+    width: 100%;
+}
+
 
         .header {
             text-align: center;
@@ -652,20 +740,55 @@ body {
             margin-bottom: 20px;
             justify-content: space-between;
         }
-/* ФИКС ДЛЯ ВКЛАДКИ ЗАДАНИЙ */
+/* Исправление основной вкладки заданий */
 .tasks-tab {
     min-height: 500px;
     position: relative;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+    overflow: visible;
 }
 
+/* Контейнеры для разных категорий заданий */
+#new-tasks,
+#confirmation-tasks,
+#completed-tasks,
+#rejected-tasks {
+    position: relative;
+    min-height: 300px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+    display: none;
+}
+
+#new-tasks.active,
+#confirmation-tasks.active,
+#completed-tasks.active,
+#rejected-tasks.active {
+    display: block;
+    width: 100%;
+}
+
+/* Сетка заданий - ОСНОВНОЙ ФИКС */
 .tasks-grid {
     display: grid;
     gap: 16px;
     grid-template-columns: 1fr;
     min-height: 200px;
     position: relative;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+    /* Гарантируем что сетка не выходит за границы */
+    max-width: 100%;
+    overflow: visible;
 }
-
+/* КАРТОЧКИ ЗАДАНИЙ - ОСНОВНОЙ ФИКС */
 .task-card {
     background: var(--card-bg);
     border-radius: 16px;
@@ -674,12 +797,20 @@ body {
     cursor: pointer;
     transition: transform 0.3s ease;
     position: relative;
-    width: 100%;
+    /* ВАЖНО: ширина 100% но с учетом padding */
+    width: calc(100% - 32px); /* 100% минус padding слева и справа */
     box-sizing: border-box;
-    margin-bottom: 0;
+    margin: 0;
     display: flex;
     flex-direction: column;
-    min-height: 180px; /* Минимальная высота для единообразия */
+    min-height: 180px;
+    /* Гарантируем что карточка не выходит за границы */
+    max-width: calc(100% - 32px);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    /* Убираем любые внешние отступы */
+    margin-left: 0;
+    margin-right: 0;
 }
 
 /* Убираем анимации для всех элементов в tasks-tab */
@@ -1735,14 +1866,22 @@ body {
     animation: none;
 }
         
-        .task-header {
+/* Header карточки */
+.task-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 12px;
     flex-shrink: 0;
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
 }
-
+.task-header > div:first-child {
+    flex: 1;
+    min-width: 0; /* КРИТИЧЕСКИ ВАЖНО для правильного обрезания текста */
+}
+/* Заголовок задания */
 .task-title {
     font-size: 16px;
     font-weight: 600;
@@ -1750,9 +1889,14 @@ body {
     line-height: 1.3;
     word-wrap: break-word;
     overflow-wrap: break-word;
-    max-width: 70%;
+    /* Ограничиваем ширину и обрезаем длинный текст */
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    
+    -webkit-box-orient: vertical;
 }
-
 .task-category {
     font-size: 12px;
     color: var(--text-secondary);
@@ -1763,6 +1907,7 @@ body {
     white-space: nowrap;
 }
 
+/* Цена задания */
 .task-price {
     font-size: 18px;
     font-weight: 700;
@@ -1771,9 +1916,11 @@ body {
     background-clip: text;
     color: transparent;
     flex-shrink: 0;
+    white-space: nowrap;
     margin-left: 10px;
 }
 
+/* Описание задания */
 .task-description {
     font-size: 13px;
     color: var(--text-secondary);
@@ -1783,12 +1930,12 @@ body {
     overflow-wrap: break-word;
     white-space: pre-wrap;
     flex: 1;
-    /* Ограничение по высоте с возможностью прокрутки */
+    /* Ограничиваем высоту описания */
     max-height: 60px;
     overflow: hidden;
     position: relative;
+    max-width: 100%;
 }
-
 /* Плавное ограничение текста с кнопкой "Читать далее" */
 .task-description.collapsed {
     max-height: 60px;
@@ -1820,17 +1967,21 @@ body {
     align-self: flex-start;
 }
 
+/* Footer карточки */
 .task-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-top: auto;
     flex-shrink: 0;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .task-time {
     font-size: 12px;
     color: var(--text-secondary);
+    white-space: nowrap;
 }
 
 .task-btn {
@@ -1843,6 +1994,7 @@ body {
     font-weight: 600;
     cursor: pointer;
     white-space: nowrap;
+    flex-shrink: 0;
 }
         .no-tasks {
             text-align: center;
