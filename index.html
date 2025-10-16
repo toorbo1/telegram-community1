@@ -4916,32 +4916,40 @@ input:checked + .theme-slider:before {
             </div>
         </div>
         
-        <!-- Реферальная система -->
-        <div class="referral-system fade-in">
-            <div class="referral-title">Реферальная система</div>
-            
-            <div class="referral-code">
-                <div class="referral-label">Ваша реферальная ссылка</div>
-                <input type="text" id="referral-link" readonly style="width: 100%; padding: 8px; margin: 8px 0; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); text-align: center;">
-                <button class="copy-btn" onclick="copyReferralLink()">Скопировать ссылку</button>
-            </div>
-            
-            <div class="referral-stats">
-                <div class="referral-stat">
-                    <div class="referral-value" id="ref-invited">0</div>
-                    <div class="referral-label">Приглашено</div>
-                </div>
-                <div class="referral-stat">
-                    <div class="referral-value" id="ref-earned">0 ⭐</div>
-                    <div class="referral-label">Заработано</div>
-                </div>
-            </div>
-            
-            <div class="referral-info">
-                Приглашайте друзей и получайте 10% от их заработка!
-            </div>
+        <!-- В секции реферальной системы -->
+<div class="referral-system fade-in">
+    <div class="referral-title">Реферальная система</div>
+    
+    <div class="referral-code">
+        <div class="referral-label">Ваша реферальная ссылка</div>
+        <input type="text" id="referral-link" readonly style="width: 100%; padding: 8px; margin: 8px 0; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); text-align: center;">
+        <button class="copy-btn" onclick="copyReferralLink()">Скопировать ссылку</button>
+    </div>
+    
+    <!-- ДОБАВИТЬ ЭТОТ БЛОК -->
+    <div class="referral-bonuses" style="background: var(--bg-secondary); padding: 12px; border-radius: 10px; margin: 12px 0; text-align: center;">
+        <div style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">🎁 Бонусы реферальной системы</div>
+        <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.4;">
+            <div>✅ Приглашенный друг получает <strong style="color: var(--gold);">5 звёзд</strong> сразу</div>
+            <div>✅ Вы получаете <strong style="color: var(--gold);">15 звёзд</strong> за каждого приглашенного</div>
         </div>
-        
+    </div>
+    
+    <div class="referral-stats">
+        <div class="referral-stat">
+            <div class="referral-value" id="ref-invited">0</div>
+            <div class="referral-label">Приглашено</div>
+        </div>
+        <div class="referral-stat">
+            <div class="referral-value" id="ref-earned">0 ⭐</div>
+            <div class="referral-label">Заработано</div>
+        </div>
+    </div>
+    
+    <div class="referral-info">
+        Приглашайте друзей и получайте бонусы!
+    </div>
+</div>
         <!-- Действия профиля -->
         <div class="profile-section fade-in">
             <div class="section-title">Действия</div>
@@ -8205,7 +8213,114 @@ async function completeWithdrawal(requestId) {
         showNotification('❌ Ошибка подтверждения выплаты', 'error');
     }
 }
+// Обработка реферальной ссылки при входе
+async function handleReferralEntry() {
+    if (!currentUser) return;
+    
+    // Проверяем параметры URL на наличие реферального кода
+    const urlParams = new URLSearchParams(window.location.search);
+    const startParam = urlParams.get('start');
+    
+    if (startParam && startParam.startsWith('ref_')) {
+        const referrerId = startParam.replace('ref_', '');
+        
+        // Проверяем валидность referrerId
+        if (referrerId && referrerId !== currentUser.id) {
+            try {
+                console.log('🎯 Обнаружена реферальная ссылка, referrerId:', referrerId);
+                
+                const result = await makeRequest('/user/referral-entry', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        userId: currentUser.id,
+                        referrerId: referrerId
+                    })
+                });
+                
+                if (result.success) {
+                    console.log('✅ Реферальные бонусы начислены!');
+                    
+                    // Показываем уведомление о бонусе
+                    showNotification(
+                        `🎉 Вы получили ${result.userBonus}⭐ за вход по реферальной ссылке!`, 
+                        'success'
+                    );
+                    
+                    // Обновляем данные пользователя
+                    await updateUserData();
+                    
+                    // Очищаем параметр из URL чтобы избежать повторного начисления
+                    const newUrl = window.location.pathname;
+                    window.history.replaceState({}, document.title, newUrl);
+                }
+            } catch (error) {
+                console.log('Реферальный бонус не начислен:', error.message);
+                // Не показываем ошибку пользователю, чтобы не портить UX
+            }
+        }
+    }
+}
 
+// Обновленная функция загрузки реферальной статистики
+async function loadReferralStats() {
+    if (!currentUser) return;
+    
+    try {
+        const result = await makeRequest(`/user/${currentUser.id}/referral-stats`);
+        if (result.success) {
+            updateReferralStatsDisplay(result.stats);
+        }
+    } catch (error) {
+        console.error('Error loading referral stats:', error);
+    }
+}
+
+// Обновление отображения реферальной статистики
+function updateReferralStatsDisplay(stats) {
+    const refInvited = document.getElementById('ref-invited');
+    const refEarned = document.getElementById('ref-earned');
+    
+    if (refInvited) refInvited.textContent = stats.referral_count || 0;
+    if (refEarned) refEarned.textContent = `${stats.referral_earned || 0} ⭐`;
+    
+    // Также обновляем данные в текущем пользователе
+    if (currentUser) {
+        currentUser.referral_count = stats.referral_count;
+        currentUser.referral_earned = stats.referral_earned;
+    }
+}
+
+// Обновленная функция инициализации приложения
+async function initializeApp() {
+    console.log('🎮 Initializing LinkGold app...');
+    
+    // ... существующий код инициализации ...
+    
+    // После аутентификации пользователя
+    displayUserProfile();
+    
+    // 🔥 ДОБАВИТЬ: Обработка реферальной ссылки
+    setTimeout(() => {
+        handleReferralEntry();
+    }, 1000);
+    
+    // 🔥 ДОБАВИТЬ: Загрузка реферальной статистики
+    loadReferralStats();
+    
+    // ... остальной код инициализации ...
+}
+
+// Обновленная функция генерации реферальной ссылки
+function updateReferralSystem() {
+    if (!currentUser) return;
+    
+    const referralLink = `https://t.me/LinkGoldMoney_bot?start=ref_${currentUser.id}`;
+    const referralInput = document.getElementById('referral-link');
+    if (referralInput) referralInput.value = referralLink;
+    
+    // Загружаем актуальную статистику
+    loadReferralStats();
+}
         // Обновление страницы вывода
         function updateWithdrawPage() {
             const balanceDisplay = document.getElementById('withdraw-balance-display');
@@ -9598,6 +9713,9 @@ window.completeWithdrawal = completeWithdrawal;
 window.showAdminSection = showAdminSection;
 // 🔧 ЭКСПОРТ НОВЫХ ФУНКЦИЙ
 window.fixTasksLayout = fixTasksLayout;
+// 🔧 ЭКСПОРТ НОВЫХ ФУНКЦИЙ
+window.handleReferralEntry = handleReferralEntry;
+window.loadReferralStats = loadReferralStats;
 </script>
 </body>
 </html>

@@ -240,7 +240,25 @@ await pool.query(`
             ADD COLUMN IF NOT EXISTS user_username TEXT,
             ADD COLUMN IF NOT EXISTS unread_count INTEGER DEFAULT 0
         `);
-        
+        // Таблица рефералов
+await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_referrals (
+        id SERIAL PRIMARY KEY,
+        referrer_id BIGINT NOT NULL,
+        referred_user_id BIGINT NOT NULL,
+        bonus_given REAL DEFAULT 0,
+        referrer_bonus REAL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(referred_user_id)
+    )
+`);
+
+// Добавляем колонки для реферальной статистики в user_profiles
+await pool.query(`
+    ALTER TABLE user_profiles 
+    ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS referral_earned REAL DEFAULT 0
+`);
         await pool.query(`
             ALTER TABLE tasks 
             ADD COLUMN IF NOT EXISTS created_by BIGINT,
@@ -387,6 +405,133 @@ async function fixWithdrawalTable() {
 // Вызовите эту функцию при инициализации сервера
 fixWithdrawalTable();
 
+
+
+// ==================== REFERRAL SYSTEM ENDPOINTS ====================
+
+// Обработка реферального входа
+app.post('/api/user/referral-entry', async (req, res) => {
+    const { userId, referrerId } = req.body;
+    
+    console.log('🎯 Реферальный вход:', { userId, referrerId });
+    
+    if (!userId || !referrerId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    // Нельзя использовать собственную реферальную ссылку
+    if (parseInt(userId) === parseInt(referrerId)) {
+        return res.status(400).json({
+            success: false,
+            error: 'Cannot use own referral link'
+        });
+    }
+    
+    try {
+        // Проверяем, является ли это первым входом по реферальной ссылке
+        const existingRef = await pool.query(
+            'SELECT id FROM user_referrals WHERE referred_user_id = $1',
+            [userId]
+        );
+        
+        if (existingRef.rows.length > 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'Реферальный бонус уже был получен'
+            });
+        }
+        
+        // Проверяем существование реферера
+        const referrerExists = await pool.query(
+            'SELECT user_id FROM user_profiles WHERE user_id = $1',
+            [referrerId]
+        );
+        
+        if (referrerExists.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Реферер не найден'
+            });
+        }
+        
+        // Начисляем 5 звёзд приглашенному пользователю
+        await pool.query(`
+            UPDATE user_profiles 
+            SET balance = COALESCE(balance, 0) + 5,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = $1
+        `, [userId]);
+        
+        // Начисляем 15 звёзд пригласившему пользователю
+        await pool.query(`
+            UPDATE user_profiles 
+            SET balance = COALESCE(balance, 0) + 15,
+                referral_count = COALESCE(referral_count, 0) + 1,
+                referral_earned = COALESCE(referral_earned, 0) + 15,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = $1
+        `, [referrerId]);
+        
+        // Записываем реферал в базу
+        await pool.query(`
+            INSERT INTO user_referrals (referrer_id, referred_user_id, bonus_given, referrer_bonus)
+            VALUES ($1, $2, $3, $4)
+        `, [referrerId, userId, 5, 15]);
+        
+        console.log(`✅ Реферальные бонусы начислены: пользователь ${userId} получил 5⭐, реферер ${referrerId} получил 15⭐`);
+        
+        res.json({
+            success: true,
+            message: 'Реферальные бонусы начислены!',
+            userBonus: 5,
+            referrerBonus: 15
+        });
+        
+    } catch (error) {
+        console.error('❌ Referral entry error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Получение статистики рефералов
+app.get('/api/user/:userId/referral-stats', async (req, res) => {
+    const userId = req.params.userId;
+    
+    try {
+        const result = await pool.query(`
+            SELECT 
+                COALESCE(referral_count, 0) as referral_count,
+                COALESCE(referral_earned, 0) as referral_earned
+            FROM user_profiles 
+            WHERE user_id = $1
+        `, [userId]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            });
+        }
+        
+        res.json({
+            success: true,
+            stats: result.rows[0]
+        });
+        
+    } catch (error) {
+        console.error('Get referral stats error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
 // ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
 
 
@@ -566,7 +711,7 @@ async function fixWithdrawalTable() {
 // Вызовите эту функцию при инициализации сервера
 fixWithdrawalTable();
 
-// User authentication
+// User authentication (обновленная версия)
 app.post('/api/user/auth', async (req, res) => {
     const { user } = req.body;
     
@@ -582,8 +727,8 @@ app.post('/api/user/auth', async (req, res) => {
         
         const result = await pool.query(`
             INSERT INTO user_profiles 
-            (user_id, username, first_name, last_name, photo_url, is_admin, updated_at) 
-            VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+            (user_id, username, first_name, last_name, photo_url, is_admin, referral_count, referral_earned, updated_at) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
             ON CONFLICT (user_id) 
             DO UPDATE SET 
                 username = EXCLUDED.username,
@@ -599,7 +744,9 @@ app.post('/api/user/auth', async (req, res) => {
             user.first_name || 'Пользователь',
             user.last_name || '',
             user.photo_url || '',
-            isMainAdmin
+            isMainAdmin,
+            0, // referral_count
+            0  // referral_earned
         ]);
         
         const userProfile = result.rows[0];
@@ -616,7 +763,6 @@ app.post('/api/user/auth', async (req, res) => {
         });
     }
 });
-
 // Get user profile
 app.get('/api/user/:userId', async (req, res) => {
     try {
