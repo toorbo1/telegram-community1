@@ -7156,9 +7156,9 @@ function showTaskCategory(category) {
     
     // Загружаем данные для категории
     setTimeout(() => {
+        console.log(`🚀 Загружаем данные для категории: ${category}`);
         switch(category) {
             case 'new':
-                console.log('🚀 Загружаем новые задания');
                 loadTasks();
                 break;
             case 'confirmation':
@@ -7173,7 +7173,49 @@ function showTaskCategory(category) {
         }
     }, 100);
 }
+// 🔧 Функция для диагностики подтверждения заданий
+function debugTaskConfirmation() {
+    console.log('🐛 DEBUG Task Confirmation:');
+    
+    // Проверяем текущие данные
+    console.log('- currentUser:', currentUser);
+    console.log('- currentUserTaskId:', currentUserTaskId);
+    
+    // Проверяем загружены ли задания
+    const activeTasksContainer = document.getElementById('confirmation-tasks');
+    console.log('- confirmation-tasks container:', activeTasksContainer);
+    console.log('- confirmation-tasks content:', activeTasksContainer?.innerHTML);
+    
+    // Проверяем модальные окна
+    console.log('- confirmation-modal:', document.getElementById('confirmation-modal'));
+    console.log('- screenshot-modal:', document.getElementById('screenshot-modal'));
+    
+    // Проверяем загружены ли задания пользователя
+    loadUserTasksForCategory('active').then(() => {
+        console.log('✅ Active tasks loaded for debugging');
+    });
+}
 
+// Добавьте кнопку для тестирования
+function addConfirmationDebugButton() {
+    const debugBtn = document.createElement('button');
+    debugBtn.textContent = '🐛 Debug Confirmation';
+    debugBtn.style.position = 'fixed';
+    debugBtn.style.top = '200px';
+    debugBtn.style.right = '10px';
+    debugBtn.style.zIndex = '10000';
+    debugBtn.style.padding = '10px';
+    debugBtn.style.background = 'orange';
+    debugBtn.style.color = 'white';
+    debugBtn.style.border = 'none';
+    debugBtn.style.borderRadius = '5px';
+    debugBtn.style.fontSize = '12px';
+    debugBtn.onclick = debugTaskConfirmation;
+    document.body.appendChild(debugBtn);
+}
+
+// Вызовите при загрузке
+setTimeout(addConfirmationDebugButton, 3000);
 
 function checkAdminPanelLoaded() {
     const adminTasksSection = document.getElementById('admin-tasks-section');
@@ -7673,7 +7715,10 @@ function displayUserTasksForCategory(tasks, status) {
             break;
     }
     
-    if (!container) return;
+    if (!container) {
+        console.error(`❌ Container not found for status: ${status}`);
+        return;
+    }
     
     container.innerHTML = '';
 
@@ -7700,6 +7745,8 @@ function displayUserTasksForCategory(tasks, status) {
         return;
     }
 
+    console.log(`🎯 Displaying ${tasks.length} tasks for ${status} category`);
+    
     tasks.forEach(task => {
         const taskElement = document.createElement('div');
         taskElement.className = `task-card ${status === 'rejected' ? 'rejected-task' : ''}`;
@@ -7708,7 +7755,7 @@ function displayUserTasksForCategory(tasks, status) {
             // Задания на подтверждение
             taskElement.innerHTML = `
                 <div class="task-header">
-                    <div>
+                    <div style="flex: 1;">
                         <div class="task-title">${escapeHtml(task.title)}</div>
                         <div class="task-category">${task.category || 'Общее'}</div>
                     </div>
@@ -7717,14 +7764,16 @@ function displayUserTasksForCategory(tasks, status) {
                 <div class="task-description">${escapeHtml(task.description)}</div>
                 <div class="task-footer">
                     <div class="task-time">Ожидает подтверждения</div>
-                    <button class="task-btn" onclick="showTaskConfirmation(${task.id}, '${escapeHtml(task.title)}')">Подтвердить выполнение</button>
+                    <button class="task-btn" onclick="showTaskConfirmation(${task.id}, '${escapeHtml(task.title)}')">
+                        Подтвердить выполнение
+                    </button>
                 </div>
             `;
         } else if (status === 'completed') {
             // Выполненные задания
             taskElement.innerHTML = `
                 <div class="task-header">
-                    <div>
+                    <div style="flex: 1;">
                         <div class="task-title">${escapeHtml(task.title)}</div>
                         <div class="task-category">${task.category || 'Общее'}</div>
                     </div>
@@ -7740,7 +7789,7 @@ function displayUserTasksForCategory(tasks, status) {
             // Отклоненные задания
             taskElement.innerHTML = `
                 <div class="task-header">
-                    <div>
+                    <div style="flex: 1;">
                         <div class="task-title">${escapeHtml(task.title)}</div>
                         <div class="task-category">${task.category || 'Общее'}</div>
                     </div>
@@ -7857,13 +7906,21 @@ function openTaskModal(taskId) {
         document.getElementById('task-modal').classList.add('active');
     }
 }
-        // Функция подтверждения выполнения задания
-        function showTaskConfirmation(userTaskId, taskName) {
-            currentUserTaskId = userTaskId;
-            document.getElementById('confirmation-task-name').textContent = taskName;
-            document.getElementById('confirmation-modal').classList.add('active');
-        }
-
+       // Функция подтверждения выполнения задания
+function showTaskConfirmation(userTaskId, taskName) {
+    console.log('🔍 Confirming task:', { userTaskId, taskName });
+    
+    if (!userTaskId) {
+        showNotification('Ошибка: ID задания не найден', 'error');
+        return;
+    }
+    
+    currentUserTaskId = userTaskId;
+    document.getElementById('confirmation-task-name').textContent = taskName;
+    document.getElementById('confirmation-modal').classList.add('active');
+    
+    console.log('✅ Confirmation modal opened for task:', taskName);
+}
         // Функции для системы проверки заданий
         function showScreenshotUpload() {
             closeModal('confirmation-modal');
