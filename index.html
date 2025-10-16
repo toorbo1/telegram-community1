@@ -5316,8 +5316,16 @@ input:checked + .theme-slider:before {
         </div>
         
         <button class="admin-submit" onclick="addTask()" style="margin-top: 20px;">
-    ✅ Добавить задание
-</button>
+            ✅ Добавить задание
+        </button>
+    </div>
+
+    <!-- ДОБАВЬТЕ ЭТОТ БЛОК - контейнер для списка заданий -->
+    <div style="margin-top: 30px;">
+        <h3>📋 Созданные задания</h3>
+        <div id="admin-tasks-list">
+            <!-- Задания будут загружены здесь -->
+        </div>
     </div>
 </div>
 
@@ -5499,14 +5507,13 @@ input:checked + .theme-slider:before {
         <div class="page-title">Панель администратора</div>
     </div>
 
-    <div class="admin-buttons">
-        <button class="admin-btn" onclick="showAdminSection('posts')">📝 Посты</button>
-        <button class="admin-btn" onclick="showAdminSection('tasks')">📋 Задания</button>
-        <button class="admin-btn" onclick="showAdminSection('verification')">✅ Проверка</button>
-        <button class="admin-btn" onclick="showAdminSection('support')">💬 Поддержка</button>
-        <button class="admin-btn" onclick="showAdminSection('payments')">💳 Оплаты</button>
-        <!-- Кнопка "Админы" будет добавлена динамически только для главного админа -->
-    </div>
+   <div class="admin-buttons">
+    <button class="admin-btn" onclick="showAdminSection('posts')">📝 Посты</button>
+    <button class="admin-btn" onclick="loadAdminTasksSection()">📋 Задания</button>
+    <button class="admin-btn" onclick="showAdminSection('verification')">✅ Проверка</button>
+    <button class="admin-btn" onclick="showAdminSection('support')">💬 Поддержка</button>
+    <button class="admin-btn" onclick="showAdminSection('payments')">💳 Оплаты</button>
+</div>
      <!-- Секция управления заданиями -->
     <div id="admin-tasks-section" class="admin-section" style="display: none;">
         <div class="admin-form">
@@ -6895,6 +6902,8 @@ function debugAdminRights() {
 // Вызов для отладки (можно убрать после тестирования)
 setTimeout(debugAdminRights, 2000);
 
+
+
         // Функция для кнопки повторной попытки
         function showRetryButton() {
             const retryBtn = document.createElement('button');
@@ -8132,7 +8141,23 @@ async function addTask() {
         showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
     }
 }
-// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ АДМИН-ЗАДАНИЙ
+
+// 🔧 ФУНКЦИЯ ДЛЯ ЗАГРУЗКИ ЗАДАНИЙ ПРИ ОТКРЫТИИ СЕКЦИИ
+function loadAdminTasksSection() {
+    console.log('🔄 Loading admin tasks section...');
+    
+    // Показываем секцию
+    const section = document.getElementById('admin-tasks-section');
+    if (section) {
+        section.style.display = 'block';
+        console.log('✅ Admin tasks section shown');
+    }
+    
+    // Загружаем задания
+    loadAdminTasks();
+}
+
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ АДМИН-ЗАДАНИЙ
 async function loadAdminTasks() {
     console.log('🔄 Loading admin tasks...');
     
@@ -8149,13 +8174,16 @@ async function loadAdminTasks() {
             displayAdminTasks(result.tasks);
         } else {
             console.error('❌ Failed to load admin tasks:', result.error);
+            showNotification('Ошибка загрузки заданий: ' + result.error, 'error');
         }
     } catch (error) {
         console.error('❌ Error loading admin tasks:', error);
+        showNotification('Ошибка загрузки заданий', 'error');
     }
 }
 
-// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ АДМИН-ЗАДАНИЙ
+
+// 🔧 ФУНКЦИЯ ОТОБРАЖЕНИЯ АДМИН-ЗАДАНИЙ
 function displayAdminTasks(tasks) {
     const container = document.getElementById('admin-tasks-list');
     if (!container) {
@@ -8169,10 +8197,10 @@ function displayAdminTasks(tasks) {
     
     if (!tasks || tasks.length === 0) {
         container.innerHTML = `
-            <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
+            <div class="no-tasks" style="text-align: center; padding: 40px 20px; background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border);">
                 <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
-                <div>Нет созданных заданий</div>
-                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
+                <div style="font-size: 18px; margin-bottom: 8px;">Нет созданных заданий</div>
+                <div style="font-size: 14px; color: var(--text-secondary);">
                     Создайте первое задание используя форму выше
                 </div>
             </div>
@@ -8183,24 +8211,31 @@ function displayAdminTasks(tasks) {
     tasks.forEach(task => {
         const taskElement = document.createElement('div');
         taskElement.className = 'admin-task-item';
+        taskElement.style.cssText = `
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+        `;
+        
         taskElement.innerHTML = `
-            <div class="admin-task-header">
-                <div class="admin-task-title">
-                    ${task.title}
-                    ${task.image_url ? '<span style="margin-left: 8px;">🖼️</span>' : ''}
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                <div style="flex: 1;">
+                    <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">${task.title}</div>
+                    <div style="color: var(--text-secondary); font-size: 14px;">${task.description}</div>
                 </div>
-                <div class="admin-task-actions">
-                    <button class="admin-task-delete" onclick="deleteTask(${task.id})">
+                <div style="display: flex; gap: 8px;">
+                    <button class="admin-task-delete" onclick="deleteTask(${task.id})" style="background: var(--error); color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer;">
                         🗑️ Удалить
                     </button>
                 </div>
             </div>
-            <div class="admin-task-description">${task.description}</div>
-            <div class="admin-task-details">
-                <span class="admin-task-price">${task.price} ⭐</span>
-                <span class="admin-task-category">${task.category || 'general'}</span>
-                <span class="admin-task-people">Нужно: ${task.people_required || 1} чел.</span>
-                <span class="admin-task-difficulty">${task.difficulty || 'Легкая'}</span>
+            <div style="display: flex; gap: 12px; font-size: 12px; color: var(--text-secondary);">
+                <span>💰 ${task.price} ⭐</span>
+                <span>📁 ${task.category || 'general'}</span>
+                <span>👥 ${task.people_required || 1} чел.</span>
+                <span>⚡ ${task.difficulty || 'Легкая'}</span>
             </div>
             ${task.image_url ? `
                 <div style="margin-top: 10px;">
@@ -8208,6 +8243,7 @@ function displayAdminTasks(tasks) {
                 </div>
             ` : ''}
         `;
+        
         container.appendChild(taskElement);
     });
 }
@@ -8516,7 +8552,82 @@ async function sendAdminMessage() {
             document.getElementById('profile-tab').classList.add('active');
             updateNavState('profile');
         }
+// 🔧 ФУНКЦИЯ УДАЛЕНИЯ ЗАДАНИЯ
+async function deleteTask(taskId) {
+    if (!confirm('Удалить это задание?')) return;
+    
+    if (!currentUser) {
+        showNotification('Пользователь не авторизован', 'error');
+        return;
+    }
+    
+    try {
+        const result = await makeRequest(`/tasks/${taskId}`, {
+            method: 'DELETE',
+            body: JSON.stringify({ adminId: currentUser.id })
+        });
 
+        if (result.success) {
+            showNotification('Задание успешно удалено!', 'success');
+            // Перезагружаем список заданий
+            loadAdminTasks();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting task:', error);
+        showNotification('Ошибка удаления задания: ' + error.message, 'error');
+    }
+}
+
+// 🔧 ДИАГНОСТИКА АДМИН-ПАНЕЛИ С ЗАДАНИЯМИ
+function debugAdminTasks() {
+    console.log('🐛 DEBUG Admin Tasks Section:');
+    
+    const elements = {
+        'admin-tasks-section': document.getElementById('admin-tasks-section'),
+        'admin-tasks-list': document.getElementById('admin-tasks-list'),
+        'admin-task-title': document.getElementById('admin-task-title'),
+        'add-task-button': document.querySelector('#admin-tasks-section .admin-submit')
+    };
+    
+    Object.keys(elements).forEach(key => {
+        const element = elements[key];
+        console.log(`- ${key}:`, element ? 'FOUND' : 'NOT FOUND');
+        if (element) {
+            console.log(`  - display: ${element.style.display}`);
+            console.log(`  - visible: ${element.offsetParent !== null}`);
+        }
+    });
+    
+    // Проверяем текущего пользователя
+    console.log('- currentUser:', currentUser);
+    console.log('- isAdmin:', currentUser?.is_admin);
+}
+
+// Добавьте кнопку для тестирования
+function addAdminDebugButton() {
+    const debugBtn = document.createElement('button');
+    debugBtn.textContent = '🐛 Debug Tasks';
+    debugBtn.style.position = 'fixed';
+    debugBtn.style.top = '100px';
+    debugBtn.style.right = '10px';
+    debugBtn.style.zIndex = '10000';
+    debugBtn.style.padding = '10px';
+    debugBtn.style.background = 'orange';
+    debugBtn.style.color = 'white';
+    debugBtn.style.border = 'none';
+    debugBtn.style.borderRadius = '5px';
+    debugBtn.style.fontSize = '12px';
+    debugBtn.onclick = function() {
+        debugAdminTasks();
+        loadAdminTasksSection();
+    };
+    document.body.appendChild(debugBtn);
+}
+
+// Вызовите при загрузке
+setTimeout(addAdminDebugButton, 2000);
         // Функция показа вкладки админа - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function showAdminTab() {
     const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
@@ -10511,19 +10622,24 @@ async function loadAdminTasks() {
     }
 }
 
-// Отображение заданий админа
+// 🔧 ФУНКЦИЯ ОТОБРАЖЕНИЯ АДМИН-ЗАДАНИЙ
 function displayAdminTasks(tasks) {
     const container = document.getElementById('admin-tasks-list');
-    if (!container) return;
+    if (!container) {
+        console.error('❌ Admin tasks container not found!');
+        return;
+    }
+    
+    console.log(`🎯 Displaying ${tasks ? tasks.length : 0} admin tasks`);
     
     container.innerHTML = '';
     
     if (!tasks || tasks.length === 0) {
         container.innerHTML = `
-            <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
+            <div class="no-tasks" style="text-align: center; padding: 40px 20px; background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border);">
                 <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
-                <div>Нет созданных заданий</div>
-                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
+                <div style="font-size: 18px; margin-bottom: 8px;">Нет созданных заданий</div>
+                <div style="font-size: 14px; color: var(--text-secondary);">
                     Создайте первое задание используя форму выше
                 </div>
             </div>
@@ -10534,24 +10650,31 @@ function displayAdminTasks(tasks) {
     tasks.forEach(task => {
         const taskElement = document.createElement('div');
         taskElement.className = 'admin-task-item';
+        taskElement.style.cssText = `
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+        `;
+        
         taskElement.innerHTML = `
-            <div class="admin-task-header">
-                <div class="admin-task-title">
-                    ${task.title}
-                    ${task.image_url ? '<span style="margin-left: 8px;">🖼️</span>' : ''}
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                <div style="flex: 1;">
+                    <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">${task.title}</div>
+                    <div style="color: var(--text-secondary); font-size: 14px;">${task.description}</div>
                 </div>
-                <div class="admin-task-actions">
-                    <button class="admin-task-delete" onclick="deleteTask(${task.id})">
+                <div style="display: flex; gap: 8px;">
+                    <button class="admin-task-delete" onclick="deleteTask(${task.id})" style="background: var(--error); color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer;">
                         🗑️ Удалить
                     </button>
                 </div>
             </div>
-            <div class="admin-task-description">${task.description}</div>
-            <div class="admin-task-details">
-                <span class="admin-task-price">${task.price} ⭐</span>
-                <span class="admin-task-category">${formatCategory(task.category)}</span>
-                <span class="admin-task-people">Нужно: ${task.people_required} чел.</span>
-                <span class="admin-task-difficulty">${task.difficulty}</span>
+            <div style="display: flex; gap: 12px; font-size: 12px; color: var(--text-secondary);">
+                <span>💰 ${task.price} ⭐</span>
+                <span>📁 ${task.category || 'general'}</span>
+                <span>👥 ${task.people_required || 1} чел.</span>
+                <span>⚡ ${task.difficulty || 'Легкая'}</span>
             </div>
             ${task.image_url ? `
                 <div style="margin-top: 10px;">
@@ -10559,6 +10682,7 @@ function displayAdminTasks(tasks) {
                 </div>
             ` : ''}
         `;
+        
         container.appendChild(taskElement);
     });
 }
