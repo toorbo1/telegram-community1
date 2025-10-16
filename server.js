@@ -963,7 +963,7 @@ app.get('/api/debug/tasks', async (req, res) => {
         });
     }
 });
-// Create task (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ С ДИАГНОСТИКОЙ
+// Create task endpoint - УПРОЩЕННАЯ ВЕРСИЯ
 app.post('/api/tasks', async (req, res) => {
     console.log('📥 Received task creation request:', req.body);
     
@@ -984,18 +984,18 @@ app.post('/api/tasks', async (req, res) => {
         time_to_complete, difficulty, people_required, task_url
     });
     
-    if (!title || !description || !price) {
+    // Базовая валидация
+    if (!title || !description || !price || !created_by) {
         console.log('❌ Validation failed: missing required fields');
         return res.status(400).json({
             success: false,
-            error: 'Заполните название, описание и цену'
+            error: 'Заполните все обязательные поля'
         });
     }
     
     try {
         const taskPrice = parseFloat(price);
         if (isNaN(taskPrice) || taskPrice <= 0) {
-            console.log('❌ Validation failed: invalid price');
             return res.status(400).json({
                 success: false,
                 error: 'Цена должна быть положительным числом!'
@@ -1019,7 +1019,7 @@ app.post('/api/tasks', async (req, res) => {
             category || 'general',
             time_to_complete || '5-10 минут',
             difficulty || 'Легкая',
-            people_required || 1,
+            parseInt(people_required) || 1,
             task_url || ''
         ]);
         
@@ -1030,15 +1030,43 @@ app.post('/api/tasks', async (req, res) => {
             message: 'Задание успешно создано!',
             task: result.rows[0]
         });
+        
     } catch (error) {
         console.error('❌ Create task error:', error);
-        console.error('❌ Error details:', error.stack);
         res.status(500).json({
             success: false,
-            error: 'Ошибка создания задания: ' + error.message
+            error: 'Ошибка базы данных: ' + error.message
         });
     }
 });
+// 🔧 ФУНКЦИЯ ДЛЯ ДИАГНОСТИКИ ПРОБЛЕМ
+function debugTaskCreation() {
+    console.log('🐛 DEBUG Task Creation:');
+    
+    // Проверяем элементы формы
+    const elements = [
+        'admin-task-title',
+        'admin-task-description', 
+        'admin-task-price',
+        'admin-task-category',
+        'admin-task-time',
+        'admin-task-difficulty',
+        'admin-task-people',
+        'admin-task-url'
+    ];
+    
+    elements.forEach(id => {
+        const element = document.getElementById(id);
+        console.log(`- ${id}:`, element ? `"${element.value}"` : 'NOT FOUND');
+    });
+    
+    // Проверяем пользователя
+    console.log('- currentUser:', currentUser);
+    console.log('- API_BASE_URL:', API_BASE_URL);
+}
+
+// Вызовите для диагностики
+debugTaskCreation();
 // Test endpoint for task creation
 app.post('/api/test-task', async (req, res) => {
     console.log('🧪 Test task endpoint called:', req.body);

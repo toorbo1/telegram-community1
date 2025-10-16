@@ -8161,7 +8161,7 @@ addDebugButton();
             }
         }
 
-// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ДОБАВЛЕНИЯ ЗАДАНИЯ С ДИАГНОСТИКОЙ
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ДОБАВЛЕНИЯ ЗАДАНИЯ
 async function addTask() {
     console.log('🎯 Starting addTask function...');
     
@@ -8179,7 +8179,7 @@ async function addTask() {
             return value;
         };
 
-        const formData = {
+        const taskData = {
             title: getElementValue('admin-task-title'),
             description: getElementValue('admin-task-description'),
             price: getElementValue('admin-task-price'),
@@ -8191,23 +8191,23 @@ async function addTask() {
             created_by: currentUser.id
         };
 
-        console.log('📋 Form data collected:', formData);
+        console.log('📋 Form data collected:', taskData);
 
         // Валидация
-        if (!formData.title.trim()) {
+        if (!taskData.title.trim()) {
             showNotification('Введите название задания!', 'error');
             return;
         }
-        if (!formData.description.trim()) {
+        if (!taskData.description.trim()) {
             showNotification('Введите описание задания!', 'error');
             return;
         }
-        if (!formData.price) {
+        if (!taskData.price) {
             showNotification('Введите цену задания!', 'error');
             return;
         }
 
-        const price = parseFloat(formData.price);
+        const price = parseFloat(taskData.price);
         if (isNaN(price) || price <= 0) {
             showNotification('Цена должна быть положительным числом!', 'error');
             return;
@@ -8215,14 +8215,14 @@ async function addTask() {
 
         // Подготавливаем данные для отправки
         const requestData = {
-            title: formData.title.trim(),
-            description: formData.description.trim(),
+            title: taskData.title.trim(),
+            description: taskData.description.trim(),
             price: price,
-            category: formData.category || 'general',
-            time_to_complete: formData.time_to_complete || '5-10 минут',
-            difficulty: formData.difficulty || 'Легкая',
-            people_required: parseInt(formData.people_required) || 1,
-            task_url: formData.task_url || '',
+            category: taskData.category || 'general',
+            time_to_complete: taskData.time_to_complete || '5-10 минут',
+            difficulty: taskData.difficulty || 'Легкая',
+            people_required: parseInt(taskData.people_required) || 1,
+            task_url: taskData.task_url || '',
             created_by: currentUser.id
         };
 
@@ -8254,6 +8254,10 @@ async function addTask() {
                 if (element) element.value = '';
             });
             
+            // Сбрасываем выпадающие списки
+            document.getElementById('admin-task-category').value = 'subscribe';
+            document.getElementById('admin-task-difficulty').value = 'Легкая';
+            
             // Обновляем списки заданий
             setTimeout(() => {
                 loadAdminTasks();
@@ -8261,16 +8265,12 @@ async function addTask() {
             }, 1000);
             
         } else {
-            console.error('❌ Server returned error:', result);
             throw new Error(result.error || 'Unknown server error');
         }
 
     } catch (error) {
         console.error('💥 Error in addTask:', error);
-        console.error('💥 Error details:', {
-            message: error.message,
-            stack: error.stack
-        });
+        console.error('💥 Error details:', error.message);
         showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
     }
 }
