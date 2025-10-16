@@ -677,10 +677,9 @@ body {
     width: 100%;
     box-sizing: border-box;
     margin-bottom: 0;
-    /* Убираем анимацию fade-in чтобы не было смещения */
-    animation: none !important;
-    opacity: 1 !important;
-    transform: none !important;
+    display: flex;
+    flex-direction: column;
+    min-height: 180px; /* Минимальная высота для единообразия */
 }
 
 /* Убираем анимации для всех элементов в tasks-tab */
@@ -1014,13 +1013,14 @@ body {
             overflow-y: auto;
         }
 
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            position: relative;
-        }
+       .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    position: relative;
+    flex-shrink: 0;
+}
 
         .modal-title {
             font-size: 20px;
@@ -1031,28 +1031,29 @@ body {
             color: transparent;
         }
 
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 24px;
-            color: var(--text-secondary);
-            cursor: pointer;
-            position: absolute;
-            top: -10px;
-            right: -10px;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            background: var(--card-bg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+      .modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--card-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
 
-        .modal-body {
-            margin-bottom: 20px;
-            text-align: center;
-        }
+.modal-body {
+    margin-bottom: 20px;
+    text-align: left;
+}
 
         .balance-amount {
             font-size: 48px;
@@ -1735,65 +1736,114 @@ body {
 }
         
         .task-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 12px;
-        }
-        
-        .task-title {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-        
-        .task-category {
-            font-size: 12px;
-            color: var(--text-secondary);
-            background: var(--bg-secondary);
-            padding: 2px 8px;
-            border-radius: 8px;
-            display: inline-block;
-        }
-        
-        .task-price {
-            font-size: 18px;
-            font-weight: 700;
-            background: var(--gold-gradient);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-        }
-        
-        .task-description {
-            font-size: 13px;
-            color: var(--text-secondary);
-            margin-bottom: 16px;
-            line-height: 1.4;
-        }
-        
-        .task-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .task-time {
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-        
-        .task-btn {
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 10px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    flex-shrink: 0;
+}
+
+.task-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    line-height: 1.3;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 70%;
+}
+
+.task-category {
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    padding: 2px 8px;
+    border-radius: 8px;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.task-price {
+    font-size: 18px;
+    font-weight: 700;
+    background: var(--gold-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    flex-shrink: 0;
+    margin-left: 10px;
+}
+
+.task-description {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    line-height: 1.4;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+    flex: 1;
+    /* Ограничение по высоте с возможностью прокрутки */
+    max-height: 60px;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Плавное ограничение текста с кнопкой "Читать далее" */
+.task-description.collapsed {
+    max-height: 60px;
+    overflow: hidden;
+}
+
+.task-description.collapsed::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 30px;
+    background: linear-gradient(transparent, var(--card-bg));
+    pointer-events: none;
+}
+
+.read-more-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    display: inline-block;
+    align-self: flex-start;
+}
+
+.task-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+    flex-shrink: 0;
+}
+
+.task-time {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.task-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
         .no-tasks {
             text-align: center;
             padding: 40px 20px;
@@ -1805,106 +1855,139 @@ body {
             margin-bottom: 16px;
         }
         
-        /* Модальное окно задания */
-        .task-modal-content {
-            background: var(--card-bg);
-            border-radius: 20px;
-            padding: 24px;
-            width: 90%;
-            max-width: 400px;
-            border: 1px solid var(--border);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-        }
-        
-        .task-modal-title {
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 16px;
-            background: var(--gold-gradient);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-        }
-        
-        .task-modal-category {
-            display: inline-block;
-            background: var(--bg-secondary);
-            padding: 4px 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-bottom: 16px;
-        }
-        
-        .task-modal-price {
-            font-size: 24px;
-            font-weight: 800;
-            margin: 16px 0;
-            background: var(--gold-gradient);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            text-align: center;
-        }
-        
-        .task-modal-description {
-            font-size: 14px;
-            color: var(--text-secondary);
-            line-height: 1.6;
-            margin-bottom: 24px;
-        }
-        
-        .task-modal-details {
-            background: var(--bg-secondary);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 24px;
-        }
-        
-        .task-detail {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-        }
-        
-        .task-detail:last-child {
-            margin-bottom: 0;
-        }
-        
-        .task-detail-label {
-            color: var(--text-secondary);
-        }
-        
-        .task-detail-value {
-            font-weight: 600;
-        }
-        
-        .task-modal-buttons {
-            display: flex;
-            gap: 12px;
-        }
-        
-        .task-modal-cancel {
-            background: var(--bg-secondary);
-            color: var(--text-primary);
-            border: 1px solid var(--border);
-            padding: 12px;
-            border-radius: 12px;
-            flex: 1;
-            cursor: pointer;
-            font-weight: 600;
-        }
-        
-        .task-modal-start {
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 12px;
-            flex: 1;
-            cursor: pointer;
-            font-weight: 600;
-        }
+       .task-modal-content {
+    background: var(--card-bg);
+    border-radius: 20px;
+    padding: 24px;
+    width: 95%;
+    max-width: 500px;
+    max-height: 85vh;
+    border: 1px solid var(--border);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    overflow-y: auto;
+}
+
+      .task-modal-title {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    background: var(--gold-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    line-height: 1.3;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 80%;
+}
+.task-modal-category {
+    display: inline-block;
+    background: var(--bg-secondary);
+    padding: 4px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+.task-modal-price {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 20px 0;
+    background: var(--gold-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-align: center;
+}
+
+.task-modal-description {
+    font-size: 15px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 24px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+    padding: 16px;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    border-left: 4px solid var(--accent);
+}
+
+.task-modal-details {
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border);
+}
+
+.task-detail {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.task-detail:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.task-detail-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.task-detail-value {
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: right;
+    max-width: 60%;
+    word-wrap: break-word;
+}
+
+.task-modal-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    flex-shrink: 0;
+}
+
+.task-modal-cancel {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    padding: 14px 20px;
+    border-radius: 12px;
+    flex: 1;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 15px;
+    transition: all 0.3s ease;
+}
+
+.task-modal-start {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 14px 20px;
+    border-radius: 12px;
+    flex: 1;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 15px;
+    transition: all 0.3s ease;
+}
+
+.task-modal-cancel:hover,
+.task-modal-start:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
         
         /* Стили для подтверждения задания */
         .confirmation-task {
@@ -5503,6 +5586,7 @@ input:checked + .theme-slider:before {
 </div>
 
 <!-- Модальное окно подтверждения выполнения задания -->
+ <div class="task-detail" id="task-modal-url">
 <div class="modal" id="confirmation-modal">
     <div class="confirmation-modal-content">
         <div class="confirmation-icon">❓</div>
@@ -5517,8 +5601,9 @@ input:checked + .theme-slider:before {
         <button class="confirmation-btn confirmation-cancel" onclick="closeModal('confirmation-modal')">Отмена</button>
     </div>
 </div>
-
+</div>
 <!-- Модальное окно отмены подтверждения -->
+ <div class="task-detail" id="task-modal-url">
 <div class="modal" id="cancel-confirmation-modal">
     <div class="confirmation-modal-content">
         <div class="confirmation-icon">⚠️</div>
@@ -5533,8 +5618,9 @@ input:checked + .theme-slider:before {
         <button class="confirmation-btn confirmation-cancel" onclick="closeModal('cancel-confirmation-modal')">Отмена</button>
     </div>
 </div>
-
+</div>
 <!-- Модальное окно загрузки скриншота -->
+ <div class="task-detail" id="task-modal-url">
 <div class="modal" id="screenshot-modal">
     <div class="confirmation-modal-content">
         <div class="confirmation-icon">📸</div>
@@ -5556,8 +5642,9 @@ input:checked + .theme-slider:before {
         </div>
     </div>
 </div>
-
+</div>
 <!-- Модальное окно проверки задания для админа -->
+ <div class="task-detail" id="task-modal-url">
 <div class="verification-modal" id="verification-modal">
     <div class="verification-modal-content">
         <div class="verification-modal-header">
@@ -5582,7 +5669,7 @@ input:checked + .theme-slider:before {
         <button class="confirmation-btn confirmation-cancel" onclick="closeModal('verification-modal')" style="margin-top: 16px; width: 100%;">Закрыть</button>
     </div>
 </div>
-
+</div>
 <div class="chat-modal" id="admin-chat">
     <div class="chat-header">
         <div class="chat-avatar">
@@ -5964,6 +6051,7 @@ async function loadTaskVerificationsForAdmin() {
 }
 
 // 🎨 Модальное окно проверки заданий
+
 function showVerificationsModal(verifications) {
     let modalHTML = `
         <div class="modal active" id="verifications-modal">
@@ -6717,7 +6805,6 @@ async function loadTasks(search = '', category = 'all') {
     }
 }
 
-// Обновленная функция отображения заданий
 function displayTasks(tasks, category) {
     const container = document.getElementById(category + '-tasks');
     if (!container) {
@@ -6726,9 +6813,6 @@ function displayTasks(tasks, category) {
     }
     
     console.log(`🎯 Displaying ${tasks ? tasks.length : 0} tasks in ${category}`);
-    
-    // Временно отключаем анимации
-    container.style.opacity = '0.7';
     
     container.innerHTML = '';
 
@@ -6742,17 +6826,17 @@ function displayTasks(tasks, category) {
                 </div>
             </div>
         `;
-        
-        // Восстанавливаем прозрачность
-        setTimeout(() => {
-            container.style.opacity = '1';
-        }, 50);
         return;
     }
 
     tasks.forEach(task => {
         const taskElement = document.createElement('div');
         taskElement.className = 'task-card';
+        
+        // Обрезаем длинное описание
+        const shortDescription = task.description.length > 120 
+            ? task.description.substring(0, 120) + '...' 
+            : task.description;
         
         taskElement.innerHTML = `
             <div class="task-header">
@@ -6762,19 +6846,29 @@ function displayTasks(tasks, category) {
                 </div>
                 <div class="task-price">${task.price} ⭐</div>
             </div>
-            <div class="task-description">${escapeHtml(task.description)}</div>
+            <div class="task-description ${task.description.length > 120 ? 'collapsed' : ''}">
+                ${escapeHtml(shortDescription)}
+            </div>
+            ${task.description.length > 120 ? `
+                <button class="read-more-btn" onclick="event.stopPropagation(); this.previousElementSibling.classList.toggle('collapsed'); this.textContent = this.previousElementSibling.classList.contains('collapsed') ? 'Читать далее' : 'Свернуть'">
+                    Читать далее
+                </button>
+            ` : ''}
             <div class="task-footer">
                 <div class="task-time">${task.time_to_complete || '5 минут'}</div>
                 <button class="task-btn" onclick="openTaskModal(${task.id})">Начать</button>
             </div>
         `;
+        
+        // Добавляем обработчик клика на всю карточку
+        taskElement.addEventListener('click', function(e) {
+            if (!e.target.classList.contains('task-btn') && !e.target.classList.contains('read-more-btn')) {
+                openTaskModal(task.id);
+            }
+        });
+        
         container.appendChild(taskElement);
     });
-    
-    // Восстанавливаем прозрачность
-    setTimeout(() => {
-        container.style.opacity = '1';
-    }, 50);
 }
 
 // 🔧 ЗАГРУЗКА ЗАДАНИЙ ПРИ ЗАПУСКЕ ПРИЛОЖЕНИЯ
@@ -7031,7 +7125,7 @@ function displayUserTasksForCategory(tasks, status) {
 
 
 
-     function openTaskModal(taskId) {
+function openTaskModal(taskId) {
     selectedTaskId = taskId;
     
     const task = allTasks.find(t => t.id === taskId);
@@ -7041,20 +7135,29 @@ function displayUserTasksForCategory(tasks, status) {
         document.getElementById('task-modal-price').textContent = `${task.price} ⭐`;
         document.getElementById('task-modal-description').textContent = task.description;
         
-        // 🔥 ИСПРАВЛЕНИЕ: Отображаем реальные данные из базы
+        // Отображаем реальные данные из базы
         document.getElementById('task-modal-time').textContent = task.time_to_complete || '5 минут';
         document.getElementById('task-modal-difficulty').textContent = task.difficulty || 'Легкая';
         
-        // 🔥 ИСПРАВЛЕНИЕ: Рассчитываем сколько заданий осталось
+        // Рассчитываем сколько заданий осталось
         const peopleRequired = task.people_required || 1;
         const completedCount = task.completed_count || 0;
         const availableTasks = Math.max(0, peopleRequired - completedCount);
         document.getElementById('task-modal-available').textContent = `${availableTasks} заданий`;
         
+        // Показываем URL задания если есть
+        const urlElement = document.getElementById('task-modal-url');
+        if (urlElement) {
+            if (task.task_url) {
+                urlElement.innerHTML = `<span class="task-detail-label">Ссылка:</span><span class="task-detail-value"><a href="${task.task_url}" target="_blank" style="color: var(--accent);">Перейти к заданию</a></span>`;
+            } else {
+                urlElement.innerHTML = '';
+            }
+        }
+        
         document.getElementById('task-modal').classList.add('active');
     }
 }
-
         // Функция подтверждения выполнения задания
         function showTaskConfirmation(userTaskId, taskName) {
             currentUserTaskId = userTaskId;
