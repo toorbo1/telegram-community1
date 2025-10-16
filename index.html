@@ -764,7 +764,23 @@ body {
     margin: 0;
     display: none;
 }
+/* Фикс для контейнера заданий */
+#new-tasks.active {
+    display: block !important;
+    position: relative;
+    min-height: 400px;
+}
 
+/* Убираем все transition для стабильности */
+.tasks-tab * {
+    transition: none !important;
+}
+
+/* Гарантируем что сетка не ломается */
+.tasks-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+}
 #new-tasks.active,
 #confirmation-tasks.active,
 #completed-tasks.active,
@@ -773,7 +789,7 @@ body {
     width: 100%;
 }
 
-/* Сетка заданий - ОСНОВНОЙ ФИКС */
+/* ФИКС ДЛЯ НАЧАЛЬНЫХ КАРТОЧЕК ЗАДАНИЙ */
 .tasks-grid {
     display: grid;
     gap: 16px;
@@ -782,13 +798,8 @@ body {
     position: relative;
     width: 100%;
     box-sizing: border-box;
-    padding: 0;
-    margin: 0;
-    /* Гарантируем что сетка не выходит за границы */
-    max-width: 100%;
-    overflow: visible;
 }
-/* КАРТОЧКИ ЗАДАНИЙ - ОСНОВНОЙ ФИКС */
+
 .task-card {
     background: var(--card-bg);
     border-radius: 16px;
@@ -797,20 +808,16 @@ body {
     cursor: pointer;
     transition: transform 0.3s ease;
     position: relative;
-    /* ВАЖНО: ширина 100% но с учетом padding */
-    width: calc(100% - 32px); /* 100% минус padding слева и справа */
+    width: 100%;
     box-sizing: border-box;
-    margin: 0;
+    margin-bottom: 0;
     display: flex;
     flex-direction: column;
     min-height: 180px;
-    /* Гарантируем что карточка не выходит за границы */
-    max-width: calc(100% - 32px);
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    /* Убираем любые внешние отступы */
-    margin-left: 0;
-    margin-right: 0;
+    /* Убираем анимации чтобы не было смещения */
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
 }
 
 /* Убираем анимации для всех элементов в tasks-tab */
@@ -1866,7 +1873,7 @@ body {
     animation: none;
 }
         
-/* Header карточки */
+/* Гарантируем что все карточки одинаковой высоты */
 .task-header {
     display: flex;
     justify-content: space-between;
@@ -1875,13 +1882,11 @@ body {
     flex-shrink: 0;
     gap: 10px;
     width: 100%;
-    box-sizing: border-box;
 }
 .task-header > div:first-child {
     flex: 1;
     min-width: 0; /* КРИТИЧЕСКИ ВАЖНО для правильного обрезания текста */
 }
-/* Заголовок задания */
 .task-title {
     font-size: 16px;
     font-weight: 600;
@@ -1889,13 +1894,15 @@ body {
     line-height: 1.3;
     word-wrap: break-word;
     overflow-wrap: break-word;
-    /* Ограничиваем ширину и обрезаем длинный текст */
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
-    
+    -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
+    /* Стандартное свойство для совместимости */
+    line-clamp: 2;
+    box-orient: vertical;
 }
 .task-category {
     font-size: 12px;
@@ -1907,7 +1914,6 @@ body {
     white-space: nowrap;
 }
 
-/* Цена задания */
 .task-price {
     font-size: 18px;
     font-weight: 700;
@@ -1919,8 +1925,6 @@ body {
     white-space: nowrap;
     margin-left: 10px;
 }
-
-/* Описание задания */
 .task-description {
     font-size: 13px;
     color: var(--text-secondary);
@@ -1930,11 +1934,9 @@ body {
     overflow-wrap: break-word;
     white-space: pre-wrap;
     flex: 1;
-    /* Ограничиваем высоту описания */
     max-height: 60px;
     overflow: hidden;
     position: relative;
-    max-width: 100%;
 }
 /* Плавное ограничение текста с кнопкой "Читать далее" */
 .task-description.collapsed {
@@ -1967,7 +1969,6 @@ body {
     align-self: flex-start;
 }
 
-/* Footer карточки */
 .task-footer {
     display: flex;
     justify-content: space-between;
@@ -1975,9 +1976,7 @@ body {
     margin-top: auto;
     flex-shrink: 0;
     width: 100%;
-    box-sizing: border-box;
 }
-
 .task-time {
     font-size: 12px;
     color: var(--text-secondary);
@@ -6992,35 +6991,35 @@ function displayTasks(tasks, category) {
         
         taskElement.innerHTML = `
             <div class="task-header">
-                <div style="flex: 1;">
+                <div style="flex: 1; min-width: 0;">
                     <div class="task-title">${escapeHtml(task.title)}</div>
                     <div class="task-category">${task.category || 'Общее'}</div>
                 </div>
                 <div class="task-price">${task.price} ⭐</div>
             </div>
-            <div class="task-description ${task.description.length > 120 ? 'collapsed' : ''}">
+            <div class="task-description">
                 ${escapeHtml(shortDescription)}
             </div>
-            ${task.description.length > 120 ? `
-                <button class="read-more-btn" onclick="event.stopPropagation(); this.previousElementSibling.classList.toggle('collapsed'); this.textContent = this.previousElementSibling.classList.contains('collapsed') ? 'Читать далее' : 'Свернуть'">
-                    Читать далее
-                </button>
-            ` : ''}
             <div class="task-footer">
                 <div class="task-time">${task.time_to_complete || '5 минут'}</div>
-                <button class="task-btn" onclick="openTaskModal(${task.id})">Начать</button>
+                <button class="task-btn" onclick="event.stopPropagation(); openTaskModal(${task.id})">Начать</button>
             </div>
         `;
         
         // Добавляем обработчик клика на всю карточку
         taskElement.addEventListener('click', function(e) {
-            if (!e.target.classList.contains('task-btn') && !e.target.classList.contains('read-more-btn')) {
+            if (!e.target.classList.contains('task-btn')) {
                 openTaskModal(task.id);
             }
         });
         
         container.appendChild(taskElement);
     });
+    
+    // Принудительный reflow для стабильности
+    setTimeout(() => {
+        container.style.display = 'block';
+    }, 10);
 }
 
 // 🔧 ЗАГРУЗКА ЗАДАНИЙ ПРИ ЗАПУСКЕ ПРИЛОЖЕНИЯ
