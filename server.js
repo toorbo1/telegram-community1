@@ -963,8 +963,10 @@ app.get('/api/debug/tasks', async (req, res) => {
         });
     }
 });
-// Create task (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ С ВСЕМИ ПОЛЯМИ
+// Create task (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ С ДИАГНОСТИКОЙ
 app.post('/api/tasks', async (req, res) => {
+    console.log('📥 Received task creation request:', req.body);
+    
     const { 
         title, 
         description, 
@@ -974,11 +976,16 @@ app.post('/api/tasks', async (req, res) => {
         time_to_complete,
         difficulty,
         people_required,
-        repost_time,
         task_url
     } = req.body;
     
+    console.log('🔍 Parsed data:', {
+        title, description, price, created_by, category,
+        time_to_complete, difficulty, people_required, task_url
+    });
+    
     if (!title || !description || !price) {
+        console.log('❌ Validation failed: missing required fields');
         return res.status(400).json({
             success: false,
             error: 'Заполните название, описание и цену'
@@ -988,18 +995,21 @@ app.post('/api/tasks', async (req, res) => {
     try {
         const taskPrice = parseFloat(price);
         if (isNaN(taskPrice) || taskPrice <= 0) {
+            console.log('❌ Validation failed: invalid price');
             return res.status(400).json({
                 success: false,
                 error: 'Цена должна быть положительным числом!'
             });
         }
 
+        console.log('💾 Saving task to database...');
+        
         const result = await pool.query(`
             INSERT INTO tasks (
                 title, description, price, created_by, category,
-                time_to_complete, difficulty, people_required, repost_time, task_url
+                time_to_complete, difficulty, people_required, task_url
             ) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING *
         `, [
             title.trim(), 
@@ -1007,12 +1017,13 @@ app.post('/api/tasks', async (req, res) => {
             taskPrice, 
             created_by,
             category || 'general',
-            time_to_complete || '5 минут',
+            time_to_complete || '5-10 минут',
             difficulty || 'Легкая',
             people_required || 1,
-            repost_time || '1 день',
             task_url || ''
         ]);
+        
+        console.log('✅ Task saved successfully:', result.rows[0]);
         
         res.json({
             success: true,
@@ -1020,14 +1031,61 @@ app.post('/api/tasks', async (req, res) => {
             task: result.rows[0]
         });
     } catch (error) {
-        console.error('Create task error:', error);
+        console.error('❌ Create task error:', error);
+        console.error('❌ Error details:', error.stack);
         res.status(500).json({
             success: false,
-            error: 'Ошибка создания задания'
+            error: 'Ошибка создания задания: ' + error.message
         });
     }
 });
-
+// Test endpoint for task creation
+app.post('/api/test-task', async (req, res) => {
+    console.log('🧪 Test task endpoint called:', req.body);
+    
+    try {
+        // Простая проверка - возвращаем успех без сохранения в БД
+        res.json({
+            success: true,
+            message: 'Test endpoint works!',
+            received_data: req.body
+        });
+    } catch (error) {
+        console.error('Test endpoint error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+// Check database structure
+app.get('/api/debug/database', async (req, res) => {
+    try {
+        // Проверяем структуру таблицы tasks
+        const tableInfo = await pool.query(`
+            SELECT column_name, data_type, is_nullable 
+            FROM information_schema.columns 
+            WHERE table_name = 'tasks' 
+            ORDER BY ordinal_position
+        `);
+        
+        // Проверяем количество записей
+        const countResult = await pool.query('SELECT COUNT(*) FROM tasks');
+        
+        res.json({
+            success: true,
+            table_structure: tableInfo.rows,
+            task_count: parseInt(countResult.rows[0].count),
+            database_status: 'OK'
+        });
+    } catch (error) {
+        console.error('Database debug error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 // Delete task (for all admins) - УПРОЩЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.delete('/api/tasks/:id', async (req, res) => {
     try {

@@ -5482,15 +5482,17 @@ input:checked + .theme-slider:before {
             <input type="url" class="admin-input" id="admin-task-url" placeholder="https://...">
         </div>
 
-        <!-- Кнопки для отладки -->
-        <div style="text-align: center; margin: 20px 0;">
-            <button class="btn btn-warning" onclick="debugAdminForm()" style="padding: 10px; font-size: 12px;">
-                🐛 Debug Form
-            </button>
-            <button class="btn btn-warning" onclick="testAddTask()" style="padding: 10px; font-size: 12px; margin-left: 10px;">
-                🧪 Test Add Task
-            </button>
-        </div>
+    <div style="text-align: center; margin: 20px 0;">
+    <button class="btn btn-warning" onclick="debugAdminForm()" style="padding: 10px; font-size: 12px;">
+        🐛 Debug Form
+    </button>
+    <button class="btn btn-warning" onclick="testAddTask()" style="padding: 10px; font-size: 12px; margin-left: 10px;">
+        🧪 Test Add Task
+    </button>
+    <button class="btn btn-info" onclick="testServerConnection()" style="padding: 10px; font-size: 12px; margin-left: 10px;">
+        🔗 Test Server
+    </button>
+</div>
         
         <button class="admin-submit" onclick="addTask()" style="margin-top: 20px;">
             ✅ Добавить задание
@@ -8159,7 +8161,7 @@ addDebugButton();
             }
         }
 
-// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ДОБАВЛЕНИЯ ЗАДАНИЯ
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ДОБАВЛЕНИЯ ЗАДАНИЯ С ДИАГНОСТИКОЙ
 async function addTask() {
     console.log('🎯 Starting addTask function...');
     
@@ -8169,11 +8171,12 @@ async function addTask() {
             return;
         }
 
-        // Получаем значения из формы - ИСПРАВЛЕННАЯ ВЕРСИЯ
+        // Получаем значения из формы
         const getElementValue = (id) => {
             const element = document.getElementById(id);
-            console.log(`🔍 Element ${id}:`, element, 'Value:', element ? element.value : 'NOT FOUND');
-            return element ? element.value : '';
+            const value = element ? element.value : '';
+            console.log(`🔍 ${id}: "${value}"`);
+            return value;
         };
 
         const formData = {
@@ -8191,8 +8194,16 @@ async function addTask() {
         console.log('📋 Form data collected:', formData);
 
         // Валидация
-        if (!formData.title.trim() || !formData.description.trim() || !formData.price) {
-            showNotification('Заполните название, описание и цену задания!', 'error');
+        if (!formData.title.trim()) {
+            showNotification('Введите название задания!', 'error');
+            return;
+        }
+        if (!formData.description.trim()) {
+            showNotification('Введите описание задания!', 'error');
+            return;
+        }
+        if (!formData.price) {
+            showNotification('Введите цену задания!', 'error');
             return;
         }
 
@@ -8215,7 +8226,7 @@ async function addTask() {
             created_by: currentUser.id
         };
 
-        console.log('📤 Sending request data:', requestData);
+        console.log('📤 Sending request to server:', requestData);
 
         // Отправляем запрос на сервер
         const result = await makeRequest('/tasks', {
@@ -8243,12 +8254,6 @@ async function addTask() {
                 if (element) element.value = '';
             });
             
-            // Сбрасываем выпадающие списки к значениям по умолчанию
-            const categorySelect = document.getElementById('admin-task-category');
-            const difficultySelect = document.getElementById('admin-task-difficulty');
-            if (categorySelect) categorySelect.value = 'subscribe';
-            if (difficultySelect) difficultySelect.value = 'Легкая';
-            
             // Обновляем списки заданий
             setTimeout(() => {
                 loadAdminTasks();
@@ -8256,12 +8261,48 @@ async function addTask() {
             }, 1000);
             
         } else {
+            console.error('❌ Server returned error:', result);
             throw new Error(result.error || 'Unknown server error');
         }
 
     } catch (error) {
         console.error('💥 Error in addTask:', error);
+        console.error('💥 Error details:', {
+            message: error.message,
+            stack: error.stack
+        });
         showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
+    }
+}
+// 🔧 ТЕСТИРОВАНИЕ СОЕДИНЕНИЯ С СЕРВЕРОМ
+async function testServerConnection() {
+    console.log('🧪 Testing server connection...');
+    
+    const testData = {
+        title: 'Тестовое задание',
+        description: 'Тестовое описание',
+        price: 50,
+        category: 'subscribe',
+        time_to_complete: '10 минут',
+        difficulty: 'Легкая',
+        people_required: 5,
+        task_url: '',
+        created_by: currentUser.id
+    };
+    
+    try {
+        console.log('📤 Sending test data to server...');
+        const result = await makeRequest('/test-task', {
+            method: 'POST',
+            body: JSON.stringify(testData)
+        });
+        
+        console.log('📨 Test server response:', result);
+        showNotification('✅ Соединение с сервером работает!', 'success');
+        
+    } catch (error) {
+        console.error('❌ Server connection test failed:', error);
+        showNotification('❌ Ошибка соединения с сервером', 'error');
     }
 }
 // 🔧 ФУНКЦИЯ ДЛЯ ДИАГНОСТИКИ ФОРМЫ
@@ -10029,7 +10070,18 @@ async function completeWithdrawal(requestId) {
             }
             currentAdminChat = null;
         }
-
+// 🔧 ПРОВЕРКА СТРУКТУРЫ БАЗЫ ДАННЫХ
+async function checkDatabaseStructure() {
+    try {
+        console.log('🔍 Checking database structure...');
+        const result = await makeRequest('/debug/database');
+        console.log('📊 Database structure:', result);
+        showNotification('✅ Структура БД проверена', 'success');
+    } catch (error) {
+        console.error('❌ Database check failed:', error);
+        showNotification('❌ Ошибка проверки БД', 'error');
+    }
+}
         // Архивация чата
         async function archiveChat(chatId) {
             if (!confirm('Переместить чат в архив?')) return;
