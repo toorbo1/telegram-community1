@@ -389,7 +389,181 @@ fixWithdrawalTable();
 
 // ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
 
+// Предпросмотр изображения задания
+function previewTaskImage(input) {
+    const preview = document.getElementById('task-image-preview');
+    const img = document.getElementById('task-preview-img');
+    
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            img.src = e.target.result;
+            preview.style.display = 'block';
+        }
+        
+        reader.readAsDataURL(input.files[0]);
+    } else {
+        preview.style.display = 'none';
+    }
+}
 
+// Очистка изображения
+function clearTaskImage() {
+    const input = document.getElementById('admin-task-image');
+    const preview = document.getElementById('task-image-preview');
+    
+    input.value = '';
+    preview.style.display = 'none';
+}
+
+// Обновленная функция добавления задания с изображением
+async function addTask() {
+    console.log('🎯 Starting addTask function...');
+    
+    try {
+        const formData = new FormData();
+        
+        // Собираем текстовые данные
+        const taskData = {
+            title: document.getElementById('admin-task-title').value.trim(),
+            description: document.getElementById('admin-task-description').value.trim(),
+            price: parseFloat(document.getElementById('admin-task-price').value),
+            category: document.getElementById('admin-task-category').value,
+            time_to_complete: document.getElementById('admin-task-time').value || '5-10 минут',
+            difficulty: document.getElementById('admin-task-difficulty').value,
+            people_required: parseInt(document.getElementById('admin-task-people').value) || 1,
+            repost_time: document.getElementById('admin-task-repost').value || '1 день',
+            task_url: document.getElementById('admin-task-url').value || '',
+            created_by: currentUser.id
+        };
+        
+        // Валидация
+        if (!taskData.title || !taskData.description || !taskData.price) {
+            showNotification('Заполните название, описание и цену задания!', 'error');
+            return;
+        }
+        
+        if (isNaN(taskData.price) || taskData.price <= 0) {
+            showNotification('Цена должна быть положительным числом!', 'error');
+            return;
+        }
+        
+        // Добавляем текстовые данные в FormData
+        Object.keys(taskData).forEach(key => {
+            formData.append(key, taskData[key]);
+        });
+        
+        // Добавляем изображение если есть
+        const imageInput = document.getElementById('admin-task-image');
+        if (imageInput.files[0]) {
+            formData.append('image', imageInput.files[0]);
+        }
+        
+        console.log('📤 Sending task data with image...');
+        
+        // Отправляем FormData вместо JSON
+        const response = await fetch('/api/tasks', {
+            method: 'POST',
+            body: formData
+            // Не устанавливаем Content-Type - браузер сам установит с boundary
+        });
+        
+        const result = await response.json();
+        
+        console.log('📨 Server response:', result);
+        
+        if (result.success) {
+            showNotification('✅ Задание успешно создано!', 'success');
+            
+            // Очищаем форму
+            document.getElementById('admin-task-title').value = '';
+            document.getElementById('admin-task-description').value = '';
+            document.getElementById('admin-task-price').value = '';
+            document.getElementById('admin-task-time').value = '';
+            document.getElementById('admin-task-people').value = '';
+            document.getElementById('admin-task-repost').value = '';
+            document.getElementById('admin-task-url').value = '';
+            clearTaskImage();
+            
+            // Обновляем списки
+            setTimeout(() => {
+                loadAdminTasks();
+                loadTasks();
+            }, 1000);
+            
+        } else {
+            throw new Error(result.error || 'Unknown server error');
+        }
+        
+    } catch (error) {
+        console.error('💥 Error in addTask:', error);
+        showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
+    }
+}
+// В server.js добавьте:
+app.post('/api/tasks', upload.single('image'), async (req, res) => {
+    const { 
+        title, description, price, created_by, category,
+        time_to_complete, difficulty, people_required, repost_time, task_url
+    } = req.body;
+    
+    if (!title || !description || !price) {
+        return res.status(400).json({
+            success: false,
+            error: 'Заполните название, описание и цену'
+        });
+    }
+    
+    try {
+        const taskPrice = parseFloat(price);
+        if (isNaN(taskPrice) || taskPrice <= 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'Цена должна быть положительным числом!'
+            });
+        }
+
+        // Обрабатываем изображение
+        let image_url = null;
+        if (req.file) {
+            image_url = `/uploads/${req.file.filename}`;
+        }
+
+        const result = await pool.query(`
+            INSERT INTO tasks (
+                title, description, price, created_by, category,
+                time_to_complete, difficulty, people_required, repost_time, task_url, image_url
+            ) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            RETURNING *
+        `, [
+            title.trim(), 
+            description.trim(), 
+            taskPrice, 
+            created_by,
+            category || 'other',
+            time_to_complete || '5-10 минут',
+            difficulty || 'Легкая',
+            people_required || 1,
+            repost_time || '1 день',
+            task_url || '',
+            image_url
+        ]);
+        
+        res.json({
+            success: true,
+            message: 'Задание успешно создано!',
+            task: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Create task error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка создания задания'
+        });
+    }
+});
 // Health check
 app.get('/api/health', async (req, res) => {
     try {
