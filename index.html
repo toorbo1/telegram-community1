@@ -8270,7 +8270,6 @@ async function addTask() {
 
     } catch (error) {
         console.error('💥 Error in addTask:', error);
-        console.error('💥 Error details:', error.message);
         showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
     }
 }
@@ -10750,116 +10749,7 @@ function clearTaskImage() {
     placeholder.style.display = 'block';
 }
 
-// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ДОБАВЛЕНИЯ ЗАДАНИЯ
-async function addTask() {
-    console.log('🎯 Starting addTask function...');
-    
-    try {
-        if (!currentUser) {
-            showNotification('Пользователь не авторизован', 'error');
-            return;
-        }
 
-        // Получаем значения из формы
-        const getElementValue = (id) => {
-            const element = document.getElementById(id);
-            return element ? element.value : '';
-        };
-
-        const formData = {
-            title: getElementValue('admin-task-title'),
-            description: getElementValue('admin-task-description'),
-            price: getElementValue('admin-task-price'),
-            category: getElementValue('admin-task-category'),
-            time_to_complete: getElementValue('admin-task-time'),
-            difficulty: getElementValue('admin-task-difficulty'),
-            people_required: getElementValue('admin-task-people'),
-            repost_time: getElementValue('admin-task-repost'),
-            task_url: getElementValue('admin-task-url'),
-            created_by: currentUser.id
-        };
-
-        console.log('📋 Form data collected:', formData);
-
-        // Валидация
-        if (!formData.title.trim() || !formData.description.trim() || !formData.price) {
-            showNotification('Заполните название, описание и цену задания!', 'error');
-            return;
-        }
-
-        const price = parseFloat(formData.price);
-        if (isNaN(price) || price <= 0) {
-            showNotification('Цена должна быть положительным числом!', 'error');
-            return;
-        }
-
-        // Подготавливаем данные для отправки
-        const requestData = {
-            title: formData.title.trim(),
-            description: formData.description.trim(),
-            price: price,
-            category: formData.category || 'general',
-            time_to_complete: formData.time_to_complete || '5-10 минут',
-            difficulty: formData.difficulty || 'Легкая',
-            people_required: parseInt(formData.people_required) || 1,
-            repost_time: formData.repost_time || '1 день',
-            task_url: formData.task_url || '',
-            created_by: currentUser.id
-        };
-
-        console.log('📤 Sending request data:', requestData);
-
-        // Отправляем запрос на сервер
-        const result = await makeRequest('/tasks', {
-            method: 'POST',
-            body: JSON.stringify(requestData)
-        });
-
-        console.log('📨 Server response:', result);
-
-        if (result.success) {
-            showNotification('✅ Задание успешно создано!', 'success');
-            
-            // Очищаем форму
-            const formFields = [
-                'admin-task-title', 
-                'admin-task-description', 
-                'admin-task-price', 
-                'admin-task-time', 
-                'admin-task-people', 
-                'admin-task-repost', 
-                'admin-task-url'
-            ];
-            
-            formFields.forEach(fieldId => {
-                const element = document.getElementById(fieldId);
-                if (element) element.value = '';
-            });
-            
-            // Сбрасываем выпадающие списки к значениям по умолчанию
-            const categorySelect = document.getElementById('admin-task-category');
-            const difficultySelect = document.getElementById('admin-task-difficulty');
-            if (categorySelect) categorySelect.value = 'subscribe';
-            if (difficultySelect) difficultySelect.value = 'Легкая';
-            
-            // Очищаем изображение
-            clearTaskImage();
-            
-            // Обновляем списки заданий
-            setTimeout(() => {
-                loadAdminTasks();
-                loadTasks();
-            }, 1000);
-            
-        } else {
-            throw new Error(result.error || 'Unknown server error');
-        }
-
-    } catch (error) {
-        console.error('💥 Error in addTask:', error);
-        showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
-    }
-}
 
 // Функция загрузки заданий админа
 async function loadAdminTasks() {
@@ -10960,6 +10850,8 @@ window.fixTasksLayout = fixTasksLayout;
 window.addTask = addTask;
 window.showAdminSection = showAdminSection;
 window.loadAdminTasks = loadAdminTasks;
+// 🔧 ЭКСПОРТ ФУНКЦИЙ
+window.addTask = addTask;
 </script>
 </body>
 </html>

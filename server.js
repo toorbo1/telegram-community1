@@ -501,17 +501,33 @@ async function addTask() {
         showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
     }
 }
-// В server.js добавьте:
-app.post('/api/tasks', upload.single('image'), async (req, res) => {
+/// Create task endpoint - УПРОЩЕННАЯ ВЕРСИЯ
+app.post('/api/tasks', async (req, res) => {
+    console.log('📥 Received task creation request:', req.body);
+    
     const { 
-        title, description, price, created_by, category,
-        time_to_complete, difficulty, people_required, repost_time, task_url
+        title, 
+        description, 
+        price, 
+        created_by,
+        category,
+        time_to_complete,
+        difficulty,
+        people_required,
+        task_url
     } = req.body;
     
-    if (!title || !description || !price) {
+    console.log('🔍 Parsed data:', {
+        title, description, price, created_by, category,
+        time_to_complete, difficulty, people_required, task_url
+    });
+    
+    // Базовая валидация
+    if (!title || !description || !price || !created_by) {
+        console.log('❌ Validation failed: missing required fields');
         return res.status(400).json({
             success: false,
-            error: 'Заполните название, описание и цену'
+            error: 'Заполните все обязательные поля'
         });
     }
     
@@ -524,43 +540,40 @@ app.post('/api/tasks', upload.single('image'), async (req, res) => {
             });
         }
 
-        // Обрабатываем изображение
-        let image_url = null;
-        if (req.file) {
-            image_url = `/uploads/${req.file.filename}`;
-        }
-
+        console.log('💾 Saving task to database...');
+        
         const result = await pool.query(`
             INSERT INTO tasks (
                 title, description, price, created_by, category,
-                time_to_complete, difficulty, people_required, repost_time, task_url, image_url
+                time_to_complete, difficulty, people_required, task_url
             ) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING *
         `, [
             title.trim(), 
             description.trim(), 
             taskPrice, 
             created_by,
-            category || 'other',
+            category || 'general',
             time_to_complete || '5-10 минут',
             difficulty || 'Легкая',
-            people_required || 1,
-            repost_time || '1 день',
-            task_url || '',
-            image_url
+            parseInt(people_required) || 1,
+            task_url || ''
         ]);
+        
+        console.log('✅ Task saved successfully:', result.rows[0]);
         
         res.json({
             success: true,
             message: 'Задание успешно создано!',
             task: result.rows[0]
         });
+        
     } catch (error) {
-        console.error('Create task error:', error);
+        console.error('❌ Create task error:', error);
         res.status(500).json({
             success: false,
-            error: 'Ошибка создания задания'
+            error: 'Ошибка базы данных: ' + error.message
         });
     }
 });
@@ -960,82 +973,6 @@ app.get('/api/debug/tasks', async (req, res) => {
         res.status(500).json({
             success: false,
             error: error.message
-        });
-    }
-});
-// Create task endpoint - УПРОЩЕННАЯ ВЕРСИЯ
-app.post('/api/tasks', async (req, res) => {
-    console.log('📥 Received task creation request:', req.body);
-    
-    const { 
-        title, 
-        description, 
-        price, 
-        created_by,
-        category,
-        time_to_complete,
-        difficulty,
-        people_required,
-        task_url
-    } = req.body;
-    
-    console.log('🔍 Parsed data:', {
-        title, description, price, created_by, category,
-        time_to_complete, difficulty, people_required, task_url
-    });
-    
-    // Базовая валидация
-    if (!title || !description || !price || !created_by) {
-        console.log('❌ Validation failed: missing required fields');
-        return res.status(400).json({
-            success: false,
-            error: 'Заполните все обязательные поля'
-        });
-    }
-    
-    try {
-        const taskPrice = parseFloat(price);
-        if (isNaN(taskPrice) || taskPrice <= 0) {
-            return res.status(400).json({
-                success: false,
-                error: 'Цена должна быть положительным числом!'
-            });
-        }
-
-        console.log('💾 Saving task to database...');
-        
-        const result = await pool.query(`
-            INSERT INTO tasks (
-                title, description, price, created_by, category,
-                time_to_complete, difficulty, people_required, task_url
-            ) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            RETURNING *
-        `, [
-            title.trim(), 
-            description.trim(), 
-            taskPrice, 
-            created_by,
-            category || 'general',
-            time_to_complete || '5-10 минут',
-            difficulty || 'Легкая',
-            parseInt(people_required) || 1,
-            task_url || ''
-        ]);
-        
-        console.log('✅ Task saved successfully:', result.rows[0]);
-        
-        res.json({
-            success: true,
-            message: 'Задание успешно создано!',
-            task: result.rows[0]
-        });
-        
-    } catch (error) {
-        console.error('❌ Create task error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Ошибка базы данных: ' + error.message
         });
     }
 });
