@@ -776,15 +776,47 @@ body {
     transition: none !important;
 }
 
-/* Гарантируем что сетка не ломается */
+/* ИСПРАВЛЕНИЕ ДЛЯ ПРОМЕЖУТКОВ МЕЖДУ ЗАДАНИЯМИ */
 .tasks-grid {
     display: grid;
-    gap: 20px !important; /* Увеличиваем gap */
+    gap: 16px !important;
     grid-template-columns: 1fr;
     min-height: 200px;
     position: relative;
     width: 100%;
     box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+}
+
+.task-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 0 !important;
+    display: flex;
+    flex-direction: column;
+    min-height: 200px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+/* Гарантируем отступы между карточками */
+.tasks-grid > .task-card {
+    margin: 0 !important;
+}
+
+/* Убираем лишние отступы у контейнеров */
+#new-tasks,
+#confirmation-tasks,
+#completed-tasks,
+#rejected-tasks {
     padding: 0;
     margin: 0;
 }
@@ -5284,8 +5316,8 @@ input:checked + .theme-slider:before {
         </div>
         
         <button class="admin-submit" onclick="addTask()" style="margin-top: 20px;">
-            ✅ Добавить задание
-        </button>
+    ✅ Добавить задание
+</button>
     </div>
 </div>
 
@@ -7090,7 +7122,27 @@ function showTaskCategory(category) {
 }
 
 
+function checkAdminPanelLoaded() {
+    const adminTasksSection = document.getElementById('admin-tasks-section');
+    const addTaskButton = document.querySelector('#admin-tasks-section .admin-submit');
+    
+    console.log('🔍 Checking admin panel:');
+    console.log('- Admin tasks section:', !!adminTasksSection);
+    console.log('- Add task button:', !!addTaskButton);
+    
+    if (adminTasksSection && addTaskButton) {
+        console.log('✅ Admin panel is properly loaded');
+    } else {
+        console.log('❌ Admin panel elements missing');
+        // Перезагружаем админ-панель через 1 секунду
+        setTimeout(() => {
+            showAdminSection('tasks');
+        }, 1000);
+    }
+}
 
+// Вызовите эту функцию после переключения на админ-панель
+setTimeout(checkAdminPanelLoaded, 500);
 // 🔧 ФУНКЦИЯ ДЛЯ ПРИНУДИТЕЛЬНОГО ИСПРАВЛЕНИЯ LAYOUT
 function fixTasksLayout() {
     const tasksTab = document.getElementById('tasks-tab');
@@ -7924,8 +7976,9 @@ addDebugButton();
             }
         }
 
-      async function addTask() {
-    console.log('🎯 ========== START addTask FUNCTION ==========');
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ДОБАВЛЕНИЯ ЗАДАНИЯ
+async function addTask() {
+    console.log('🎯 Starting addTask function...');
     
     try {
         if (!currentUser) {
@@ -7933,6 +7986,7 @@ addDebugButton();
             return;
         }
 
+        // Получаем значения из формы
         const getElementValue = (id) => {
             const element = document.getElementById(id);
             return element ? element.value : '';
@@ -7942,17 +7996,18 @@ addDebugButton();
             title: getElementValue('admin-task-title'),
             description: getElementValue('admin-task-description'),
             price: getElementValue('admin-task-price'),
+            category: getElementValue('admin-task-category'),
             time_to_complete: getElementValue('admin-task-time'),
             difficulty: getElementValue('admin-task-difficulty'),
             people_required: getElementValue('admin-task-people'),
             repost_time: getElementValue('admin-task-repost'),
             task_url: getElementValue('admin-task-url'),
-            category: 'general',
             created_by: currentUser.id
         };
 
         console.log('📋 Form data collected:', formData);
 
+        // Валидация
         if (!formData.title.trim() || !formData.description.trim() || !formData.price) {
             showNotification('Заполните название, описание и цену задания!', 'error');
             return;
@@ -7964,22 +8019,23 @@ addDebugButton();
             return;
         }
 
-        // 🔥 ИСПРАВЛЕНИЕ: Отправляем все данные на сервер
+        // Подготавливаем данные для отправки
         const requestData = {
             title: formData.title.trim(),
             description: formData.description.trim(),
             price: price,
-            time_to_complete: formData.time_to_complete || '5 минут',
+            category: formData.category || 'general',
+            time_to_complete: formData.time_to_complete || '5-10 минут',
             difficulty: formData.difficulty || 'Легкая',
             people_required: parseInt(formData.people_required) || 1,
             repost_time: formData.repost_time || '1 день',
             task_url: formData.task_url || '',
-            category: formData.category,
             created_by: currentUser.id
         };
 
-        console.log('📤 Prepared request data:', requestData);
+        console.log('📤 Sending request data:', requestData);
 
+        // Отправляем запрос на сервер
         const result = await makeRequest('/tasks', {
             method: 'POST',
             body: JSON.stringify(requestData)
@@ -7991,13 +8047,31 @@ addDebugButton();
             showNotification('✅ Задание успешно создано!', 'success');
             
             // Очищаем форму
-            const formFields = ['title', 'description', 'price', 'time', 'difficulty', 'people', 'repost', 'url'];
-            formFields.forEach(field => {
-                const element = document.getElementById(`admin-task-${field}`);
+            const formFields = [
+                'admin-task-title', 
+                'admin-task-description', 
+                'admin-task-price', 
+                'admin-task-time', 
+                'admin-task-people', 
+                'admin-task-repost', 
+                'admin-task-url'
+            ];
+            
+            formFields.forEach(fieldId => {
+                const element = document.getElementById(fieldId);
                 if (element) element.value = '';
             });
             
-            // Обновляем списки
+            // Сбрасываем выпадающие списки к значениям по умолчанию
+            const categorySelect = document.getElementById('admin-task-category');
+            const difficultySelect = document.getElementById('admin-task-difficulty');
+            if (categorySelect) categorySelect.value = 'subscribe';
+            if (difficultySelect) difficultySelect.value = 'Легкая';
+            
+            // Очищаем изображение
+            clearTaskImage();
+            
+            // Обновляем списки заданий
             setTimeout(() => {
                 loadAdminTasks();
                 loadTasks();
@@ -8010,8 +8084,6 @@ addDebugButton();
     } catch (error) {
         console.error('💥 Error in addTask:', error);
         showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
-    } finally {
-        console.log('🎯 ========== END addTask FUNCTION ==========');
     }
 }
         // Load admin tasks
@@ -10175,75 +10247,102 @@ function clearTaskImage() {
     placeholder.style.display = 'block';
 }
 
-// Функция добавления задания
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ДОБАВЛЕНИЯ ЗАДАНИЯ
 async function addTask() {
     console.log('🎯 Starting addTask function...');
     
     try {
-        const formData = new FormData();
-        
-        // Собираем данные из формы
-        const taskData = {
-            title: document.getElementById('admin-task-title').value.trim(),
-            description: document.getElementById('admin-task-description').value.trim(),
-            price: document.getElementById('admin-task-price').value,
-            category: document.getElementById('admin-task-category').value,
-            time_to_complete: document.getElementById('admin-task-time').value || '5-10 минут',
-            difficulty: document.getElementById('admin-task-difficulty').value,
-            people_required: document.getElementById('admin-task-people').value || 10,
-            task_url: document.getElementById('admin-task-url').value || '',
+        if (!currentUser) {
+            showNotification('Пользователь не авторизован', 'error');
+            return;
+        }
+
+        // Получаем значения из формы
+        const getElementValue = (id) => {
+            const element = document.getElementById(id);
+            return element ? element.value : '';
+        };
+
+        const formData = {
+            title: getElementValue('admin-task-title'),
+            description: getElementValue('admin-task-description'),
+            price: getElementValue('admin-task-price'),
+            category: getElementValue('admin-task-category'),
+            time_to_complete: getElementValue('admin-task-time'),
+            difficulty: getElementValue('admin-task-difficulty'),
+            people_required: getElementValue('admin-task-people'),
+            repost_time: getElementValue('admin-task-repost'),
+            task_url: getElementValue('admin-task-url'),
             created_by: currentUser.id
         };
-        
-        console.log('📝 Task data:', taskData);
-        
+
+        console.log('📋 Form data collected:', formData);
+
         // Валидация
-        if (!taskData.title || !taskData.description || !taskData.price) {
-            showNotification('❌ Заполните название, описание и цену задания!', 'error');
+        if (!formData.title.trim() || !formData.description.trim() || !formData.price) {
+            showNotification('Заполните название, описание и цену задания!', 'error');
             return;
         }
-        
-        if (isNaN(taskData.price) || taskData.price <= 0) {
-            showNotification('❌ Цена должна быть положительным числом!', 'error');
+
+        const price = parseFloat(formData.price);
+        if (isNaN(price) || price <= 0) {
+            showNotification('Цена должна быть положительным числом!', 'error');
             return;
         }
-        
-        // Добавляем текстовые данные в FormData
-        Object.keys(taskData).forEach(key => {
-            formData.append(key, taskData[key]);
-        });
-        
-        // Добавляем изображение если есть
-        const imageInput = document.getElementById('admin-task-image');
-        if (imageInput.files[0]) {
-            formData.append('image', imageInput.files[0]);
-            console.log('📸 Image attached:', imageInput.files[0].name);
-        }
-        
-        console.log('📤 Sending task data to server...');
-        
-        // Отправляем на сервер
-        const response = await fetch('/api/tasks', {
+
+        // Подготавливаем данные для отправки
+        const requestData = {
+            title: formData.title.trim(),
+            description: formData.description.trim(),
+            price: price,
+            category: formData.category || 'general',
+            time_to_complete: formData.time_to_complete || '5-10 минут',
+            difficulty: formData.difficulty || 'Легкая',
+            people_required: parseInt(formData.people_required) || 1,
+            repost_time: formData.repost_time || '1 день',
+            task_url: formData.task_url || '',
+            created_by: currentUser.id
+        };
+
+        console.log('📤 Sending request data:', requestData);
+
+        // Отправляем запрос на сервер
+        const result = await makeRequest('/tasks', {
             method: 'POST',
-            body: formData
+            body: JSON.stringify(requestData)
         });
-        
-        const result = await response.json();
+
         console.log('📨 Server response:', result);
-        
+
         if (result.success) {
             showNotification('✅ Задание успешно создано!', 'success');
             
             // Очищаем форму
-            document.getElementById('admin-task-title').value = '';
-            document.getElementById('admin-task-description').value = '';
-            document.getElementById('admin-task-price').value = '';
-            document.getElementById('admin-task-time').value = '';
-            document.getElementById('admin-task-people').value = '10';
-            document.getElementById('admin-task-url').value = '';
+            const formFields = [
+                'admin-task-title', 
+                'admin-task-description', 
+                'admin-task-price', 
+                'admin-task-time', 
+                'admin-task-people', 
+                'admin-task-repost', 
+                'admin-task-url'
+            ];
+            
+            formFields.forEach(fieldId => {
+                const element = document.getElementById(fieldId);
+                if (element) element.value = '';
+            });
+            
+            // Сбрасываем выпадающие списки к значениям по умолчанию
+            const categorySelect = document.getElementById('admin-task-category');
+            const difficultySelect = document.getElementById('admin-task-difficulty');
+            if (categorySelect) categorySelect.value = 'subscribe';
+            if (difficultySelect) difficultySelect.value = 'Легкая';
+            
+            // Очищаем изображение
             clearTaskImage();
             
-            // Обновляем списки
+            // Обновляем списки заданий
             setTimeout(() => {
                 loadAdminTasks();
                 loadTasks();
@@ -10252,7 +10351,7 @@ async function addTask() {
         } else {
             throw new Error(result.error || 'Unknown server error');
         }
-        
+
     } catch (error) {
         console.error('💥 Error in addTask:', error);
         showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
