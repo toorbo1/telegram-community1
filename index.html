@@ -778,8 +778,15 @@ body {
 
 /* Гарантируем что сетка не ломается */
 .tasks-grid {
-    display: grid !important;
-    grid-template-columns: 1fr !important;
+    display: grid;
+    gap: 20px !important; /* Увеличиваем gap */
+    grid-template-columns: 1fr;
+    min-height: 200px;
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
 }
 #new-tasks.active,
 #confirmation-tasks.active,
@@ -789,15 +796,16 @@ body {
     width: 100%;
 }
 
-/* ФИКС ПРОМЕЖУТКОВ И НОВЫЙ ДИЗАЙН КАРТОЧЕК */
 .tasks-grid {
     display: grid;
-    gap: 16px;
+    gap: 20px !important; /* Увеличиваем gap */
     grid-template-columns: 1fr;
     min-height: 200px;
     position: relative;
     width: 100%;
     box-sizing: border-box;
+    padding: 0;
+    margin: 0;
 }
 
 .task-card {
@@ -810,12 +818,38 @@ body {
     position: relative;
     width: 100%;
     box-sizing: border-box;
-    margin-bottom: 0;
+    margin-bottom: 0 !important; /* Убираем лишние отступы */
     display: flex;
     flex-direction: column;
     min-height: 200px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     overflow: hidden;
+}
+
+/* Принудительно устанавливаем отступы между карточками */
+.tasks-grid > .task-card {
+    margin: 0 !important;
+}
+
+/* Убедимся что контейнеры не добавляют лишних отступов */
+#new-tasks,
+#confirmation-tasks,
+#completed-tasks,
+#rejected-tasks {
+    padding: 0;
+    margin: 0;
+}
+
+/* Фикс для мобильных устройств */
+@media (max-width: 768px) {
+    .tasks-grid {
+        gap: 16px !important;
+    }
+    
+    .task-card {
+        padding: 16px;
+        min-height: 180px;
+    }
 }
 .task-card:hover {
     transform: translateY(-5px);
@@ -4973,6 +5007,80 @@ input:checked + .theme-slider:before {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+/* Стили для формы добавления задания */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.form-row .form-group {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+/* Область загрузки изображения */
+.image-upload-area {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: var(--bg-secondary);
+    min-height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.image-upload-area:hover {
+    border-color: var(--accent);
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.upload-placeholder {
+    color: var(--text-secondary);
+    pointer-events: none;
+}
+
+.image-preview {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+/* Кнопки формы */
+.btn-secondary {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    padding: 12px 20px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background: var(--card-bg);
+    border-color: var(--accent);
+}
     </style>
 </head>
 <body>
@@ -5096,57 +5204,88 @@ input:checked + .theme-slider:before {
                 </div>
             </div>
 
-           <!-- В секции управления заданиями админ-панели -->
+<!-- В админ-панели -->
 <div id="admin-tasks-section" class="admin-section" style="display: none;">
-    <h3>Добавить задание</h3>
     <div class="admin-form">
-        <input type="text" class="admin-input" id="admin-task-title" placeholder="Название задания *">
-        <textarea class="admin-textarea" id="admin-task-description" placeholder="Подробное описание задания *"></textarea>
+        <h3>➕ Добавить новое задание</h3>
         
-        <div class="form-row" style="display: flex; gap: 12px; margin-bottom: 12px;">
-            <input type="text" class="admin-input" id="admin-task-price" placeholder="Цена *" style="flex: 1;">
-            <select class="admin-input" id="admin-task-category" style="flex: 1;">
-                <option value="subscribe">Подписки</option>
-                <option value="view">Просмотры</option>
-                <option value="comment">Комментарии</option>
-                <option value="repost">Репосты</option>
-                <option value="social">Соцсети</option>
-                <option value="other">Другое</option>
-            </select>
+        <div class="form-group">
+            <label>Название задания *</label>
+            <input type="text" class="admin-input" id="admin-task-title" placeholder="Введите название задания">
         </div>
         
-        <div class="form-row" style="display: flex; gap: 12px; margin-bottom: 12px;">
-            <input type="text" class="admin-input" id="admin-task-time" placeholder="Время выполнения" style="flex: 1;">
-            <select class="admin-input" id="admin-task-difficulty" style="flex: 1;">
-                <option value="Легкая">Легкая</option>
-                <option value="Средняя">Средняя</option>
-                <option value="Сложная">Сложная</option>
-            </select>
+        <div class="form-group">
+            <label>Описание задания *</label>
+            <textarea class="admin-textarea" id="admin-task-description" placeholder="Подробное описание задания" rows="4"></textarea>
         </div>
         
-        <input type="number" class="admin-input" id="admin-task-people" placeholder="Сколько человек должно выполнить">
-        <input type="text" class="admin-input" id="admin-task-repost" placeholder="Время повторной публикации">
-        <input type="url" class="admin-input" id="admin-task-url" placeholder="URL задания">
+        <div class="form-row">
+            <div class="form-group" style="flex: 1;">
+                <label>Цена (в звездах) *</label>
+                <input type="number" class="admin-input" id="admin-task-price" placeholder="50">
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>Категория</label>
+                <select class="admin-input" id="admin-task-category">
+                    <option value="subscribe">📱 Подписки</option>
+                    <option value="view">👀 Просмотры</option>
+                    <option value="comment">💬 Комментарии</option>
+                    <option value="repost">🔄 Репосты</option>
+                    <option value="social">👥 Соцсети</option>
+                    <option value="other">📋 Другое</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group" style="flex: 1;">
+                <label>Время выполнения</label>
+                <input type="text" class="admin-input" id="admin-task-time" placeholder="5-10 минут">
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>Сложность</label>
+                <select class="admin-input" id="admin-task-difficulty">
+                    <option value="Легкая">🟢 Легкая</option>
+                    <option value="Средняя">🟡 Средняя</option>
+                    <option value="Сложная">🔴 Сложная</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>Количество исполнителей</label>
+            <input type="number" class="admin-input" id="admin-task-people" placeholder="10" value="10">
+        </div>
+        
+        <div class="form-group">
+            <label>Ссылка на задание (опционально)</label>
+            <input type="url" class="admin-input" id="admin-task-url" placeholder="https://...">
+        </div>
         
         <!-- Загрузка изображения -->
-        <div class="image-upload-container" style="margin-bottom: 16px;">
-            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">
-                🖼️ Изображение задания (опционально)
-            </label>
-            <div style="display: flex; gap: 12px; align-items: center;">
-                <input type="file" class="admin-input" id="admin-task-image" accept="image/*" 
-                       style="flex: 1; padding: 12px;" onchange="previewTaskImage(this)">
-                <button type="button" class="btn btn-error" onclick="clearTaskImage()" 
-                        style="padding: 12px 16px; white-space: nowrap;">
+        <div class="form-group">
+            <label>🖼️ Изображение задания (опционально)</label>
+            <div class="image-upload-area" id="image-upload-area" onclick="document.getElementById('admin-task-image').click()">
+                <div class="upload-placeholder">
+                    <div style="font-size: 48px; margin-bottom: 10px;">📸</div>
+                    <div>Нажмите чтобы выбрать изображение</div>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 5px;">
+                        Поддерживаются JPG, PNG, GIF
+                    </div>
+                </div>
+                <img id="task-image-preview" class="image-preview" style="display: none;">
+            </div>
+            <input type="file" id="admin-task-image" accept="image/*" style="display: none;" onchange="previewTaskImage(this)">
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button type="button" class="btn btn-secondary" onclick="clearTaskImage()" style="flex: 1;">
                     ❌ Очистить
                 </button>
             </div>
-            <div id="task-image-preview" style="margin-top: 12px; display: none;">
-                <img id="task-preview-img" style="max-width: 200px; max-height: 150px; border-radius: 8px; border: 2px solid var(--border);">
-            </div>
         </div>
         
-        <button class="admin-submit" onclick="addTask()">➕ Добавить задание</button>
+        <button class="admin-submit" onclick="addTask()" style="margin-top: 20px;">
+            ✅ Добавить задание
+        </button>
     </div>
 </div>
 
@@ -10005,7 +10144,186 @@ setTimeout(() => {
         testAdminRights();
     }
 }, 3000);
+// Предпросмотр изображения
+function previewTaskImage(input) {
+    const area = document.getElementById('image-upload-area');
+    const preview = document.getElementById('task-image-preview');
+    const placeholder = area.querySelector('.upload-placeholder');
+    
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            preview.style.display = 'block';
+            placeholder.style.display = 'none';
+        }
+        
+        reader.readAsDataURL(input.files[0]);
+    }
+}
 
+// Очистка изображения
+function clearTaskImage() {
+    const input = document.getElementById('admin-task-image');
+    const area = document.getElementById('image-upload-area');
+    const preview = document.getElementById('task-image-preview');
+    const placeholder = area.querySelector('.upload-placeholder');
+    
+    input.value = '';
+    preview.style.display = 'none';
+    placeholder.style.display = 'block';
+}
+
+// Функция добавления задания
+async function addTask() {
+    console.log('🎯 Starting addTask function...');
+    
+    try {
+        const formData = new FormData();
+        
+        // Собираем данные из формы
+        const taskData = {
+            title: document.getElementById('admin-task-title').value.trim(),
+            description: document.getElementById('admin-task-description').value.trim(),
+            price: document.getElementById('admin-task-price').value,
+            category: document.getElementById('admin-task-category').value,
+            time_to_complete: document.getElementById('admin-task-time').value || '5-10 минут',
+            difficulty: document.getElementById('admin-task-difficulty').value,
+            people_required: document.getElementById('admin-task-people').value || 10,
+            task_url: document.getElementById('admin-task-url').value || '',
+            created_by: currentUser.id
+        };
+        
+        console.log('📝 Task data:', taskData);
+        
+        // Валидация
+        if (!taskData.title || !taskData.description || !taskData.price) {
+            showNotification('❌ Заполните название, описание и цену задания!', 'error');
+            return;
+        }
+        
+        if (isNaN(taskData.price) || taskData.price <= 0) {
+            showNotification('❌ Цена должна быть положительным числом!', 'error');
+            return;
+        }
+        
+        // Добавляем текстовые данные в FormData
+        Object.keys(taskData).forEach(key => {
+            formData.append(key, taskData[key]);
+        });
+        
+        // Добавляем изображение если есть
+        const imageInput = document.getElementById('admin-task-image');
+        if (imageInput.files[0]) {
+            formData.append('image', imageInput.files[0]);
+            console.log('📸 Image attached:', imageInput.files[0].name);
+        }
+        
+        console.log('📤 Sending task data to server...');
+        
+        // Отправляем на сервер
+        const response = await fetch('/api/tasks', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        console.log('📨 Server response:', result);
+        
+        if (result.success) {
+            showNotification('✅ Задание успешно создано!', 'success');
+            
+            // Очищаем форму
+            document.getElementById('admin-task-title').value = '';
+            document.getElementById('admin-task-description').value = '';
+            document.getElementById('admin-task-price').value = '';
+            document.getElementById('admin-task-time').value = '';
+            document.getElementById('admin-task-people').value = '10';
+            document.getElementById('admin-task-url').value = '';
+            clearTaskImage();
+            
+            // Обновляем списки
+            setTimeout(() => {
+                loadAdminTasks();
+                loadTasks();
+            }, 1000);
+            
+        } else {
+            throw new Error(result.error || 'Unknown server error');
+        }
+        
+    } catch (error) {
+        console.error('💥 Error in addTask:', error);
+        showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
+    }
+}
+
+// Функция загрузки заданий админа
+async function loadAdminTasks() {
+    if (!currentUser) return;
+    
+    try {
+        const result = await makeRequest(`/admin/tasks?adminId=${currentUser.id}`);
+        if (result.success) {
+            displayAdminTasks(result.tasks);
+        }
+    } catch (error) {
+        console.error('Error loading admin tasks:', error);
+    }
+}
+
+// Отображение заданий админа
+function displayAdminTasks(tasks) {
+    const container = document.getElementById('admin-tasks-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!tasks || tasks.length === 0) {
+        container.innerHTML = `
+            <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
+                <div>Нет созданных заданий</div>
+                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
+                    Создайте первое задание используя форму выше
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    tasks.forEach(task => {
+        const taskElement = document.createElement('div');
+        taskElement.className = 'admin-task-item';
+        taskElement.innerHTML = `
+            <div class="admin-task-header">
+                <div class="admin-task-title">
+                    ${task.title}
+                    ${task.image_url ? '<span style="margin-left: 8px;">🖼️</span>' : ''}
+                </div>
+                <div class="admin-task-actions">
+                    <button class="admin-task-delete" onclick="deleteTask(${task.id})">
+                        🗑️ Удалить
+                    </button>
+                </div>
+            </div>
+            <div class="admin-task-description">${task.description}</div>
+            <div class="admin-task-details">
+                <span class="admin-task-price">${task.price} ⭐</span>
+                <span class="admin-task-category">${formatCategory(task.category)}</span>
+                <span class="admin-task-people">Нужно: ${task.people_required} чел.</span>
+                <span class="admin-task-difficulty">${task.difficulty}</span>
+            </div>
+            ${task.image_url ? `
+                <div style="margin-top: 10px;">
+                    <img src="${task.image_url}" alt="Изображение задания" style="max-width: 200px; border-radius: 8px; border: 1px solid var(--border);">
+                </div>
+            ` : ''}
+        `;
+        container.appendChild(taskElement);
+    });
+}
 // 🔧 ЭКСПОРТ НОВЫХ ФУНКЦИЙ
 window.addNewPostAsAdmin = addNewPostAsAdmin;
 window.deletePostAsAdmin = deletePostAsAdmin;
