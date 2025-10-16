@@ -1039,34 +1039,7 @@ app.post('/api/tasks', async (req, res) => {
         });
     }
 });
-// 🔧 ФУНКЦИЯ ДЛЯ ДИАГНОСТИКИ ПРОБЛЕМ
-function debugTaskCreation() {
-    console.log('🐛 DEBUG Task Creation:');
-    
-    // Проверяем элементы формы
-    const elements = [
-        'admin-task-title',
-        'admin-task-description', 
-        'admin-task-price',
-        'admin-task-category',
-        'admin-task-time',
-        'admin-task-difficulty',
-        'admin-task-people',
-        'admin-task-url'
-    ];
-    
-    elements.forEach(id => {
-        const element = document.getElementById(id);
-        console.log(`- ${id}:`, element ? `"${element.value}"` : 'NOT FOUND');
-    });
-    
-    // Проверяем пользователя
-    console.log('- currentUser:', currentUser);
-    console.log('- API_BASE_URL:', API_BASE_URL);
-}
 
-// Вызовите для диагностики
-debugTaskCreation();
 // Test endpoint for task creation
 app.post('/api/test-task', async (req, res) => {
     console.log('🧪 Test task endpoint called:', req.body);

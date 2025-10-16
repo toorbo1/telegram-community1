@@ -8274,6 +8274,65 @@ async function addTask() {
         showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
     }
 }
+// 🔧 ФУНКЦИЯ ДЛЯ ДИАГНОСТИКИ ПРОБЛЕМ - УДАЛИТЬ ИЗ SERVER.JS
+function debugTaskCreation() {
+    console.log('🐛 DEBUG Task Creation:');
+    
+    // Проверяем элементы формы
+    const elements = [
+        'admin-task-title',
+        'admin-task-description', 
+        'admin-task-price',
+        'admin-task-category',
+        'admin-task-time',
+        'admin-task-difficulty',
+        'admin-task-people',
+        'admin-task-url'
+    ];
+    
+    elements.forEach(id => {
+        const element = document.getElementById(id);
+        console.log(`- ${id}:`, element ? `"${element.value}"` : 'NOT FOUND');
+    });
+    
+    // Проверяем пользователя
+    console.log('- currentUser:', currentUser);
+    console.log('- API_BASE_URL:', API_BASE_URL);
+}
+
+// Временно добавьте эту кнопку в админ-панель - УДАЛИТЬ ИЗ SERVER.JS
+function addTestButton() {
+    const testBtn = document.createElement('button');
+    testBtn.textContent = '🧪 Test Task Creation';
+    testBtn.className = 'btn btn-warning';
+    testBtn.style.margin = '10px';
+    testBtn.onclick = testTaskCreation;
+    
+    const tasksSection = document.getElementById('admin-tasks-section');
+    if (tasksSection) {
+        tasksSection.appendChild(testBtn);
+    }
+}
+
+async function testTaskCreation() {
+    console.log('🧪 Testing task creation...');
+    
+    // Заполняем форму тестовыми данными
+    document.getElementById('admin-task-title').value = 'Тестовое задание';
+    document.getElementById('admin-task-description').value = 'Это тестовое описание задания';
+    document.getElementById('admin-task-price').value = '50';
+    document.getElementById('admin-task-category').value = 'subscribe';
+    document.getElementById('admin-task-time').value = '10 минут';
+    document.getElementById('admin-task-difficulty').value = 'Легкая';
+    document.getElementById('admin-task-people').value = '5';
+    document.getElementById('admin-task-url').value = 'https://example.com';
+    
+    console.log('✅ Form filled with test data');
+    debugTaskCreation();
+    
+    // Пробуем создать задание
+    await addTask();
+}
 // 🔧 ТЕСТИРОВАНИЕ СОЕДИНЕНИЯ С СЕРВЕРОМ
 async function testServerConnection() {
     console.log('🧪 Testing server connection...');
