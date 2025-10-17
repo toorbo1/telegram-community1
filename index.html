@@ -784,12 +784,13 @@ body {
     min-height: 200px;
 }
 
+/* ОБНОВЛЕННЫЕ СТИЛИ ДЛЯ КАРТОЧКИ ЗАДАНИЯ */
 .task-card {
     background: var(--card-bg);
     border-radius: 16px;
-    padding: 16px;
+    padding: 12px; /* Уменьшаем padding */
     border: 1px solid var(--border);
-    cursor: pointer;
+    cursor: default; /* Убираем курсор для всей карточки */
     transition: transform 0.3s ease;
     position: relative;
     width: 100%;
@@ -797,7 +798,7 @@ body {
     margin-bottom: 12px;
     display: flex;
     flex-direction: column;
-    min-height: 180px;
+    min-height: 160px; /* Уменьшаем высоту блока */
     height: auto;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     overflow: hidden;
@@ -1940,35 +1941,38 @@ body {
     animation: none;
 }
         
-/* Хедер карточки - УБИРАЕМ ЛИШНИЙ ПРОМЕЖУТОК */
+/* Хедер карточки */
 .task-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 8px; /* Уменьшаем отступ */
-    flex-shrink: 0;
-    gap: 8px; /* Уменьшаем gap */
+    margin-bottom: 8px;
+    gap: 8px;
     width: 100%;
 }
 
-/* Название задания */
+/* Название задания - ОДНА СТРОКА */
 .task-title {
-    font-size: 18px;
+    font-size: 16px; /* Немного уменьшаем */
     font-weight: 700;
-    margin-bottom: 4px; /* Уменьшаем отступ */
-    line-height: 1.3;
+    line-height: 1.2;
     word-wrap: break-word;
     overflow-wrap: break-word;
-    max-width: 70%; /* Ограничиваем ширину */
+    max-width: 65%; /* Ограничиваем ширину */
     overflow: hidden;
     text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    line-clamp: 2;
-    box-orient: vertical;
+    white-space: nowrap; /* ЗАПРЕЩАЕМ ПЕРЕНОС НА НОВУЮ СТРОКУ */
     color: var(--text-primary);
     flex: 1;
+}
+/* Правая колонка с ценой и мета-информацией */
+.task-right-column {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+    min-width: 35%; /* Гарантируем место для правой колонки */
 }
 /* Убираем старую категорию */
 .task-category {
@@ -1985,17 +1989,15 @@ body {
     border: 1px solid rgba(99, 102, 241, 0.2);
 } */
 
-/* Цена в звездах - ПРАВЫЙ ВЕРХНИЙ УГОЛ */
+/* Цена в звездах */
 .task-price {
-    font-size: 22px;
+    font-size: 20px; /* Немного уменьшаем */
     font-weight: 800;
     background: var(--gold-gradient);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    flex-shrink: 0;
     white-space: nowrap;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     text-align: right;
 }
 
@@ -2038,36 +2040,37 @@ body {
 
 /* Описание задания - 3 СТРОКИ С ТЕНЬЮ */
 .task-description {
-    font-size: 14px;
+    font-size: 13px;
     color: var(--text-secondary);
-    margin: 8px 0 12px 0;
-    line-height: 1.5;
+    margin: 6px 0 10px 0;
+    line-height: 1.4;
     word-wrap: break-word;
     overflow-wrap: break-word;
     white-space: pre-wrap;
     flex: 1;
     display: -webkit-box;
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 3; /* ОГРАНИЧЕНИЕ 3 СТРОКИ */
     -webkit-box-orient: vertical;
     line-clamp: 3;
     box-orient: vertical;
     overflow: hidden;
     position: relative;
-    min-height: 60px;
-    padding-right: 8px;
+    min-height: 55px;
 }
-/* УВЕЛИЧИВАЕМ ТЕНЬ ДЛЯ ОПИСАНИЯ */
+
+/* УВЕЛИЧЕННАЯ ТЕНЬ ДЛЯ ОПИСАНИЯ */
 .task-description::after {
     content: '';
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
-    height: 40px; /* Увеличиваем высоту тени */
-    background: linear-gradient(transparent, var(--card-bg) 80%);
+    height: 30px; /* Тень для 3 строк */
+    background: linear-gradient(transparent, var(--card-bg) 90%);
     pointer-events: none;
     border-radius: 0 0 8px 8px;
 }
+
 /* Плавное ограничение текста с кнопкой "Читать далее" */
 .task-description.collapsed {
     max-height: 60px;
@@ -2101,12 +2104,12 @@ body {
 /* Футер карточки - ТОЛЬКО КНОПКА */
 .task-footer {
     display: flex;
-    justify-content: flex-end; /* Выравниваем кнопку по правому краю */
+    justify-content: flex-end;
     align-items: center;
     margin-top: auto;
     flex-shrink: 0;
     width: 100%;
-    padding-top: 12px;
+    padding-top: 8px;
     border-top: 1px solid var(--border);
 }
 /* Блок мета-информации (убираем старый) */
@@ -2114,35 +2117,33 @@ body {
     display: none;
 }
 
-/* Время выполнения - ПОД СЛОЖНОСТЬЮ */
+/* Время выполнения */
 .task-time {
-    position: absolute;
-    top: 70px; /* Под сложностью */
-    right: 16px;
     font-size: 11px;
     color: var(--text-secondary);
     display: flex;
     align-items: center;
     gap: 4px;
+    order: 2; /* Время второе */
 }
 
 .task-time::before {
     content: '⏱️';
-    font-size: 12px;
+    font-size: 10px;
 }
 /* Убираем старый бейдж сложности */
 .task-difficulty.old {
     display: none;
 }
 
-/* Кнопка задания */
+/* Кнопка задания - ЕДИНСТВЕННЫЙ КЛИКАБЕЛЬНЫЙ ЭЛЕМЕНТ */
 .task-btn {
     background: var(--accent);
     color: white;
     border: none;
-    padding: 10px 20px;
-    border-radius: 12px;
-    font-size: 14px;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
     white-space: nowrap;
@@ -2155,36 +2156,41 @@ body {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
+
 /* Убираем 📋 из описания */
 .task-description::before {
     display: none;
 }
-/* Сложность - ПОД ЦЕНОЙ */
+/* Сложность - СЛЕВА */
 .task-difficulty {
-    position: absolute;
-    top: 45px; /* Под ценой */
-    right: 16px;
     background: var(--purple-gradient);
     color: white;
-    padding: 4px 8px;
-    border-radius: 8px;
+    padding: 3px 8px;
+    border-radius: 6px;
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
+    order: 1; /* Сложность первая */
 }
 
-/* Категория задания - ПРАВЫЙ ВЕРХНИЙ УГОЛ ПОД ЦЕНОЙ */
+
+/* Категория задания */
 .task-category-new {
-    position: absolute;
-    top: 16px;
-    right: 16px;
     background: rgba(99, 102, 241, 0.1);
     color: var(--accent);
-    padding: 4px 8px;
-    border-radius: 8px;
+    padding: 3px 8px;
+    border-radius: 6px;
     font-size: 10px;
     font-weight: 600;
     border: 1px solid rgba(99, 102, 241, 0.2);
+    text-align: center;
+}
+/* Строка с сложностью и временем */
+.task-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
 }
 
 
@@ -5035,7 +5041,19 @@ input:checked + .theme-slider:before {
     grid-template-columns: 1fr !important;
     gap: 16px !important;
 }
+/* Убираем все клики по карточке */
+.task-card * {
+    cursor: default;
+}
 
+.task-btn, .task-btn * {
+    cursor: pointer !important;
+}
+
+/* Убираем placeholder с изображением если нет картинки */
+.task-image-placeholder {
+    display: none;
+}
 /* Убираем все возможные transition для элементов задач */
 #new-tasks *,
 #confirmation-tasks *,
@@ -7598,12 +7616,7 @@ async function loadTasks(search = '', category = 'all') {
 
 function displayTasks(tasks, category) {
     const container = document.getElementById(category + '-tasks');
-    if (!container) {
-        console.error('❌ Container not found:', category + '-tasks');
-        return;
-    }
-    
-    console.log(`🎯 Displaying ${tasks ? tasks.length : 0} tasks in ${category}`);
+    if (!container) return;
     
     container.innerHTML = '';
 
@@ -7620,7 +7633,7 @@ function displayTasks(tasks, category) {
         return;
     }
 
-         tasks.forEach(task => {
+    tasks.forEach(task => {
         const taskElement = document.createElement('div');
         taskElement.className = 'task-card';
         
@@ -7628,40 +7641,32 @@ function displayTasks(tasks, category) {
         const categoryDisplay = formatCategory(task.category);
         
         // Обрезаем описание для 3 строк
-        const shortDescription = task.description.length > 120 
-            ? task.description.substring(0, 120) + '...' 
+        const shortDescription = task.description.length > 150 
+            ? task.description.substring(0, 150) + '...' 
             : task.description;
         
         taskElement.innerHTML = `
             <div class="task-header">
                 <div style="flex: 1; min-width: 0;">
-                    <div class="task-title">${escapeHtml(task.title)}</div>
+                    <div class="task-title" title="${escapeHtml(task.title)}">${escapeHtml(task.title)}</div>
                 </div>
-                <div class="task-price">${task.price} ⭐</div>
+                <div class="task-right-column">
+                    <div class="task-price">${task.price} ⭐</div>
+                    <div class="task-category-new">${categoryDisplay}</div>
+                    <div class="task-meta-row">
+                        <div class="task-difficulty">${task.difficulty || 'Легкая'}</div>
+                        <div class="task-time">${task.time_to_complete || '5-10 минут'}</div>
+                    </div>
+                </div>
             </div>
             
-            <!-- Категория в правом верхнем углу -->
-            <div class="task-category-new">${categoryDisplay}</div>
-            
-            <!-- Сложность под ценой -->
-            <div class="task-difficulty">${task.difficulty || 'Легкая'}</div>
-            
-            <!-- Время под сложностью -->
-            <div class="task-time">${task.time_to_complete || '5-10 минут'}</div>
-            
-            ${task.image_url ? `
-                <div class="task-image">
-                    <img src="${task.image_url}" alt="${escapeHtml(task.title)}" onerror="this.style.display='none';">
-                </div>
-            ` : ''}
-            
-            <!-- Описание задания - 3 строки с тенью -->
+            <!-- Описание задания - всегда 3 строки -->
             <div class="task-description">
-                ${escapeHtml(task.description)}
+                ${escapeHtml(shortDescription)}
             </div>
             
             <div class="task-footer">
-                <button class="task-btn" onclick="event.stopPropagation(); openTaskModal(${task.id})">
+                <button class="task-btn" onclick="openTaskModal(${task.id})">
                     Начать
                 </button>
             </div>
@@ -7681,7 +7686,7 @@ function displayTasks(tasks, category) {
             }
         });
         
-        container.appendChild(taskElement);
+       container.appendChild(taskElement);
     });
 }
 
@@ -7970,7 +7975,7 @@ function openTaskModal(taskId) {
         document.getElementById('task-modal-price').textContent = `${task.price} ⭐`;
         document.getElementById('task-modal-description').textContent = task.description;
         
-        // Отображаем реальные данные из базы
+        // Отображаем реальные данные
         document.getElementById('task-modal-time').textContent = task.time_to_complete || '5 минут';
         document.getElementById('task-modal-difficulty').textContent = task.difficulty || 'Легкая';
         
@@ -7979,16 +7984,6 @@ function openTaskModal(taskId) {
         const completedCount = task.completed_count || 0;
         const availableTasks = Math.max(0, peopleRequired - completedCount);
         document.getElementById('task-modal-available').textContent = `${availableTasks} заданий`;
-        
-        // Показываем URL задания если есть
-        const urlElement = document.getElementById('task-modal-url');
-        if (urlElement) {
-            if (task.task_url) {
-                urlElement.innerHTML = `<span class="task-detail-label">Ссылка:</span><span class="task-detail-value"><a href="${task.task_url}" target="_blank" style="color: var(--accent);">Перейти к заданию</a></span>`;
-            } else {
-                urlElement.innerHTML = '';
-            }
-        }
         
         document.getElementById('task-modal').classList.add('active');
     }
