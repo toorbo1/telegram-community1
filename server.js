@@ -75,7 +75,7 @@ async function checkAdminAccess(userId) {
 // Временно добавьте эту функцию для отладки
 function debugWithdrawalSystem() {
     console.log('🐛 DEBUG Withdrawal System:');
-    console.log('- currentUser:', currentUser);
+    console.log('- currentUser:', currentUser); // ← исправлено на английское
     console.log('- isAdmin:', currentUser?.is_admin);
     
     // Проверьте, загружаются ли запросы
@@ -85,7 +85,6 @@ function debugWithdrawalSystem() {
         console.error('❌ Error loading withdrawal requests:', error);
     });
 }
-
 // Вызовите для тестирования
 setTimeout(debugWithdrawalSystem, 3000);
 // Упрощенная инициализация базы данных
