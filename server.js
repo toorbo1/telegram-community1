@@ -55,36 +55,36 @@ const pool = new Pool({
 
 const ADMIN_ID = 8036875641;
 
-// // Функция проверки прав администратора
-// async function checkAdminAccess(userId) {
-//     try {
-//         const result = await pool.query(
-//             'SELECT is_admin FROM user_profiles WHERE user_id = $1',
-//             [userId]
-//         );
+// Функция проверки прав администратора
+async function checkAdminAccess(userId) {
+    try {
+        const result = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [userId]
+        );
         
-//         if (result.rows.length > 0) {
-//             return result.rows[0].is_admin === true || parseInt(userId) === ADMIN_ID;
-//         }
-//         return parseInt(userId) === ADMIN_ID;
-//     } catch (error) {
-//         console.error('Admin access check error:', error);
-//         return parseInt(userId) === ADMIN_ID;
-//     }
-// }
-// // Временно добавьте эту функцию для отладки
-// function debugWithdrawalSystem() {
-//     console.log('🐛 DEBUG Withdrawal System:');
-//     console.log('- currentUser:', currentUser); // ← исправлено на английское
-//     console.log('- isAdmin:', currentUser?.is_admin);
+        if (result.rows.length > 0) {
+            return result.rows[0].is_admin === true || parseInt(userId) === ADMIN_ID;
+        }
+        return parseInt(userId) === ADMIN_ID;
+    } catch (error) {
+        console.error('Admin access check error:', error);
+        return parseInt(userId) === ADMIN_ID;
+    }
+}
+// Временно добавьте эту функцию для отладки
+function debugWithdrawalSystem() {
+    console.log('🐛 DEBUG Withdrawal System:');
+    console.log('- currentUser:', currentUser); // ← исправлено на английское
+    console.log('- isAdmin:', currentUser?.is_admin);
     
-//     // Проверьте, загружаются ли запросы
-//     loadWithdrawalRequests().then(() => {
-//         console.log('✅ Withdrawal requests loaded');
-//     }).catch(error => {
-//         console.error('❌ Error loading withdrawal requests:', error);
-//     });
-// }
+    // Проверьте, загружаются ли запросы
+    loadWithdrawalRequests().then(() => {
+        console.log('✅ Withdrawal requests loaded');
+    }).catch(error => {
+        console.error('❌ Error loading withdrawal requests:', error);
+    });
+}
 // Вызовите для тестирования
 setTimeout(debugWithdrawalSystem, 3000);
 // Упрощенная инициализация базы данных
@@ -654,10 +654,17 @@ app.get('/api/admin/withdrawal-requests', async (req, res) => {
     }
 });
 
-// Complete withdrawal request - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) => {
     const requestId = req.params.requestId;
     const { adminId } = req.body;
+    
+    console.log('🔧 DEBUG completeWithdrawal:', {
+        requestId,
+        adminId,
+        body: req.body,
+        currentUser: req.user // если есть
+    });
+    
     
     console.log('✅ Подтверждение выплаты:', { requestId, adminId });
     
