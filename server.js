@@ -418,217 +418,376 @@ async function fixWithdrawalTable() {
 
 // Вызовите эту функцию при инициализации сервера
 fixWithdrawalTable();
-if (bot) {
-    // Обработчик команды /start с реферальным кодом
-    bot.onText(/\/start(.+)?/, async (msg, match) => {
-        const chatId = msg.chat.id;
-        const userId = msg.from.id;
-        const referralCode = match[1] ? match[1].trim() : null;
-        
-        console.log('🎯 Start command received:', { userId, referralCode });
-        
-        try {
-            // Регистрируем пользователя в системе
-            const userData = {
-                id: userId,
-                firstName: msg.from.first_name || 'Пользователь',
-                lastName: msg.from.last_name || '',
-                username: msg.from.username || `user_${userId}`
-            };
-            
-            let referredBy = null;
-            let referrerName = '';
-            
-            // Если есть реферальный код, находим пригласившего
-            if (referralCode) {
-                const cleanReferralCode = referralCode.replace('ref_', '');
-                const referrerResult = await pool.query(
-                    `SELECT user_id, first_name, username 
-                     FROM user_profiles 
-                     WHERE referral_code = $1 OR user_id::text = $1`,
-                    [cleanReferralCode]
-                );
-                
-                if (referrerResult.rows.length > 0) {
-                    referredBy = referrerResult.rows[0].user_id;
-                    referrerName = referrerResult.rows[0].first_name || 
-                                  referrerResult.rows[0].username || 
-                                  `Пользователь ${referredBy}`;
-                    
-                    console.log(`🔍 Найден реферер: ${referrerName} (ID: ${referredBy})`);
-                }
-            }
-            
-            // Генерируем реферальный код для пользователя
-            const userReferralCode = `ref_${userId}`;
-            
-            // Сохраняем/обновляем пользователя
-            const userResult = await pool.query(`
-                INSERT INTO user_profiles 
-                (user_id, username, first_name, last_name, referral_code, referred_by, is_first_login) 
-                VALUES ($1, $2, $3, $4, $5, $6, true)
-                ON CONFLICT (user_id) 
-                DO UPDATE SET 
-                    username = EXCLUDED.username,
-                    first_name = EXCLUDED.first_name,
-                    last_name = EXCLUDED.last_name,
-                    updated_at = CURRENT_TIMESTAMP
-                RETURNING *
-            `, [
-                userId, 
-                userData.username,
-                userData.firstName,
-                userData.lastName,
-                userReferralCode,
-                referredBy
-            ]);
-            
-            const userProfile = userResult.rows[0];
-            
-            // Если пользователь пришел по реферальной ссылке и это его первый вход
-            if (referredBy && userProfile.is_first_login) {
-                // Даем 10⭐ новому пользователю
-                await pool.query(`
-                    UPDATE user_profiles 
-                    SET balance = COALESCE(balance, 0) + 10,
-                        is_first_login = false
-                    WHERE user_id = $1
-                `, [userId]);
-                
-                // Даем 20⭐ тому, кто пригласил
-                await pool.query(`
-                    UPDATE user_profiles 
-                    SET balance = COALESCE(balance, 0) + 20,
-                        referral_count = COALESCE(referral_count, 0) + 1,
-                        referral_earned = COALESCE(referral_earned, 0) + 20
-                    WHERE user_id = $1
-                `, [referredBy]);
-                
-                console.log(`🎉 Реферальный бонус: пользователь ${userId} получил 10⭐, пригласивший ${referredBy} получил 20⭐`);
-                
-                // Отправляем уведомление приглашенному
-                await bot.sendMessage(
-                    chatId,
-                    `🎉 Поздравляем! Вы получили 10⭐ за регистрацию по приглашению от ${referrerName}!\n\n` +
-                    `💫 Ваш баланс: 10⭐\n` +
-                    `🚀 Начните зарабатывать: ${APP_URL}`
-                );
-                
-                // Отправляем уведомление пригласившему
-                try {
-                    const referrerStats = await pool.query(
-                        'SELECT referral_count, referral_earned FROM user_profiles WHERE user_id = $1',
-                        [referredBy]
-                    );
-                    
-                    const stats = referrerStats.rows[0];
-                    
-                    await bot.sendMessage(
-                        referredBy,
-                        `🎊 Отличная работа! Ваш друг ${userData.firstName} зарегистрировался по вашей ссылке!\n\n` +
-                        `💫 Вы получили: 20⭐\n` +
-                        `👥 Всего приглашено: ${(stats.referral_count || 0)} человек\n` +
-                        `💰 Заработано на рефералах: ${(stats.referral_earned || 0)}⭐\n\n` +
-                        `🔗 Ваша реферальная ссылка:\nhttps://t.me/LinkGoldMoney_bot?start=ref_${referredBy}`
-                    );
-                } catch (error) {
-                    console.log('Не удалось отправить уведомление рефереру:', error.message);
-                }
-            } else {
-                // Обычное приветствие
-                let message = `👋 Добро пожаловать в LinkGold, ${userData.firstName}!\n\n` +
-                             `💫 Начните зарабатывать выполняя простые задания!\n` +
-                             `🚀 Перейдите в приложение: ${APP_URL}\n\n`;
-                
-                if (userProfile.referral_code) {
-                    message += `📢 Приглашайте друзей и получайте 20⭐ за каждого!\n` +
-                              `🔗 Ваша ссылка:\nhttps://t.me/LinkGoldMoney_bot?start=${userProfile.referral_code}`;
-                }
-                
-                await bot.sendMessage(chatId, message);
-            }
-            
-        } catch (error) {
-            console.error('❌ Start command error:', error);
-            await bot.sendMessage(chatId, '❌ Произошла ошибка при регистрации. Попробуйте позже.');
-        }
-    });
 
-    // Команда для получения реферальной ссылки
-    bot.onText(/\/referral/, async (msg) => {
-        const chatId = msg.chat.id;
-        const userId = msg.from.id;
+// Обработчик команды /start с реферальным кодом
+bot.onText(/\/start(.+)?/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    const referralCode = match[1] ? match[1].trim() : null;
+    
+    console.log('🎯 Start command received:', { userId, referralCode });
+    
+    try {
+        // Регистрируем пользователя в системе
+        const userData = {
+            id: userId,
+            firstName: msg.from.first_name || 'Пользователь',
+            lastName: msg.from.last_name || '',
+            username: msg.from.username || `user_${userId}`
+        };
         
-        try {
-            const userResult = await pool.query(
-                'SELECT referral_code, referral_count, referral_earned FROM user_profiles WHERE user_id = $1',
-                [userId]
+        let referredBy = null;
+        let referrerName = '';
+        
+        // Если есть реферальный код, находим пригласившего
+        if (referralCode) {
+            const cleanReferralCode = referralCode.replace('ref_', '');
+            const referrerResult = await pool.query(
+                `SELECT user_id, first_name, username 
+                 FROM user_profiles 
+                 WHERE referral_code = $1 OR user_id::text = $1`,
+                [cleanReferralCode]
             );
             
-            if (userResult.rows.length === 0) {
-                return await bot.sendMessage(chatId, '❌ Сначала зарегистрируйтесь с помощью /start');
+            if (referrerResult.rows.length > 0) {
+                referredBy = referrerResult.rows[0].user_id;
+                referrerName = referrerResult.rows[0].first_name || 
+                              referrerResult.rows[0].username || 
+                              `Пользователь ${referredBy}`;
+                
+                console.log(`🔍 Найден реферер: ${referrerName} (ID: ${referredBy})`);
             }
+        }
+        
+        // Генерируем реферальный код для пользователя
+        const userReferralCode = `ref_${userId}`;
+        
+        // Сохраняем/обновляем пользователя
+        const userResult = await pool.query(`
+            INSERT INTO user_profiles 
+            (user_id, username, first_name, last_name, referral_code, referred_by, is_first_login) 
+            VALUES ($1, $2, $3, $4, $5, $6, true)
+            ON CONFLICT (user_id) 
+            DO UPDATE SET 
+                username = EXCLUDED.username,
+                first_name = EXCLUDED.first_name,
+                last_name = EXCLUDED.last_name,
+                updated_at = CURRENT_TIMESTAMP
+            RETURNING *
+        `, [
+            userId, 
+            userData.username,
+            userData.firstName,
+            userData.lastName,
+            userReferralCode,
+            referredBy
+        ]);
+        
+        const userProfile = userResult.rows[0];
+        
+        // Если пользователь пришел по реферальной ссылке и это его первый вход
+        if (referredBy && userProfile.is_first_login) {
+            // Даем 10⭐ новому пользователю
+            await pool.query(`
+                UPDATE user_profiles 
+                SET balance = COALESCE(balance, 0) + 10,
+                    is_first_login = false
+                WHERE user_id = $1
+            `, [userId]);
             
-            const user = userResult.rows[0];
-            const referralLink = `https://t.me/LinkGoldMoney_bot?start=${user.referral_code}`;
+            // Даем 20⭐ тому, кто пригласил
+            await pool.query(`
+                UPDATE user_profiles 
+                SET balance = COALESCE(balance, 0) + 20,
+                    referral_count = COALESCE(referral_count, 0) + 1,
+                    referral_earned = COALESCE(referral_earned, 0) + 20
+                WHERE user_id = $1
+            `, [referredBy]);
+            
+            console.log(`🎉 Реферальный бонус: пользователь ${userId} получил 10⭐, пригласивший ${referredBy} получил 20⭐`);
+            
+            // Отправляем уведомление приглашенному с кнопками
+            await bot.sendMessage(
+                chatId,
+                `🎉 <b>Поздравляем, ${userData.firstName}!</b>\n\n` +
+                `Вы получили <b>10⭐</b> за регистрацию по приглашению от ${referrerName}!\n\n` +
+                `<b>💫 О компании LinkGold:</b>\n` +
+                `LinkGold - это современная биржа заработка, где вы можете получать Telegram Stars за выполнение простых и интересных заданий! 🚀\n\n` +
+                `📊 <b>Что вас ждет:</b>\n` +
+                `• Выполняйте задания и получайте Stars\n` +
+                `• Участвуйте в розыгрышах и акциях\n` +
+                `• Приглашайте друзей и получайте бонусы\n` +
+                `• Выводите заработанные средства\n\n` +
+                `🎁 <b>Подписывайтесь на наш канал</b> - там регулярно проходят розыгрыши, публикуются новые задания и эксклюзивные предложения!`,
+                {
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                {
+                                    text: '🚀 Перейти в приложение',
+                                    url: APP_URL
+                                }
+                            ],
+                            [
+                                {
+                                    text: '📢 Подписаться на канал',
+                                    url: 'https://t.me/LinkGoldChannel'
+                                }
+                            ]
+                        ]
+                    }
+                }
+            );
+            
+            // Отправляем уведомление пригласившему
+            try {
+                const referrerStats = await pool.query(
+                    'SELECT referral_count, referral_earned FROM user_profiles WHERE user_id = $1',
+                    [referredBy]
+                );
+                
+                const stats = referrerStats.rows[0];
+                
+                await bot.sendMessage(
+                    referredBy,
+                    `🎊 <b>Отличная работа!</b>\n\n` +
+                    `Ваш друг ${userData.firstName} зарегистрировался по вашей ссылке!\n\n` +
+                    `💫 <b>Вы получили:</b> 20⭐\n` +
+                    `👥 <b>Всего приглашено:</b> ${(stats.referral_count || 0)} человек\n` +
+                    `💰 <b>Заработано на рефералах:</b> ${(stats.referral_earned || 0)}⭐\n\n` +
+                    `🔗 <b>Ваша реферальная ссылка:</b>\nhttps://t.me/LinkGoldMoney_bot?start=ref_${referredBy}`,
+                    {
+                        parse_mode: 'HTML'
+                    }
+                );
+            } catch (error) {
+                console.log('Не удалось отправить уведомление рефереру:', error.message);
+            }
+        } else {
+            // Обычное приветствие с кнопками
+            const message = `👋 <b>Добро пожаловать в LinkGold, ${userData.firstName}!</b>\n\n` +
+                           `<b>💫 О компании LinkGold:</b>\n` +
+                           `LinkGold - это современная биржа заработка, где вы можете получать Telegram Stars за выполнение простых и интересных заданий! 🚀\n\n` +
+                           `📊 <b>Что вас ждет:</b>\n` +
+                           `• Выполняйте задания и получайте Stars\n` +
+                           `• Участвуйте в розыгрышах и акциях\n` +
+                           `• Приглашайте друзей и получайте бонусы\n` +
+                           `• Выводите заработанные средства\n\n` +
+                           `🎁 <b>Подписывайтесь на наш канал</b> - там регулярно проходят розыгрыши, публикуются новые задания и эксклюзивные предложения!\n\n` +
+                           `🔗 <b>Ваша реферальная ссылка:</b>\nhttps://t.me/LinkGoldMoney_bot?start=${userProfile.referral_code}`;
             
             await bot.sendMessage(
                 chatId,
-                `📢 Ваша реферальная ссылка:\n\n` +
-                `🔗 ${referralLink}\n\n` +
-                `💫 За каждого приглашенного друга:\n` +
-                `   • Вы получаете: 20⭐\n` +
-                `   • Друг получает: 10⭐\n\n` +
-                `📊 Ваша статистика:\n` +
-                `   • Приглашено: ${user.referral_count || 0} чел.\n` +
-                `   • Заработано: ${user.referral_earned || 0}⭐\n\n` +
-                `🚀 Приложение: ${APP_URL}`
+                message,
+                {
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                {
+                                    text: '🚀 Перейти в приложение',
+                                    url: APP_URL
+                                }
+                            ],
+                            [
+                                {
+                                    text: '📢 Подписаться на канал',
+                                    url: 'https://t.me/LinkGoldChannel'
+                                }
+                            ],
+                            [
+                                {
+                                    text: '👥 Пригласить друзей',
+                                    url: `https://t.me/share/url?url=https://t.me/LinkGoldMoney_bot?start=${userProfile.referral_code}&text=Присоединяйся к LinkGold и начинай зарабатывать Telegram Stars! 🚀`
+                                }
+                            ]
+                        ]
+                    }
+                }
             );
-            
-        } catch (error) {
-            console.error('Referral command error:', error);
-            await bot.sendMessage(chatId, '❌ Ошибка при получении реферальной ссылки.');
         }
-    });
-
-    // Команда для проверки баланса
-    bot.onText(/\/balance/, async (msg) => {
-        const chatId = msg.chat.id;
-        const userId = msg.from.id;
         
-        try {
+    } catch (error) {
+        console.error('❌ Start command error:', error);
+        await bot.sendMessage(chatId, '❌ Произошла ошибка при регистрации. Попробуйте позже.');
+    }
+});
+
+// Команда для получения реферальной ссылки
+bot.onText(/\/referral/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    
+    try {
+        const userResult = await pool.query(
+            'SELECT referral_code, referral_count, referral_earned, first_name FROM user_profiles WHERE user_id = $1',
+            [userId]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return await bot.sendMessage(chatId, '❌ Сначала зарегистрируйтесь с помощью /start');
+        }
+        
+        const user = userResult.rows[0];
+        const referralLink = `https://t.me/LinkGoldMoney_bot?start=${user.referral_code}`;
+        const shareText = `Присоединяйся к LinkGold - бирже заработка Telegram Stars! 🚀 Выполняй задания, участвуй в розыгрышах и зарабатывай вместе со мной!`;
+        const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(shareText)}`;
+        
+        await bot.sendMessage(
+            chatId,
+            `📢 <b>Реферальная программа LinkGold</b>\n\n` +
+            `<b>💫 О компании:</b>\n` +
+            `LinkGold - современная биржа заработка Telegram Stars! Выполняйте простые задания, участвуйте в розыгрышах и приглашайте друзей.\n\n` +
+            `🎁 <b>Бонусы за приглашение:</b>\n` +
+            `• Вы получаете: <b>20⭐</b> за друга\n` +
+            `• Друг получает: <b>10⭐</b> при регистрации\n\n` +
+            `📊 <b>Ваша статистика:</b>\n` +
+            `• Приглашено: <b>${user.referral_count || 0} чел.</b>\n` +
+            `• Заработано: <b>${user.referral_earned || 0}⭐</b>\n\n` +
+            `🔗 <b>Ваша ссылка:</b>\n<code>${referralLink}</code>`,
+            {
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            {
+                                text: '🚀 Перейти в приложение',
+                                url: APP_URL
+                            }
+                        ],
+                        [
+                            {
+                                text: '📢 Подписаться на канал',
+                                url: 'https://t.me/LinkGoldChannel'
+                            }
+                        ],
+                        [
+                            {
+                                text: '👥 Поделиться с друзьями',
+                                url: shareUrl
+                            }
+                        ]
+                    ]
+                }
+            }
+        );
+        
+    } catch (error) {
+        console.error('Referral command error:', error);
+        await bot.sendMessage(chatId, '❌ Ошибка при получении реферальной ссылки.');
+    }
+});
+
+// Команда для проверки баланса
+bot.onText(/\/balance/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    
+    try {
+        const userResult = await pool.query(
+            'SELECT balance, referral_code, first_name FROM user_profiles WHERE user_id = $1',
+            [userId]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return await bot.sendMessage(chatId, '❌ Сначала зарегистрируйтесь с помощью /start');
+        }
+        
+        const user = userResult.rows[0];
+        const balance = user.balance || 0;
+        
+        await bot.sendMessage(
+            chatId,
+            `💰 <b>Ваш баланс: ${balance}⭐</b>\n\n` +
+            `<b>💫 LinkGold - биржа заработка Telegram Stars</b>\n` +
+            `Выполняйте задания, приглашайте друзей и участвуйте в розыгрышах!\n\n` +
+            `🚀 <b>Начните зарабатывать прямо сейчас!</b>`,
+            {
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            {
+                                text: '🚀 Перейти в приложение',
+                                url: APP_URL
+                            }
+                        ],
+                        [
+                            {
+                                text: '📢 Наш канал',
+                                url: 'https://t.me/LinkGoldChannel'
+                            }
+                        ],
+                        [
+                            {
+                                text: '👥 Пригласить друзей',
+                                callback_data: 'referral'
+                            }
+                        ]
+                    ]
+                }
+            }
+        );
+        
+    } catch (error) {
+        console.error('Balance command error:', error);
+        await bot.sendMessage(chatId, '❌ Ошибка при проверке баланса.');
+    }
+});
+
+
+// Обработчик callback кнопок
+bot.on('callback_query', async (callbackQuery) => {
+    const message = callbackQuery.message;
+    const chatId = message.chat.id;
+    const userId = callbackQuery.from.id;
+    const data = callbackQuery.data;
+    
+    try {
+        if (data === 'referral') {
             const userResult = await pool.query(
-                'SELECT balance, referral_code FROM user_profiles WHERE user_id = $1',
+                'SELECT referral_code FROM user_profiles WHERE user_id = $1',
                 [userId]
             );
             
-            if (userResult.rows.length === 0) {
-                return await bot.sendMessage(chatId, '❌ Сначала зарегистрируйтесь с помощью /start');
+            if (userResult.rows.length > 0) {
+                const user = userResult.rows[0];
+                const referralLink = `https://t.me/LinkGoldMoney_bot?start=${user.referral_code}`;
+                const shareText = `Присоединяйся к LinkGold - бирже заработка Telegram Stars! 🚀 Выполняй задания, участвуй в розыгрышах и зарабатывай вместе со мной!`;
+                const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(shareText)}`;
+                
+                await bot.sendMessage(
+                    chatId,
+                    `🔗 <b>Ваша реферальная ссылка:</b>\n<code>${referralLink}</code>\n\n` +
+                    `🎁 <b>За каждого приглашенного друга:</b>\n` +
+                    `• Вы получаете: 20⭐\n` +
+                    `• Друг получает: 10⭐`,
+                    {
+                        parse_mode: 'HTML',
+                        reply_markup: {
+                            inline_keyboard: [
+                                [
+                                    {
+                                        text: '👥 Поделиться с друзьями',
+                                        url: shareUrl
+                                    }
+                                ]
+                            ]
+                        }
+                    }
+                );
             }
-            
-            const user = userResult.rows[0];
-            const balance = user.balance || 0;
-            
-            let message = `💰 Ваш баланс: ${balance}⭐\n\n` +
-                         `🚀 Выполняйте задания в приложении: ${APP_URL}\n\n`;
-            
-            if (user.referral_code) {
-                message += `📢 Приглашайте друзей: /referral`;
-            }
-            
-            await bot.sendMessage(chatId, message);
-            
-        } catch (error) {
-            console.error('Balance command error:', error);
-            await bot.sendMessage(chatId, '❌ Ошибка при проверке баланса.');
         }
-    });
-
-    // Обработчик ошибок бота
-    bot.on('error', (error) => {
-        console.error('🤖 Telegram Bot Error:', error);
-    });
-}
+        
+        // Подтверждаем обработку callback
+        await bot.answerCallbackQuery(callbackQuery.id);
+        
+    } catch (error) {
+        console.error('Callback query error:', error);
+        await bot.answerCallbackQuery(callbackQuery.id, { text: '❌ Произошла ошибка' });
+    }
+});
 
 // ... остальные endpoints остаются без изменений ...
 
