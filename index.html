@@ -7897,10 +7897,14 @@ function displayUserTasksForCategory(tasks, status) {
 
 
 function openTaskModal(taskId) {
+    console.log('📖 Opening task modal for task:', taskId);
+    
     selectedTaskId = taskId;
     
     const task = allTasks.find(t => t.id === taskId);
     if (task) {
+        console.log('✅ Task found:', task);
+        
         document.getElementById('task-modal-title').textContent = task.title;
         document.getElementById('task-modal-category').textContent = task.category || 'Общее';
         document.getElementById('task-modal-price').textContent = `${task.price} ⭐`;
@@ -7927,6 +7931,10 @@ function openTaskModal(taskId) {
         }
         
         document.getElementById('task-modal').classList.add('active');
+        console.log('✅ Task modal opened successfully');
+    } else {
+        console.error('❌ Task not found in allTasks array');
+        showNotification('Ошибка: задание не найдено', 'error');
     }
 }
        // Функция подтверждения выполнения задания
@@ -9760,14 +9768,18 @@ function showAdminPaymentsSection() {
             document.getElementById(modalId).classList.remove('active');
         }
 
- async function startTask() {
+async function startTask() {
+    console.log('🎯 Starting task...', { selectedTaskId, currentUser });
+    
     if (!currentUser || !selectedTaskId) {
         showNotification('Ошибка: пользователь не авторизован или задание не выбрано', 'error');
         return;
     }
 
     try {
-        const result = await makeRequest('/user/tasks/start', {
+        console.log('📤 Sending start task request...');
+        
+        const result = await makeRequest('/api/user/tasks/start', {
             method: 'POST',
             body: JSON.stringify({
                 userId: currentUser.id,
@@ -9775,20 +9787,62 @@ function showAdminPaymentsSection() {
             })
         });
 
+        console.log('📨 Start task response:', result);
+
         if (result.success) {
             closeModal('task-modal');
-            showNotification('Задание начато! Выполните его и вернитесь для подтверждения.', 'success');
-            // Обновляем список заданий
-            loadTasks();
-            loadUserTasks();
+            showNotification('✅ Задание начато! Выполните его и вернитесь для подтверждения.', 'success');
+            
+            // Обновляем списки заданий
+            setTimeout(() => {
+                loadTasks();
+                loadUserTasks();
+            }, 1000);
+            
         } else {
-            showNotification('Ошибка: ' + result.error, 'error');
+            showNotification('❌ Ошибка: ' + result.error, 'error');
         }
     } catch (error) {
-        console.error('Error starting task:', error);
-        showNotification('Ошибка начала задания', 'error');
+        console.error('💥 Error starting task:', error);
+        showNotification('❌ Ошибка начала задания: ' + error.message, 'error');
     }
 }
+// 🔧 ФУНКЦИЯ ДЛЯ ДИАГНОСТИКИ НАЧАЛА ЗАДАНИЯ
+function debugStartTask() {
+    console.log('🐛 DEBUG Start Task:');
+    console.log('- currentUser:', currentUser);
+    console.log('- selectedTaskId:', selectedTaskId);
+    console.log('- API_BASE_URL:', API_BASE_URL);
+    
+    // Проверяем существование задачи
+    const task = allTasks.find(t => t.id === selectedTaskId);
+    console.log('- task found:', !!task);
+    console.log('- task details:', task);
+    
+    // Проверяем модальное окно
+    console.log('- task modal visible:', document.getElementById('task-modal')?.classList.contains('active'));
+}
+
+// Временно добавьте кнопку для тестирования
+function addStartTaskDebugButton() {
+    const debugBtn = document.createElement('button');
+    debugBtn.textContent = '🐛 Debug Start Task';
+    debugBtn.style.position = 'fixed';
+    debugBtn.style.top = '250px';
+    debugBtn.style.right = '10px';
+    debugBtn.style.zIndex = '10000';
+    debugBtn.style.padding = '10px';
+    debugBtn.style.background = 'purple';
+    debugBtn.style.color = 'white';
+    debugBtn.style.border = 'none';
+    debugBtn.style.borderRadius = '5px';
+    debugBtn.style.fontSize = '12px';
+    debugBtn.onclick = debugStartTask;
+    document.body.appendChild(debugBtn);
+}
+
+// Вызовите при загрузке
+setTimeout(addStartTaskDebugButton, 3000);
 
         async function loadAdminChats() {
     if (!currentUser) return;

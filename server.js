@@ -1094,6 +1094,8 @@ app.get('/api/admin/tasks', async (req, res) => {
 app.post('/api/user/tasks/start', async (req, res) => {
     const { userId, taskId } = req.body;
     
+    console.log('🚀 Start task request:', { userId, taskId });
+    
     if (!userId || !taskId) {
         return res.status(400).json({
             success: false,
@@ -1102,7 +1104,7 @@ app.post('/api/user/tasks/start', async (req, res) => {
     }
     
     try {
-        // 🔥 ИСПРАВЛЕНИЕ: Проверяем, выполнял ли пользователь это задание конкретно сейчас
+        // Проверяем, выполнял ли пользователь это задание
         const existingTask = await pool.query(`
             SELECT id FROM user_tasks 
             WHERE user_id = $1 AND task_id = $2 AND status IN ('active', 'pending_review', 'completed')
@@ -1115,7 +1117,7 @@ app.post('/api/user/tasks/start', async (req, res) => {
             });
         }
         
-        // 🔥 ИСПРАВЛЕНИЕ: Проверяем лимит выполнений на основе people_required
+        // Проверяем лимит выполнений
         const taskInfo = await pool.query(`
             SELECT t.*, 
                    COUNT(ut.id) as completed_count
@@ -1149,6 +1151,8 @@ app.post('/api/user/tasks/start', async (req, res) => {
             RETURNING *
         `, [userId, taskId]);
         
+        console.log('✅ Task started successfully:', result.rows[0]);
+        
         res.json({
             success: true,
             message: 'Задание начато!',
@@ -1162,7 +1166,6 @@ app.post('/api/user/tasks/start', async (req, res) => {
         });
     }
 });
-
 // Get user tasks
 app.get('/api/user/:userId/tasks', async (req, res) => {
     const userId = req.params.userId;
