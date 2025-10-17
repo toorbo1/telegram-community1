@@ -72,19 +72,19 @@ async function checkAdminAccess(userId) {
         return parseInt(userId) === ADMIN_ID;
     }
 }
-// Временно добавьте эту функцию для отладки
-function debugWithdrawalSystem() {
-    console.log('🐛 DEBUG Withdrawal System:');
-    console.log('- currentUser:', currentUser); // ← исправлено на английское
-    console.log('- isAdmin:', currentUser?.is_admin);
+// // Временно добавьте эту функцию для отладки
+// function debugWithdrawalSystem() {
+//     console.log('🐛 DEBUG Withdrawal System:');
+//     console.log('- currentUser:', currentUser); // ← исправлено на английское
+//     console.log('- isAdmin:', currentUser?.is_admin);
     
-    // Проверьте, загружаются ли запросы
-    loadWithdrawalRequests().then(() => {
-        console.log('✅ Withdrawal requests loaded');
-    }).catch(error => {
-        console.error('❌ Error loading withdrawal requests:', error);
-    });
-}
+//     // Проверьте, загружаются ли запросы
+//     loadWithdrawalRequests().then(() => {
+//         console.log('✅ Withdrawal requests loaded');
+//     }).catch(error => {
+//         console.error('❌ Error loading withdrawal requests:', error);
+//     });
+// }
 // Вызовите для тестирования
 setTimeout(debugWithdrawalSystem, 3000);
 // Упрощенная инициализация базы данных
@@ -653,18 +653,42 @@ app.get('/api/admin/withdrawal-requests', async (req, res) => {
         });
     }
 });
+// Добавьте эту функцию и вызовите ее в initDatabase()
+async function fixWithdrawalTableStructure() {
+    try {
+        console.log('🔧 Fixing withdrawal_requests table structure...');
+        
+        // Проверяем и добавляем недостающие колонки
+        const columnsToAdd = [
+            'completed_at TIMESTAMP',
+            'completed_by BIGINT',
+            'username TEXT', 
+            'first_name TEXT'
+        ];
+        
+        for (const columnDef of columnsToAdd) {
+            const columnName = columnDef.split(' ')[0];
+            try {
+                await pool.query(`
+                    ALTER TABLE withdrawal_requests 
+                    ADD COLUMN IF NOT EXISTS ${columnDef}
+                `);
+                console.log(`✅ Added column: ${columnName}`);
+            } catch (error) {
+                console.log(`ℹ️ Column ${columnName} already exists or error:`, error.message);
+            }
+        }
+        
+        console.log('✅ Withdrawal table structure fixed');
+    } catch (error) {
+        console.error('❌ Error fixing withdrawal table:', error);
+    }
+}
 
+// Complete withdrawal request - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) => {
     const requestId = req.params.requestId;
     const { adminId } = req.body;
-    
-    console.log('🔧 DEBUG completeWithdrawal:', {
-        requestId,
-        adminId,
-        body: req.body,
-        currentUser: req.user // если есть
-    });
-    
     
     console.log('✅ Подтверждение выплаты:', { requestId, adminId });
     
@@ -678,15 +702,51 @@ app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) 
     }
     
     try {
-        // Обновляем статус заявки
-        const result = await pool.query(`
+        // Сначала проверяем существование запроса
+        const requestCheck = await pool.query(
+            'SELECT * FROM withdrawal_requests WHERE id = $1 AND status = $2',
+            [requestId, 'pending']
+        );
+        
+        if (requestCheck.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Запрос не найден или уже обработан'
+            });
+        }
+        
+        const request = requestCheck.rows[0];
+        
+        // Обновляем статус заявки (БЕЗ completed_at если колонки нет)
+        let updateQuery = `
             UPDATE withdrawal_requests 
             SET status = 'completed', 
-                completed_at = CURRENT_TIMESTAMP, 
-                completed_by = $1
-            WHERE id = $2 AND status = 'pending'
+                completed_at = CURRENT_TIMESTAMP
+            WHERE id = $1 AND status = 'pending'
             RETURNING *
-        `, [adminId, requestId]);
+        `;
+        
+        // Пытаемся добавить completed_by если колонка существует
+        try {
+            updateQuery = `
+                UPDATE withdrawal_requests 
+                SET status = 'completed', 
+                    completed_at = CURRENT_TIMESTAMP,
+                    completed_by = $2
+                WHERE id = $1 AND status = 'pending'
+                RETURNING *
+            `;
+        } catch (e) {
+            // Если колонки completed_by нет, используем упрощенный запрос
+            updateQuery = `
+                UPDATE withdrawal_requests 
+                SET status = 'completed'
+                WHERE id = $1 AND status = 'pending'
+                RETURNING *
+            `;
+        }
+        
+        const result = await pool.query(updateQuery, [requestId, adminId]);
         
         if (result.rows.length === 0) {
             return res.status(404).json({
@@ -695,13 +755,14 @@ app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) 
             });
         }
         
-        const request = result.rows[0];
+        const completedRequest = result.rows[0];
         
-        console.log(`✅ Выплата подтверждена: ${request.amount}⭐ для пользователя ${request.user_id}`);
+        console.log(`✅ Выплата подтверждена: ${completedRequest.amount}⭐ для пользователя ${completedRequest.user_id}`);
         
         res.json({
             success: true,
-            message: 'Выплата подтверждена успешно'
+            message: 'Выплата подтверждена успешно',
+            request: completedRequest
         });
         
     } catch (error) {
