@@ -350,7 +350,12 @@ async function fixWithdrawalTable() {
         }
         
         // Проверяем и добавляем отсутствующие колонки
-        const columnsToCheck = ['username', 'first_name', 'completed_by'];
+        const columnsToCheck = [
+            {name: 'username', type: 'TEXT'},
+            {name: 'first_name', type: 'TEXT'},
+            {name: 'completed_at', type: 'TIMESTAMP'},
+            {name: 'completed_by', type: 'BIGINT'}
+        ];
         
         for (const column of columnsToCheck) {
             const columnExists = await pool.query(`
@@ -358,20 +363,19 @@ async function fixWithdrawalTable() {
                     SELECT FROM information_schema.columns 
                     WHERE table_name = 'withdrawal_requests' AND column_name = $1
                 );
-            `, [column]);
+            `, [column.name]);
             
             if (!columnExists.rows[0].exists) {
-                console.log(`❌ Колонка ${column} отсутствует, добавляем...`);
+                console.log(`❌ Колонка ${column.name} отсутствует, добавляем...`);
                 
-                if (column === 'completed_by') {
-                    await pool.query(`ALTER TABLE withdrawal_requests ADD COLUMN ${column} BIGINT`);
-                } else {
-                    await pool.query(`ALTER TABLE withdrawal_requests ADD COLUMN ${column} TEXT`);
+                try {
+                    await pool.query(`ALTER TABLE withdrawal_requests ADD COLUMN ${column.name} ${column.type}`);
+                    console.log(`✅ Колонка ${column.name} добавлена`);
+                } catch (addError) {
+                    console.log(`⚠️ Не удалось добавить колонку ${column.name}:`, addError.message);
                 }
-                
-                console.log(`✅ Колонка ${column} добавлена`);
             } else {
-                console.log(`✅ Колонка ${column} существует`);
+                console.log(`✅ Колонка ${column.name} существует`);
             }
         }
         
@@ -701,36 +705,53 @@ app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) 
         
         const request = requestCheck.rows[0];
         
-        // Обновляем статус заявки (БЕЗ completed_at если колонки нет)
-        let updateQuery = `
-            UPDATE withdrawal_requests 
-            SET status = 'completed', 
-                completed_at = CURRENT_TIMESTAMP
-            WHERE id = $1 AND status = 'pending'
-            RETURNING *
-        `;
+        // Проверяем существование колонок
+        const columnsCheck = await pool.query(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'withdrawal_requests' 
+            AND column_name IN ('completed_at', 'completed_by')
+        `);
         
-        // Пытаемся добавить completed_by если колонка существует
-        try {
+        const hasCompletedAt = columnsCheck.rows.some(col => col.column_name === 'completed_at');
+        const hasCompletedBy = columnsCheck.rows.some(col => col.column_name === 'completed_by');
+        
+        let updateQuery;
+        let queryParams;
+        
+        if (hasCompletedAt && hasCompletedBy) {
+            // Обе колонки существуют
             updateQuery = `
                 UPDATE withdrawal_requests 
                 SET status = 'completed', 
                     completed_at = CURRENT_TIMESTAMP,
-                    completed_by = $2
+                    completed_by = $1
+                WHERE id = $2 AND status = 'pending'
+                RETURNING *
+            `;
+            queryParams = [adminId, requestId];
+        } else if (hasCompletedAt) {
+            // Только completed_at существует
+            updateQuery = `
+                UPDATE withdrawal_requests 
+                SET status = 'completed', 
+                    completed_at = CURRENT_TIMESTAMP
                 WHERE id = $1 AND status = 'pending'
                 RETURNING *
             `;
-        } catch (e) {
-            // Если колонки completed_by нет, используем упрощенный запрос
+            queryParams = [requestId];
+        } else {
+            // Ни одна колонка не существует
             updateQuery = `
                 UPDATE withdrawal_requests 
                 SET status = 'completed'
                 WHERE id = $1 AND status = 'pending'
                 RETURNING *
             `;
+            queryParams = [requestId];
         }
         
-        const result = await pool.query(updateQuery, [requestId, adminId]);
+        const result = await pool.query(updateQuery, queryParams);
         
         if (result.rows.length === 0) {
             return res.status(404).json({
@@ -757,73 +778,6 @@ app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) 
         });
     }
 });
-
-// Функция для принудительного обновления структуры таблицы
-async function fixWithdrawalTable() {
-    try {
-        console.log('🔧 Проверка и исправление структуры таблицы withdrawal_requests...');
-        
-        // Проверяем существование таблицы
-        const tableExists = await pool.query(`
-            SELECT EXISTS (
-                SELECT FROM information_schema.tables 
-                WHERE table_name = 'withdrawal_requests'
-            );
-        `);
-        
-        if (!tableExists.rows[0].exists) {
-            console.log('❌ Таблица withdrawal_requests не существует, создаем...');
-            await pool.query(`
-                CREATE TABLE withdrawal_requests (
-                    id SERIAL PRIMARY KEY,
-                    user_id BIGINT NOT NULL,
-                    username TEXT,
-                    first_name TEXT,
-                    amount REAL NOT NULL,
-                    status TEXT DEFAULT 'pending',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    completed_at TIMESTAMP,
-                    completed_by BIGINT
-                )
-            `);
-            console.log('✅ Таблица создана');
-            return;
-        }
-        
-        // Проверяем и добавляем отсутствующие колонки
-        const columnsToCheck = ['username', 'first_name', 'completed_by'];
-        
-        for (const column of columnsToCheck) {
-            const columnExists = await pool.query(`
-                SELECT EXISTS (
-                    SELECT FROM information_schema.columns 
-                    WHERE table_name = 'withdrawal_requests' AND column_name = $1
-                );
-            `, [column]);
-            
-            if (!columnExists.rows[0].exists) {
-                console.log(`❌ Колонка ${column} отсутствует, добавляем...`);
-                
-                if (column === 'completed_by') {
-                    await pool.query(`ALTER TABLE withdrawal_requests ADD COLUMN ${column} BIGINT`);
-                } else {
-                    await pool.query(`ALTER TABLE withdrawal_requests ADD COLUMN ${column} TEXT`);
-                }
-                
-                console.log(`✅ Колонка ${column} добавлена`);
-            } else {
-                console.log(`✅ Колонка ${column} существует`);
-            }
-        }
-        
-        console.log('✅ Структура таблицы проверена и исправлена');
-    } catch (error) {
-        console.error('❌ Ошибка при исправлении таблицы:', error);
-    }
-}
-
-// Вызовите эту функцию при инициализации сервера
-fixWithdrawalTable();
 
 // User authentication
 app.post('/api/user/auth', async (req, res) => {
@@ -2192,10 +2146,18 @@ app.use('/api/*', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📊 Health: http://localhost:${PORT}/api/health`);
     console.log(`🔐 Admin ID: ${ADMIN_ID}`);
     console.log(`🗄️ Database: PostgreSQL`);
     console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+    
+    // Принудительно исправляем структуру таблицы при запуске
+    try {
+        await fixWithdrawalTable();
+        console.log('✅ Table structure verified');
+    } catch (error) {
+        console.error('❌ Error fixing table structure:', error);
+    }
 });
