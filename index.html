@@ -150,6 +150,12 @@ body {
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
+.task-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+    border-color: var(--accent);
+}
+
 /* Верхняя строка - заголовок и цена */
 .task-header {
     display: flex;
@@ -202,12 +208,30 @@ body {
 }
 
 .task-difficulty {
-    background: var(--purple-gradient);
-    color: white;
     padding: 4px 8px;
     border-radius: 6px;
     font-size: 11px;
     font-weight: 600;
+    text-transform: uppercase;
+}
+
+/* Цвета для сложности */
+.task-difficulty.easy {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.task-difficulty.medium {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.task-difficulty.hard {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .task-time {
@@ -231,27 +255,56 @@ body {
     justify-content: center;
     margin-bottom: 12px;
     min-height: 60px;
+    text-align: center;
 }
 
-/* Описание задания - 2 СТРОКИ С ЦЕНТРИРОВАНИЕМ */
+/* ОПИСАНИЕ ЗАДАНИЯ - СОВМЕСТИМЫЙ LINE-CLAMP */
 .task-description {
     font-size: 14px;
     color: var(--text-secondary);
     line-height: 1.4;
     text-align: center;
+    width: 100%;
     
-    /* Обрезка на 2 строки */
+    /* Совместимое ограничение строк для всех браузеров */
     display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    display: -moz-box;
     display: box;
+    
+    -webkit-line-clamp: 2;
+    -moz-line-clamp: 2;
     line-clamp: 2;
+    
+    -webkit-box-orient: vertical;
+    -moz-box-orient: vertical;
     box-orient: vertical;
     
     overflow: hidden;
     text-overflow: ellipsis;
-    width: 100%;
+    
+    /* Fallback для старых браузеров */
     max-height: 2.8em;
+    position: relative;
+}
+
+/* Fallback для браузеров без поддержки line-clamp */
+@supports not ((-webkit-line-clamp: 2) or (line-clamp: 2)) {
+    .task-description {
+        display: block;
+        max-height: 2.8em;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .task-description::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 30px;
+        height: 1.2em;
+        background: linear-gradient(90deg, transparent, var(--card-bg) 50%);
+    }
 }
 
 /* Кнопка */
@@ -278,21 +331,43 @@ body {
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
-/* Убираем клик по карточке */
-.task-card * {
-    cursor: default;
+
+/* Стили для разных состояний сложности с иконками */
+.task-difficulty.easy::before {
+    content: '🟢 ';
 }
 
-.task-btn, .task-btn * {
-    cursor: pointer !important;
+.task-difficulty.medium::before {
+    content: '🟡 ';
 }
 
-/* Убедимся что в tasks-grid есть промежутки */
-.tasks-grid {
-    display: grid;
-    gap: 16px !important; /* ПРОМЕЖУТКИ МЕЖДУ ЗАДАНИЯМИ */
-    grid-template-columns: 1fr;
-    min-height: 200px;
+.task-difficulty.hard::before {
+    content: '🔴 ';
+}
+
+/* Стили для категорий с иконками */
+.task-category[data-category="subscribe"]::before {
+    content: '📱 ';
+}
+
+.task-category[data-category="view"]::before {
+    content: '👀 ';
+}
+
+.task-category[data-category="comment"]::before {
+    content: '💬 ';
+}
+
+.task-category[data-category="repost"]::before {
+    content: '🔄 ';
+}
+
+.task-category[data-category="social"]::before {
+    content: '👥 ';
+}
+
+.task-category[data-category="other"]::before {
+    content: '📦 ';
 }
 /* ГАРАНТИРОВАННЫЕ ПРОМЕЖУТКИ МЕЖДУ ЗАДАНИЯМИ */
 #new-tasks,
@@ -996,7 +1071,58 @@ body {
 .tasks-tab * {
     transition: none !important;
 }
+/* Дополнительные стили для лучшей совместимости */
+.tasks-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: 1fr;
+    min-height: 200px;
+}
 
+/* Поддержка для старых браузеров */
+@supports not (display: grid) {
+    .tasks-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+}
+
+/* Улучшенный line-clamp с градиентом для всех браузеров */
+.task-description-legacy-fallback {
+    display: block;
+    max-height: 2.8em;
+    overflow: hidden;
+    position: relative;
+    line-height: 1.4em;
+}
+
+.task-description-legacy-fallback::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 40px;
+    height: 1.4em;
+    background: linear-gradient(90deg, transparent, var(--card-bg) 60%);
+    pointer-events: none;
+}
+
+/* Modern line-clamp с проверкой поддержки */
+@supports (-webkit-line-clamp: 2) or (line-clamp: 2) {
+    .task-description-legacy-fallback {
+        display: -webkit-box;
+        display: box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+        box-orient: vertical;
+    }
+    
+    .task-description-legacy-fallback::after {
+        display: none;
+    }
+}
 /* Увеличиваем промежуток между карточками */
 .tasks-grid {
     display: grid;
@@ -5720,6 +5846,7 @@ input:checked + .theme-slider:before {
 </div>
      <!-- Секция управления заданиями -->
     <!-- Управление заданиями -->
+<!-- В секции админ-панели обновите форму -->
 <div id="admin-tasks-section" class="admin-section" style="display: none;">
     <div class="admin-form">
         <h3>➕ Добавить новое задание</h3>
@@ -5740,14 +5867,14 @@ input:checked + .theme-slider:before {
                 <input type="number" class="admin-input" id="admin-task-price" placeholder="50">
             </div>
             <div class="form-group" style="flex: 1;">
-                <label>Категория</label>
+                <label>Категория *</label>
                 <select class="admin-input" id="admin-task-category">
                     <option value="subscribe">📱 Подписки</option>
                     <option value="view">👀 Просмотры</option>
                     <option value="comment">💬 Комментарии</option>
                     <option value="repost">🔄 Репосты</option>
                     <option value="social">👥 Соцсети</option>
-                    <option value="other">📋 Другое</option>
+                    <option value="other">📦 Другое</option>
                 </select>
             </div>
         </div>
@@ -5758,11 +5885,11 @@ input:checked + .theme-slider:before {
                 <input type="text" class="admin-input" id="admin-task-time" placeholder="5-10 минут">
             </div>
             <div class="form-group" style="flex: 1;">
-                <label>Сложность</label>
+                <label>Сложность *</label>
                 <select class="admin-input" id="admin-task-difficulty">
-                    <option value="Легкая">🟢 Легкая</option>
-                    <option value="Средняя">🟡 Средняя</option>
-                    <option value="Сложная">🔴 Сложная</option>
+                    <option value="easy">🟢 Легко</option>
+                    <option value="medium">🟡 Средне</option>
+                    <option value="hard">🔴 Сложно</option>
                 </select>
             </div>
         </div>
@@ -5776,23 +5903,12 @@ input:checked + .theme-slider:before {
             <label>Ссылка на задание (опционально)</label>
             <input type="url" class="admin-input" id="admin-task-url" placeholder="https://...">
         </div>
-
-    <div style="text-align: center; margin: 20px 0;">
-    <button class="btn btn-warning" onclick="debugAdminForm()" style="padding: 10px; font-size: 12px;">
-        🐛 Debug Form
-    </button>
-    <button class="btn btn-warning" onclick="testAddTask()" style="padding: 10px; font-size: 12px; margin-left: 10px;">
-        🧪 Test Add Task
-    </button>
-    <button class="btn btn-info" onclick="testServerConnection()" style="padding: 10px; font-size: 12px; margin-left: 10px;">
-        🔗 Test Server
-    </button>
-</div>
         
         <button class="admin-submit" onclick="addTask()" style="margin-top: 20px;">
             ✅ Добавить задание
         </button>
     </div>
+</div>
 
     <!-- Список заданий -->
     <div style="margin-top: 30px;">
@@ -7857,7 +7973,8 @@ function displayTasks(tasks, category) {
         
         // Форматируем категорию и сложность
         const categoryDisplay = formatCategory(task.category);
-        const difficultyDisplay = task.difficulty || 'Легкая';
+        const difficultyDisplay = formatDifficulty(task.difficulty);
+        const difficultyClass = getDifficultyClass(task.difficulty);
         const timeDisplay = task.time_to_complete || '5-10 минут';
         
         taskElement.innerHTML = `
@@ -7869,14 +7986,14 @@ function displayTasks(tasks, category) {
             
             <!-- Мета-информация - КАТЕГОРИЯ И СЛОЖНОСТЬ -->
             <div class="task-meta">
-                <div class="task-category">${categoryDisplay}</div>
-                <div class="task-difficulty">${difficultyDisplay}</div>
+                <div class="task-category" data-category="${task.category}">${categoryDisplay}</div>
+                <div class="task-difficulty ${difficultyClass}">${difficultyDisplay}</div>
                 <div class="task-time">${timeDisplay}</div>
             </div>
             
             <!-- Контейнер для описания с ЦЕНТРИРОВАНИЕМ -->
             <div class="task-description-container">
-                <div class="task-description">
+                <div class="task-description" title="${escapeHtml(task.description)}">
                     ${escapeHtml(task.description)}
                 </div>
             </div>
@@ -7893,7 +8010,7 @@ function displayTasks(tasks, category) {
     });
 }
 
-// Функция для форматирования категории
+// Функция для форматирования категории (теперь без иконок в тексте)
 function formatCategory(category) {
     const categoryMap = {
         'social': 'Соцсети',
@@ -7906,6 +8023,34 @@ function formatCategory(category) {
     };
     
     return categoryMap[category] || category;
+}
+
+// Функция для форматирования сложности (теперь без иконок в тексте)
+function formatDifficulty(difficulty) {
+    const difficultyMap = {
+        'Легкая': 'Легко',
+        'Средняя': 'Средне', 
+        'Сложная': 'Сложно',
+        'easy': 'Легко',
+        'medium': 'Средне',
+        'hard': 'Сложно'
+    };
+    
+    return difficultyMap[difficulty] || 'Легко';
+}
+
+// Функция для получения класса сложности
+function getDifficultyClass(difficulty) {
+    const classMap = {
+        'Легкая': 'easy',
+        'Средняя': 'medium', 
+        'Сложная': 'hard',
+        'easy': 'easy',
+        'medium': 'medium',
+        'hard': 'hard'
+    };
+    
+    return classMap[difficulty] || 'easy';
 }
 
 // 🔧 ЗАГРУЗКА ЗАДАНИЙ ПРИ ЗАПУСКЕ ПРИЛОЖЕНИЯ
@@ -8503,7 +8648,6 @@ addDebugButton();
                 showNotification('Ошибка соединения: ' + error.message, 'error');
             }
         }
-
 async function addTask() {
     console.log('🎯 Starting addTask function...');
     
@@ -8584,7 +8728,7 @@ async function addTask() {
             
             // Сбрасываем выпадающие списки к значениям по умолчанию
             document.getElementById('admin-task-category').value = 'subscribe';
-            document.getElementById('admin-task-difficulty').value = 'Легкая';
+            document.getElementById('admin-task-difficulty').value = 'easy';
             
             // Обновляем списки заданий
             setTimeout(() => {

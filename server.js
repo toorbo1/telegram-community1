@@ -502,7 +502,7 @@ async function addTask() {
         showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
     }
 }
-// В server.js, обновите endpoint создания задания:
+// В server.js обновите endpoint создания задания
 app.post('/api/tasks', async (req, res) => {
     console.log('📥 Received task creation request:', req.body);
     
@@ -549,7 +549,7 @@ app.post('/api/tasks', async (req, res) => {
             created_by,
             category || 'general',
             time_to_complete || '5-10 минут',
-            difficulty || 'Легкая',
+            difficulty || 'easy',
             parseInt(people_required) || 1,
             task_url || ''
         ]);
