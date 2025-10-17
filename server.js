@@ -685,6 +685,9 @@ async function fixWithdrawalTableStructure() {
     }
 }
 
+// Вызовите в initDatabase() после создания таблиц
+await fixWithdrawalTableStructure();
+
 // Complete withdrawal request - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) => {
     const requestId = req.params.requestId;
