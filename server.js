@@ -88,6 +88,7 @@ async function checkAdminAccess(userId) {
 // Вызовите для тестирования
 setTimeout(debugWithdrawalSystem, 3000);
 // Упрощенная инициализация базы данных
+// Упрощенная инициализация базы данных
 async function initDatabase() {
     try {
         console.log('🔄 Initializing simplified database...');
@@ -125,44 +126,46 @@ async function initDatabase() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-// Таблица запросов на вывод - ИСПРАВЛЕННАЯ ВЕРСИЯ
-await pool.query(`
-    CREATE TABLE IF NOT EXISTS withdrawal_requests (
-        id SERIAL PRIMARY KEY,
-        user_id BIGINT NOT NULL,
-        username TEXT,
-        first_name TEXT,
-        amount REAL NOT NULL,
-        status TEXT DEFAULT 'pending',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        completed_at TIMESTAMP,
-        completed_by BIGINT
-    )
-`);
 
-// Добавляем недостающие колонки если таблица уже существует
-await pool.query(`
-    DO $$ 
-    BEGIN
-        -- Добавляем username если не существует
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                      WHERE table_name='withdrawal_requests' AND column_name='username') THEN
-            ALTER TABLE withdrawal_requests ADD COLUMN username TEXT;
-        END IF;
-        
-        -- Добавляем first_name если не существует
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                      WHERE table_name='withdrawal_requests' AND column_name='first_name') THEN
-            ALTER TABLE withdrawal_requests ADD COLUMN first_name TEXT;
-        END IF;
-        
-        -- Добавляем completed_by если не существует
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                      WHERE table_name='withdrawal_requests' AND column_name='completed_by') THEN
-            ALTER TABLE withdrawal_requests ADD COLUMN completed_by BIGINT;
-        END IF;
-    END $$;
-`);
+        // Таблица запросов на вывод - ИСПРАВЛЕННАЯ ВЕРСИЯ
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS withdrawal_requests (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                username TEXT,
+                first_name TEXT,
+                amount REAL NOT NULL,
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP,
+                completed_by BIGINT
+            )
+        `);
+
+        // Добавляем недостающие колонки если таблица уже существует
+        await pool.query(`
+            DO $$ 
+            BEGIN
+                -- Добавляем username если не существует
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='withdrawal_requests' AND column_name='username') THEN
+                    ALTER TABLE withdrawal_requests ADD COLUMN username TEXT;
+                END IF;
+                
+                -- Добавляем first_name если не существует
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='withdrawal_requests' AND column_name='first_name') THEN
+                    ALTER TABLE withdrawal_requests ADD COLUMN first_name TEXT;
+                END IF;
+                
+                -- Добавляем completed_by если не существует
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='withdrawal_requests' AND column_name='completed_by') THEN
+                    ALTER TABLE withdrawal_requests ADD COLUMN completed_by BIGINT;
+                END IF;
+            END $$;
+        `);
+
         // Таблица постов
         await pool.query(`
             CREATE TABLE IF NOT EXISTS posts (
@@ -223,18 +226,6 @@ await pool.query(`
             )
         `);
 
-        // Таблица запросов на вывод
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS withdrawal_requests (
-                id SERIAL PRIMARY KEY,
-                user_id BIGINT NOT NULL,
-                amount REAL NOT NULL,
-                status TEXT DEFAULT 'pending',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                completed_at TIMESTAMP
-            )
-        `);
-
         // Таблица сообщений
         await pool.query(`
             CREATE TABLE IF NOT EXISTS support_messages (
@@ -289,32 +280,22 @@ await pool.query(`
                 is_admin = true,
                 updated_at = CURRENT_TIMESTAMP
         `, [ADMIN_ID, 'linkgold_admin', 'Главный', 'Администратор', true]);
-// В функции initDatabase() убедитесь, что задания создаются
-const tasksCount = await pool.query('SELECT COUNT(*) FROM tasks WHERE status = $1', ['active']);
-if (parseInt(tasksCount.rows[0].count) === 0) {
-    console.log('📝 Создаем тестовые задания...');
-    await pool.query(`
-        INSERT INTO tasks (title, description, price, created_by, category) 
-        VALUES 
-        ('Подписаться на канал', 'Подпишитесь на наш Telegram канал и оставайтесь подписанным минимум 3 дня', 50, $1, 'subscribe'),
-        ('Посмотреть видео', 'Посмотрите видео до конца и поставьте лайк', 30, $1, 'view'),
-        ('Сделать репост', 'Сделайте репост записи в своем канале', 70, $1, 'repost'),
-        ('Оставить комментарий', 'Напишите содержательный комментарий под постом', 40, $1, 'comment'),
-        ('Вступить в группу', 'Вступите в нашу Telegram группу', 60, $1, 'social')
-    `, [ADMIN_ID]);
-    console.log('✅ Тестовые задания созданы');
-}
-        // // Добавляем примеры если таблицы пустые
-        // const tasksCount = await pool.query('SELECT COUNT(*) FROM tasks');
-        // if (parseInt(tasksCount.rows[0].count) === 0) {
-        //     await pool.query(`
-        //         INSERT INTO tasks (title, description, price, created_by) 
-        //         VALUES 
-        //         ('Подписаться на канал', 'Подпишитесь на наш Telegram канал', 50, $1),
-        //         ('Посмотреть видео', 'Посмотрите видео до конца', 30, $1),
-        //         ('Сделать репост', 'Сделайте репост записи', 70, $1)
-        //     `, [ADMIN_ID]);
-        // }
+
+        // В функции initDatabase() убедитесь, что задания создаются
+        const tasksCount = await pool.query('SELECT COUNT(*) FROM tasks WHERE status = $1', ['active']);
+        if (parseInt(tasksCount.rows[0].count) === 0) {
+            console.log('📝 Создаем тестовые задания...');
+            await pool.query(`
+                INSERT INTO tasks (title, description, price, created_by, category) 
+                VALUES 
+                ('Подписаться на канал', 'Подпишитесь на наш Telegram канал и оставайтесь подписанным минимум 3 дня', 50, $1, 'subscribe'),
+                ('Посмотреть видео', 'Посмотрите видео до конца и поставьте лайк', 30, $1, 'view'),
+                ('Сделать репост', 'Сделайте репост записи в своем канале', 70, $1, 'repost'),
+                ('Оставить комментарий', 'Напишите содержательный комментарий под постом', 40, $1, 'comment'),
+                ('Вступить в группу', 'Вступите в нашу Telegram группу', 60, $1, 'social')
+            `, [ADMIN_ID]);
+            console.log('✅ Тестовые задания созданы');
+        }
 
         const postsCount = await pool.query('SELECT COUNT(*) FROM posts');
         if (parseInt(postsCount.rows[0].count) === 0) {
@@ -324,9 +305,10 @@ if (parseInt(tasksCount.rows[0].count) === 0) {
             `, [ADMIN_ID]);
         }
 
-await fixWithdrawalTable();
+        // Вызываем функцию исправления таблицы
+        await fixWithdrawalTable();
 
-         console.log('✅ Simplified database initialized successfully');
+        console.log('✅ Simplified database initialized successfully');
     } catch (error) {
         console.error('❌ Database initialization error:', error);
     }
@@ -685,8 +667,7 @@ async function fixWithdrawalTableStructure() {
     }
 }
 
-// Вызовите в initDatabase() после создания таблиц
-await fixWithdrawalTableStructure();
+
 
 // Complete withdrawal request - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) => {
