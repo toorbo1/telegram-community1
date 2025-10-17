@@ -6355,19 +6355,39 @@ setTimeout(() => {
                 initializeTestUser();
             }
         }
-// 🔍 Проверка прав администратора
+// Функция проверки прав администратора
 async function checkAdminAccess(userId) {
     try {
-        const result = await makeRequest(`/user/${userId}`);
-        if (result.success) {
-            return result.profile.is_admin || parseInt(userId) === ADMIN_ID;
+        const result = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [userId]
+        );
+        
+        if (result.rows.length > 0) {
+            return result.rows[0].is_admin === true || parseInt(userId) === ADMIN_ID;
         }
+        return parseInt(userId) === ADMIN_ID;
     } catch (error) {
-        console.error('Admin check error:', error);
+        console.error('Admin access check error:', error);
+        return parseInt(userId) === ADMIN_ID;
     }
-    return false;
+}
+// Временно добавьте эту функцию для отладки
+function debugWithdrawalSystem() {
+    console.log('🐛 DEBUG Withdrawal System:');
+    console.log('- currentUser:', currentUser);
+    console.log('- isAdmin:', currentUser?.is_admin);
+    
+    // Проверьте, загружаются ли запросы
+    loadWithdrawalRequests().then(() => {
+        console.log('✅ Withdrawal requests loaded');
+    }).catch(error => {
+        console.error('❌ Error loading withdrawal requests:', error);
+    });
 }
 
+// Вызовите для тестирования
+setTimeout(debugWithdrawalSystem, 3000);
 // 📝 Функции для админов (без админ-панели)
 async function addNewPostAsAdmin() {
     if (!currentUser) return;
@@ -9312,6 +9332,7 @@ async function loadWithdrawalRequests() {
         showNotification('Ошибка загрузки заявок на вывод', 'error');
     }
 }
+
 // Функция отображения запросов на вывод для админов - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function displayWithdrawalRequests(requests) {
     const container = document.getElementById('withdrawal-requests-list');
@@ -9375,6 +9396,7 @@ function displayWithdrawalRequests(requests) {
         container.appendChild(requestElement);
     });
 }
+
 // Функция подтверждения выплаты админом - ИСПРАВЛЕННАЯ ВЕРСИЯ
 async function completeWithdrawal(requestId) {
     console.log(`✅ Подтверждение выплаты: ${requestId}`);
@@ -9404,6 +9426,12 @@ async function completeWithdrawal(requestId) {
         console.error('❌ Error completing withdrawal:', error);
         showNotification('❌ Ошибка подтверждения выплаты', 'error');
     }
+}
+
+// Обновите функцию показа секции оплат
+function showAdminPaymentsSection() {
+    showAdminSection('payments');
+    loadWithdrawalRequests();
 }
 
         // Обновление страницы вывода

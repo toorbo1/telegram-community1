@@ -55,22 +55,22 @@ const pool = new Pool({
 
 const ADMIN_ID = 8036875641;
 
-// Функция проверки прав администратора
-async function checkAdminAccess(userId) {
-    try {
-        const result = await pool.query(
-            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
-            [userId]
-        );
+// // Функция проверки прав администратора
+// async function checkAdminAccess(userId) {
+//     try {
+//         const result = await pool.query(
+//             'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+//             [userId]
+//         );
         
-        if (result.rows.length > 0) {
-            return result.rows[0].is_admin === true || parseInt(userId) === ADMIN_ID;
-        }
-        return parseInt(userId) === ADMIN_ID;
-    } catch (error) {
-        return parseInt(userId) === ADMIN_ID;
-    }
-}
+//         if (result.rows.length > 0) {
+//             return result.rows[0].is_admin === true || parseInt(userId) === ADMIN_ID;
+//         }
+//         return parseInt(userId) === ADMIN_ID;
+//     } catch (error) {
+//         return parseInt(userId) === ADMIN_ID;
+//     }
+// }
 
 // Упрощенная инициализация базы данных
 async function initDatabase() {
@@ -598,6 +598,8 @@ app.get('/api/health', async (req, res) => {
 });
 // ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
 
+// ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
+
 // Get withdrawal requests for admin - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.get('/api/admin/withdrawal-requests', async (req, res) => {
     const { adminId } = req.query;
@@ -657,7 +659,9 @@ app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) 
         // Обновляем статус заявки
         const result = await pool.query(`
             UPDATE withdrawal_requests 
-            SET status = 'completed', completed_at = CURRENT_TIMESTAMP, completed_by = $1
+            SET status = 'completed', 
+                completed_at = CURRENT_TIMESTAMP, 
+                completed_by = $1
             WHERE id = $2 AND status = 'pending'
             RETURNING *
         `, [adminId, requestId]);
@@ -675,7 +679,7 @@ app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) 
         
         res.json({
             success: true,
-            message: 'Выплата подтверждена'
+            message: 'Выплата подтверждена успешно'
         });
         
     } catch (error) {
@@ -686,6 +690,7 @@ app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) 
         });
     }
 });
+
 // Функция для принудительного обновления структуры таблицы
 async function fixWithdrawalTable() {
     try {
