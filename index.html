@@ -132,6 +132,199 @@ body {
         text-align: center;
     }
 }
+/* ОБНОВЛЕННЫЕ СТИЛИ ДЛЯ КАРТОЧКИ ЗАДАНИЯ */
+.task-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    cursor: default;
+    transition: transform 0.3s ease;
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    min-height: 160px;
+    height: auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+/* Хедер карточки */
+.task-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 4px;
+    gap: 8px;
+    width: 100%;
+}
+
+/* Название задания - ОДНА СТРОКА */
+.task-title {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.2;
+    max-width: 65%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+/* Правая колонка с ценой и мета-информацией */
+.task-right-column {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+    min-width: 35%;
+}
+
+/* Строка с ценой и категорией - ОДНА ЛИНИЯ */
+.task-price-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-end;
+    width: 100%;
+}
+
+/* Цена в звездах */
+.task-price {
+    font-size: 20px;
+    font-weight: 800;
+    background: var(--gold-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    white-space: nowrap;
+}
+
+/* Категория задания - РЯДОМ С ЦЕНОЙ */
+.task-category-new {
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--accent);
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 9px;
+    font-weight: 600;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    white-space: nowrap;
+}
+
+/* Строка с сложностью и временем */
+.task-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-top: 2px;
+}
+
+/* Сложность - ЛЕВАЯ СТОРОНА */
+.task-difficulty {
+    background: var(--purple-gradient);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+/* Время выполнения - ПРАВАЯ СТОРОНА */
+.task-time {
+    font-size: 10px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.task-time::before {
+    content: '⏱️';
+    font-size: 9px;
+}
+
+/* Описание задания - ПОД СЛОЖНОСТЬЮ */
+.task-description {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 6px 0 8px 0;
+    line-height: 1.4;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+    flex: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    line-clamp: 3;
+    box-orient: vertical;
+    overflow: hidden;
+    position: relative;
+    min-height: 55px;
+}
+
+/* ТЕНЬ ДЛЯ ОПИСАНИЯ */
+.task-description::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 30px;
+    background: linear-gradient(transparent, var(--card-bg) 90%);
+    pointer-events: none;
+    border-radius: 0 0 8px 8px;
+}
+
+/* Футер карточки */
+.task-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-top: auto;
+    flex-shrink: 0;
+    width: 100%;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+}
+
+/* Кнопка задания */
+.task-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+.task-btn:hover {
+    background: var(--accent-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+/* Убираем все клики по карточке */
+.task-card * {
+    cursor: default;
+}
+
+.task-btn, .task-btn * {
+    cursor: pointer !important;
+}
 .bottom-nav {
     position: fixed;
     bottom: 16px;
@@ -7647,24 +7840,33 @@ function displayTasks(tasks, category) {
         
         taskElement.innerHTML = `
             <div class="task-header">
+                <!-- Левая часть: название -->
                 <div style="flex: 1; min-width: 0;">
                     <div class="task-title" title="${escapeHtml(task.title)}">${escapeHtml(task.title)}</div>
                 </div>
+                
+                <!-- Правая часть: цена и мета-информация -->
                 <div class="task-right-column">
-                    <div class="task-price">${task.price} ⭐</div>
-                    <div class="task-category-new">${categoryDisplay}</div>
-                    <div class="task-meta-row">
-                        <div class="task-difficulty">${task.difficulty || 'Легкая'}</div>
-                        <div class="task-time">${task.time_to_complete || '5-10 минут'}</div>
+                    <!-- Цена и категория на ОДНОЙ строке -->
+                    <div class="task-price-row">
+                        <div class="task-price">${task.price} ⭐</div>
+                        <div class="task-category-new">${categoryDisplay}</div>
                     </div>
+                    
+                    <!-- Время выполнения -->
+                    <div class="task-time">${task.time_to_complete || '5-10 минут'}</div>
+                    
+                    <!-- Сложность -->
+                    <div class="task-difficulty">${task.difficulty || 'Легкая'}</div>
                 </div>
             </div>
             
-            <!-- Описание задания - всегда 3 строки -->
+            <!-- Описание задания -->
             <div class="task-description">
                 ${escapeHtml(shortDescription)}
             </div>
             
+            <!-- Кнопка -->
             <div class="task-footer">
                 <button class="task-btn" onclick="openTaskModal(${task.id})">
                     Начать
@@ -7672,21 +7874,7 @@ function displayTasks(tasks, category) {
             </div>
         `;
         
-        // Если нет изображения, добавляем placeholder БЕЗ СМАЙЛИКА
-        if (!task.image_url) {
-            const descriptionElement = taskElement.querySelector('.task-description');
-            descriptionElement.style.marginTop = '0';
-            descriptionElement.style.minHeight = '80px';
-        }
-        
-        // Добавляем обработчик клика на всю карточку
-        taskElement.addEventListener('click', function(e) {
-            if (!e.target.classList.contains('task-btn')) {
-                openTaskModal(task.id);
-            }
-        });
-        
-       container.appendChild(taskElement);
+        container.appendChild(taskElement);
     });
 }
 
