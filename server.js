@@ -55,22 +55,23 @@ const pool = new Pool({
 
 const ADMIN_ID = 8036875641;
 
-// // Функция проверки прав администратора
-// async function checkAdminAccess(userId) {
-//     try {
-//         const result = await pool.query(
-//             'SELECT is_admin FROM user_profiles WHERE user_id = $1',
-//             [userId]
-//         );
+// Функция проверки прав администратора
+async function checkAdminAccess(userId) {
+    try {
+        const result = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [userId]
+        );
         
-//         if (result.rows.length > 0) {
-//             return result.rows[0].is_admin === true || parseInt(userId) === ADMIN_ID;
-//         }
-//         return parseInt(userId) === ADMIN_ID;
-//     } catch (error) {
-//         return parseInt(userId) === ADMIN_ID;
-//     }
-// }
+        if (result.rows.length > 0) {
+            return result.rows[0].is_admin === true || parseInt(userId) === ADMIN_ID;
+        }
+        return parseInt(userId) === ADMIN_ID;
+    } catch (error) {
+        console.error('Admin access check error:', error);
+        return parseInt(userId) === ADMIN_ID;
+    }
+}
 
 // Упрощенная инициализация базы данных
 async function initDatabase() {
