@@ -69,15 +69,14 @@ body {
     
     .task-card {
         padding: 14px;
-        min-height: 160px;
-        width: 100%;
-        max-width: 100%;
+        /* УМЕНЬШАЕМ ВЫСОТУ ДЛЯ МОБИЛЬНЫХ */
+        min-height: 120px; /* Было 180px */
     }
     
     .task-title {
-        font-size: 15px;
-        
+        font-size: 18px; /* Немного меньше на мобильных */
     }
+
     
     .task-header {
         gap: 8px;
@@ -106,8 +105,8 @@ body {
     
     .task-card {
         padding: 12px;
-        min-height: 150px;
-        width: 100%;
+        /* ЕЩЕ МЕНЬШЕ ДЛЯ ОЧЕНЬ МАЛЕНЬКИХ ЭКРАНОВ */
+        min-height: 110px; /* Было 150px */
     }
     
     .task-header {
@@ -130,6 +129,11 @@ body {
     .task-btn {
         width: 100%;
         text-align: center;
+    }
+        .task-title {
+        font-size: 17px;
+        -webkit-line-clamp: 2; /* Ограничиваем 2 строками */
+        line-clamp: 2;
     }
 }
 .bottom-nav {
@@ -799,10 +803,11 @@ body {
     position: relative;
     width: 100%;
     box-sizing: border-box;
-    margin-bottom: 0 !important;
+    margin-bottom: 0;
     display: flex;
     flex-direction: column;
-    min-height: 200px;
+    /* УМЕНЬШАЕМ ВЫСОТУ В 1/3 РАЗА - было min-height: 200px */
+    min-height: 133px; /* 200px / 1.5 ≈ 133px */
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     overflow: hidden;
 }
@@ -1943,19 +1948,20 @@ body {
     animation: none;
 }
         
-/* Хедер карточки */
+/* ОПТИМИЗИРУЕМ ОСТАЛЬНЫЕ ЭЛЕМЕНТЫ ДЛЯ УМЕНЬШЕННОЙ ВЫСОТЫ */
 .task-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 16px;
+    margin-bottom: 12px; /* Уменьшаем отступ */
     flex-shrink: 0;
     gap: 12px;
     width: 100%;
 }
 
+/* УВЕЛИЧИВАЕМ НАЗВАНИЕ ЗАДАНИЯ */
 .task-title {
-    font-size: 18px;
+    font-size: 20px; /* Было 18px - увеличиваем */
     font-weight: 700;
     margin-bottom: 8px;
     line-height: 1.3;
@@ -1971,7 +1977,6 @@ body {
     box-orient: vertical;
     color: var(--text-primary);
 }
-
 .task-category {
     font-size: 12px;
     color: var(--accent);
@@ -1983,9 +1988,9 @@ body {
     border: 1px solid rgba(99, 102, 241, 0.2);
 }
 
-/* Цена задания */
+/* УМЕНЬШАЕМ ЦЕНУ ДЛЯ БАЛАНСА */
 .task-price {
-    font-size: 22px;
+    font-size: 20px; /* Было 22px */
     font-weight: 800;
     background: var(--gold-gradient);
     -webkit-background-clip: text;
@@ -1995,12 +2000,12 @@ body {
     white-space: nowrap;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
-/* Изображение задания */
+/* УБИРАЕМ ИЛИ УМЕНЬШАЕМ ИЗОБРАЖЕНИЕ ЕСЛИ ОНО ЕСТЬ */
 .task-image {
     width: 100%;
-    height: 120px;
+    height: 80px; /* Уменьшаем высоту изображения */
     border-radius: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 10px; /* Уменьшаем отступ */
     object-fit: cover;
     background: var(--bg-secondary);
     display: flex;
@@ -2027,23 +2032,23 @@ body {
     font-size: 14px;
 }
 
-/* Описание задания */
 .task-description {
     font-size: 14px;
     color: var(--text-secondary);
-    margin-bottom: 16px;
-    line-height: 1.5;
+    margin-bottom: 12px; /* Уменьшаем отступ */
+    line-height: 1.4; /* Уменьшаем межстрочный интервал */
     word-wrap: break-word;
     overflow-wrap: break-word;
     white-space: pre-wrap;
     flex: 1;
     display: -webkit-box;
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 2; /* Ограничиваем 2 строками вместо 3 */
     -webkit-box-orient: vertical;
-    line-clamp: 3;
+    line-clamp: 2;
     box-orient: vertical;
     overflow: hidden;
 }
+
 /* Плавное ограничение текста с кнопкой "Читать далее" */
 .task-description.collapsed {
     max-height: 60px;
@@ -2075,7 +2080,6 @@ body {
     align-self: flex-start;
 }
 
-/* Футер карточки */
 .task-footer {
     display: flex;
     justify-content: space-between;
@@ -2083,7 +2087,7 @@ body {
     margin-top: auto;
     flex-shrink: 0;
     width: 100%;
-    padding-top: 12px;
+    padding-top: 10px; /* Уменьшаем отступ */
     border-top: 1px solid var(--border);
 }
 
@@ -2100,20 +2104,20 @@ body {
     font-size: 14px;
 }
 
+/* УМЕНЬШАЕМ КНОПКУ */
 .task-btn {
     background: var(--accent);
     color: white;
     border: none;
-    padding: 10px 20px;
+    padding: 8px 16px; /* Уменьшаем padding */
     border-radius: 12px;
-    font-size: 14px;
+    font-size: 13px; /* Уменьшаем шрифт */
     font-weight: 600;
     cursor: pointer;
     white-space: nowrap;
     flex-shrink: 0;
     transition: all 0.3s ease;
 }
-
 .task-btn:hover {
     background: var(--accent-hover);
     transform: translateY(-2px);
