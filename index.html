@@ -6,6 +6,38 @@
     <title>LinkGold - Платформа для заработка</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
+        /* Добавьте в CSS секцию */
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    scroll-behavior: smooth;
+}
+
+/* Стили для принудительного позиционирования вверху */
+.tab-content,
+.page {
+    position: relative;
+}
+
+/* Гарантируем что контент начинается сверху */
+.main-content {
+    min-height: 100vh;
+    position: relative;
+}
+
+/* Фикс для мобильных устройств */
+@media (max-width: 768px) {
+    .main-content {
+        overflow-anchor: none;
+    }
+    
+    .tab-content.active,
+    .page.active {
+        transform: translateZ(0);
+    }
+}
          .tg-header {
             background: var(--bg-primary) !important;
         }
@@ -6313,20 +6345,36 @@ setTimeout(() => {
         testEndpoints();
     }
 }, 5000);
-        // Инициализация приложения
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Initializing LinkGold app...');
-            
-            if (typeof tg !== 'undefined') {
-                tg.expand();
-                tg.ready();
-                initializeTelegramUser();
-            } else {
-                console.log('Telegram Web App context not available');
-                initializeTestUser();
-            }
+       // Обновите обработчики кликов в навигации
+document.addEventListener('DOMContentLoaded', function() {
+    // Назначаем обработчики для навигации с прокруткой
+    const navItems = document.querySelectorAll('.nav-item');
+    navItems.forEach(item => {
+        const originalOnClick = item.getAttribute('onclick');
+        if (originalOnClick) {
+            item.removeAttribute('onclick');
+            item.addEventListener('click', function() {
+                // Сначала прокрутка вверх, затем выполнение оригинальной функции
+                forceScrollToTop();
+                setTimeout(() => {
+                    eval(originalOnClick);
+                }, 10);
+            });
+        }
+    });
+});
+// Обработчик для кнопки "Назад" в хедере страниц
+function setupBackButtons() {
+    const backButtons = document.querySelectorAll('.back-button');
+    backButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            forceScrollToTop();
         });
+    });
+}
 
+// Вызовите эту функцию при инициализации
+setupBackButtons();
 async function initializeTelegramUser() {
     try {
         if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
@@ -7183,6 +7231,9 @@ function testAddTask() {
 function showTaskCategory(category) {
     console.log('🔄 Переключение на категорию:', category);
     
+    // Прокрутка вверх при переключении вкладок заданий
+    scrollToTop();
+    
     // Простая логика переключения
     const tabs = document.querySelectorAll('.task-tab');
     const containers = ['new-tasks', 'confirmation-tasks', 'completed-tasks', 'rejected-tasks'];
@@ -7985,8 +8036,34 @@ function displayUserTasksForCategory(tasks, status) {
 
 
 
+// Функция для прокрутки страницы вверх
+function scrollToTop() {
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
+    
+    // Альтернативный способ для мобильных устройств
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+}
 
+// Функция для принудительной прокрутки в самый верх
+function forceScrollToTop() {
+    // Мгновенная прокрутка вверх
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    
+    // Дополнительная прокрутка через небольшой таймаут для надежности
+    setTimeout(() => {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+    }, 50);
+}
 
+// Обновите функции открытия модальных окон
 function openTaskModal(taskId) {
     console.log('📖 Opening task modal for task:', taskId);
     
@@ -8022,6 +8099,15 @@ function openTaskModal(taskId) {
         }
         
         document.getElementById('task-modal').classList.add('active');
+        
+        // Прокрутка модального окна вверх
+        setTimeout(() => {
+            const modalContent = document.querySelector('#task-modal .modal-content');
+            if (modalContent) {
+                modalContent.scrollTop = 0;
+            }
+        }, 50);
+        
         console.log('✅ Task modal opened successfully');
     } else {
         console.error('❌ Task not found in allTasks array');
@@ -8987,24 +9073,80 @@ async function sendAdminMessage() {
             currentChatId = null;
         }
 
-        // 🔧 ФУНКЦИИ НАВИГАЦИИ
-        function showMainTab() {
-            hideAllTabs();
-            document.getElementById('main-tab').classList.add('active');
-            updateNavState('main');
-        }
+       // 🔧 ФУНКЦИИ НАВИГАЦИИ С ПРОКРУТКОЙ ВВЕРХ
+function showMainTab() {
+    hideAllTabs();
+    document.getElementById('main-tab').classList.add('active');
+    updateNavState('main');
+    forceScrollToTop(); // Прокрутка вверх
+}
 
-        function showTasksTab() {
-            hideAllTabs();
-            document.getElementById('tasks-tab').classList.add('active');
-            updateNavState('tasks');
+function showTasksTab() {
+    console.log('🎯 ПЕРЕХОД НА ВКЛАДКУ ЗАДАНИЙ - НАЧАЛО');
+    
+    // 1. Скрываем все вкладки
+    hideAllTabs();
+    
+    // 2. Показываем вкладку заданий
+    const tasksTab = document.getElementById('tasks-tab');
+    if (tasksTab) {
+        tasksTab.classList.add('active');
+        console.log('✅ Вкладка заданий активирована');
+    }
+    
+    // 3. Обновляем навигацию
+    updateNavState('tasks');
+    
+    // 4. Прокрутка вверх
+    forceScrollToTop();
+    
+    // 5. Сразу активируем вкладку "Новые"
+    setTimeout(() => {
+        console.log('🔄 Активируем вкладку "Новые"');
+        
+        // Сбрасываем все активные вкладки
+        document.querySelectorAll('.task-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        
+        // Скрываем все контейнеры
+        const containers = ['new-tasks', 'confirmation-tasks', 'completed-tasks', 'rejected-tasks'];
+        containers.forEach(containerId => {
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.style.display = 'none';
+                container.classList.remove('active');
+            }
+        });
+        
+        // Активируем вкладку "Новые"
+        const newTab = document.querySelector('.task-tab:nth-child(1)');
+        const newContainer = document.getElementById('new-tasks');
+        
+        if (newTab && newContainer) {
+            newTab.classList.add('active');
+            newContainer.style.display = 'block';
+            newContainer.classList.add('active');
+            console.log('✅ Вкладка "Новые" активирована');
+            
+            // НЕМЕДЛЕННО загружаем задания
+            console.log('🚀 НЕМЕДЛЕННАЯ ЗАГРУЗКА ЗАДАНИЙ');
+            loadTasks();
         }
+        
+        // Диагностика
+        debugTasksLoading();
+        
+    }, 50);
+}
 
-        function showProfileTab() {
-            hideAllTabs();
-            document.getElementById('profile-tab').classList.add('active');
-            updateNavState('profile');
-        }
+function showProfileTab() {
+    hideAllTabs();
+    document.getElementById('profile-tab').classList.add('active');
+    updateNavState('profile');
+    forceScrollToTop(); // Прокрутка вверх
+}
+
 // 🔧 ФУНКЦИЯ УДАЛЕНИЯ ЗАДАНИЯ
 async function deleteTask(taskId) {
     if (!confirm('Удалить это задание?')) return;
@@ -9081,7 +9223,6 @@ function addAdminDebugButton() {
 
 // Вызовите при загрузке
 setTimeout(addAdminDebugButton, 2000);
-        // Функция показа вкладки админа - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function showAdminTab() {
     const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
     const isRegularAdmin = currentUser?.is_admin === true;
@@ -9094,30 +9235,35 @@ function showAdminTab() {
     hideAllTabs();
     document.getElementById('admin-tab').classList.add('active');
     updateNavState('admin');
+    forceScrollToTop(); // Прокрутка вверх
 }
 
-        function showWithdrawPage() {
-            hideAllTabs();
-            document.getElementById('withdraw-page').classList.add('active');
-            
-            // Обновляем баланс на странице вывода
-            updateWithdrawPage();
-            loadWithdrawHistory();
-        }
+function showWithdrawPage() {
+    hideAllTabs();
+    document.getElementById('withdraw-page').classList.add('active');
+    forceScrollToTop(); // Прокрутка вверх
+    
+    // Обновляем баланс на странице вывода
+    updateWithdrawPage();
+    loadWithdrawHistory();
+}
 
-        function showHowItWorksPage() {
-            hideAllTabs();
-            document.getElementById('how-it-works-page').classList.add('active');
-        }
+function showHowItWorksPage() {
+    hideAllTabs();
+    document.getElementById('how-it-works-page').classList.add('active');
+    forceScrollToTop(); // Прокрутка вверх
+}
 
-        function showAboutPage() {
-            hideAllTabs();
-            document.getElementById('about-page').classList.add('active');
-        }
+function showAboutPage() {
+    hideAllTabs();
+    document.getElementById('about-page').classList.add('active');
+    forceScrollToTop(); // Прокрутка вверх
+}
 
-        function goBackToProfile() {
-            showProfileTab();
-        }
+function goBackToProfile() {
+    showProfileTab();
+    forceScrollToTop(); // Прокрутка вверх
+}
 
         function hideAllTabs() {
             // Скрываем все вкладки и страницы
@@ -9151,6 +9297,9 @@ function showAdminTab() {
 function showAdminSection(section) {
     console.log('🔄 Switching to admin section:', section);
     
+    // Прокрутка вверх при переключении секций админ-панели
+    scrollToTop();
+    
     // Скрываем все админ секции
     const adminSections = document.querySelectorAll('.admin-section');
     adminSections.forEach(sec => {
@@ -9168,10 +9317,9 @@ function showAdminSection(section) {
         switch(section) {
             case 'tasks':
                 console.log('📋 Loading tasks management...');
-                // Добавляем небольшую задержку чтобы DOM обновился
                 setTimeout(() => {
                     loadAdminTasks();
-                    debugAdminForm(); // Диагностика после загрузки
+                    debugAdminForm();
                 }, 100);
                 break;
             case 'payments':
