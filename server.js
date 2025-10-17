@@ -1201,7 +1201,31 @@ app.get('/api/user/:userId/tasks', async (req, res) => {
         });
     }
 });
-
+// Get user tasks for confirmation
+app.get('/api/user/:userId/tasks/active', async (req, res) => {
+    const userId = req.params.userId;
+    
+    try {
+        const result = await pool.query(`
+            SELECT ut.*, t.title, t.description, t.price, t.category
+            FROM user_tasks ut 
+            JOIN tasks t ON ut.task_id = t.id 
+            WHERE ut.user_id = $1 AND ut.status = 'active'
+            ORDER BY ut.started_at DESC
+        `, [userId]);
+        
+        res.json({
+            success: true,
+            tasks: result.rows
+        });
+    } catch (error) {
+        console.error('Get active tasks error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
 // Submit task for verification (WITH FILE UPLOAD)
 app.post('/api/user/tasks/:userTaskId/submit', upload.single('screenshot'), async (req, res) => {
     const userTaskId = req.params.userTaskId;

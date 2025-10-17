@@ -6062,7 +6062,7 @@ input:checked + .theme-slider:before {
 </div>
 
 <!-- Модальное окно подтверждения выполнения задания -->
- <div class="task-detail" id="task-modal-url">
+<!-- Модальное окно подтверждения выполнения задания -->
 <div class="modal" id="confirmation-modal">
     <div class="confirmation-modal-content">
         <div class="confirmation-icon">❓</div>
@@ -6076,7 +6076,6 @@ input:checked + .theme-slider:before {
         
         <button class="confirmation-btn confirmation-cancel" onclick="closeModal('confirmation-modal')">Отмена</button>
     </div>
-</div>
 </div>
 <!-- Модальное окно отмены подтверждения -->
  <div class="task-detail" id="task-modal-url">
@@ -7196,18 +7195,13 @@ function showTaskCategory(category) {
         }
     }, 100);
 }
-// 🔧 Функция для диагностики подтверждения заданий
+// Функция для диагностики подтверждения заданий
 function debugTaskConfirmation() {
-    console.log('🐛 DEBUG Task Confirmation:');
+    console.log('🐛 DEBUG Task Confirmation System:');
     
     // Проверяем текущие данные
     console.log('- currentUser:', currentUser);
     console.log('- currentUserTaskId:', currentUserTaskId);
-    
-    // Проверяем загружены ли задания
-    const activeTasksContainer = document.getElementById('confirmation-tasks');
-    console.log('- confirmation-tasks container:', activeTasksContainer);
-    console.log('- confirmation-tasks content:', activeTasksContainer?.innerHTML);
     
     // Проверяем модальные окна
     console.log('- confirmation-modal:', document.getElementById('confirmation-modal'));
@@ -7218,6 +7212,27 @@ function debugTaskConfirmation() {
         console.log('✅ Active tasks loaded for debugging');
     });
 }
+
+// Временно добавьте кнопку для тестирования
+function addConfirmationDebugButton() {
+    const debugBtn = document.createElement('button');
+    debugBtn.textContent = '🐛 Debug Confirmation';
+    debugBtn.style.position = 'fixed';
+    debugBtn.style.top = '200px';
+    debugBtn.style.right = '10px';
+    debugBtn.style.zIndex = '10000';
+    debugBtn.style.padding = '10px';
+    debugBtn.style.background = 'orange';
+    debugBtn.style.color = 'white';
+    debugBtn.style.border = 'none';
+    debugBtn.style.borderRadius = '5px';
+    debugBtn.style.fontSize = '12px';
+    debugBtn.onclick = debugTaskConfirmation;
+    document.body.appendChild(debugBtn);
+}
+
+// Вызовите при загрузке
+setTimeout(addConfirmationDebugButton, 3000);
 
 // Добавьте кнопку для тестирования
 function addConfirmationDebugButton() {
@@ -7704,13 +7719,29 @@ async function initializeApp() {
     
     console.log('🎉 App initialized successfully');
 }
-// Функция для загрузки заданий пользователя по категории
+// Функция для загрузки заданий на подтверждение - ИСПРАВЛЕННАЯ ВЕРСИЯ
 async function loadUserTasksForCategory(status) {
     if (!currentUser) return;
     
     try {
         console.log(`🔄 Loading user tasks for category: ${status}`);
-        const result = await makeRequest(`/user/${currentUser.id}/tasks?status=${status}`);
+        
+        let endpoint = '';
+        switch(status) {
+            case 'active':
+                endpoint = `/user/${currentUser.id}/tasks/active`;
+                break;
+            case 'completed':
+                endpoint = `/user/${currentUser.id}/tasks?status=completed`;
+                break;
+            case 'rejected':
+                endpoint = `/user/${currentUser.id}/tasks?status=rejected`;
+                break;
+            default:
+                return;
+        }
+        
+        const result = await makeRequest(endpoint);
         
         if (result.success) {
             displayUserTasksForCategory(result.tasks, status);
@@ -7722,7 +7753,7 @@ async function loadUserTasksForCategory(status) {
     }
 }
 
-// Функция для отображения заданий пользователя по категории
+// Функция для отображения заданий пользователя по категории - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function displayUserTasksForCategory(tasks, status) {
     let container = null;
     
@@ -7787,7 +7818,7 @@ function displayUserTasksForCategory(tasks, status) {
                 <div class="task-description">${escapeHtml(task.description)}</div>
                 <div class="task-footer">
                     <div class="task-time">Ожидает подтверждения</div>
-                    <button class="task-btn" onclick="showTaskConfirmation(${task.id}, '${escapeHtml(task.title)}')">
+                    <button class="task-btn" onclick="event.stopPropagation(); showTaskConfirmation(${task.id}, '${escapeHtml(task.title)}')">
                         Подтвердить выполнение
                     </button>
                 </div>
@@ -7937,7 +7968,7 @@ function openTaskModal(taskId) {
         showNotification('Ошибка: задание не найдено', 'error');
     }
 }
-       // Функция подтверждения выполнения задания
+// Функция подтверждения выполнения задания - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function showTaskConfirmation(userTaskId, taskName) {
     console.log('🔍 Confirming task:', { userTaskId, taskName });
     
@@ -7946,11 +7977,36 @@ function showTaskConfirmation(userTaskId, taskName) {
         return;
     }
     
-    currentUserTaskId = userTaskId;
-    document.getElementById('confirmation-task-name').textContent = taskName;
-    document.getElementById('confirmation-modal').classList.add('active');
+    // Проверяем, что userTaskId - число
+    const numericTaskId = parseInt(userTaskId);
+    if (isNaN(numericTaskId)) {
+        showNotification('Ошибка: неверный ID задания', 'error');
+        return;
+    }
     
-    console.log('✅ Confirmation modal opened for task:', taskName);
+    currentUserTaskId = numericTaskId;
+    
+    // Обновляем модальное окно
+    const taskNameElement = document.getElementById('confirmation-task-name');
+    const taskTextElement = document.getElementById('confirmation-task-text');
+    
+    if (taskNameElement) {
+        taskNameElement.textContent = taskName;
+    }
+    
+    if (taskTextElement) {
+        taskTextElement.textContent = `Вы выполнили задание "${taskName}"?`;
+    }
+    
+    // Показываем модальное окно
+    const confirmationModal = document.getElementById('confirmation-modal');
+    if (confirmationModal) {
+        confirmationModal.classList.add('active');
+        console.log('✅ Confirmation modal opened for task:', taskName);
+    } else {
+        console.error('❌ Confirmation modal not found');
+        showNotification('Ошибка: модальное окно не найдено', 'error');
+    }
 }
         // Функции для системы проверки заданий
         function showScreenshotUpload() {
