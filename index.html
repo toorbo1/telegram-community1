@@ -6316,48 +6316,46 @@ setTimeout(() => {
             }
         });
 
-        // Инициализация пользователя Telegram
-        async function initializeTelegramUser() {
+async function initializeTelegramUser() {
+    try {
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            const tgUser = tg.initDataUnsafe.user;
+            
+            currentUser = {
+                id: tgUser.id,
+                firstName: tgUser.first_name || 'Пользователь',
+                lastName: tgUser.last_name || '',
+                username: tgUser.username || `user_${tgUser.id}`,
+                photoUrl: tgUser.photo_url || '',
+                isAdmin: parseInt(tgUser.id) === ADMIN_ID
+            };
+            
+            // Простая аутентификация без реферального кода (он обрабатывается в боте)
             try {
-                if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                    const tgUser = tg.initDataUnsafe.user;
-                    
-                    currentUser = {
-                        id: tgUser.id,
-                        firstName: tgUser.first_name || 'Пользователь',
-                        lastName: tgUser.last_name || '',
-                        username: tgUser.username || `user_${tgUser.id}`,
-                        photoUrl: tgUser.photo_url || '',
-                        isAdmin: parseInt(tgUser.id) === ADMIN_ID
-                    };
-                    
-                    // Аутентифицируем пользователя на сервере
-                    try {
-                        const authResult = await makeRequest('/user/auth', {
-                            method: 'POST',
-                            body: JSON.stringify({
-                                user: currentUser
-                            })
-                        });
-                        
-                        if (authResult.success) {
-                            Object.assign(currentUser, authResult.user);
-                        }
-                    } catch (authError) {
-                        console.log('Auth endpoint not available, continuing with basic user data');
-                    }
-                    
-                    initializeApp();
-                    
-                } else {
-                    console.log('Telegram user data not available');
-                    initializeTestUser();
+                const authResult = await makeRequest('/user/auth', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        user: currentUser
+                    })
+                });
+                
+                if (authResult.success) {
+                    Object.assign(currentUser, authResult.user);
                 }
-            } catch (error) {
-                console.error('Error initializing Telegram user:', error);
-                initializeTestUser();
+            } catch (authError) {
+                console.log('Auth endpoint not available, continuing with basic user data');
             }
+            
+            initializeApp();
+        } else {
+            console.log('Telegram user data not available');
+            initializeTestUser();
         }
+    } catch (error) {
+        console.error('Error initializing Telegram user:', error);
+        initializeTestUser();
+    }
+}
 // Функция проверки прав администратора
 async function checkAdminAccess(userId) {
     try {
@@ -7015,21 +7013,67 @@ setTimeout(debugAdminRights, 2000);
             }
         }
 
-        // Обновление реферальной системы
-        function updateReferralSystem() {
-            if (!currentUser) return;
-            
-            const referralLink = `https://t.me/LinkGoldMoney_bot?start=ref_${currentUser.id}`;
-            const referralInput = document.getElementById('referral-link');
-            if (referralInput) referralInput.value = referralLink;
-            
-            const refInvited = document.getElementById('ref-invited');
-            const refEarned = document.getElementById('ref-earned');
-            
-            if (refInvited) refInvited.textContent = currentUser.referral_count || 0;
-            if (refEarned) refEarned.textContent = `${currentUser.referral_earned || 0} ⭐`;
-        }
-
+// Обновление реферальной системы
+function updateReferralSystem() {
+    if (!currentUser) return;
+    
+    // Генерируем реферальную ссылку для бота
+    const referralCode = currentUser.referral_code || `ref_${currentUser.id}`;
+    const referralLink = `https://t.me/LinkGoldMoney_bot?start=${referralCode}`;
+    
+    const referralInput = document.getElementById('referral-link');
+    if (referralInput) referralInput.value = referralLink;
+    
+    const refInvited = document.getElementById('ref-invited');
+    const refEarned = document.getElementById('ref-earned');
+    
+    if (refInvited) refInvited.textContent = currentUser.referral_count || 0;
+    if (refEarned) refEarned.textContent = `${currentUser.referral_earned || 0} ⭐`;
+    
+    // Обновляем текст с информацией о бонусах
+    const referralInfo = document.querySelector('.referral-info');
+    if (referralInfo) {
+        referralInfo.innerHTML = `
+            💫 Приглашайте друзей через Telegram бота!<br>
+            🎁 Вы получаете: <strong>20⭐</strong> за друга<br>
+            🎁 Друг получает: <strong>10⭐</strong> при регистрации<br><br>
+            🔗 Просто отправьте другу эту ссылку в Telegram
+        `;
+    }
+}
+// Получение детальной информации о рефералах
+app.get('/api/user/:userId/referrals/detailed', async (req, res) => {
+    const userId = req.params.userId;
+    
+    try {
+        const result = await pool.query(`
+            SELECT 
+                u.user_id,
+                u.first_name,
+                u.username,
+                u.created_at,
+                u.balance as friend_balance,
+                CASE 
+                    WHEN u.is_first_login = false THEN 'active'
+                    ELSE 'pending'
+                END as status
+            FROM user_profiles u
+            WHERE u.referred_by = $1
+            ORDER BY u.created_at DESC
+        `, [userId]);
+        
+        res.json({
+            success: true,
+            referrals: result.rows
+        });
+    } catch (error) {
+        console.error('Get detailed referrals error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
         // Обновление прогресса уровня
         function updateLevelProgress() {
             if (!currentUser) return;
