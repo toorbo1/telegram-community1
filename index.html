@@ -143,10 +143,10 @@ body {
     position: relative;
     width: 100%;
     box-sizing: border-box;
-    margin-bottom: 12px;
+    margin-bottom: 16px; /* ДОБАВЛЯЕМ ПРОМЕЖУТОК МЕЖДУ БЛОКАМИ */
     display: flex;
     flex-direction: column;
-    min-height: 140px;
+    min-height: 160px; /* Увеличиваем для центрирования */
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
@@ -193,7 +193,7 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     flex-wrap: wrap;
 }
 
@@ -228,13 +228,14 @@ body {
     font-size: 11px;
 }
 
-/* Контейнер для описания с выравниванием по центру */
+/* Контейнер для описания с ЦЕНТРИРОВАНИЕМ */
 .task-description-container {
     flex: 1;
     display: flex;
-    align-items: center; /* Выравнивание по вертикали */
+    align-items: center; /* Вертикальное центрирование */
+    justify-content: center; /* Горизонтальное центрирование */
     margin-bottom: 12px;
-    min-height: 40px;
+    min-height: 50px;
 }
 
 /* Описание задания - 2 СТРОКИ С ЦЕНТРИРОВАНИЕМ */
@@ -242,6 +243,7 @@ body {
     font-size: 14px;
     color: var(--text-secondary);
     line-height: 1.4;
+    text-align: center; /* Центрируем текст */
     
     /* Обрезка на 2 строки */
     display: -webkit-box;
@@ -254,12 +256,14 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     width: 100%;
+    max-height: 2.8em; /* Высота для 2 строк */
 }
 
 /* Кнопка */
 .task-footer {
     display: flex;
     justify-content: flex-end;
+    margin-top: auto;
 }
 
 .task-btn {
@@ -288,6 +292,32 @@ body {
 .task-btn, .task-btn * {
     cursor: pointer !important;
 }
+
+/* Убедимся что в tasks-grid есть промежутки */
+.tasks-grid {
+    display: grid;
+    gap: 16px !important; /* ПРОМЕЖУТКИ МЕЖДУ ЗАДАНИЯМИ */
+    grid-template-columns: 1fr;
+    min-height: 200px;
+}
+/* ГАРАНТИРОВАННЫЕ ПРОМЕЖУТКИ МЕЖДУ ЗАДАНИЯМИ */
+#new-tasks,
+#confirmation-tasks,
+#completed-tasks,
+#rejected-tasks {
+    display: grid;
+    gap: 16px !important;
+    grid-template-columns: 1fr;
+}
+
+/* Убираем любые margin у контейнеров */
+#new-tasks .task-card,
+#confirmation-tasks .task-card,
+#completed-tasks .task-card,
+#rejected-tasks .task-card {
+    margin: 0 !important;
+}
+
 .bottom-nav {
     position: fixed;
     bottom: 16px;
@@ -7807,7 +7837,7 @@ function displayTasks(tasks, category) {
                 <div class="task-time">${task.time_to_complete || '5-10 мин'}</div>
             </div>
             
-            <!-- Контейнер для описания с центрированием -->
+            <!-- Контейнер для описания с ПОЛНЫМ ЦЕНТРИРОВАНИЕМ -->
             <div class="task-description-container">
                 <div class="task-description">
                     ${escapeHtml(task.description)}
@@ -7825,7 +7855,6 @@ function displayTasks(tasks, category) {
         container.appendChild(taskElement);
     });
 }
-
 function formatCategory(category) {
     const categoryMap = {
         'social': 'Соцсети',
