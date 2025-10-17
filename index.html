@@ -132,28 +132,22 @@ body {
         text-align: center;
     }
 }
-/* ИСПРАВЛЕННЫЙ ДИЗАЙН КАРТОЧКИ ЗАДАНИЯ */
+/* ОБНОВЛЕННЫЕ СТИЛИ ДЛЯ КАРТОЧКИ ЗАДАНИЯ */
 .task-card {
     background: var(--card-bg);
     border-radius: 16px;
     padding: 16px;
     border: 1px solid var(--border);
-    cursor: default;
+    cursor: pointer;
     transition: all 0.3s ease;
     position: relative;
     width: 100%;
     box-sizing: border-box;
-    margin-bottom: 16px; /* ДОБАВЛЯЕМ ПРОМЕЖУТОК МЕЖДУ БЛОКАМИ */
+    margin-bottom: 16px;
     display: flex;
     flex-direction: column;
-    min-height: 160px; /* Увеличиваем для центрирования */
+    min-height: 180px;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-}
-
-.task-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
-    border-color: var(--accent);
 }
 
 /* Верхняя строка - заголовок и цена */
@@ -165,7 +159,7 @@ body {
     gap: 12px;
 }
 
-/* Заголовок задания - ОДНА СТРОКА БЕЗ ОБРЕЗКИ */
+/* Заголовок задания */
 .task-title {
     font-size: 16px;
     font-weight: 700;
@@ -193,7 +187,7 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
     flex-wrap: wrap;
 }
 
@@ -204,6 +198,7 @@ body {
     border-radius: 6px;
     font-size: 11px;
     font-weight: 600;
+    border: 1px solid rgba(99, 102, 241, 0.2);
 }
 
 .task-difficulty {
@@ -232,10 +227,10 @@ body {
 .task-description-container {
     flex: 1;
     display: flex;
-    align-items: center; /* Вертикальное центрирование */
-    justify-content: center; /* Горизонтальное центрирование */
+    align-items: center;
+    justify-content: center;
     margin-bottom: 12px;
-    min-height: 50px;
+    min-height: 60px;
 }
 
 /* Описание задания - 2 СТРОКИ С ЦЕНТРИРОВАНИЕМ */
@@ -243,7 +238,7 @@ body {
     font-size: 14px;
     color: var(--text-secondary);
     line-height: 1.4;
-    text-align: center; /* Центрируем текст */
+    text-align: center;
     
     /* Обрезка на 2 строки */
     display: -webkit-box;
@@ -256,7 +251,7 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     width: 100%;
-    max-height: 2.8em; /* Высота для 2 строк */
+    max-height: 2.8em;
 }
 
 /* Кнопка */
@@ -283,7 +278,6 @@ body {
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
-
 /* Убираем клик по карточке */
 .task-card * {
     cursor: default;
@@ -7861,13 +7855,10 @@ function displayTasks(tasks, category) {
         const taskElement = document.createElement('div');
         taskElement.className = 'task-card';
         
-        // Форматируем категорию
+        // Форматируем категорию и сложность
         const categoryDisplay = formatCategory(task.category);
-        
-        // Обрезаем описание если нужно
-        const shortDescription = task.description.length > 120 
-            ? task.description.substring(0, 120) + '...' 
-            : task.description;
+        const difficultyDisplay = task.difficulty || 'Легкая';
+        const timeDisplay = task.time_to_complete || '5-10 минут';
         
         taskElement.innerHTML = `
             <!-- Заголовок и цена -->
@@ -7879,14 +7870,14 @@ function displayTasks(tasks, category) {
             <!-- Мета-информация - КАТЕГОРИЯ И СЛОЖНОСТЬ -->
             <div class="task-meta">
                 <div class="task-category">${categoryDisplay}</div>
-                <div class="task-difficulty">${task.difficulty || 'Легкая'}</div>
-                <div class="task-time">${task.time_to_complete || '5-10 мин'}</div>
+                <div class="task-difficulty">${difficultyDisplay}</div>
+                <div class="task-time">${timeDisplay}</div>
             </div>
             
             <!-- Контейнер для описания с ЦЕНТРИРОВАНИЕМ -->
             <div class="task-description-container">
                 <div class="task-description">
-                    ${escapeHtml(shortDescription)}
+                    ${escapeHtml(task.description)}
                 </div>
             </div>
             
@@ -7901,6 +7892,8 @@ function displayTasks(tasks, category) {
         container.appendChild(taskElement);
     });
 }
+
+// Функция для форматирования категории
 function formatCategory(category) {
     const categoryMap = {
         'social': 'Соцсети',
@@ -8511,7 +8504,6 @@ addDebugButton();
             }
         }
 
-// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ДОБАВЛЕНИЯ ЗАДАНИЯ
 async function addTask() {
     console.log('🎯 Starting addTask function...');
     
@@ -8522,33 +8514,26 @@ async function addTask() {
         }
 
         // Получаем значения из формы
-        const getElementValue = (id) => {
-            const element = document.getElementById(id);
-            const value = element ? element.value : '';
-            console.log(`🔍 ${id}: "${value}"`);
-            return value;
-        };
-
         const taskData = {
-            title: getElementValue('admin-task-title'),
-            description: getElementValue('admin-task-description'),
-            price: getElementValue('admin-task-price'),
-            category: getElementValue('admin-task-category'),
-            time_to_complete: getElementValue('admin-task-time'),
-            difficulty: getElementValue('admin-task-difficulty'),
-            people_required: getElementValue('admin-task-people'),
-            task_url: getElementValue('admin-task-url'),
+            title: document.getElementById('admin-task-title').value.trim(),
+            description: document.getElementById('admin-task-description').value.trim(),
+            price: document.getElementById('admin-task-price').value,
+            category: document.getElementById('admin-task-category').value,
+            time_to_complete: document.getElementById('admin-task-time').value || '5-10 минут',
+            difficulty: document.getElementById('admin-task-difficulty').value,
+            people_required: document.getElementById('admin-task-people').value || 1,
+            task_url: document.getElementById('admin-task-url').value || '',
             created_by: currentUser.id
         };
 
         console.log('📋 Form data collected:', taskData);
 
         // Валидация
-        if (!taskData.title.trim()) {
+        if (!taskData.title) {
             showNotification('Введите название задания!', 'error');
             return;
         }
-        if (!taskData.description.trim()) {
+        if (!taskData.description) {
             showNotification('Введите описание задания!', 'error');
             return;
         }
@@ -8565,14 +8550,14 @@ async function addTask() {
 
         // Подготавливаем данные для отправки
         const requestData = {
-            title: taskData.title.trim(),
-            description: taskData.description.trim(),
+            title: taskData.title,
+            description: taskData.description,
             price: price,
-            category: taskData.category || 'general',
-            time_to_complete: taskData.time_to_complete || '5-10 минут',
-            difficulty: taskData.difficulty || 'Легкая',
-            people_required: parseInt(taskData.people_required) || 1,
-            task_url: taskData.task_url || '',
+            category: taskData.category,
+            time_to_complete: taskData.time_to_complete,
+            difficulty: taskData.difficulty,
+            people_required: parseInt(taskData.people_required),
+            task_url: taskData.task_url,
             created_by: currentUser.id
         };
 
@@ -8590,21 +8575,14 @@ async function addTask() {
             showNotification('✅ Задание успешно создано!', 'success');
             
             // Очищаем форму
-            const formFields = [
-                'admin-task-title', 
-                'admin-task-description', 
-                'admin-task-price', 
-                'admin-task-time', 
-                'admin-task-people', 
-                'admin-task-url'
-            ];
+            document.getElementById('admin-task-title').value = '';
+            document.getElementById('admin-task-description').value = '';
+            document.getElementById('admin-task-price').value = '';
+            document.getElementById('admin-task-time').value = '';
+            document.getElementById('admin-task-people').value = '';
+            document.getElementById('admin-task-url').value = '';
             
-            formFields.forEach(fieldId => {
-                const element = document.getElementById(fieldId);
-                if (element) element.value = '';
-            });
-            
-            // Сбрасываем выпадающие списки
+            // Сбрасываем выпадающие списки к значениям по умолчанию
             document.getElementById('admin-task-category').value = 'subscribe';
             document.getElementById('admin-task-difficulty').value = 'Легкая';
             

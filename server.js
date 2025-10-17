@@ -502,7 +502,7 @@ async function addTask() {
         showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
     }
 }
-/// Create task endpoint - УПРОЩЕННАЯ ВЕРСИЯ
+// В server.js, обновите endpoint создания задания:
 app.post('/api/tasks', async (req, res) => {
     console.log('📥 Received task creation request:', req.body);
     
@@ -518,14 +518,8 @@ app.post('/api/tasks', async (req, res) => {
         task_url
     } = req.body;
     
-    console.log('🔍 Parsed data:', {
-        title, description, price, created_by, category,
-        time_to_complete, difficulty, people_required, task_url
-    });
-    
     // Базовая валидация
     if (!title || !description || !price || !created_by) {
-        console.log('❌ Validation failed: missing required fields');
         return res.status(400).json({
             success: false,
             error: 'Заполните все обязательные поля'
@@ -541,8 +535,6 @@ app.post('/api/tasks', async (req, res) => {
             });
         }
 
-        console.log('💾 Saving task to database...');
-        
         const result = await pool.query(`
             INSERT INTO tasks (
                 title, description, price, created_by, category,
@@ -561,8 +553,6 @@ app.post('/api/tasks', async (req, res) => {
             parseInt(people_required) || 1,
             task_url || ''
         ]);
-        
-        console.log('✅ Task saved successfully:', result.rows[0]);
         
         res.json({
             success: true,
