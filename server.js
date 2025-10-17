@@ -72,7 +72,22 @@ async function checkAdminAccess(userId) {
         return parseInt(userId) === ADMIN_ID;
     }
 }
+// Временно добавьте эту функцию для отладки
+function debugWithdrawalSystem() {
+    console.log('🐛 DEBUG Withdrawal System:');
+    console.log('- currentUser:', currentUser);
+    console.log('- isAdmin:', currentUser?.is_admin);
+    
+    // Проверьте, загружаются ли запросы
+    loadWithdrawalRequests().then(() => {
+        console.log('✅ Withdrawal requests loaded');
+    }).catch(error => {
+        console.error('❌ Error loading withdrawal requests:', error);
+    });
+}
 
+// Вызовите для тестирования
+setTimeout(debugWithdrawalSystem, 3000);
 // Упрощенная инициализация базы данных
 async function initDatabase() {
     try {
