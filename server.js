@@ -86,7 +86,7 @@ async function checkAdminAccess(userId) {
 //     });
 // }
 // Вызовите для тестирования
-setTimeout(debugWithdrawalSystem, 3000);
+// setTimeout(debugWithdrawalSystem, 3000);
 // Упрощенная инициализация базы данных
 // Упрощенная инициализация базы данных
 async function initDatabase() {
