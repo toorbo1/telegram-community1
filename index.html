@@ -5719,7 +5719,7 @@ input:checked + .theme-slider:before {
         </div>
     </div>
 
-  <!-- Страница вывода средств -->
+<!-- Страница вывода средств -->
 <div id="withdraw-page" class="page">
     <div class="page-header">
         <button class="back-button" onclick="goBackToProfile()">←</button>
@@ -5731,6 +5731,17 @@ input:checked + .theme-slider:before {
         <div class="withdraw-hero">
             <div class="withdraw-balance" id="withdraw-balance-display">0 ⭐</div>
             <div class="withdraw-subtitle">Ваш текущий баланс</div>
+            
+            <!-- Информация о минимальном выводе -->
+            <div style="background: rgba(255, 215, 0, 0.1); border: 1px solid var(--gold); border-radius: 12px; padding: 12px; margin: 16px 0; text-align: center;">
+                <div style="font-size: 14px; color: var(--gold); font-weight: 600;">
+                    💫 Минимальная сумма вывода: <span style="color: white;">200 ⭐</span>
+                </div>
+                <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                    Баланс будет обнулен при выводе
+                </div>
+            </div>
+            
             <button class="withdraw-btn" onclick="requestWithdraw()" id="withdraw-btn">
                 Вывести средства
             </button>
@@ -5738,7 +5749,7 @@ input:checked + .theme-slider:before {
 
         <!-- История операций -->
         <div class="withdraw-history">
-            <h3 style="margin-bottom: 15px; color: var(--text-primary);">📊 Прошлые операции</h3>
+            <h3 style="margin-bottom: 15px; color: var(--text-primary);">📊 История выводов</h3>
             <div id="withdraw-history-list">
                 <!-- История будет загружена здесь -->
             </div>
@@ -7697,7 +7708,12 @@ function formatCategory(category) {
 // 🔧 ЗАГРУЗКА ЗАДАНИЙ ПРИ ЗАПУСКЕ ПРИЛОЖЕНИЯ
 async function initializeApp() {
     console.log('🎮 Initializing LinkGold app...');
-    
+        // Показываем информацию о минимальном выводе
+    setTimeout(() => {
+        if (currentUser && currentUser.balance < 200) {
+            showNotification(`💫 Для вывода средств необходимо набрать 200 ⭐. Ваш баланс: ${currentUser.balance} ⭐`, 'info', 5000);
+        }
+    }, 3000);
     // Показываем загрузку
     showNotification('🔄 Подключаемся к серверу...', 'info');
      // 🔥 ДОБАВИТЬ ЭТО: Предварительная загрузка заданий
@@ -9277,7 +9293,7 @@ function displayAdminPosts(posts) {
             }
         }
 
-// Обновленная функция запроса вывода
+// Функция запроса вывода средств - ОБНОВЛЕННАЯ ВЕРСИЯ
 async function requestWithdraw() {
     if (!currentUser) {
         showNotification('Пользователь не авторизован', 'error');
@@ -9285,9 +9301,10 @@ async function requestWithdraw() {
     }
     
     const currentBalance = currentUser.balance || 0;
+    const MIN_WITHDRAWAL = 200; // Минимальная сумма вывода
     
-    if (currentBalance <= 0) {
-        showNotification('Недостаточно средств для вывода', 'error');
+    if (currentBalance < MIN_WITHDRAWAL) {
+        showNotification(`Минимальная сумма для вывода: ${MIN_WITHDRAWAL} ⭐\n\nВаш баланс: ${currentBalance} ⭐`, 'error');
         return;
     }
     
@@ -9360,7 +9377,9 @@ function displayWithdrawHistory(operations) {
             <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
                 <div style="font-size: 48px; margin-bottom: 16px;">💫</div>
                 <div>Нет операций по выводу</div>
-                <div style="font-size: 12px; margin-top: 8px;">Здесь будут отображаться ваши запросы на вывод</div>
+                <div style="font-size: 12px; margin-top: 8px;">
+                    Минимальная сумма для вывода: 200 ⭐
+                </div>
             </div>
         `;
         return;
@@ -9385,8 +9404,8 @@ function displayWithdrawHistory(operations) {
         `;
         
         const statusText = operation.status === 'completed' ? 
-            '✅ Операция завершена' : 
-            '🔄 Операция осуществляется';
+            '✅ Выплачено' : 
+            '🔄 В обработке';
             
         const statusColor = operation.status === 'completed' ? 
             'var(--success)' : 'var(--warning)';
@@ -9544,27 +9563,30 @@ function showAdminPaymentsSection() {
     loadWithdrawalRequests();
 }
 
-        // Обновление страницы вывода
-        function updateWithdrawPage() {
-            const balanceDisplay = document.getElementById('withdraw-balance-display');
-            const withdrawBtn = document.getElementById('withdraw-btn');
-            
-            if (balanceDisplay && currentUser) {
-                balanceDisplay.textContent = `${currentUser.balance || 0} ⭐`;
-            }
-            
-            if (withdrawBtn && currentUser) {
-                if ((currentUser.balance || 0) <= 0) {
-                    withdrawBtn.disabled = true;
-                    withdrawBtn.style.opacity = '0.5';
-                    withdrawBtn.textContent = 'Недостаточно средств';
-                } else {
-                    withdrawBtn.disabled = false;
-                    withdrawBtn.style.opacity = '1';
-                    withdrawBtn.textContent = 'Вывести средства';
-                }
-            }
+       // Обновление страницы вывода
+function updateWithdrawPage() {
+    const balanceDisplay = document.getElementById('withdraw-balance-display');
+    const withdrawBtn = document.getElementById('withdraw-btn');
+    const MIN_WITHDRAWAL = 200;
+    
+    if (balanceDisplay && currentUser) {
+        balanceDisplay.textContent = `${currentUser.balance || 0} ⭐`;
+    }
+    
+    if (withdrawBtn && currentUser) {
+        const currentBalance = currentUser.balance || 0;
+        
+        if (currentBalance < MIN_WITHDRAWAL) {
+            withdrawBtn.disabled = true;
+            withdrawBtn.style.opacity = '0.5';
+            withdrawBtn.textContent = `Минимум ${MIN_WITHDRAWAL} ⭐`;
+        } else {
+            withdrawBtn.disabled = false;
+            withdrawBtn.style.opacity = '1';
+            withdrawBtn.textContent = `Вывести ${currentBalance} ⭐`;
         }
+    }
+}
 
         // Загрузка постов на главную
         async function loadMainPagePosts() {

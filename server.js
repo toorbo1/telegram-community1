@@ -2217,7 +2217,7 @@ app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res
 
 // ==================== WITHDRAWAL ENDPOINTS ====================
 
-// Request withdrawal - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// Request withdrawal - ОБНОВЛЕННАЯ ВЕРСИЯ С ПРОВЕРКОЙ МИНИМУМА
 app.post('/api/withdrawal/request', async (req, res) => {
     const { user_id, amount, username, first_name } = req.body;
     
@@ -2231,6 +2231,8 @@ app.post('/api/withdrawal/request', async (req, res) => {
     }
     
     try {
+        const MIN_WITHDRAWAL = 200; // Минимальная сумма вывода
+        
         // Проверяем баланс пользователя
         const userResult = await pool.query(
             'SELECT balance FROM user_profiles WHERE user_id = $1',
@@ -2248,6 +2250,14 @@ app.post('/api/withdrawal/request', async (req, res) => {
         const requestAmount = parseFloat(amount);
         
         console.log(`💰 Баланс пользователя: ${userBalance}, Запрошено: ${requestAmount}`);
+        
+        // Проверка минимальной суммы
+        if (requestAmount < MIN_WITHDRAWAL) {
+            return res.status(400).json({
+                success: false,
+                error: `Минимальная сумма для вывода: ${MIN_WITHDRAWAL} ⭐`
+            });
+        }
         
         if (requestAmount > userBalance) {
             return res.status(400).json({
