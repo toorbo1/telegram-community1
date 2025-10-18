@@ -5151,7 +5151,7 @@ html, body {
         let currentVerificationId = null;
 
 // Улучшенная функция для запросов
-// Улучшенная функция для запросов с диагностикой
+// В index.html - обновите функцию makeRequest для обработки GET параметров
 async function makeRequest(endpoint, options = {}) {
     try {
         // Формируем полный URL
@@ -5164,6 +5164,13 @@ async function makeRequest(endpoint, options = {}) {
             url = API_BASE_URL + '/api' + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
         }
         
+        // Для GET запросов добавляем параметры в URL
+        if (options.method === 'GET' && options.body) {
+            const params = new URLSearchParams(options.body);
+            url += '?' + params.toString();
+            delete options.body; // Удаляем body для GET запроса
+        }
+        
         console.log(`🚀 Making ${options.method || 'GET'} request to: ${url}`);
         
         const response = await fetch(url, {
@@ -5174,57 +5181,10 @@ async function makeRequest(endpoint, options = {}) {
             ...options
         });
 
-        console.log(`📨 Response status: ${response.status}`);
-        
-        // Проверяем Content-Type
-        const contentType = response.headers.get('content-type');
-        console.log(`📋 Content-Type: ${contentType}`);
-        
-        if (!contentType || !contentType.includes('application/json')) {
-            const text = await response.text();
-            console.log('📝 Non-JSON response:', text.substring(0, 200));
-            throw new Error(`Server returned non-JSON response: ${contentType}`);
-        }
-        
-        if (!response.ok) {
-            let errorMessage = `HTTP error! status: ${response.status}`;
-            try {
-                const errorData = await response.json();
-                if (errorData.error) {
-                    errorMessage = errorData.error;
-                }
-                if (errorData.details) {
-                    errorMessage += ` - ${errorData.details}`;
-                }
-            } catch (parseError) {
-                // If response is not JSON, use text
-                const errorText = await response.text();
-                if (errorText) {
-                    errorMessage += ` - ${errorText}`;
-                }
-            }
-            throw new Error(errorMessage);
-        }
-
-        const data = await response.json();
-        console.log('✅ Request successful');
-        return data;
+        // ... остальной код без изменений
     } catch (error) {
         console.error('💥 Request failed:', error);
-        
-        // Более информативные сообщения об ошибках
-        if (error.message.includes('non-JSON response')) {
-            showNotification('❌ Сервер вернул неверный формат данных. Возможно, endpoint не существует.', 'error');
-        } else if (error.message.includes('Failed to fetch')) {
-            showNotification('❌ Не удалось подключиться к серверу. Проверьте интернет.', 'error');
-        } else if (error.message.includes('404')) {
-            showNotification('🔍 Endpoint не найден. Возможно, сервер перезагружается.', 'error');
-        } else if (error.message.includes('500')) {
-            showNotification('⚙️ Ошибка на сервере. Попробуйте позже.', 'error');
-        } else {
-            showNotification(`⚠️ Ошибка: ${error.message}`, 'error');
-        }
-        
+        showNotification(`⚠️ Ошибка: ${error.message}`, 'error');
         throw error;
     }
 }
@@ -6125,81 +6085,80 @@ function testAddTask() {
     console.log('✅ Form filled with test data');
     debugAdminForm();
 }
-        // 🔧 ФИКС ДЛЯ ПЕРЕКЛЮЧЕНИЯ ВКЛАДОК ЗАДАНИЙ
-        function showTaskCategory(category) {
-            console.log('🔄 Переключение на категорию:', category);
-            
-            // Скрываем все вкладки
-            const tabs = document.querySelectorAll('.task-tab');
-            const containers = document.querySelectorAll('.tasks-grid');
-            
-            tabs.forEach(tab => tab.classList.remove('active'));
-            containers.forEach(container => {
-                container.classList.remove('active');
-                container.style.display = 'none';
-            });
-            
-            // Активируем выбранную вкладку
-            const activeTab = document.querySelector(`.task-tab:nth-child(${getTabIndex(category)})`);
-            if (activeTab) {
-                activeTab.classList.add('active');
-            }
-            
-            // Показываем выбранный контейнер
-            const targetContainer = document.getElementById(`${category}-tasks`);
-            if (targetContainer) {
-                targetContainer.classList.add('active');
-                targetContainer.style.display = 'block';
-                console.log(`✅ Контейнер ${category}-tasks показан`);
-                
-                // Загружаем данные для категории
-                loadTasksForCategory(category);
-            }
-        }
+// В index.html - обновите функцию переключения категорий
+function showTaskCategory(category) {
+    console.log('🔄 Переключение на категорию:', category, 'для пользователя:', currentUser?.id);
+    
+    // Скрываем все вкладки
+    const tabs = document.querySelectorAll('.task-tab');
+    const containers = document.querySelectorAll('.tasks-grid');
+    
+    tabs.forEach(tab => tab.classList.remove('active'));
+    containers.forEach(container => {
+        container.classList.remove('active');
+        container.style.display = 'none';
+    });
+    
+    // Активируем выбранную вкладку
+    const activeTab = document.querySelector(`.task-tab:nth-child(${getTabIndex(category)})`);
+    if (activeTab) {
+        activeTab.classList.add('active');
+    }
+    
+    // Показываем выбранный контейнер
+    const targetContainer = document.getElementById(`${category}-tasks`);
+    if (targetContainer) {
+        targetContainer.classList.add('active');
+        targetContainer.style.display = 'block';
+        console.log(`✅ Контейнер ${category}-tasks показан`);
+        
+        // Загружаем данные для категории с учетом userId
+        loadTasksForCategory(category);
+    }
+}
 
-        function getTabIndex(category) {
-            switch(category) {
-                case 'new': return 1;
-                case 'confirmation': return 2;
-                case 'completed': return 3;
-                case 'rejected': return 4;
-                default: return 1;
-            }
+
+// В index.html - обновите функцию загрузки заданий по категориям
+async function loadTasksForCategory(category) {
+    try {
+        console.log(`🔄 Загружаем задания для категории: ${category} для пользователя:`, currentUser?.id);
+        
+        let endpoint = '';
+        let params = {};
+        
+        switch(category) {
+            case 'new':
+                // Для новых заданий передаем userId чтобы исключить уже начатые
+                endpoint = '/api/tasks';
+                params = { userId: currentUser.id };
+                break;
+            case 'confirmation':
+                endpoint = `/user/${currentUser.id}/tasks/active`;
+                break;
+            case 'completed':
+                endpoint = `/user/${currentUser.id}/tasks?status=completed`;
+                break;
+            case 'rejected':
+                endpoint = `/user/${currentUser.id}/tasks?status=rejected`;
+                break;
         }
-        // 🔧 ФУНКЦИЯ ДЛЯ ЗАГРУЗКИ ЗАДАНИЙ ПО КАТЕГОРИИ
-        async function loadTasksForCategory(category) {
-            try {
-                console.log(`🔄 Загружаем задания для категории: ${category}`);
-                
-                let endpoint = '';
-                switch(category) {
-                    case 'new':
-                        endpoint = '/api/tasks';
-                        break;
-                    case 'confirmation':
-                        endpoint = `/user/${currentUser.id}/tasks/active`;
-                        break;
-                    case 'completed':
-                        endpoint = `/user/${currentUser.id}/tasks?status=completed`;
-                        break;
-                    case 'rejected':
-                        endpoint = `/user/${currentUser.id}/tasks?status=rejected`;
-                        break;
-                }
-                
-                const result = await makeRequest(endpoint);
-                
-                if (result.success) {
-                    displayTasksForCategory(result.tasks || [], category);
-                } else {
-                    console.error(`❌ Ошибка загрузки ${category} заданий:`, result.error);
-                    showNotification(`Ошибка загрузки ${category} заданий`, 'error');
-                }
-            } catch (error) {
-                console.error(`❌ Ошибка загрузки ${category} заданий:`, error);
-                showNotification(`Ошибка загрузки ${category} заданий`, 'error');
-            }
+        
+        const result = await makeRequest(endpoint, {
+            method: 'GET',
+            ...(category === 'new' && { body: JSON.stringify(params) })
+        });
+        
+        if (result.success) {
+            displayTasksForCategory(result.tasks || [], category);
+        } else {
+            console.error(`❌ Ошибка загрузки ${category} заданий:`, result.error);
+            showNotification(`Ошибка загрузки ${category} заданий`, 'error');
         }
+    } catch (error) {
+        console.error(`❌ Ошибка загрузки ${category} заданий:`, error);
+        showNotification(`Ошибка загрузки ${category} заданий`, 'error');
+    }
+}
         // 🔧 ФУНКЦИЯ ОТОБРАЖЕНИЯ ЗАДАНИЙ ПО КАТЕГОРИИ
         function displayTasksForCategory(tasks, category) {
             const container = document.getElementById(`${category}-tasks`);
@@ -6703,10 +6662,10 @@ function showTasksTab() {
         
     }, 50); // Уменьшаем задержку
 }
-// Обновите функцию загрузки заданий с передачей userId
+// В index.html - обновите функцию загрузки заданий с поиском
 async function loadTasks(search = '', category = 'all') {
     try {
-        console.log('🔄 ЗАГРУЗКА ЗАДАНИЙ - НАЧАЛО', { search, category });
+        console.log('🔄 ЗАГРУЗКА ЗАДАНИЙ - НАЧАЛО', { search, category, userId: currentUser?.id });
         
         const newTasksContainer = document.getElementById('new-tasks');
         
@@ -6725,7 +6684,7 @@ async function loadTasks(search = '', category = 'all') {
             </div>
         `;
         
-        // Формируем URL с userId
+        // Формируем URL с userId как query parameter
         let url = `/api/tasks?userId=${currentUser.id}`;
         const params = [];
         
@@ -6738,7 +6697,7 @@ async function loadTasks(search = '', category = 'all') {
         
         console.log('📡 Запрос к серверу:', url);
         
-        // Делаем запрос
+        // Делаем GET запрос (не POST)
         const result = await makeRequest(url);
         console.log('✅ Ответ от сервера получен, доступно задач:', result.tasks?.length || 0);
         
@@ -6965,12 +6924,13 @@ function formatCategory(category) {
 // 🔧 ЗАГРУЗКА ЗАДАНИЙ ПРИ ЗАПУСКЕ ПРИЛОЖЕНИЯ
 async function initializeApp() {
     console.log('🎮 Initializing LinkGold app...');
-    //     // Показываем информацию о минимальном выводе
-    // setTimeout(() => {
-    //     if (currentUser && currentUser.balance < 200) {
-    //         showNotification(``, 'info', 5000);
-    //     }
-    // }, 3000);
+
+    // 🔥 ВАЖНО: ЗАГРУЖАЕМ ЗАДАНИЯ ПРИ ЗАПУСКЕ ПРИЛОЖЕНИЯ С УЧЕТОМ USER_ID
+    console.log('🚀 Pre-loading tasks on app start...');
+    if (currentUser) {
+        loadTasks();
+    }
+
     // Показываем загрузку
     showNotification('🔄 Подключаемся к серверу...', 'info');
      // 🔥 ДОБАВИТЬ ЭТО: Предварительная загрузка заданий
@@ -7206,40 +7166,52 @@ function displayUserTasksForCategory(tasks, status) {
             }
         }
 
-        // Инициализация поиска заданий
-        function initializeSearch() {
-            const searchInput = document.getElementById('task-search');
-            if (searchInput) {
-                let searchTimeout;
-                searchInput.addEventListener('input', function(e) {
-                    clearTimeout(searchTimeout);
-                    const searchText = e.target.value.trim();
-                    
-                    searchTimeout = setTimeout(() => {
-                        if (searchText.length >= 2 || searchText.length === 0) {
-                            loadTasks(searchText, getActiveFilter());
-                        }
-                    }, 300);
-                });
-            }
+   // В index.html - обновите функцию инициализации поиска
+function initializeSearch() {
+    const searchInput = document.getElementById('task-search');
+    if (searchInput) {
+        let searchTimeout;
+        searchInput.addEventListener('input', function(e) {
+            clearTimeout(searchTimeout);
+            const searchText = e.target.value.trim();
             
-            const filterButtons = document.querySelectorAll('.filter-btn');
-            filterButtons.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const filter = this.getAttribute('data-filter');
-                    loadTasks('', filter);
-                    
-                    filterButtons.forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                });
-            });
-        }
+            searchTimeout = setTimeout(() => {
+                if (searchText.length >= 2 || searchText.length === 0) {
+                    // Передаем userId при поиске
+                    loadTasks(searchText, getActiveFilter());
+                }
+            }, 300);
+        });
+    }
+    
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    filterButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const filter = this.getAttribute('data-filter');
+            // Передаем userId при фильтрации
+            loadTasks('', filter);
+            
+            filterButtons.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+}
 
-        function getActiveFilter() {
-            const activeFilter = document.querySelector('.filter-btn.active');
-            return activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
-        }
+// В index.html - добавьте вспомогательную функцию
+function getActiveFilter() {
+    const activeFilter = document.querySelector('.filter-btn.active');
+    return activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
+}
 
+function getTabIndex(category) {
+    switch(category) {
+        case 'new': return 1;
+        case 'confirmation': return 2;
+        case 'completed': return 3;
+        case 'rejected': return 4;
+        default: return 1;
+    }
+}
 
 
 
