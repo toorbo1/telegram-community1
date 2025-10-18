@@ -780,37 +780,32 @@ body {
     transition: none !important;
 }
 
-/* ИСПРАВЛЕНИЕ ДЛЯ ПРОМЕЖУТКОВ МЕЖДУ ЗАДАНИЯМИ */
+/* 🔧 ОБНОВЛЕННЫЙ ДИЗАЙН КАРТОЧЕК ЗАДАНИЙ */
 .tasks-grid {
     display: grid;
-    gap: 16px !important;
+    gap: 16px;
     grid-template-columns: 1fr;
     min-height: 200px;
-    position: relative;
-    width: 100%;
-    box-sizing: border-box;
-    padding: 0;
-    margin: 0;
 }
 
 .task-card {
     background: var(--card-bg);
-    border-radius: 16px;
-    padding: 16px;
-    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 20px;
+    border: 2px solid var(--border);
     cursor: pointer;
-    transition: transform 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     width: 100%;
     box-sizing: border-box;
     margin-bottom: 0;
     display: flex;
     flex-direction: column;
-    /* УМЕНЬШАЕМ ВЫСОТУ В 1/3 РАЗА - было min-height: 200px */
-    min-height: 133px; /* 200px / 1.5 ≈ 133px */
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    min-height: 180px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     overflow: hidden;
 }
+
 
 /* Гарантируем отступы между карточками */
 .tasks-grid > .task-card {
@@ -890,11 +885,12 @@ body {
 }
 .task-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
     border-color: var(--accent);
 }
-
-
+.task-card:active {
+    transform: translateY(-2px);
+}
 /* Убираем анимации для всех элементов в tasks-tab */
 .tasks-tab .fade-in {
     animation: none !important;
@@ -1948,20 +1944,18 @@ body {
     animation: none;
 }
         
-/* ОПТИМИЗИРУЕМ ОСТАЛЬНЫЕ ЭЛЕМЕНТЫ ДЛЯ УМЕНЬШЕННОЙ ВЫСОТЫ */
+/* 🔧 ЗАГОЛОВОК И ЦЕНА */
 .task-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 12px; /* Уменьшаем отступ */
-    flex-shrink: 0;
+    margin-bottom: 15px;
     gap: 12px;
     width: 100%;
 }
 
-/* УВЕЛИЧИВАЕМ НАЗВАНИЕ ЗАДАНИЯ */
 .task-title {
-    font-size: 20px; /* Было 18px - увеличиваем */
+    font-size: 18px;
     font-weight: 700;
     margin-bottom: 8px;
     line-height: 1.3;
@@ -1976,21 +1970,22 @@ body {
     line-clamp: 2;
     box-orient: vertical;
     color: var(--text-primary);
+    flex: 1;
 }
+
 .task-category {
     font-size: 12px;
     color: var(--accent);
     background: rgba(99, 102, 241, 0.1);
-    padding: 4px 10px;
+    padding: 6px 12px;
     border-radius: 20px;
     display: inline-block;
     font-weight: 600;
     border: 1px solid rgba(99, 102, 241, 0.2);
 }
 
-/* УМЕНЬШАЕМ ЦЕНУ ДЛЯ БАЛАНСА */
 .task-price {
-    font-size: 20px; /* Было 22px */
+    font-size: 22px;
     font-weight: 800;
     background: var(--gold-gradient);
     -webkit-background-clip: text;
@@ -1998,26 +1993,40 @@ body {
     color: transparent;
     flex-shrink: 0;
     white-space: nowrap;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    text-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
 }
-/* УБИРАЕМ ИЛИ УМЕНЬШАЕМ ИЗОБРАЖЕНИЕ ЕСЛИ ОНО ЕСТЬ */
+/* 🔧 КАТЕГОРИЯ И СЛОЖНОСТЬ */
+.task-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+/* 🔧 ИЗОБРАЖЕНИЕ ЗАДАНИЯ */
 .task-image {
     width: 100%;
-    height: 80px; /* Уменьшаем высоту изображения */
+    height: 120px;
     border-radius: 12px;
-    margin-bottom: 10px; /* Уменьшаем отступ */
+    margin-bottom: 12px;
     object-fit: cover;
     background: var(--bg-secondary);
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
+    position: relative;
 }
 
 .task-image img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: transform 0.3s ease;
+}
+.task-card:hover .task-image img {
+    transform: scale(1.05);
 }
 
 .task-image-placeholder {
@@ -2026,25 +2035,28 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--bg-secondary);
+    background: linear-gradient(135deg, var(--bg-secondary), var(--card-bg));
     border-radius: 12px;
     color: var(--text-secondary);
     font-size: 14px;
+    border: 2px dashed var(--border);
 }
 
+
+/* 🔧 ОПИСАНИЕ ЗАДАНИЯ */
 .task-description {
     font-size: 14px;
     color: var(--text-secondary);
-    margin-bottom: 12px; /* Уменьшаем отступ */
-    line-height: 1.4; /* Уменьшаем межстрочный интервал */
+    margin-bottom: 15px;
+    line-height: 1.4;
     word-wrap: break-word;
     overflow-wrap: break-word;
     white-space: pre-wrap;
     flex: 1;
     display: -webkit-box;
-    -webkit-line-clamp: 2; /* Ограничиваем 2 строками вместо 3 */
+    -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
-    line-clamp: 2;
+    line-clamp: 3;
     box-orient: vertical;
     overflow: hidden;
 }
@@ -2080,6 +2092,7 @@ body {
     align-self: flex-start;
 }
 
+/* 🔧 ФУТЕР С ВРЕМЕНЕМ И КНОПКОЙ */
 .task-footer {
     display: flex;
     justify-content: space-between;
@@ -2087,7 +2100,7 @@ body {
     margin-top: auto;
     flex-shrink: 0;
     width: 100%;
-    padding-top: 10px; /* Уменьшаем отступ */
+    padding-top: 12px;
     border-top: 1px solid var(--border);
 }
 
@@ -2097,6 +2110,7 @@ body {
     display: flex;
     align-items: center;
     gap: 6px;
+    font-weight: 500;
 }
 
 .task-time::before {
@@ -2104,27 +2118,44 @@ body {
     font-size: 14px;
 }
 
-/* УМЕНЬШАЕМ КНОПКУ */
+/* 🔧 УЛУЧШЕННАЯ КНОПКА */
 .task-btn {
     background: var(--accent);
     color: white;
     border: none;
-    padding: 8px 16px; /* Уменьшаем padding */
+    padding: 10px 20px;
     border-radius: 12px;
-    font-size: 13px; /* Уменьшаем шрифт */
+    font-size: 14px;
     font-weight: 600;
     cursor: pointer;
     white-space: nowrap;
     flex-shrink: 0;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+    position: relative;
+    overflow: hidden;
+}
+.task-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
 }
 .task-btn:hover {
     background: var(--accent-hover);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.35);
 }
-/* Бейдж сложности */
-.task-difficulty {
+.task-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+/* 🔧 БЕЙДЖ ДОСТУПНОСТИ */
+.task-availability {
     position: absolute;
     top: 16px;
     right: 16px;
@@ -2135,6 +2166,141 @@ body {
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
+    z-index: 2;
+}
+/* 🔧 АДАПТИВНОСТЬ */
+@media (max-width: 768px) {
+    .task-card {
+        padding: 16px;
+        min-height: 160px;
+    }
+    
+    .task-title {
+        font-size: 16px;
+    }
+    
+    .task-price {
+        font-size: 20px;
+    }
+    
+    .task-description {
+        font-size: 13px;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+    }
+    
+    .task-btn {
+        padding: 8px 16px;
+        font-size: 13px;
+    }
+    
+    .task-image {
+        height: 100px;
+    }
+}
+
+@media (max-width: 480px) {
+    .task-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .task-price {
+        align-self: flex-start;
+    }
+    
+    .task-footer {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .task-btn {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+/* 🔧 АНИМАЦИЯ ПОЯВЛЕНИЯ */
+@keyframes taskCardAppear {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.task-card {
+    animation: taskCardAppear 0.5s ease-out;
+}
+
+/* 🔧 СТИЛИ ДЛЯ РАЗНЫХ СТАТУСОВ */
+.task-card.completed {
+    border-left: 4px solid var(--success);
+    background: linear-gradient(135deg, var(--card-bg), rgba(16, 185, 129, 0.05));
+}
+
+.task-card.pending {
+    border-left: 4px solid var(--warning);
+    background: linear-gradient(135deg, var(--card-bg), rgba(245, 158, 11, 0.05));
+}
+
+.task-card.rejected {
+    border-left: 4px solid var(--error);
+    background: linear-gradient(135deg, var(--card-bg), rgba(239, 68, 68, 0.05));
+}
+
+/* 🔧 ИНДИКАТОР ПРОГРЕССА */
+.task-progress {
+    width: 100%;
+    height: 4px;
+    background: var(--bg-secondary);
+    border-radius: 2px;
+    margin-bottom: 12px;
+    overflow: hidden;
+}
+
+.task-progress-bar {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.task-progress-text {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-align: right;
+    margin-top: 4px;
+}
+.task-difficulty {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 12px;
+    text-transform: uppercase;
+}
+
+.task-difficulty.легкая {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.task-difficulty.средняя {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.task-difficulty.сложная {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
 }
         .no-tasks {
             text-align: center;
@@ -7642,6 +7808,7 @@ async function loadTasks(search = '', category = 'all') {
     }
 }
 
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ЗАДАНИЙ
 function displayTasks(tasks, category) {
     const container = document.getElementById(category + '-tasks');
     if (!container) {
@@ -7657,41 +7824,52 @@ function displayTasks(tasks, category) {
         container.innerHTML = `
             <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
                 <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
-                <div>Заданий пока нет</div>
-                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
-                    Новые задания появятся позже
+                <div style="font-size: 18px; margin-bottom: 8px;">Заданий пока нет</div>
+                <div style="font-size: 14px; color: var(--text-secondary); text-align: center;">
+                    Новые задания появятся позже<br>
+                    <small>Следите за обновлениями</small>
                 </div>
             </div>
         `;
         return;
     }
 
-    tasks.forEach(task => {
+    tasks.forEach((task, index) => {
         const taskElement = document.createElement('div');
         taskElement.className = 'task-card';
+        taskElement.style.animationDelay = `${index * 0.1}s`;
         
-        // Форматируем категорию (убираем 'general')
+        // Форматируем категорию
         const categoryDisplay = formatCategory(task.category);
         
         // Обрезаем длинное описание
-        const shortDescription = task.description.length > 150 
-            ? task.description.substring(0, 150) + '...' 
+        const shortDescription = task.description.length > 120 
+            ? task.description.substring(0, 120) + '...' 
             : task.description;
         
+        // Рассчитываем прогресс выполнения
+        const peopleRequired = task.people_required || 1;
+        const completedCount = task.completed_count || 0;
+        const progressPercent = Math.min(100, (completedCount / peopleRequired) * 100);
+        const availableTasks = Math.max(0, peopleRequired - completedCount);
+        
         taskElement.innerHTML = `
-            ${task.difficulty ? `<div class="task-difficulty">${task.difficulty}</div>` : ''}
+            ${availableTasks > 0 ? `<div class="task-availability">${availableTasks} осталось</div>` : ''}
             
             <div class="task-header">
-                <div style="flex: 1; min-width: 0;">
-                    <div class="task-title">${escapeHtml(task.title)}</div>
-                    <div class="task-category">${categoryDisplay}</div>
-                </div>
+                <div class="task-title">${escapeHtml(task.title)}</div>
                 <div class="task-price">${task.price} ⭐</div>
+            </div>
+            
+            <div class="task-meta">
+                <div class="task-category">${categoryDisplay}</div>
+                ${task.difficulty ? `<div class="task-difficulty ${task.difficulty.toLowerCase()}">${task.difficulty}</div>` : ''}
             </div>
             
             ${task.image_url ? `
                 <div class="task-image">
-                    <img src="${task.image_url}" alt="${escapeHtml(task.title)}" onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\\'task-image-placeholder\\'>🖼️ Изображение задания</div>';">
+                    <img src="${task.image_url}" alt="${escapeHtml(task.title)}" 
+                         onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\\'task-image-placeholder\\'>🖼️ Изображение задания</div>';">
                 </div>
             ` : '<div class="task-image-placeholder">📋 Описание задания</div>'}
             
@@ -7699,10 +7877,19 @@ function displayTasks(tasks, category) {
                 ${escapeHtml(shortDescription)}
             </div>
             
+            ${peopleRequired > 1 ? `
+                <div class="task-progress">
+                    <div class="task-progress-bar" style="width: ${progressPercent}%"></div>
+                </div>
+                <div class="task-progress-text">
+                    Выполнено: ${completedCount}/${peopleRequired}
+                </div>
+            ` : ''}
+            
             <div class="task-footer">
                 <div class="task-time">${task.time_to_complete || '5-10 минут'}</div>
                 <button class="task-btn" onclick="event.stopPropagation(); openTaskModal(${task.id})">
-                    Начать
+                    Начать задание
                 </button>
             </div>
         `;
@@ -7718,21 +7905,20 @@ function displayTasks(tasks, category) {
     });
 }
 
-// Функция форматирования категории
+// 🔧 ФУНКЦИЯ ФОРМАТИРОВАНИЯ КАТЕГОРИИ
 function formatCategory(category) {
     const categoryMap = {
-        'social': 'Соцсети',
-        'subscribe': 'Подписки', 
-        'view': 'Просмотры',
-        'comment': 'Комментарии',
-        'repost': 'Репосты',
-        'general': 'Общее',
-        'other': 'Другое'
+        'social': '👥 Соцсети',
+        'subscribe': '📱 Подписки', 
+        'view': '👀 Просмотры',
+        'comment': '💬 Комментарии',
+        'repost': '🔄 Репосты',
+        'general': '📋 Общее',
+        'other': '🎯 Другое'
     };
     
     return categoryMap[category] || category;
 }
-
 // 🔧 ЗАГРУЗКА ЗАДАНИЙ ПРИ ЗАПУСКЕ ПРИЛОЖЕНИЯ
 async function initializeApp() {
     console.log('🎮 Initializing LinkGold app...');
