@@ -327,7 +327,7 @@ async function initDatabase() {
 
         // Вызываем функцию исправления таблицы
         await fixWithdrawalTable();
-
+        await createAdminPermissionsTable();
         console.log('✅ Simplified database initialized successfully');
     } catch (error) {
         console.error('❌ Database initialization error:', error);
@@ -2325,6 +2325,8 @@ app.get('/api/withdraw/history/:userId', async (req, res) => {
 app.get('/api/admin/admins-list', async (req, res) => {
     const { adminId } = req.query;
     
+    console.log('🔄 Loading admins list for admin:', adminId);
+    
     if (!adminId || parseInt(adminId) !== ADMIN_ID) {
         return res.status(403).json({
             success: false,
@@ -2333,6 +2335,9 @@ app.get('/api/admin/admins-list', async (req, res) => {
     }
     
     try {
+        // Сначала убедимся, что таблица существует
+        await createAdminPermissionsTable();
+        
         const result = await pool.query(`
             SELECT 
                 up.user_id, 
@@ -2365,6 +2370,8 @@ app.get('/api/admin/admins-list', async (req, res) => {
                 up.created_at DESC
         `, [ADMIN_ID]);
         
+        console.log(`✅ Found ${result.rows.length} admins`);
+        
         res.json({
             success: true,
             admins: result.rows
@@ -2372,6 +2379,52 @@ app.get('/api/admin/admins-list', async (req, res) => {
         
     } catch (error) {
         console.error('❌ Get admins list error:', error);
+        
+        // Если все еще есть ошибка с таблицей, попробуем упрощенный запрос
+        if (error.message.includes('admin_permissions')) {
+            try {
+                console.log('🔄 Trying simplified query without admin_permissions...');
+                
+                const simpleResult = await pool.query(`
+                    SELECT 
+                        user_id, 
+                        username, 
+                        first_name, 
+                        last_name, 
+                        is_admin,
+                        created_at
+                    FROM user_profiles 
+                    WHERE is_admin = true 
+                    ORDER BY 
+                        CASE WHEN user_id = $1 THEN 0 ELSE 1 END,
+                        created_at DESC
+                `, [ADMIN_ID]);
+                
+                // Добавляем дефолтные права
+                const adminsWithDefaults = simpleResult.rows.map(admin => ({
+                    ...admin,
+                    can_posts: true,
+                    can_tasks: true,
+                    can_verification: true,
+                    can_support: true,
+                    can_payments: true,
+                    posts_count: 0,
+                    tasks_count: 0,
+                    verifications_count: 0,
+                    support_count: 0,
+                    payments_count: 0
+                }));
+                
+                return res.json({
+                    success: true,
+                    admins: adminsWithDefaults,
+                    note: 'Using simplified query'
+                });
+            } catch (fallbackError) {
+                console.error('❌ Fallback query also failed:', fallbackError);
+            }
+        }
+        
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
@@ -2379,6 +2432,29 @@ app.get('/api/admin/admins-list', async (req, res) => {
     }
 });
 
+// Функция для создания таблицы прав администраторов
+async function createAdminPermissionsTable() {
+    try {
+        console.log('🔧 Creating admin_permissions table...');
+        
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS admin_permissions (
+                admin_id BIGINT PRIMARY KEY,
+                can_posts BOOLEAN DEFAULT true,
+                can_tasks BOOLEAN DEFAULT true,
+                can_verification BOOLEAN DEFAULT true,
+                can_support BOOLEAN DEFAULT true,
+                can_payments BOOLEAN DEFAULT true,
+                can_admins BOOLEAN DEFAULT false,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        console.log('✅ admin_permissions table created/verified');
+    } catch (error) {
+        console.error('❌ Error creating admin_permissions table:', error);
+    }
+}
 // Обновление прав доступа админа
 app.post('/api/admin/update-permissions', async (req, res) => {
     const { adminId, targetAdminId, permission, enabled } = req.body;
