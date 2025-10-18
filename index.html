@@ -127,8 +127,21 @@
         .stat-card:hover::after {
             opacity: 1;
         }
-
-        /* ИСПРАВЛЕННЫЙ СТИЛЬ ДЛЯ КАРТОЧЕК ЗАДАНИЙ */
+.task-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 12px !important;
+    overflow: hidden !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+}
+/* Гарантируем что контент не выходит за пределы */
+.task-card * {
+    max-width: 100% !important;
+}
+        /* ИСПРАВЛЕННЫЙ СТИЛЬ ДЛЯ КАРТОЧЕК ЗАДАНИЙ
         .task-card {
             background: var(--card-bg);
             border-radius: 14px;
@@ -145,7 +158,7 @@
             min-height: 160px;
             height: auto;
             overflow: visible;
-        }
+        } */
 
         .task-card::before {
             content: '';
@@ -544,15 +557,10 @@
             font-weight: 500;
         }
 
-        .main-content {
-            min-height: calc(100vh - 120px);
-            position: relative;
-            padding: 12px;
-            padding-bottom: 90px;
-            width: 100%;
-            box-sizing: border-box;
-            overflow-x: hidden;
-        }
+       .main-content {
+    overflow-x: hidden !important;
+    width: 100% !important;
+}
 
         /* Убедимся что контент не перекрывается */
         .tab-content {
@@ -564,15 +572,11 @@
             padding-bottom: 90px;
         }
 
-        .container {
-            max-width: 100%;
-            margin: 0 auto;
-            position: relative;
-            padding: 0;
-            box-sizing: border-box;
-            width: 100%;
-            overflow: hidden;
-        }
+        /* 🔧 ФИКС ДЛЯ ВСЕХ ЭКРАНОВ */
+.container {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+}
 
         .header {
             text-align: center;
@@ -1569,15 +1573,17 @@
             border-color: var(--accent);
         }
         
-        /* ИСПРАВЛЕННЫЙ СТИЛЬ ДЛЯ ГРИДА ЗАДАНИЙ */
-        .tasks-grid {
-            display: grid;
-            gap: 12px;
-            grid-template-columns: 1fr;
-            min-height: 200px;
-            height: auto;
-        }
-
+     /* 🔧 ФИКСЫ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ - ПРЕДОТВРАЩЕНИЕ ВЫХОДА ЗА ПРЕДЕЛЫ ЭКРАНА */
+.tasks-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+}
         /* Убираем анимацию fade-in для заданий чтобы не было смещения */
         .task-card.fade-in {
             animation: none;
@@ -1594,22 +1600,14 @@
             flex-wrap: wrap;
         }
 
-        /* Заголовок - показываем полностью */
-        .task-title {
-            font-size: 15px;
-            font-weight: 700;
-            margin-bottom: 8px;
-            line-height: 1.3;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            max-width: 100%;
-            color: var(--text-primary);
-            flex-shrink: 0;
-            display: block;
-            overflow: visible;
-            flex: 1;
-            min-width: 0;
-        }
+     .task-title {
+    font-size: 15px !important;
+    line-height: 1.3 !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    hyphens: auto !important;
+}
+
 
         /* Категория */
         .task-category {
@@ -1688,20 +1686,13 @@
             flex-shrink: 0;
         }
 
-        /* Описание - показываем полностью */
-        .task-description {
-            font-size: 13px;
-            color: var(--text-secondary);
-            margin-bottom: 12px;
-            line-height: 1.4;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            white-space: pre-wrap;
-            flex: 1;
-            display: block;
-            overflow: visible;
-            min-height: auto;
-        }
+      .task-description {
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    hyphens: auto !important;
+}
 
         /* Плавное ограничение текста с кнопкой "Читать далее" */
         .task-description.collapsed {
@@ -2680,7 +2671,92 @@
             font-size: 11px;
             color: var(--text-secondary);
         }
+/* 🔧 АДАПТИВНОСТЬ ДЛЯ ОЧЕНЬ МАЛЕНЬКИХ ЭКРАНОВ */
+@media (max-width: 480px) {
+    .task-card {
+        padding: 10px !important;
+        margin: 0 0 10px 0 !important;
+    }
+    
+    .task-title {
+        font-size: 14px !important;
+    }
+    
+    .task-description {
+        font-size: 12px !important;
+    }
+    
+    .task-price {
+        font-size: 16px !important;
+    }
+    
+    .task-btn {
+        padding: 8px 12px !important;
+        font-size: 12px !important;
+    }
+}
 
+@media (max-width: 360px) {
+    .task-card {
+        padding: 8px !important;
+    }
+    
+    .task-title {
+        font-size: 13px !important;
+    }
+    
+    .task-description {
+        font-size: 11px !important;
+    }
+    
+    body {
+        padding: 4px !important;
+        padding-bottom: 70px !important;
+    }
+    
+    .main-content {
+        padding: 4px !important;
+        padding-bottom: 70px !important;
+    }
+}
+
+/* 🔧 ПРЕДОТВРАЩЕНИЕ ГОРИЗОНТАЛЬНОЙ ПРОКРУТКИ */
+html, body {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    position: relative;
+}
+
+/* 🔧 ФИКС ДЛЯ ИЗОБРАЖЕНИЙ В ЗАДАНИЯХ */
+.task-image img {
+    max-width: 100% !important;
+    height: auto !important;
+    object-fit: cover !important;
+}
+
+.task-image-placeholder {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* 🔧 ФИКС ДЛЯ КНОПОК */
+.task-btn {
+    white-space: nowrap !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* 🔧 ФИКС ДЛЯ МЕТА-ИНФОРМАЦИИ */
+.task-meta {
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+}
+
+.task-category, .task-difficulty {
+    font-size: 10px !important;
+    padding: 3px 6px !important;
+    white-space: nowrap !important;
+}
         /* Адаптивность */
         @media (max-width: 768px) {
             .chat-item {
@@ -6466,7 +6542,7 @@ async function loadTasks(search = '', category = 'all') {
     }
 }
 
-// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ЗАДАНИЙ
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ЗАДАНИЙ С ФИКСАМИ ДЛЯ МОБИЛЬНЫХ
 function displayTasks(tasks, category) {
     const container = document.getElementById(category + '-tasks');
     if (!container) {
@@ -6476,11 +6552,19 @@ function displayTasks(tasks, category) {
     
     console.log(`🎯 Displaying ${tasks ? tasks.length : 0} tasks in ${category}`);
     
+    // Принудительно сбрасываем стили контейнера
+    container.style.width = '100%';
+    container.style.maxWidth = '100%';
+    container.style.margin = '0';
+    container.style.padding = '0';
+    container.style.overflow = 'hidden';
+    container.style.boxSizing = 'border-box';
+    
     container.innerHTML = '';
 
     if (!tasks || tasks.length === 0) {
         container.innerHTML = `
-            <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+            <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; text-align: center; box-sizing: border-box;">
                 <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
                 <div style="font-size: 18px; margin-bottom: 8px;">Заданий пока нет</div>
                 <div style="font-size: 14px; color: var(--text-secondary); text-align: center;">
@@ -6497,6 +6581,11 @@ function displayTasks(tasks, category) {
         taskElement.className = 'task-card';
         taskElement.style.animationDelay = `${index * 0.1}s`;
         
+        // Принудительно устанавливаем стили для мобильных
+        taskElement.style.width = '100%';
+        taskElement.style.maxWidth = '100%';
+        taskElement.style.boxSizing = 'border-box';
+        taskElement.style.overflow = 'hidden';
         // Форматируем категорию
         const categoryDisplay = formatCategory(task.category);
         
@@ -6561,8 +6650,48 @@ function displayTasks(tasks, category) {
         
         container.appendChild(taskElement);
     });
+    
+    // Применяем исправления после рендеринга
+    setTimeout(fixMobileLayout, 50);
+}
+// 🔧 КНОПКА ЭКСТРЕННОГО ИСПРАВЛЕНИЯ ДЛЯ ТЕСТИРОВАНИЯ
+function addMobileFixButton() {
+    const fixBtn = document.createElement('button');
+    fixBtn.textContent = '📱 FIX MOBILE';
+    fixBtn.style.position = 'fixed';
+    fixBtn.style.top = '120px';
+    fixBtn.style.right = '10px';
+    fixBtn.style.zIndex = '10000';
+    fixBtn.style.padding = '10px';
+    fixBtn.style.background = 'green';
+    fixBtn.style.color = 'white';
+    fixBtn.style.border = 'none';
+    fixBtn.style.borderRadius = '5px';
+    fixBtn.style.fontSize = '12px';
+    
+    fixBtn.onclick = function() {
+        console.log('🚨 APPLYING MOBILE FIXES');
+        emergencyMobileFix();
+    };
+    
+    document.body.appendChild(fixBtn);
 }
 
+function emergencyMobileFix() {
+    // Принудительно сбрасываем все возможные проблемы
+    document.querySelectorAll('*').forEach(el => {
+        el.style.maxWidth = '100%';
+        el.style.boxSizing = 'border-box';
+    });
+    
+    document.body.style.overflowX = 'hidden';
+    document.documentElement.style.overflowX = 'hidden';
+    
+    console.log('✅ Emergency mobile fixes applied');
+}
+
+// Добавляем кнопку при загрузке
+setTimeout(addMobileFixButton, 2000);
 // 🔧 ФУНКЦИЯ ФОРМАТИРОВАНИЯ КАТЕГОРИИ
 function formatCategory(category) {
     const categoryMap = {
@@ -7819,6 +7948,67 @@ async function sendAdminMessage() {
         console.error('❌ Error sending admin message:', error);
         showNotification('Ошибка отправки сообщения: ' + error.message, 'error');
     }
+}
+
+// 🔧 ФУНКЦИЯ ДЛЯ ПРИНУДИТЕЛЬНОГО ИСПРАВЛЕНИЯ РАЗМЕТКИ НА МОБИЛЬНЫХ
+function fixMobileLayout() {
+    console.log('🔧 Applying mobile layout fixes...');
+    
+    // Принудительно устанавливаем правильные размеры
+    const tasksGrid = document.querySelector('.tasks-grid');
+    if (tasksGrid) {
+        tasksGrid.style.width = '100%';
+        tasksGrid.style.margin = '0';
+        tasksGrid.style.padding = '0';
+        tasksGrid.style.overflow = 'hidden';
+    }
+    
+    // Исправляем все карточки заданий
+    const taskCards = document.querySelectorAll('.task-card');
+    taskCards.forEach(card => {
+        card.style.width = '100%';
+        card.style.maxWidth = '100%';
+        card.style.boxSizing = 'border-box';
+        card.style.margin = '0 0 12px 0';
+        card.style.overflow = 'hidden';
+    });
+    
+    // Предотвращаем горизонтальную прокрутку
+    document.body.style.overflowX = 'hidden';
+    document.documentElement.style.overflowX = 'hidden';
+    
+    console.log('✅ Mobile layout fixes applied');
+}
+
+// Вызываем при загрузке и при изменении размера окна
+document.addEventListener('DOMContentLoaded', fixMobileLayout);
+window.addEventListener('resize', fixMobileLayout);
+window.addEventListener('orientationchange', fixMobileLayout);
+
+// Также вызываем при переключении вкладок
+function showTasksTab() {
+    console.log('🎯 ПЕРЕХОД НА ВКЛАДКУ ЗАДАНИЙ');
+    
+    // 1. Скрываем все вкладки
+    hideAllTabs();
+    
+    // 2. Показываем вкладку заданий
+    const tasksTab = document.getElementById('tasks-tab');
+    if (tasksTab) {
+        tasksTab.classList.add('active');
+        console.log('✅ Вкладка заданий активирована');
+    }
+    
+    // 3. Обновляем навигацию
+    updateNavState('tasks');
+    
+    // 4. Применяем исправления для мобильных
+    setTimeout(fixMobileLayout, 100);
+    
+    // 5. Активируем вкладку "Новые"
+    setTimeout(() => {
+        showTaskCategory('new');
+    }, 150);
 }
 
         function displayChatMessages(messages) {
