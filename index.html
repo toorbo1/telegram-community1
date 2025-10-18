@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LinkGold - Платформа для заработка</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-         .tg-header {
+        <style>
+        .tg-header {
             background: var(--bg-primary) !important;
         }
 
@@ -39,639 +39,632 @@
             --error: #ef4444;
             --warning: #f59e0b;
         }
-/* Фикс для body */
-body {
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    min-height: 100vh;
-    padding: 16px;
-    padding-bottom: 120px;
-    line-height: 1.6;
-    background-image: 
-        radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.05) 0%, transparent 25%),
-        radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.05) 0%, transparent 25%);
-    /* Гарантируем что body не создает лишних отступов */
-    margin: 0;
-    width: 100%;
-    box-sizing: border-box;
-    overflow-x: hidden;
-}
-.task-title {
-    font-size: 17px;
-    font-weight: 700;
-    line-height: 1.3;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    flex: 1;
-    min-width: 0; /* важно для правильного переноса */
-}
-/* Адаптивность для мобильных */
-@media (max-width: 768px) {
-    .tasks-grid {
-        gap: 14px;
-    }
-    
-    .task-card {
-        padding: 16px;
-        min-height: 180px;
-    }
-    
-    .task-title {
-        font-size: 16px;
-    }
-    
-    .task-description {
-        font-size: 13px;
-    }
-    
-    .task-price {
-        font-size: 18px;
-    }
-    
-    .task-image {
-        height: 100px;
-    }
-    
-    .task-image-placeholder {
-        height: 100px;
-        font-size: 13px;
-    }
-}
 
-@media (max-width: 480px) {
-    .task-card {
-        padding: 14px;
-        min-height: 170px;
-    }
-    
-    .task-header {
-        flex-direction: column;
-        gap: 8px;
-        align-items: flex-start;
-    }
-    
-    .task-price {
-        align-self: flex-start;
-        font-size: 17px;
-    }
-    
-    .task-footer {
-        flex-direction: column;
-        gap: 10px;
-        align-items: flex-start;
-    }
-    
-    .task-btn {
-        width: 100%;
-        text-align: center;
-        padding: 10px 14px;
-    }
-}
+        /* Фикс для body */
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 16px;
+            padding-bottom: 120px;
+            line-height: 1.6;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.05) 0%, transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.05) 0%, transparent 25%);
+            margin: 0;
+            width: 100%;
+            box-sizing: border-box;
+            overflow-x: hidden;
+        }
 
-/* 🔥 ОБНОВЛЕННЫЕ ЯРКИЕ БЛОКИ */
-:root {
-    --card-bg: rgba(20, 20, 40, 0.95);
-    --bg-secondary: rgba(25, 25, 50, 0.9);
-    --border: rgba(99, 102, 241, 0.3);
-    --shadow: rgba(99, 102, 241, 0.15);
-}
+        /* Адаптивность для мобильных */
+        @media (max-width: 768px) {
+            .tasks-grid {
+                gap: 14px;
+            }
+            
+            .task-card {
+                padding: 16px;
+                min-height: 180px;
+            }
+            
+            .task-title {
+                font-size: 16px;
+            }
+            
+            .task-description {
+                font-size: 13px;
+            }
+            
+            .task-price {
+                font-size: 18px;
+            }
+            
+            .task-image {
+                height: 100px;
+            }
+            
+            .task-image-placeholder {
+                height: 100px;
+                font-size: 13px;
+            }
+        }
 
-/* 🔥 ЯРКИЕ КАРТОЧКИ */
-.card {
-    background: var(--card-bg);
-    border-radius: 20px;
-    padding: 20px;
-    margin-bottom: 16px;
-    border: 1px solid var(--border);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
-    backdrop-filter: blur(10px);
-    position: relative;
-    overflow: hidden;
-}
+        @media (max-width: 480px) {
+            .task-card {
+                padding: 14px;
+                min-height: 170px;
+            }
+            
+            .task-header {
+                flex-direction: column;
+                gap: 8px;
+                align-items: flex-start;
+            }
+            
+            .task-price {
+                align-self: flex-start;
+                font-size: 17px;
+            }
+            
+            .task-footer {
+                flex-direction: column;
+                gap: 10px;
+                align-items: flex-start;
+            }
+            
+            .task-btn {
+                width: 100%;
+                text-align: center;
+                padding: 10px 14px;
+            }
+        }
 
-.card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
-}
+        /* 🔥 ОБНОВЛЕННЫЕ ЯРКИЕ БЛОКИ */
+        :root {
+            --card-bg: rgba(20, 20, 40, 0.95);
+            --bg-secondary: rgba(25, 25, 50, 0.9);
+            --border: rgba(99, 102, 241, 0.3);
+            --shadow: rgba(99, 102, 241, 0.15);
+        }
 
-/* 🔥 ЯРКИЕ СТАТИСТИЧЕСКИЕ КАРТОЧКИ */
-.stat-card {
-    border-radius: 18px;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    min-height: 120px;
-    width: 48%;
-    position: relative;
-    overflow: hidden;
-    cursor: pointer;
-    flex: 1;
-    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    transform: translateZ(0);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-}
+        /* 🔥 ЯРКИЕ КАРТОЧКИ */
+        .card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
 
-.stat-card::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+        }
 
-.stat-card:hover::after {
-    opacity: 1;
-}
+        /* 🔥 ЯРКИЕ СТАТИСТИЧЕСКИЕ КАРТОЧКИ */
+        .stat-card {
+            border-radius: 18px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            min-height: 120px;
+            width: 48%;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            flex: 1;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform: translateZ(0);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
 
-.task-card {
-    background: var(--card-bg);
-    border-radius: 16px;
-    padding: 18px;
-    border: 1px solid var(--border);
-    cursor: pointer;
-    transition: transform 0.3s ease;
-    position: relative;
-    width: 100%;
-    box-sizing: border-box;
-    margin-bottom: 0;
-    display: flex;
-    flex-direction: column;
-    /* ИСПРАВЛЕНИЕ: убираем огромную высоту */
-    min-height: auto; /* или min-height: 200px; для нормальной высоты */
-    height: auto; /* позволяем высоте определяться контентом */
-    overflow: visible;
-}
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
 
+        .stat-card:hover::after {
+            opacity: 1;
+        }
 
-.task-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--accent), var(--purple-gradient));
-    opacity: 0.7;
-}
+        /* ИСПРАВЛЕННЫЙ СТИЛЬ ДЛЯ КАРТОЧЕК ЗАДАНИЙ */
+        .task-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 18px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            position: relative;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 0;
+            display: flex;
+            flex-direction: column;
+            /* ИСПРАВЛЕНИЕ: убираем огромную высоту */
+            min-height: 200px; /* Нормальная минимальная высота */
+            height: auto; /* позволяем высоте определяться контентом */
+            overflow: visible;
+        }
 
-.task-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.3);
-    border-color: var(--accent);
-}
+        .task-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent), var(--purple-gradient));
+            opacity: 0.7;
+        }
 
-/* 🔥 ЯРКИЕ КНОПКИ */
-.btn {
-    display: inline-block;
-    background: var(--accent);
-    color: white;
-    border: none;
-    padding: 14px 24px;
-    border-radius: 14px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    text-align: center;
-    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    transform: translateZ(0);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
-    position: relative;
-    overflow: hidden;
-}
+        .task-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.3);
+            border-color: var(--accent);
+        }
 
-.btn::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-    transition: left 0.5s;
-}
+        /* 🔥 ЯРКИЕ КНОПКИ */
+        .btn {
+            display: inline-block;
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform: translateZ(0);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
 
-.btn:hover::before {
-    left: 100%;
-}
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
 
-.btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
-}
+        .btn:hover::before {
+            left: 100%;
+        }
 
-.btn-primary {
-    background: var(--gold-gradient);
-    color: #000;
-    font-weight: 700;
-    box-shadow: 0 4px 15px rgba(255, 204, 0, 0.4);
-    border: 1px solid rgba(255, 215, 0, 0.3);
-}
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+        }
 
-/* 🔥 ЯРКИЕ КАРТОЧКИ В ПРОФИЛЕ */
-.profile-stat {
-    background: var(--card-bg);
-    border-radius: 16px;
-    padding: 20px;
-    text-align: center;
-    border: 1px solid var(--border);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-    backdrop-filter: blur(10px);
-    transition: all 0.3s ease;
-}
+        .btn-primary {
+            background: var(--gold-gradient);
+            color: #000;
+            font-weight: 700;
+            box-shadow: 0 4px 15px rgba(255, 204, 0, 0.4);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
 
-.profile-stat:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-}
+        /* 🔥 ЯРКИЕ КАРТОЧКИ В ПРОФИЛЕ */
+        .profile-stat {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid var(--border);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
 
-/* 🔥 ЯРКИЙ NAVBAR */
-.bottom-nav {
-    position: fixed;
-    bottom: 16px;
-    left: 16px;
-    right: 16px;
-    background: rgba(25, 25, 50, 0.95);
-    border-radius: 18px;
-    padding: 10px;
-    display: flex;
-    justify-content: space-around;
-    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.4);
-    border: 1px solid var(--border);
-    z-index: 1000;
-    backdrop-filter: blur(20px);
-    height: 100px;
-}
+        .profile-stat:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
 
-.nav-item {
-    text-align: center;
-    cursor: pointer;
-    padding: 6px 8px;
-    border-radius: 14px;
-    flex: 1;
-    opacity: 0.7;
-    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 35px;
-    border: 1px solid transparent;
-}
+        /* 🔥 ЯРКИЙ NAVBAR */
+        .bottom-nav {
+            position: fixed;
+            bottom: 16px;
+            left: 16px;
+            right: 16px;
+            background: rgba(25, 25, 50, 0.95);
+            border-radius: 18px;
+            padding: 10px;
+            display: flex;
+            justify-content: space-around;
+            box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border);
+            z-index: 1000;
+            backdrop-filter: blur(20px);
+            height: 100px;
+        }
 
-.nav-item.active {
-    background: var(--accent);
-    opacity: 1;
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
-    transform: translateY(-2px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
+        .nav-item {
+            text-align: center;
+            cursor: pointer;
+            padding: 6px 8px;
+            border-radius: 14px;
+            flex: 1;
+            opacity: 0.7;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 35px;
+            border: 1px solid transparent;
+        }
 
-/* 🔥 ЯРКИЕ МОДАЛЬНЫЕ ОКНА */
-.modal-content {
-    background: var(--card-bg);
-    border-radius: 20px;
-    padding: 24px;
-    width: 90%;
-    max-width: 400px;
-    border: 1px solid var(--border);
-    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
-    max-height: 80vh;
-    overflow-y: auto;
-    backdrop-filter: blur(20px);
-}
+        .nav-item.active {
+            background: var(--accent);
+            opacity: 1;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+            transform: translateY(-2px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
 
-/* 🔥 ЯРКИЕ ПОСТЫ */
-.post-item {
-    background: var(--card-bg);
-    border-radius: 16px;
-    padding: 20px;
-    margin-bottom: 16px;
-    border: 1px solid var(--border);
-    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
-    backdrop-filter: blur(10px);
-    animation: fadeIn 0.6s ease-out;
-    overflow: hidden;
-    position: relative;
-}
+        /* 🔥 ЯРКИЕ МОДАЛЬНЫЕ ОКНА */
+        .modal-content {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 24px;
+            width: 90%;
+            max-width: 400px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            max-height: 80vh;
+            overflow-y: auto;
+            backdrop-filter: blur(20px);
+        }
 
-.post-item::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 4px;
-    height: 100%;
-    background: var(--accent);
-    opacity: 0.7;
-}
+        /* 🔥 ЯРКИЕ ПОСТЫ */
+        .post-item {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            animation: fadeIn 0.6s ease-out;
+            overflow: hidden;
+            position: relative;
+        }
 
-/* 🔥 ЯРКИЕ ФОРМЫ */
-.admin-input, .search-input {
-    width: 100%;
-    background: rgba(30, 30, 60, 0.8);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 14px 16px 14px 45px;
-    color: var(--text-primary);
-    font-size: 14px;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
-}
+        .post-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--accent);
+            opacity: 0.7;
+        }
 
-.admin-input:focus, .search-input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-    background: rgba(35, 35, 70, 0.9);
-}
+        /* 🔥 ЯРКИЕ ФОРМЫ */
+        .admin-input, .search-input {
+            width: 100%;
+            background: rgba(30, 30, 60, 0.8);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 14px 16px 14px 45px;
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
 
-/* 🔥 ЯРКИЕ СЕКЦИИ АДМИНКИ */
-.admin-section {
-    background: var(--card-bg);
-    border-radius: 16px;
-    padding: 20px;
-    margin-bottom: 20px;
-    border: 1px solid var(--border);
-    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
-    backdrop-filter: blur(10px);
-}
+        .admin-input:focus, .search-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+            background: rgba(35, 35, 70, 0.9);
+        }
 
-.admin-task-item {
-    background: rgba(30, 30, 60, 0.8);
-    border-radius: 12px;
-    padding: 15px;
-    margin-bottom: 10px;
-    border: 1px solid var(--border);
-    backdrop-filter: blur(10px);
-    transition: all 0.3s ease;
-}
+        /* 🔥 ЯРКИЕ СЕКЦИИ АДМИНКИ */
+        .admin-section {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+            backdrop-filter: blur(10px);
+        }
 
-.admin-task-item:hover {
-    background: rgba(35, 35, 70, 0.9);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-}
+        .admin-task-item {
+            background: rgba(30, 30, 60, 0.8);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
 
-/* 🔥 ЯРКИЕ ГЕРОЙ БАННЕРЫ */
-.hero-banner {
-    border-radius: 20px;
-    overflow: hidden;
-    margin-bottom: 20px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-    position: relative;
-    height: 180px;
-    background: linear-gradient(45deg, #1a1a3a, #252550);
-    border: 1px solid var(--border);
-}
+        .admin-task-item:hover {
+            background: rgba(35, 35, 70, 0.9);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
 
-/* 🔥 ЯРКИЕ КАРТОЧКИ ОБМЕНА */
-.exchange-card {
-    background: var(--gold-gradient);
-    color: #000;
-    border-radius: 18px;
-    padding: 20px;
-    margin-bottom: 16px;
-    text-align: center;
-    cursor: pointer;
-    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.3);
-    border: 1px solid rgba(255, 215, 0, 0.3);
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
+        /* 🔥 ЯРКИЕ ГЕРОЙ БАННЕРЫ */
+        .hero-banner {
+            border-radius: 20px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+            position: relative;
+            height: 180px;
+            background: linear-gradient(45deg, #1a1a3a, #252550);
+            border: 1px solid var(--border);
+        }
 
-.exchange-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
+        /* 🔥 ЯРКИЕ КАРТОЧКИ ОБМЕНА */
+        .exchange-card {
+            background: var(--gold-gradient);
+            color: #000;
+            border-radius: 18px;
+            padding: 20px;
+            margin-bottom: 16px;
+            text-align: center;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(255, 215, 0, 0.3);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
 
-.exchange-card:hover::before {
-    opacity: 1;
-}
+        .exchange-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
 
-.exchange-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 35px rgba(255, 215, 0, 0.4);
-}
+        .exchange-card:hover::before {
+            opacity: 1;
+        }
 
-/* 🔥 ЯРКИЕ ВКЛАДКИ */
-.tasks-tabs {
-    display: flex;
-    margin-bottom: 20px;
-    background: var(--card-bg);
-    border-radius: 16px;
-    padding: 6px;
-    border: 1px solid var(--border);
-    overflow-x: auto;
-    white-space: nowrap;
-    position: relative;
-    z-index: 2;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(10px);
-}
+        .exchange-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(255, 215, 0, 0.4);
+        }
 
-.task-tab {
-    flex: 1;
-    text-align: center;
-    padding: 10px 8px;
-    border-radius: 12px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    min-width: 80px;
-    border: 1px solid transparent;
-}
+        /* 🔥 ЯРКИЕ ВКЛАДКИ */
+        .tasks-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 6px;
+            border: 1px solid var(--border);
+            overflow-x: auto;
+            white-space: nowrap;
+            position: relative;
+            z-index: 2;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
 
-.task-tab.active {
-    background: var(--accent);
-    color: white;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
+        .task-tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px 8px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            min-width: 80px;
+            border: 1px solid transparent;
+        }
 
-/* 🔥 ЯРКИЕ УВЕДОМЛЕНИЯ */
-.notification {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: var(--accent);
-    color: white;
-    padding: 12px 16px;
-    border-radius: 12px;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.4);
-    z-index: 10000;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    max-width: 300px;
-    animation: slideIn 0.3s ease-out;
-    border: 1px solid var(--border);
-    backdrop-filter: blur(20px);
-}
+        .task-tab.active {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
 
-/* 🔥 ЯРКИЙ ПРОГРЕСС БАР */
-.progress-bar {
-    height: 8px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-    overflow: hidden;
-    margin-bottom: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
+        /* 🔥 ЯРКИЕ УВЕДОМЛЕНИЯ */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--accent);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            max-width: 300px;
+            animation: slideIn 0.3s ease-out;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(20px);
+        }
 
-.progress-fill {
-    height: 100%;
-    background: var(--gold-gradient);
-    border-radius: 4px;
-    width: 0%;
-    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
-}
+        /* 🔥 ЯРКИЙ ПРОГРЕСС БАР */
+        .progress-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
 
-/* 🔥 ЯРКИЕ ИКОНКИ И АВАТАРЫ */
-.profile-avatar {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    overflow: hidden;
-    margin-right: 16px;
-    position: relative;
-    border: 3px solid var(--accent);
-    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
-}
+        .progress-fill {
+            height: 100%;
+            background: var(--gold-gradient);
+            border-radius: 4px;
+            width: 0%;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
 
-.chat-avatar-small {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: var(--purple-gradient);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 12px;
-    color: white;
-    font-weight: 600;
-    font-size: 16px;
-    box-shadow: 0 4px 10px rgba(139, 92, 246, 0.3);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-}
+        /* 🔥 ЯРКИЕ ИКОНКИ И АВАТАРЫ */
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            overflow: hidden;
+            margin-right: 16px;
+            position: relative;
+            border: 3px solid var(--accent);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
 
-/* 🔥 УСИЛЕННЫЕ ТЕНИ И ГЛУБИНА */
-.card, .task-card, .profile-stat, .admin-section {
-    box-shadow: 
-        0 8px 30px rgba(0, 0, 0, 0.25),
-        0 1px 3px rgba(255, 255, 255, 0.05) inset;
-}
+        .chat-avatar-small {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--purple-gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+            box-shadow: 0 4px 10px rgba(139, 92, 246, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
 
-/* 🔥 УЛУЧШЕННЫЕ ГРАДИЕНТЫ */
-.stat-card.balance-card {
-    background: linear-gradient(135deg, #8b5cf6, #7c3aed, #6d28d9);
-    box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4);
-}
+        /* 🔥 УСИЛЕННЫЕ ТЕНИ И ГЛУБИНА */
+        .card, .task-card, .profile-stat, .admin-section {
+            box-shadow: 
+                0 8px 30px rgba(0, 0, 0, 0.25),
+                0 1px 3px rgba(255, 255, 255, 0.05) inset;
+        }
 
-.stat-card.support-card {
-    background: linear-gradient(135deg, #0ea5e9, #0369a1, #075985);
-    box-shadow: 0 8px 25px rgba(14, 165, 233, 0.4);
-}
+        /* 🔥 УЛУЧШЕННЫЕ ГРАДИЕНТЫ */
+        .stat-card.balance-card {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed, #6d28d9);
+            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4);
+        }
 
-/* 🔥 ПОДСВЕТКА ПРИ НАВЕДЕНИИ */
-.card:hover, .profile-stat:hover, .admin-task-item:hover {
-    box-shadow: 
-        0 12px 35px rgba(0, 0, 0, 0.3),
-        0 0 0 1px rgba(99, 102, 241, 0.1);
-}
+        .stat-card.support-card {
+            background: linear-gradient(135deg, #0ea5e9, #0369a1, #075985);
+            box-shadow: 0 8px 25px rgba(14, 165, 233, 0.4);
+        }
 
-.bottom-nav {
-    position: fixed;
-    bottom: 16px;
-    left: 16px;
-    right: 16px;
-    background: var(--nav-bg);
-    border-radius: 18px;
-    padding: 10px; /* Уменьшили padding */
-    display: flex;
-    justify-content: space-around;
-    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.3);
-    border: 1px solid var(--border);
-    z-index: 1000;
-    backdrop-filter: blur(15px);
-    height: 100px; /* Уменьшили высоту */
-}
+        /* 🔥 ПОДСВЕТКА ПРИ НАВЕДЕНИИ */
+        .card:hover, .profile-stat:hover, .admin-task-item:hover {
+            box-shadow: 
+                0 12px 35px rgba(0, 0, 0, 0.3),
+                0 0 0 1px rgba(99, 102, 241, 0.1);
+        }
 
-.nav-item {
-    text-align: center;
-    cursor: pointer;
-    padding: 6px 8px; /* Уменьшили padding */
-    border-radius: 14px;
-    flex: 1;
-    opacity: 0.7;
-    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 35px; /* Уменьшили минимальную высоту */
-}
+        .bottom-nav {
+            position: fixed;
+            bottom: 16px;
+            left: 16px;
+            right: 16px;
+            background: var(--nav-bg);
+            border-radius: 18px;
+            padding: 10px;
+            display: flex;
+            justify-content: space-around;
+            box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            z-index: 1000;
+            backdrop-filter: blur(15px);
+            height: 100px;
+        }
 
-.nav-icon {
-    font-size: 18px; /* Уменьшили размер иконок */
-    margin-bottom: 2px;
-    color: var(--text-secondary);
-}
+        .nav-item {
+            text-align: center;
+            cursor: pointer;
+            padding: 6px 8px;
+            border-radius: 14px;
+            flex: 1;
+            opacity: 0.7;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 35px;
+        }
 
-.nav-label {
-    font-size: 10px; /* Уменьшили размер текста */
-    color: var(--text-secondary);
-    font-weight: 500;
-}
-.main-content {
-    min-height: calc(100vh - 200px);
-    position: relative;
-    padding: 16px;
-    padding-bottom: 100px;
-    width: 100%;
-    box-sizing: border-box;
-    overflow-x: hidden;
-}
-/* Убедимся что контент не перекрывается */
-.tab-content {
-    min-height: calc(100vh - 250px);
-    padding-bottom: 20px;
-}
-.page {
-    padding-bottom: 100px; /* Отступ для навигации */
-}
-      
+        .nav-icon {
+            font-size: 18px;
+            margin-bottom: 2px;
+            color: var(--text-secondary);
+        }
 
-       .container {
-    max-width: 100%;
-    margin: 0 auto;
-    position: relative;
-    padding: 0;
-    box-sizing: border-box;
-    width: 100%;
-}
+        .nav-label {
+            font-size: 10px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
 
+        .main-content {
+            min-height: calc(100vh - 200px);
+            position: relative;
+            padding: 16px;
+            padding-bottom: 100px;
+            width: 100%;
+            box-sizing: border-box;
+            overflow-x: hidden;
+        }
+
+        /* Убедимся что контент не перекрывается */
+        .tab-content {
+            min-height: calc(100vh - 250px);
+            padding-bottom: 20px;
+        }
+
+        .page {
+            padding-bottom: 100px;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            position: relative;
+            padding: 0;
+            box-sizing: border-box;
+            width: 100%;
+        }
 
         .header {
             text-align: center;
@@ -953,7 +946,6 @@ body {
             transform: scale(0.96);
         }
 
-        
         .nav-item {
             text-align: center;
             cursor: pointer;
@@ -1064,7 +1056,8 @@ body {
         .withdraw-history {
             margin-top: 25px;
         }
-      /* Адаптивность */
+
+        /* Адаптивность */
         @media (max-width: 768px) {
             .withdraw-balance {
                 font-size: 48px;
@@ -1074,587 +1067,6 @@ body {
                 padding: 16px 24px;
                 font-size: 16px;
             }
-        }
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Oxygen, Ubuntu, sans-serif;
-            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        :root {
-            --bg-primary: #050510;
-            --bg-secondary: #0a0a1a;
-            --text-primary: #ffffff;
-            --text-secondary: #8b9bda;
-            --accent: #6366f1;
-            --accent-hover: #4f46e5;
-            --card-bg: #0f0f23;
-            --border: #1a1a3a;
-            --shadow: rgba(99, 102, 241, 0.1);
-            --nav-bg: rgba(15, 15, 35, 0.85);
-            --gold: #ffd700;
-            --gold-gradient: linear-gradient(135deg, #ffd700, #ffb700);
-            --purple-gradient: linear-gradient(135deg, #8b5cf6, #7c3aed);
-            --blue-gradient: linear-gradient(135deg, #3b82f6, #2563eb);
-            --teal-gradient: linear-gradient(135deg, #0ea5e9, #0369a1);
-            --success: #10b981;
-            --error: #ef4444;
-            --warning: #f59e0b;
-        }
-
-       
-
-        .container {
-            max-width: 100%;
-            margin: 0 auto;
-            position: relative;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 25px;
-            position: relative;
-        }
-
-        .logo {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 8px;
-            cursor: pointer;
-        }
-
-        .logo-text {
-            font-size: 28px;
-            font-weight: 800;
-            background: var(--gold-gradient);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            letter-spacing: -0.5px;
-        }
-
-        .logo-icon {
-            width: 32px;
-            height: 32px;
-            margin-right: 10px;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .slogan {
-            font-size: 13px;
-            color: var(--text-secondary);
-            font-weight: 500;
-            margin-bottom: 20px;
-        }
-
-        .video-icon {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            border-radius: 10px;
-        }
-
-        .video-container {
-            width: 100px;
-            height: 100px;
-            border-radius: 10px;
-            overflow: hidden;
-            margin-bottom: 10px;
-        }
-
-        .video-medium {
-            width: 40px;
-            height: 40px;
-        }
-
-        .video-large {
-            width: 56px;
-            height: 56px;
-        }
-
-        .card {
-            background: var(--card-bg);
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 16px;
-            border: 1px solid var(--border);
-            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
-            backdrop-filter: blur(10px);
-        }
-
-        .hero-banner {
-            border-radius: 20px;
-            overflow: hidden;
-            margin-bottom: 20px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
-            position: relative;
-            height: 180px;
-            background: linear-gradient(45deg, #0f0f23, #1a1a3a);
-        }
-
-        .hero-banner video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .stats-grid {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 20px;
-            justify-content: space-between;
-        }
-/* Исправление основной вкладки заданий */
-.tasks-tab {
-    min-height: 500px;
-    position: relative;
-    width: 100%;
-    box-sizing: border-box;
-    padding: 0;
-    margin: 0;
-    overflow: visible;
-}
-
-/* Для контейнеров с разными категориями заданий */
-#new-tasks,
-#confirmation-tasks,
-#completed-tasks,
-#rejected-tasks {
-    position: relative;
-    min-height: auto; /* убираем фиксированную высоту */
-    height: auto;
-    width: 100%;
-    box-sizing: border-box;
-    padding: 0;
-    margin: 0;
-    display: none;
-}
-
-/* Фикс для контейнера заданий */
-#new-tasks.active {
-    display: block !important;
-    position: relative;
-    min-height: 400px;
-}
-
-/* Убираем все transition для стабильности */
-.tasks-tab * {
-    transition: none !important;
-}
-
-/* Убедимся, что контейнеры заданий тоже имеют правильную высоту */
-.tasks-grid {
-    display: grid;
-    gap: 16px;
-    grid-template-columns: 1fr;
-    min-height: auto; /* убираем фиксированную минимальную высоту */
-    height: auto;
-}
-
-.task-card {
-    background: var(--card-bg);
-    border-radius: 16px;
-    padding: 18px; /* Увеличиваем отступы */
-    border: 1px solid var(--border);
-    cursor: pointer;
-    transition: transform 0.3s ease;
-    position: relative;
-    width: 100%;
-    box-sizing: border-box;
-    margin-bottom: 0;
-    display: flex;
-    flex-direction: column;
-    min-height: 200px; /* Увеличиваем минимальную высоту */
-    /* УБИРАЕМ ВСЕ ОГРАНИЧЕНИЯ ВЫСОТЫ И ОБРЕЗКИ */
-    overflow: visible; /* Разрешаем показ всего контента */
-}
-
-
-/* Гарантируем отступы между карточками */
-.tasks-grid > .task-card {
-    margin: 0 !important;
-}
-
-/* Убираем лишние отступы у контейнеров */
-#new-tasks,
-#confirmation-tasks,
-#completed-tasks,
-#rejected-tasks {
-    padding: 0;
-    margin: 0;
-}
-/* Активный контейнер */
-#new-tasks.active,
-#confirmation-tasks.active,
-#completed-tasks.active,
-#rejected-tasks.active {
-    display: block;
-    height: auto;
-    min-height: auto;
-}
-
-.tasks-grid {
-    display: grid;
-    gap: 20px !important; /* Увеличиваем gap */
-    grid-template-columns: 1fr;
-    min-height: 200px;
-    position: relative;
-    width: 100%;
-    box-sizing: border-box;
-    padding: 0;
-    margin: 0;
-}
-
-.task-card {
-    background: var(--card-bg);
-    border-radius: 20px;
-    padding: 20px;
-    border: 1px solid var(--border);
-    cursor: pointer;
-    transition: all 0.3s ease;
-    position: relative;
-    width: 100%;
-    box-sizing: border-box;
-    margin-bottom: 0 !important; /* Убираем лишние отступы */
-    display: flex;
-    flex-direction: column;
-    min-height: 200px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
-}
-
-/* Принудительно устанавливаем отступы между карточками */
-.tasks-grid > .task-card {
-    margin: 0 !important;
-}
-
-/* Убедимся что контейнеры не добавляют лишних отступов */
-#new-tasks,
-#confirmation-tasks,
-#completed-tasks,
-#rejected-tasks {
-    padding: 0;
-    margin: 0;
-}
-
-/* Фикс для мобильных устройств */
-@media (max-width: 768px) {
-    .tasks-grid {
-        gap: 16px !important;
-    }
-    
-    .task-card {
-        padding: 16px;
-        min-height: 180px;
-    }
-}
-.task-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
-    border-color: var(--accent);
-}
-.task-card:active {
-    transform: translateY(-2px);
-}
-/* Убираем анимации для всех элементов в tasks-tab */
-.tasks-tab .fade-in {
-    animation: none !important;
-    opacity: 1 !important;
-}
-
-/* Фикс для контейнера фильтров */
-.filters-container {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-    overflow-x: auto;
-    padding-bottom: 5px;
-    flex-wrap: nowrap;
-    position: relative;
-    z-index: 1;
-}
-
-/* Фикс для поиска */
-.search-container {
-    margin-bottom: 20px;
-    position: relative;
-    z-index: 1;
-}
-
-/* Убираем задержки анимации */
-.task-card[style*="animation-delay"] {
-    animation-delay: 0s !important;
-}
-
-/* Фикс для вкладок заданий */
-.tasks-tabs {
-    display: flex;
-    margin-bottom: 20px;
-    background: var(--card-bg);
-    border-radius: 16px;
-    padding: 6px;
-    border: 1px solid var(--border);
-    overflow-x: auto;
-    white-space: nowrap;
-    position: relative;
-    z-index: 2;
-}
-
-/* Гарантируем что контейнеры не перекрываются */
-#new-tasks,
-#confirmation-tasks,
-#completed-tasks,
-#rejected-tasks {
-    position: relative;
-    min-height: 300px;
-}
-
-/* Фикс для пустого состояния */
-.no-tasks {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    text-align: center;
-    width: 100%;
-}
-        .stat-card {
-            border-radius: 18px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            min-height: 120px;
-            width: 48%;
-            position: relative;
-            overflow: hidden;
-            cursor: pointer;
-            flex: 1;
-            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            transform: translateZ(0);
-        }
-
-        .stat-card:active {
-            transform: scale(0.97) translateZ(0);
-        }
-
-        .balance-card {
-            background: var(--purple-gradient);
-            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.2);
-        }
-
-        .support-card {
-            background: var(--teal-gradient);
-            box-shadow: 0 6px 20px rgba(14, 165, 233, 0.2);
-        }
-
-        .stat-icon {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .stat-label {
-            font-size: 12px;
-            font-weight: 600;
-            color: rgba(255, 255, 255, 0.95);
-            margin-bottom: 8px;
-        }
-
-        .stat-value {
-            font-size: 22px;
-            font-weight: 800;
-            color: white;
-            line-height: 1.2;
-        }
-
-        .exchange-card {
-            background: var(--gold-gradient);
-            color: #000;
-            border-radius: 18px;
-            padding: 20px;
-            margin-bottom: 16px;
-            text-align: center;
-            cursor: pointer;
-            box-shadow: 0 6px 20px rgba(255, 215, 0, 0.2);
-        }
-
-        .exchange-card:active {
-            transform: scale(0.98);
-        }
-
-        .exchange-icon {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-
-        .exchange-title {
-            font-size: 18px;
-            font-weight: 700;
-            margin-bottom: 6px;
-        }
-
-        .exchange-text {
-            font-size: 13px;
-            opacity: 0.9;
-            line-height: 1.3;
-        }
-
-        .post-promo {
-            background: var(--card-bg);
-            border-radius: 18px;
-            padding: 20px;
-            text-align: center;
-            border: 1px solid var(--border);
-            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
-        }
-
-        .post-icon {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-bottom: 14px;
-        }
-
-        .post-title {
-            font-size: 18px;
-            font-weight: 700;
-            margin-bottom: 8px;
-            color: var(--text-primary);
-        }
-
-        .post-description {
-            color: var(--text-secondary);
-            margin-bottom: 16px;
-            font-size: 13px;
-            line-height: 1.4;
-        }
-
-        .btn {
-            display: inline-block;
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 14px 24px;
-            border-radius: 14px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            text-align: center;
-            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            transform: translateZ(0);
-        }
-
-        .btn:active {
-            transform: scale(0.95) translateZ(0);
-        }
-
-        .btn-primary {
-            background: var(--gold-gradient);
-            color: #000;
-            font-weight: 700;
-            box-shadow: 0 4px 12px rgba(255, 204, 0, 0.25);
-        }
-
-        .btn-full {
-            width: 100%;
-        }
-
-        .btn-success {
-            background: var(--success);
-        }
-
-        .btn-warning {
-            background: var(--warning);
-        }
-
-        .btn-error {
-            background: var(--error);
-        }
-
-        .tasks-button-container {
-            margin: 25px 0;
-            text-align: center;
-        }
-
-        .tasks-btn {
-            background: var(--purple-gradient);
-            color: white;
-            border: none;
-            padding: 14px 20px;
-            border-radius: 16px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.25);
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .tasks-btn:active {
-            transform: scale(0.96);
-        }
-
-      
-
-        .nav-item {
-            text-align: center;
-            cursor: pointer;
-            padding: 8px 12px;
-            border-radius: 14px;
-            flex: 1;
-            opacity: 0.7;
-            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-
-        .nav-item.active {
-            background: var(--accent);
-            opacity: 1;
-            box-shadow: 0 0 20px rgba(99, 102, 241, 0.25);
-            transform: translateY(-2px);
-        }
-
-        .nav-item.active .nav-icon,
-        .nav-item.active .nav-label {
-            color: white;
-        }
-
-        .nav-item.notification {
-            position: relative;
-        }
-
-        .nav-item.notification::after {
-            content: '';
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            width: 8px;
-            height: 8px;
-            background: var(--error);
-            border-radius: 50%;
-        }
-
-        .nav-icon {
-            font-size: 20px;
-            margin-bottom: 4px;
-            color: var(--text-secondary);
-        }
-
-        .nav-label {
-            font-size: 11px;
-            color: var(--text-secondary);
-            font-weight: 500;
         }
 
         .modal {
@@ -1692,14 +1104,14 @@ body {
             overflow-y: auto;
         }
 
-       .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 20px;
-    position: relative;
-    flex-shrink: 0;
-}
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            position: relative;
+            flex-shrink: 0;
+        }
 
         .modal-title {
             font-size: 20px;
@@ -1710,29 +1122,29 @@ body {
             color: transparent;
         }
 
-      .modal-close {
-    background: none;
-    border: none;
-    font-size: 24px;
-    color: var(--text-secondary);
-    cursor: pointer;
-    position: absolute;
-    top: -10px;
-    right: -10px;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    background: var(--card-bg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: var(--card-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
 
-.modal-body {
-    margin-bottom: 20px;
-    text-align: left;
-}
+        .modal-body {
+            margin-bottom: 20px;
+            text-align: left;
+        }
 
         .balance-amount {
             font-size: 48px;
@@ -1780,31 +1192,30 @@ body {
         }
 
         /* Уменьшаем заголовок чата */
-.chat-header {
-    background: var(--card-bg);
-    padding: 12px 16px; /* Уменьшили padding */
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 10px; /* Уменьшили расстояние */
-}
+        .chat-header {
+            background: var(--card-bg);
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
-.chat-avatar {
-    width: 40px; /* Уменьшили размер аватара */
-    height: 40px;
-    border-radius: 50%;
-    background: var(--purple-gradient);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-}
+        .chat-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--purple-gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
 
-.chat-avatar .video-icon {
-    width: 24px; /* Уменьшили иконку */
-    height: 24px;
-}
-
+        .chat-avatar .video-icon {
+            width: 24px;
+            height: 24px;
+        }
 
         .chat-info {
             flex: 1;
@@ -1829,27 +1240,29 @@ body {
         }
 
         /* Уменьшаем контейнеры чатов */
-.chat-messages {
-    flex: 1;
-    padding: 120px; /* Уменьшили padding */
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 8px; /* Уменьшили расстояние между сообщениями */
-    max-height: calc(100vh - 140px);
-}
+        .chat-messages {
+            flex: 1;
+            padding: 120px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: calc(100vh - 140px);
+        }
+
         .message {
-    max-width: 85%;
-    padding: 8px 12px; /* Уменьшили padding */
-    border-radius: 12px; /* Немного уменьшили скругление */
-    margin-bottom: 4px;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    white-space: pre-wrap;
-    position: relative;
-    font-size: 14px; /* Уменьшили размер шрифта */
-    line-height: 1.3; /* Уменьшили межстрочный интервал */
-}
+            max-width: 85%;
+            padding: 8px 12px;
+            border-radius: 12px;
+            margin-bottom: 4px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: pre-wrap;
+            position: relative;
+            font-size: 14px;
+            line-height: 1.3;
+        }
+
         .message-admin {
             background: var(--card-bg);
             align-self: flex-start;
@@ -1862,38 +1275,38 @@ body {
             border-bottom-right-radius: 4px;
         }
 
-     /* Уменьшаем поле ввода в чате */
-.chat-input {
-    padding: 10px 12px; /* Уменьшили padding */
-    background: var(--card-bg);
-    border-top: 1px solid var(--border);
-    display: flex;
-    gap: 10px; /* Уменьшили расстояние */
-}
+        /* Уменьшаем поле ввода в чате */
+        .chat-input {
+            padding: 10px 12px;
+            background: var(--card-bg);
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+        }
 
-.chat-input input {
-    flex: 1;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: 18px; /* Немного уменьшили скругление */
-    padding: 10px 14px; /* Уменьшили padding */
-    color: var(--text-primary);
-    font-size: 14px;
-}
+        .chat-input input {
+            flex: 1;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 10px 14px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
 
-.chat-send {
-    background: var(--accent);
-    border: none;
-    border-radius: 50%;
-    width: 40px; /* Уменьшили размер кнопки */
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    cursor: pointer;
-    font-size: 14px; /* Уменьшили размер стрелки */
-}
+        .chat-send {
+            background: var(--accent);
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
 
         .prices-modal {
             position: fixed;
@@ -2389,422 +1802,403 @@ body {
             border-color: var(--accent);
         }
         
+        /* ИСПРАВЛЕННЫЙ СТИЛЬ ДЛЯ ГРИДА ЗАДАНИЙ */
         .tasks-grid {
-    display: grid;
-    gap: 16px;
-    grid-template-columns: 1fr;
-    min-height: 200px;
-}
+            display: grid;
+            gap: 16px;
+            grid-template-columns: 1fr;
+            min-height: 200px;
+            height: auto;
+        }
 
-.task-card {
-    background: var(--card-bg);
-    border-radius: 16px;
-    padding: 16px;
-    border: 1px solid var(--border);
-    cursor: pointer;
-    transition: transform 0.3s ease;
-    position: relative;
-    width: 100%;
-    box-sizing: border-box;
-    margin-bottom: 0; /* Убираем лишние отступы */
-}
-
-/* Убираем анимацию fade-in для заданий чтобы не было смещения */
-.task-card.fade-in {
-    animation: none;
-}
+        /* Убираем анимацию fade-in для заданий чтобы не было смещения */
+        .task-card.fade-in {
+            animation: none;
+        }
         
-/* Улучшаем отображение контента внутри карточки */
-.task-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 12px;
-    flex-wrap: wrap;
-}
+        /* 🔧 ЗАГОЛОВОК И ЦЕНА */
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+            gap: 12px;
+            width: 100%;
+            flex-wrap: wrap;
+        }
 
-/* Заголовок - показываем полностью */
-.task-title {
-    font-size: 17px;
-    font-weight: 700;
-    margin-bottom: 10px;
-    line-height: 1.3;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    max-width: 100%;
-    color: var(--text-primary);
-    flex-shrink: 0;
-    /* УБИРАЕМ ОГРАНИЧЕНИЕ СТРОК */
-    display: block;
-    overflow: visible;
-}
+        /* Заголовок - показываем полностью */
+        .task-title {
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            line-height: 1.3;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
+            color: var(--text-primary);
+            flex-shrink: 0;
+            /* УБИРАЕМ ОГРАНИЧЕНИЕ СТРОК */
+            display: block;
+            overflow: visible;
+            flex: 1;
+            min-width: 0;
+        }
 
-/* Категория */
-.task-category {
-    font-size: 12px;
-    color: var(--accent);
-    background: rgba(99, 102, 241, 0.1);
-    padding: 5px 10px;
-    border-radius: 12px;
-    display: inline-block;
-    font-weight: 600;
-    border: 1px solid rgba(99, 102, 241, 0.2);
-    flex-shrink: 0;
-}
-.task-price {
-    font-size: 20px;
-    font-weight: 800;
-    background: var(--gold-gradient);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    white-space: nowrap;
-    margin-left: 10px;
-}
-/* Мета-информация */
-.task-meta {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-    flex-wrap: wrap;
-    gap: 8px;
-    flex-shrink: 0;
-}
+        /* Категория */
+        .task-category {
+            font-size: 12px;
+            color: var(--accent);
+            background: rgba(99, 102, 241, 0.1);
+            padding: 5px 10px;
+            border-radius: 12px;
+            display: inline-block;
+            font-weight: 600;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            flex-shrink: 0;
+        }
 
-/* Изображение задания */
-.task-image {
-    width: 100%;
-    height: 120px; /* Увеличиваем высоту изображения */
-    border-radius: 10px;
-    margin-bottom: 12px;
-    object-fit: cover;
-    background: var(--bg-secondary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    position: relative;
-    flex-shrink: 0;
-}
-.task-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s ease;
-}
-.task-card:hover .task-image img {
-    transform: scale(1.05);
-}
+        /* Цена */
+        .task-price {
+            font-size: 20px;
+            font-weight: 800;
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
 
-.task-image-placeholder {
-    width: 100%;
-    height: 120px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, var(--bg-secondary), var(--card-bg));
-    border-radius: 10px;
-    color: var(--text-secondary);
-    font-size: 14px;
-    border: 2px dashed var(--border);
-    flex-shrink: 0;
-}
+        /* Мета-информация */
+        .task-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 8px;
+            flex-shrink: 0;
+        }
 
-.task-description {
-    font-size: 14px;
-    color: var(--text-secondary);
-    line-height: 1.4;
-    margin-bottom: 15px;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    flex: 1;
-}
+        /* Изображение задания */
+        .task-image {
+            width: 100%;
+            height: 120px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            object-fit: cover;
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+            flex-shrink: 0;
+        }
 
-.task-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: auto;
-    padding-top: 12px;
-    border-top: 1px solid var(--border);
-    flex-wrap: wrap;
-    gap: 8px;
-}
+        .task-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
 
-/* Описание - показываем полностью */
-.task-description {
-    font-size: 14px;
-    color: var(--text-secondary);
-    margin-bottom: 15px;
-    line-height: 1.4;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    white-space: pre-wrap;
-    flex: 1; /* Занимает доступное пространство */
-    /* УБИРАЕМ ОГРАНИЧЕНИЕ СТРОК */
-    display: block;
-    overflow: visible;
-    min-height: auto;
-}
+        .task-card:hover .task-image img {
+            transform: scale(1.05);
+        }
 
-/* Плавное ограничение текста с кнопкой "Читать далее" */
-.task-description.collapsed {
-    max-height: 60px;
-    overflow: hidden;
-}
+        .task-image-placeholder {
+            width: 100%;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--bg-secondary), var(--card-bg));
+            border-radius: 10px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            border: 2px dashed var(--border);
+            flex-shrink: 0;
+        }
 
-.task-description.collapsed::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 30px;
-    background: linear-gradient(transparent, var(--card-bg));
-    pointer-events: none;
-}
+        /* Описание - показываем полностью */
+        .task-description {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+            line-height: 1.4;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: pre-wrap;
+            flex: 1;
+            /* УБИРАЕМ ОГРАНИЧЕНИЕ СТРОК */
+            display: block;
+            overflow: visible;
+            min-height: auto;
+        }
 
-.read-more-btn {
-    background: var(--accent);
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-    margin-top: 8px;
-    display: inline-block;
-    align-self: flex-start;
-}
+        /* Плавное ограничение текста с кнопкой "Читать далее" */
+        .task-description.collapsed {
+            max-height: 60px;
+            overflow: hidden;
+        }
 
-/* Футер */
-.task-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: auto; /* Прижимаем к низу */
-    flex-shrink: 0;
-    width: 100%;
-    padding-top: 12px;
-    border-top: 1px solid var(--border);
-}
+        .task-description.collapsed::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 30px;
+            background: linear-gradient(transparent, var(--card-bg));
+            pointer-events: none;
+        }
 
-/* Время */
-.task-time {
-    font-size: 12px;
-    color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-weight: 500;
-    flex-shrink: 0;
-}
+        .read-more-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 8px;
+            display: inline-block;
+            align-self: flex-start;
+        }
 
+        /* Футер */
+        .task-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+            flex-shrink: 0;
+            width: 100%;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+            flex-wrap: wrap;
+            gap: 8px;
+        }
 
-.task-time::before {
-    content: '⏱️';
-    font-size: 14px;
-}
+        /* Время */
+        .task-time {
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 500;
+            flex-shrink: 0;
+        }
 
+        .task-time::before {
+            content: '⏱️';
+            font-size: 14px;
+        }
 
-/* Кнопка */
-.task-btn {
-    background: var(--accent);
-    color: white;
-    border: none;
-    padding: 10px 18px;
-    border-radius: 10px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-    flex-shrink: 0;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
-}
-.task-btn::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-    transition: left 0.5s;
-}
-.task-btn:hover {
-    background: var(--accent-hover);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.35);
-}
-.task-btn:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
-}
-/* Индикатор доступности */
-.task-availability {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    background: var(--purple-gradient);
-    color: white;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    z-index: 2;
-}
+        /* Кнопка */
+        .task-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+        }
 
+        .task-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
 
-/* Адаптивность для мобильных */
-@media (max-width: 768px) {
-    .tasks-grid {
-        gap: 10px; /* Уменьшаем промежутки на мобильных */
-    }
-    
-    .task-card {
-        padding: 14px; /* Еще меньше на мобильных */
-        min-height: 130px; /* Еще меньше на мобильных */
-        max-height: 150px; /* Еще меньше на мобильных */
-    }
-    
-    .task-title {
-        font-size: 15px; /* Еще меньше на мобильных */
-        -webkit-line-clamp: 2;
-        line-clamp: 2;
-    }
-    
-    .task-price {
-        font-size: 16px; /* Еще меньше на мобильных */
-    }
-    
-    .task-description {
-        font-size: 12px; /* Еще меньше на мобильных */
-        -webkit-line-clamp: 2;
-        line-clamp: 2;
-    }
-    
-    .task-btn {
-        padding: 6px 12px; /* Еще меньше на мобильных */
-        font-size: 12px; /* Еще меньше на мобильных */
-    }
-}
+        .task-btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.35);
+        }
 
-@media (max-width: 480px) {
-    .task-card {
-        padding: 12px; /* Минимальные отступы */
-        min-height: 120px; /* Минимальная высота */
-        max-height: 140px; /* Максимальная высота */
-    }
-    
-    .task-header {
-        flex-direction: column;
-        gap: 6px; /* Уменьшаем промежуток */
-        align-items: flex-start;
-    }
-    
-    .task-price {
-        align-self: flex-start;
-        font-size: 15px; /* Минимальный размер */
-    }
-    
-    .task-footer {
-        flex-direction: column;
-        gap: 8px; /* Уменьшаем промежуток */
-        align-items: flex-start;
-    }
-    
-    .task-btn {
-        width: 100%;
-        text-align: center;
-        padding: 8px 12px; /* Немного увеличиваем для удобства касания */
-    }
-}
-/* 🔧 АНИМАЦИЯ ПОЯВЛЕНИЯ */
-@keyframes taskCardAppear {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
+        .task-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+        }
 
-.task-card {
-    animation: taskCardAppear 0.5s ease-out;
-}
+        /* Индикатор доступности */
+        .task-availability {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: var(--purple-gradient);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            z-index: 2;
+        }
 
-/* 🔧 СТИЛИ ДЛЯ РАЗНЫХ СТАТУСОВ */
-.task-card.completed {
-    border-left: 4px solid var(--success);
-    background: linear-gradient(135deg, var(--card-bg), rgba(16, 185, 129, 0.05));
-}
+        /* Адаптивность для мобильных */
+        @media (max-width: 768px) {
+            .tasks-grid {
+                gap: 10px;
+            }
+            
+            .task-card {
+                padding: 14px;
+                min-height: 130px;
+            }
+            
+            .task-title {
+                font-size: 15px;
+                -webkit-line-clamp: 2;
+                line-clamp: 2;
+            }
+            
+            .task-price {
+                font-size: 16px;
+            }
+            
+            .task-description {
+                font-size: 12px;
+                -webkit-line-clamp: 2;
+                line-clamp: 2;
+            }
+            
+            .task-btn {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+        }
 
-.task-card.pending {
-    border-left: 4px solid var(--warning);
-    background: linear-gradient(135deg, var(--card-bg), rgba(245, 158, 11, 0.05));
-}
+        @media (max-width: 480px) {
+            .task-card {
+                padding: 12px;
+                min-height: 120px;
+            }
+            
+            .task-header {
+                flex-direction: column;
+                gap: 6px;
+                align-items: flex-start;
+            }
+            
+            .task-price {
+                align-self: flex-start;
+                font-size: 15px;
+            }
+            
+            .task-footer {
+                flex-direction: column;
+                gap: 8px;
+                align-items: flex-start;
+            }
+            
+            .task-btn {
+                width: 100%;
+                text-align: center;
+                padding: 8px 12px;
+            }
+        }
 
-.task-card.rejected {
-    border-left: 4px solid var(--error);
-    background: linear-gradient(135deg, var(--card-bg), rgba(239, 68, 68, 0.05));
-}
+        /* 🔧 АНИМАЦИЯ ПОЯВЛЕНИЯ */
+        @keyframes taskCardAppear {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
 
-/* 🔧 ИНДИКАТОР ПРОГРЕССА */
-.task-progress {
-    width: 100%;
-    height: 4px;
-    background: var(--bg-secondary);
-    border-radius: 2px;
-    margin-bottom: 12px;
-    overflow: hidden;
-}
+        .task-card {
+            animation: taskCardAppear 0.5s ease-out;
+        }
 
-.task-progress-bar {
-    height: 100%;
-    background: var(--accent);
-    border-radius: 2px;
-    transition: width 0.3s ease;
-}
+        /* 🔧 СТИЛИ ДЛЯ РАЗНЫХ СТАТУСОВ */
+        .task-card.completed {
+            border-left: 4px solid var(--success);
+            background: linear-gradient(135deg, var(--card-bg), rgba(16, 185, 129, 0.05));
+        }
 
-.task-progress-text {
-    font-size: 11px;
-    color: var(--text-secondary);
-    text-align: right;
-    margin-top: 4px;
-}
-/* Сложность */
-.task-difficulty {
-    font-size: 11px;
-    font-weight: 700;
-    padding: 4px 8px;
-    border-radius: 10px;
-    text-transform: uppercase;
-    flex-shrink: 0;
-}
+        .task-card.pending {
+            border-left: 4px solid var(--warning);
+            background: linear-gradient(135deg, var(--card-bg), rgba(245, 158, 11, 0.05));
+        }
 
-.task-difficulty.легкая {
-    background: rgba(16, 185, 129, 0.15);
-    color: #10b981;
-    border: 1px solid rgba(16, 185, 129, 0.3);
-}
+        .task-card.rejected {
+            border-left: 4px solid var(--error);
+            background: linear-gradient(135deg, var(--card-bg), rgba(239, 68, 68, 0.05));
+        }
 
-.task-difficulty.средняя {
-    background: rgba(245, 158, 11, 0.15);
-    color: #f59e0b;
-    border: 1px solid rgba(245, 158, 11, 0.3);
-}
+        /* 🔧 ИНДИКАТОР ПРОГРЕССА */
+        .task-progress {
+            width: 100%;
+            height: 4px;
+            background: var(--bg-secondary);
+            border-radius: 2px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
 
-.task-difficulty.сложная {
-    background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
-    border: 1px solid rgba(239, 68, 68, 0.3);
-}
+        .task-progress-bar {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        .task-progress-text {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-align: right;
+            margin-top: 4px;
+        }
+
+        /* Сложность */
+        .task-difficulty {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 10px;
+            text-transform: uppercase;
+            flex-shrink: 0;
+        }
+
+        .task-difficulty.легкая {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .task-difficulty.средняя {
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .task-difficulty.сложная {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
         .no-tasks {
             text-align: center;
             padding: 40px 20px;
@@ -2816,139 +2210,140 @@ body {
             margin-bottom: 16px;
         }
         
-       .task-modal-content {
-    background: var(--card-bg);
-    border-radius: 20px;
-    padding: 24px;
-    width: 95%;
-    max-width: 500px;
-    max-height: 85vh;
-    border: 1px solid var(--border);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-    overflow-y: auto;
-}
+        .task-modal-content {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 24px;
+            width: 95%;
+            max-width: 500px;
+            max-height: 85vh;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            overflow-y: auto;
+        }
 
-      .task-modal-title {
-    font-size: 22px;
-    font-weight: 700;
-    margin-bottom: 8px;
-    background: var(--gold-gradient);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    line-height: 1.3;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    max-width: 80%;
-}
-.task-modal-category {
-    display: inline-block;
-    background: var(--bg-secondary);
-    padding: 4px 12px;
-    border-radius: 8px;
-    font-size: 12px;
-    color: var(--text-secondary);
-    margin-bottom: 16px;
-}
+        .task-modal-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            line-height: 1.3;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 80%;
+        }
 
-.task-modal-price {
-    font-size: 28px;
-    font-weight: 800;
-    margin: 20px 0;
-    background: var(--gold-gradient);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    text-align: center;
-}
+        .task-modal-category {
+            display: inline-block;
+            background: var(--bg-secondary);
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
 
-.task-modal-description {
-    font-size: 15px;
-    color: var(--text-secondary);
-    line-height: 1.6;
-    margin-bottom: 24px;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    white-space: pre-wrap;
-    padding: 16px;
-    background: var(--bg-secondary);
-    border-radius: 12px;
-    border-left: 4px solid var(--accent);
-}
+        .task-modal-price {
+            font-size: 28px;
+            font-weight: 800;
+            margin: 20px 0;
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-align: center;
+        }
 
-.task-modal-details {
-    background: var(--bg-secondary);
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 24px;
-    border: 1px solid var(--border);
-}
+        .task-modal-description {
+            font-size: 15px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 24px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: pre-wrap;
+            padding: 16px;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border-left: 4px solid var(--accent);
+        }
 
-.task-detail {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 12px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-}
+        .task-modal-details {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+        }
 
-.task-detail:last-child {
-    margin-bottom: 0;
-    padding-bottom: 0;
-    border-bottom: none;
-}
+        .task-detail {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
 
-.task-detail-label {
-    color: var(--text-secondary);
-    font-weight: 500;
-}
+        .task-detail:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
 
-.task-detail-value {
-    font-weight: 600;
-    color: var(--text-primary);
-    text-align: right;
-    max-width: 60%;
-    word-wrap: break-word;
-}
+        .task-detail-label {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
 
-.task-modal-buttons {
-    display: flex;
-    gap: 12px;
-    margin-top: 20px;
-    flex-shrink: 0;
-}
+        .task-detail-value {
+            font-weight: 600;
+            color: var(--text-primary);
+            text-align: right;
+            max-width: 60%;
+            word-wrap: break-word;
+        }
 
-.task-modal-cancel {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    border: 1px solid var(--border);
-    padding: 14px 20px;
-    border-radius: 12px;
-    flex: 1;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 15px;
-    transition: all 0.3s ease;
-}
+        .task-modal-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            flex-shrink: 0;
+        }
 
-.task-modal-start {
-    background: var(--accent);
-    color: white;
-    border: none;
-    padding: 14px 20px;
-    border-radius: 12px;
-    flex: 1;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 15px;
-    transition: all 0.3s ease;
-}
+        .task-modal-cancel {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            padding: 14px 20px;
+            border-radius: 12px;
+            flex: 1;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 15px;
+            transition: all 0.3s ease;
+        }
 
-.task-modal-cancel:hover,
-.task-modal-start:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
+        .task-modal-start {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 12px;
+            flex: 1;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .task-modal-cancel:hover,
+        .task-modal-start:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
         
         /* Стили для подтверждения задания */
         .confirmation-task {
@@ -3183,28 +2578,28 @@ body {
         }
         
         .tab-content {
-    display: none;
-}
+            display: none;
+        }
 
-.tab-content.active {
-    display: block;
-}
+        .tab-content.active {
+            display: block;
+        }
 
-.page {
-    display: none;
-}
+        .page {
+            display: none;
+        }
 
-.page.active {
-    display: block;
-}
+        .page.active {
+            display: block;
+        }
 
-.admin-section {
-    display: none;
-}
+        .admin-section {
+            display: none;
+        }
 
-#admin-posts-section {
-    display: block;
-}
+        #admin-posts-section {
+            display: block;
+        }
 
         /* Стили для постов */
         .post {
@@ -3394,2398 +2789,2027 @@ body {
             }
         }
 
-/* Стили для уведомлений */
-@keyframes slideIn {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-.notification {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: var(--accent);
-    color: white;
-    padding: 12px 16px;
-    border-radius: 12px;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-    z-index: 10000;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    max-width: 300px;
-    animation: slideIn 0.3s ease-out;
-    border: 1px solid var(--border);
-}
-
-.notification-error {
-    background: var(--error);
-}
-
-.notification-success {
-    background: var(--success);
-}
-
-.notification-warning {
-    background: var(--warning);
-}
-
-.notification-content {
-    flex: 1;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.notification-close {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 18px;
-    cursor: pointer;
-    padding: 0;
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Стили для чата админа */
-.admin-chat-list {
-    max-height: 400px;
-    overflow-y: auto;
-    margin-top: 15px;
-}
-
-.chat-item {
-    display: flex;
-    align-items: center;
-    padding: 12px;
-    background: var(--card-bg);
-    border-radius: 12px;
-    margin-bottom: 8px;
-    cursor: pointer;
-    border: 1px solid var(--border);
-    transition: all 0.3s ease;
-}
-
-.chat-item:hover {
-    background: var(--bg-secondary);
-    transform: translateY(-2px);
-}
-
-.chat-item.unread {
-    border-left: 4px solid var(--error);
-    background: rgba(239, 68, 68, 0.05);
-}
-
-.chat-avatar-small {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: var(--purple-gradient);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 12px;
-    color: white;
-    font-weight: 600;
-    font-size: 16px;
-}
-
-.chat-info-small {
-    flex: 1;
-}
-
-.chat-name-small {
-    font-weight: 600;
-    font-size: 14px;
-    margin-bottom: 2px;
-}
-
-.chat-last-message {
-    font-size: 12px;
-    color: var(--text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 200px;
-}
-
-.chat-meta {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
-}
-
-.chat-time {
-    font-size: 11px;
-    color: var(--text-secondary);
-}
-
-.unread-badge {
-    background: var(--error);
-    color: white;
-    border-radius: 10px;
-    padding: 2px 6px;
-    font-size: 10px;
-    font-weight: 600;
-    min-width: 18px;
-    text-align: center;
-}
-
-/* Окно чата для админа */
-.admin-chat-window {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(5, 5, 16, 0.95);
-    z-index: 2000;
-    display: flex;
-    flex-direction: column;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
-}
-
-.admin-chat-window.active {
-    opacity: 1;
-    pointer-events: all;
-}
-
-.admin-chat-header {
-    background: var(--card-bg);
-    padding: 16px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.admin-chat-user {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.admin-chat-messages {
-    flex: 1;
-    padding: 12px; /* Уменьшили padding */
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 8px; /* Уменьшили расстояние между сообщениями */
-    max-height: calc(100vh - 160px);
-}
-
-.admin-chat-input-container {
-    padding: 12px 16px;
-    background: var(--card-bg);
-    border-top: 1px solid var(--border);
-    display: flex;
-    gap: 12px;
-}
-
-.admin-chat-input {
-    flex: 1;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 12px 16px;
-    color: var(--text-primary);
-    font-size: 14px;
-}
-
-.admin-chat-send {
-    background: var(--accent);
-    border: none;
-    border-radius: 50%;
-    width: 44px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    cursor: pointer;
-}
-
-/* Адаптивность */
-@media (max-width: 768px) {
-    .chat-item {
-        padding: 10px;
-    }
-    
-    .chat-last-message {
-        max-width: 150px;
-    }
-    
-    .notification {
-        right: 10px;
-        left: 10px;
-        max-width: none;
-    }
-}
-/* Стили для уведомлений */
-@keyframes slideIn {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-.notification {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: var(--accent);
-    color: white;
-    padding: 12px 16px;
-    border-radius: 12px;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-    z-index: 10000;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    max-width: 300px;
-    animation: slideIn 0.3s ease-out;
-    border: 1px solid var(--border);
-}
-
-.notification-error {
-    background: var(--error);
-}
-
-.notification-success {
-    background: var(--success);
-}
-
-.notification-warning {
-    background: var(--warning);
-}
-
-.notification-content {
-    flex: 1;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.notification-close {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 18px;
-    cursor: pointer;
-    padding: 0;
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Стили для чата админа */
-.admin-chat-list {
-    max-height: 400px;
-    overflow-y: auto;
-    margin-top: 15px;
-}
-
-.chat-item {
-    display: flex;
-    align-items: center;
-    padding: 12px;
-    background: var(--card-bg);
-    border-radius: 12px;
-    margin-bottom: 8px;
-    cursor: pointer;
-    border: 1px solid var(--border);
-    transition: all 0.3s ease;
-}
-
-.chat-item:hover {
-    background: var(--bg-secondary);
-    transform: translateY(-2px);
-}
-
-.chat-item.unread {
-    border-left: 4px solid var(--error);
-    background: rgba(239, 68, 68, 0.05);
-}
-
-.chat-avatar-small {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: var(--purple-gradient);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 12px;
-    color: white;
-    font-weight: 600;
-    font-size: 16px;
-}
-
-.chat-info-small {
-    flex: 1;
-}
-
-.chat-name-small {
-    font-weight: 600;
-    font-size: 14px;
-    margin-bottom: 2px;
-}
-
-.chat-last-message {
-    font-size: 12px;
-    color: var(--text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 200px;
-}
-
-.chat-meta {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
-}
-
-.chat-time {
-    font-size: 11px;
-    color: var(--text-secondary);
-}
-
-.unread-badge {
-    background: var(--error);
-    color: white;
-    border-radius: 10px;
-    padding: 2px 6px;
-    font-size: 10px;
-    font-weight: 600;
-    min-width: 18px;
-    text-align: center;
-}
-
-/* Окно чата для админа */
-.admin-chat-window {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(5, 5, 16, 0.95);
-    z-index: 2000;
-    display: flex;
-    flex-direction: column;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
-}
-
-.admin-chat-window.active {
-    opacity: 1;
-    pointer-events: all;
-}
-
-.admin-chat-header {
-    background: var(--card-bg);
-    padding: 16px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.admin-chat-user {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.admin-chat-messages {
-    flex: 1;
-    padding: 16px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.admin-chat-input-container {
-    padding: 12px 16px;
-    background: var(--card-bg);
-    border-top: 1px solid var(--border);
-    display: flex;
-    gap: 12px;
-    align-items: center;
-}
-
-.admin-chat-input {
-    flex: 1;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 12px 16px;
-    color: var(--text-primary);
-    font-size: 14px;
-}
-
-.admin-chat-send {
-    background: var(--accent);
-    border: none;
-    border-radius: 50%;
-    width: 44px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    cursor: pointer;
-}
-
-.admin-chat-photo {
-    background: var(--success);
-    border: none;
-    border-radius: 50%;
-    width: 44px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    cursor: pointer;
-}
-
-/* Стили для сообщений с фото */
-.message-image {
-    margin-bottom: 5px;
-}
-
-.message-image img {
-    max-width: 100%;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-}
-
-.message-time {
-    font-size: 11px;
-    color: var(--text-secondary);
-    text-align: right;
-    margin-top: 4px;
-}
-
-/* Стили для заданий админа */
-.admin-task-item {
-    background: var(--card-bg);
-    border-radius: 12px;
-    padding: 15px;
-    margin-bottom: 10px;
-    border: 1px solid var(--border);
-}
-
-.admin-task-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 8px;
-}
-
-.admin-task-title {
-    font-weight: 600;
-    font-size: 16px;
-    flex: 1;
-}
-
-.admin-task-description {
-    color: var(--text-secondary);
-    font-size: 14px;
-    margin-bottom: 8px;
-}
-
-.admin-task-details {
-    display: flex;
-    gap: 10px;
-    font-size: 12px;
-}
-
-.admin-task-price {
-    background: var(--gold-gradient);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    font-weight: 700;
-}
-
-.admin-task-category {
-    background: var(--bg-secondary);
-    padding: 2px 8px;
-    border-radius: 6px;
-}
-
-.admin-task-time {
-    color: var(--text-secondary);
-}
-
-/* Кнопка отправки фото в чате пользователя */
-.chat-photo-btn {
-    background: var(--success);
-    border: none;
-    border-radius: 50%;
-    width: 44px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    cursor: pointer;
-    font-size: 18px;
-}
-
-/* Адаптивность */
-@media (max-width: 768px) {
-    .chat-item {
-        padding: 10px;
-    }
-    
-    .chat-last-message {
-        max-width: 150px;
-    }
-    
-    .notification {
-        right: 10px;
-        left: 10px;
-        max-width: none;
-    }
-    
-    .admin-task-header {
-        flex-direction: column;
-        gap: 8px;
-    }
-    
-    .admin-task-details {
-        flex-wrap: wrap;
-    }
-}
-
-/* Стили для текста о скриншоте */
-.screenshot-note {
-    margin: 15px 0;
-    padding: 10px;
-    background: var(--bg-secondary);
-    border-radius: 8px;
-    border-left: 3px solid var(--warning);
-}
-
-.screenshot-note p {
-    margin: 0;
-    font-size: 12px;
-    color: var(--text-secondary);
-}
-/* Исправление вкладок заданий */
-.tasks-tabs {
-    display: flex;
-    margin-bottom: 20px;
-    background: var(--card-bg);
-    border-radius: 16px;
-    padding: 6px;
-    border: 1px solid var(--border);
-    overflow-x: auto;
-    white-space: nowrap;
-}
-
-.task-tab {
-    flex: 1;
-    text-align: center;
-    padding: 10px 8px;
-    border-radius: 12px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    min-width: 80px;
-}
-
-.task-tab.active {
-    background: var(--accent);
-    color: white;
-}
-
-/* Улучшенный дизайн для длинных слов */
-.task-tab:last-child {
-    min-width: 90px;
-}
-
-/* Стили для уведомлений */
-@keyframes slideIn {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-.notification {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: var(--accent);
-    color: white;
-    padding: 12px 16px;
-    border-radius: 12px;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-    z-index: 10000;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    max-width: 300px;
-    animation: slideIn 0.3s ease-out;
-    border: 1px solid var(--border);
-}
-
-.notification-error {
-    background: var(--error);
-}
-
-.notification-success {
-    background: var(--success);
-}
-
-.notification-warning {
-    background: var(--warning);
-}
-
-.notification-content {
-    flex: 1;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.notification-close {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 18px;
-    cursor: pointer;
-    padding: 0;
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Стили для чата админа */
-.admin-chat-list {
-    max-height: 400px;
-    overflow-y: auto;
-    margin-top: 15px;
-}
-
-.chat-item {
-    display: flex;
-    align-items: center;
-    padding: 12px;
-    background: var(--card-bg);
-    border-radius: 12px;
-    margin-bottom: 8px;
-    cursor: pointer;
-    border: 1px solid var(--border);
-    transition: all 0.3s ease;
-}
-
-.chat-item:hover {
-    background: var(--bg-secondary);
-    transform: translateY(-2px);
-}
-
-.chat-item.unread {
-    border-left: 4px solid var(--error);
-    background: rgba(239, 68, 68, 0.05);
-}
-
-.chat-avatar-small {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: var(--purple-gradient);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 12px;
-    color: white;
-    font-weight: 600;
-    font-size: 16px;
-}
-
-.chat-info-small {
-    flex: 1;
-    min-width: 0;
-}
-
-.chat-name-small {
-    font-weight: 600;
-    font-size: 14px;
-    margin-bottom: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.chat-last-message {
-    font-size: 12px;
-    color: var(--text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 200px;
-}
-
-.chat-meta {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
-    flex-shrink: 0;
-}
-
-.chat-time {
-    font-size: 11px;
-    color: var(--text-secondary);
-    white-space: nowrap;
-}
-
-.unread-badge {
-    background: var(--error);
-    color: white;
-    border-radius: 10px;
-    padding: 2px 6px;
-    font-size: 10px;
-    font-weight: 600;
-    min-width: 18px;
-    text-align: center;
-}
-
-/* Окно чата для админа */
-.admin-chat-window {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(5, 5, 16, 0.95);
-    z-index: 2000;
-    display: flex;
-    flex-direction: column;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
-}
-
-.admin-chat-window.active {
-    opacity: 1;
-    pointer-events: all;
-}
-
-.admin-chat-header {
-    background: var(--card-bg);
-    padding: 16px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.admin-chat-user {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.admin-chat-messages {
-    flex: 1;
-    padding: 16px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.admin-chat-input-container {
-    padding: 12px 16px;
-    background: var(--card-bg);
-    border-top: 1px solid var(--border);
-    display: flex;
-    gap: 12px;
-    align-items: center;
-}
-
-.admin-chat-input {
-    flex: 1;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 12px 16px;
-    color: var(--text-primary);
-    font-size: 14px;
-}
-
-.admin-chat-send {
-    background: var(--accent);
-    border: none;
-    border-radius: 50%;
-    width: 44px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    cursor: pointer;
-}
-
-/* Стили для сообщений с фото */
-.message-image {
-    margin-bottom: 5px;
-}
-
-.message-image img {
-    max-width: 100%;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-}
-
-.message-time {
-    font-size: 11px;
-    color: var(--text-secondary);
-    text-align: right;
-    margin-top: 4px;
-}
-
-/* Стили для заданий админа */
-.admin-task-item {
-    background: var(--card-bg);
-    border-radius: 12px;
-    padding: 15px;
-    margin-bottom: 10px;
-    border: 1px solid var(--border);
-}
-
-.admin-task-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 8px;
-}
-
-.admin-task-title {
-    font-weight: 600;
-    font-size: 16px;
-    flex: 1;
-}
-
-.admin-task-description {
-    color: var(--text-secondary);
-    font-size: 14px;
-    margin-bottom: 8px;
-}
-
-.admin-task-details {
-    display: flex;
-    gap: 10px;
-    font-size: 12px;
-    flex-wrap: wrap;
-}
-
-.admin-task-price {
-    background: var(--gold-gradient);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    font-weight: 700;
-}
-
-.admin-task-category {
-    background: var(--bg-secondary);
-    padding: 2px 8px;
-    border-radius: 6px;
-}
-
-.admin-task-time {
-    color: var(--text-secondary);
-}
-
-/* Стили для текста о скриншоте */
-.screenshot-note {
-    margin: 15px 0;
-    padding: 10px;
-    background: var(--bg-secondary);
-    border-radius: 8px;
-    border-left: 3px solid var(--warning);
-}
-
-.screenshot-note p {
-    margin: 0;
-    font-size: 12px;
-    color: var(--text-secondary);
-}
-
-/* Адаптивность */
-@media (max-width: 768px) {
-    .chat-item {
-        padding: 10px;
-    }
-    
-    .chat-last-message {
-        max-width: 150px;
-    }
-    
-    .notification {
-        right: 10px;
-        left: 10px;
-        max-width: none;
-    }
-    
-    .admin-task-header {
-        flex-direction: column;
-        gap: 8px;
-    }
-    
-    .admin-task-details {
-        flex-wrap: wrap;
-    }
-    
-    .task-tab {
-        font-size: 11px;
-        padding: 8px 6px;
-        min-width: 70px;
-    }
-}
-@media (max-width: 480px) {
-    .bottom-nav {
-        bottom: 12px;
-        left: 12px;
-        right: 12px;
-        height: 70px; /* Еще меньше на очень маленьких экранах */
-        padding: 8px;
-    }
-    
-    .nav-item {
-        padding: 4px 6px;
-    }
-    
-    .nav-icon {
-        font-size: 16px;
-    }
-    
-    .nav-label {
-        font-size: 9px;
-    }
-    
-    .main-content {
-        padding-bottom: 90px;
-    }
-}
-@media (max-width: 480px) {
-    .tasks-tabs {
-        padding: 4px;
-    }
-    
-    .task-tab {
-        font-size: 10px;
-        padding: 6px 4px;
-        min-width: 65px;
-    }
-}
-/* Стили для окна чата админа */
-.admin-chat-window {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(5, 5, 16, 0.95);
-    z-index: 2000;
-    display: flex;
-    flex-direction: column;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
-}
-
-.admin-chat-window.active {
-    opacity: 1;
-    pointer-events: all;
-}
-
-.admin-chat-header {
-    background: var(--card-bg);
-    padding: 16px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.admin-chat-user {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.admin-chat-messages {
-    flex: 1;
-    padding: 16px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.admin-chat-input-container {
-    padding: 12px 16px;
-    background: var(--card-bg);
-    border-top: 1px solid var(--border);
-    display: flex;
-    gap: 12px;
-    align-items: center;
-}
-
-.admin-chat-input {
-    flex: 1;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 12px 16px;
-    color: var(--text-primary);
-    font-size: 14px;
-}
-
-.admin-chat-send {
-    background: var(--accent);
-    border: none;
-    border-radius: 50%;
-    width: 44px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    cursor: pointer;
-}
-
-/* Адаптивность для чата */
-@media (max-width: 768px) {
-    .admin-chat-header {
-        padding: 12px;
-    }
-    
-    .admin-chat-input-container {
-        padding: 10px 12px;
-    }
-}
-/* Стили для московского времени в постах */
-.post-date {
-    font-size: 12px;
-    color: var(--text-secondary);
-    opacity: 0.8;
-}
-
-.post-author {
-    font-size: 13px;
-    color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.admin-badge {
-    background: var(--purple-gradient);
-    color: white;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: 600;
-}
-
-/* Улучшенные стили для чатов */
-.chat-meta {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
-    min-width: 60px;
-}
-
-.chat-time {
-    font-size: 11px;
-    color: var(--text-secondary);
-    white-space: nowrap;
-}
-
-.unread-badge {
-    background: var(--error);
-    color: white;
-    border-radius: 10px;
-    padding: 2px 6px;
-    font-size: 10px;
-    font-weight: 600;
-    min-width: 18px;
-    text-align: center;
-}
-
-/* Адаптивность для чатов */
-@media (max-width: 768px) {
-    .chat-item {
-        padding: 10px;
-    }
-    
-    .chat-last-message {
-        max-width: 150px;
-    }
-    
-    .chat-meta {
-        min-width: 50px;
-    }
-}
-/* Исправление текста в постах */
-.post-content {
-    color: var(--text-primary);
-    line-height: 1.5;
-    margin-bottom: 12px;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    max-width: 100%;
-}
-
-.post-title {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: 8px;
-    line-height: 1.3;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-}
-
-.post-item {
-    background: var(--card-bg);
-    border-radius: 16px;
-    padding: 20px;
-    margin-bottom: 16px;
-    border: 1px solid var(--border);
-    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
-    backdrop-filter: blur(10px);
-    animation: fadeIn 0.6s ease-out;
-    overflow: hidden; /* Предотвращает выход контента за границы */
-}
-
-/* Улучшенные стили для длинного текста */
-.post-text-container {
-    max-height: none;
-    overflow: visible;
-}
-
-/* Плавное ограничение текста с кнопкой "Читать далее" */
-.post-content.collapsed {
-    max-height: 150px;
-    overflow: hidden;
-    position: relative;
-}
-
-.post-content.collapsed::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 60px;
-    background: linear-gradient(transparent, var(--card-bg));
-    pointer-events: none;
-}
-
-.read-more-btn {
-    background: var(--accent);
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    margin-top: 8px;
-    display: inline-block;
-}
-/* 🔧 СТИЛИ ДЛЯ УПРАВЛЕНИЯ ЧАТАМИ */
-
-.chat-tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 15px;
-    overflow-x: auto;
-    padding-bottom: 5px;
-}
-
-.chat-tab-btn {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 8px 12px;
-    font-size: 12px;
-    color: var(--text-secondary);
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.3s ease;
-}
-
-.chat-tab-btn.active {
-    background: var(--accent);
-    color: white;
-    border-color: var(--accent);
-}
-
-.chat-stats {
-    background: var(--bg-secondary);
-    border-radius: 10px;
-    padding: 12px;
-    margin-bottom: 15px;
-    border: 1px solid var(--border);
-}
-
-.chat-item {
-    display: flex;
-    align-items: center;
-    padding: 12px;
-    background: var(--card-bg);
-    border-radius: 12px;
-    margin-bottom: 8px;
-    cursor: pointer;
-    border: 1px solid var(--border);
-    transition: all 0.3s ease;
-    position: relative;
-}
-
-.chat-item:hover {
-    background: var(--bg-secondary);
-    transform: translateY(-2px);
-}
-
-.chat-item.unread {
-    border-left: 4px solid var(--error);
-    background: rgba(239, 68, 68, 0.05);
-}
-
-.chat-item.archived {
-    opacity: 0.7;
-    background: rgba(100, 100, 100, 0.1);
-}
-
-.chat-avatar-small {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: var(--purple-gradient);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 12px;
-    color: white;
-    font-weight: 600;
-    font-size: 16px;
-    flex-shrink: 0;
-}
-
-.chat-info-small {
-    flex: 1;
-    min-width: 0;
-}
-
-.chat-name-small {
-    font-weight: 600;
-    font-size: 14px;
-    margin-bottom: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.chat-last-message {
-    font-size: 12px;
-    color: var(--text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 200px;
-}
-
-.chat-meta {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
-    flex-shrink: 0;
-}
-
-.chat-time {
-    font-size: 11px;
-    color: var(--text-secondary);
-    white-space: nowrap;
-}
-
-.chat-actions {
-    display: flex;
-    gap: 5px;
-    margin-left: 10px;
-}
-
-.chat-action-btn {
-    background: none;
-    border: none;
-    padding: 6px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 12px;
-    transition: all 0.3s ease;
-}
-
-.chat-delete-btn {
-    color: var(--error);
-    background: rgba(239, 68, 68, 0.1);
-}
-
-.chat-delete-btn:hover {
-    background: rgba(239, 68, 68, 0.2);
-}
-
-.chat-archive-btn {
-    color: var(--warning);
-    background: rgba(245, 158, 11, 0.1);
-}
-
-.chat-archive-btn:hover {
-    background: rgba(245, 158, 11, 0.2);
-}
-
-.chat-restore-btn {
-    color: var(--success);
-    background: rgba(16, 185, 129, 0.1);
-}
-
-.chat-restore-btn:hover {
-    background: rgba(16, 185, 129, 0.2);
-}
-
-.unread-badge {
-    background: var(--error);
-    color: white;
-    border-radius: 10px;
-    padding: 2px 6px;
-    font-size: 10px;
-    font-weight: 600;
-    min-width: 18px;
-    text-align: center;
-}
-
-.archived-badge {
-    background: var(--warning);
-    color: white;
-    border-radius: 6px;
-    padding: 1px 4px;
-    font-size: 9px;
-    margin-left: 5px;
-}
-
-/* Адаптивность для чатов */
-@media (max-width: 768px) {
-    .chat-item {
-        padding: 10px;
-    }
-    
-    .chat-last-message {
-        max-width: 150px;
-    }
-    
-    .chat-actions {
-        flex-direction: column;
-        gap: 3px;
-    }
-    
-    .chat-action-btn {
-        padding: 4px;
-        font-size: 10px;
-    }
-}
-/* Стили для системы проверки заданий */
-.confirmation-modal-content {
-    background: var(--card-bg);
-    border-radius: 20px;
-    padding: 24px;
-    width: 90%;
-    max-width: 400px;
-    border: 1px solid var(--border);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-    text-align: center;
-}
-
-.confirmation-icon {
-    font-size: 64px;
-    margin-bottom: 16px;
-}
-
-.confirmation-title {
-    font-size: 24px;
-    font-weight: 700;
-    margin-bottom: 16px;
-    background: var(--gold-gradient);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-}
-
-.confirmation-text {
-    font-size: 16px;
-    color: var(--text-secondary);
-    margin-bottom: 24px;
-    line-height: 1.5;
-}
-
-.confirmation-buttons {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 20px;
-}
-
-.confirmation-btn {
-    flex: 1;
-    padding: 14px 20px;
-    border-radius: 12px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    border: none;
-    transition: all 0.3s ease;
-}
-
-.confirmation-yes {
-    background: var(--success);
-    color: white;
-}
-
-.confirmation-no {
-    background: var(--error);
-    color: white;
-}
-
-.confirmation-cancel {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    border: 1px solid var(--border);
-}
-
-/* Стили для загрузки скриншота */
-.screenshot-upload {
-    margin: 20px 0;
-}
-
-.screenshot-preview {
-    max-width: 100%;
-    max-height: 300px;
-    border-radius: 12px;
-    margin: 16px 0;
-    display: none;
-}
-
-.upload-btn {
-    background: var(--accent);
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 10px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 16px;
-}
-
-.file-input {
-    display: none;
-}
-
-/* Стили для проверки заданий админом */
-.verification-list {
-    max-height: 500px;
-    overflow-y: auto;
-    margin-top: 15px;
-}
-
-.verification-item {
-    background: var(--card-bg);
-    border-radius: 16px;
-    padding: 16px;
-    margin-bottom: 12px;
-    border: 1px solid var(--border);
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.verification-item:hover {
-    background: var(--bg-secondary);
-    transform: translateY(-2px);
-}
-
-.verification-header {
-    display: flex;
-    align-items: center;
-    margin-bottom: 12px;
-}
-
-.verification-avatar {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: var(--purple-gradient);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 12px;
-    color: white;
-    font-weight: 600;
-    font-size: 18px;
-}
-
-.verification-user-info {
-    flex: 1;
-}
-
-.verification-user-name {
-    font-weight: 600;
-    font-size: 16px;
-    margin-bottom: 4px;
-}
-
-.verification-task-title {
-    color: var(--text-secondary);
-    font-size: 14px;
-}
-
-.verification-price {
-    background: var(--gold-gradient);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    font-weight: 700;
-    font-size: 18px;
-}
-
-.verification-time {
-    font-size: 12px;
-    color: var(--text-secondary);
-    text-align: right;
-}
-
-/* Модальное окно проверки задания */
-.verification-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(5, 5, 16, 0.95);
-    z-index: 3000;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    padding: 20px;
-}
-
-.verification-modal.active {
-    opacity: 1;
-    pointer-events: all;
-}
-
-.verification-modal-content {
-    background: var(--card-bg);
-    border-radius: 20px;
-    padding: 24px;
-    width: 90%;
-    max-width: 500px;
-    border: 1px solid var(--border);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-    max-height: 80vh;
-    overflow-y: auto;
-}
-
-.verification-modal-header {
-    display: flex;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.verification-modal-user {
-    display: flex;
-    align-items: center;
-    flex: 1;
-}
-
-.verification-modal-avatar {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background: var(--purple-gradient);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 16px;
-    color: white;
-    font-weight: 600;
-    font-size: 20px;
-}
-
-.verification-modal-user-info {
-    flex: 1;
-}
-
-.verification-modal-user-name {
-    font-weight: 600;
-    font-size: 18px;
-    margin-bottom: 4px;
-}
-
-.verification-modal-task {
-    color: var(--text-secondary);
-    font-size: 14px;
-}
-
-.verification-modal-price {
-    background: var(--gold-gradient);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    font-weight: 700;
-    font-size: 24px;
-}
-
-.verification-modal-screenshot {
-    width: 100%;
-    border-radius: 12px;
-    margin: 20px 0;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-}
-
-.verification-modal-actions {
-    display: flex;
-    gap: 12px;
-    margin-top: 20px;
-}
-
-.verification-approve {
-    background: var(--success);
-    color: white;
-    border: none;
-    padding: 14px 20px;
-    border-radius: 12px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    flex: 1;
-}
-
-.verification-reject {
-    background: var(--error);
-    color: white;
-    border: none;
-    padding: 14px 20px;
-    border-radius: 12px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    flex: 1;
-}
-
-/* Стили для отклоненных заданий */
-.rejected-task {
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-}
-
-.rejected-badge {
-    background: var(--error);
-    color: white;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    margin-left: 8px;
-}
-
-.support-btn {
-    background: var(--accent);
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    margin-top: 8px;
-}
-
-/* Анимации */
-@keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-}
-
-.pulse {
-    animation: pulse 2s infinite;
-}
-
-/* Адаптивность */
-@media (max-width: 768px) {
-    .confirmation-buttons {
-        flex-direction: column;
-    }
-    
-    .verification-modal-actions {
-        flex-direction: column;
-    }
-    
-    .verification-modal-header {
-        flex-direction: column;
-        text-align: center;
-    }
-    
-    .verification-modal-user {
-        margin-bottom: 16px;
-    }
-}
-/* Минималистичный дизайн постов */
-.posts-feed {
-    margin-top: 20px;
-}
-
-.post-item {
-    background: var(--card-bg);
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 12px;
-    border: 1px solid var(--border);
-    transition: all 0.3s ease;
-}
-
-.post-item:hover {
-    border-color: var(--accent);
-    transform: translateY(-2px);
-}
-
-.post-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 12px;
-}
-
-.post-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 6px;
-    line-height: 1.3;
-}
-
-.post-author {
-    font-size: 12px;
-    color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.admin-badge {
-    background: var(--purple-gradient);
-    color: white;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: 600;
-}
-
-.post-date {
-    font-size: 11px;
-    color: var(--text-secondary);
-    white-space: nowrap;
-    margin-left: 10px;
-}
-
-.post-content {
-    color: var(--text-primary);
-    line-height: 1.5;
-    margin-bottom: 12px;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    font-size: 14px;
-}
-
-.post-image {
-    width: 100%;
-    border-radius: 8px;
-    margin: 10px 0;
-    max-height: 300px;
-    object-fit: cover;
-}
-
-.post-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-top: 12px;
-    border-top: 1px solid var(--border);
-}
-
-.post-actions {
-    display: flex;
-    gap: 15px;
-}
-
-.like-btn, .share-btn {
-    background: none;
-    border: none;
-    color: var(--text-secondary);
-    font-size: 13px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 6px 10px;
-    border-radius: 6px;
-    transition: all 0.3s ease;
-}
-
-.like-btn:hover, .share-btn:hover {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-}
-
-.loading-posts {
-    text-align: center;
-    padding: 40px 20px;
-    color: var(--text-secondary);
-}
-
-.loading-spinner {
-    font-size: 24px;
-    margin-bottom: 12px;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* Адаптивность для постов */
-@media (max-width: 768px) {
-    .post-item {
-        padding: 14px;
-        margin-bottom: 10px;
-    }
-    
-    .post-header {
-        flex-direction: column;
-        gap: 8px;
-    }
-    
-    .post-date {
-        margin-left: 0;
-        align-self: flex-start;
-    }
-    
-    .post-title {
-        font-size: 15px;
-    }
-    
-    .post-content {
-        font-size: 13px;
-    }
-}
-.back-button {
-    background: none;
-    border: none;
-    color: var(--text-primary);
-    font-size: 24px;
-    margin-right: 12px;
-    cursor: pointer;
-    padding: 8px;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-}
-
-.back-button:hover {
-    background: var(--bg-secondary);
-}
-
-.page-header {
-    display: flex;
-    align-items: center;
-    margin-bottom: 20px;
-    padding: 0 10px;
-}
-
-.page-title {
-    font-size: 24px;
-    font-weight: 700;
-    background: var(--gold-gradient);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-}
-.nav-icon img {
-    width: 24px;
-    height: 24px;
-    object-fit: contain;
-    filter: brightness(0) invert(0.7); /* Делает иконки светлыми как эмодзи */
-    transition: all 0.3s ease;
-}
-
-.nav-item.active .nav-icon img {
-    filter: brightness(0) invert(1); /* Белые иконки для активного состояния */
-}
-/* Светлая тема */
-[data-theme="light"] {
-    --bg-primary: #ffffff;
-    --bg-secondary: #f8f9fa;
-    --text-primary: #2d3748;
-    --text-secondary: #4a5568;
-    --accent: #6366f1;
-    --accent-hover: #4f46e5;
-    --card-bg: #ffffff;
-    --border: #e2e8f0;
-    --shadow: rgba(0, 0, 0, 0.1);
-    --nav-bg: rgba(255, 255, 255, 0.95);
-    --gold: #d97706;
-    --gold-gradient: linear-gradient(135deg, #f59e0b, #d97706);
-    --purple-gradient: linear-gradient(135deg, #8b5cf6, #7c3aed);
-    --blue-gradient: linear-gradient(135deg, #3b82f6, #2563eb);
-    --teal-gradient: linear-gradient(135deg, #0ea5e9, #0369a1);
-    --success: #10b981;
-    --error: #ef4444;
-    --warning: #f59e0b;
-}
-
-/* Переключатель темы */
-.theme-switch {
-    position: relative;
-    display: inline-block;
-    width: 60px;
-    height: 34px;
-}
-
-.theme-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.theme-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border);
-    transition: .4s;
-    border-radius: 34px;
-}
-
-.theme-slider:before {
-    position: absolute;
-    content: "🌙";
-    height: 26px;
-    width: 26px;
-    left: 4px;
-    bottom: 3px;
-    background-color: var(--accent);
-    transition: .4s;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-}
-
-input:checked + .theme-slider {
-    background-color: var(--accent);
-}
-
-input:checked + .theme-slider:before {
-    content: "☀️";
-    transform: translateX(26px);
-}
-.tasks-grid {
-    display: grid;
-    gap: 16px;
-    grid-template-columns: 1fr;
-    min-height: 200px; /* Фиксированная минимальная высота */
-}
-
-/* Для предотвращения смещения */
-.tab-content {
-    min-height: 500px;
-    position: relative;
-}
-
-.task-card {
-    background: var(--card-bg);
-    border-radius: 16px;
-    padding: 16px;
-    border: 1px solid var(--border);
-    cursor: pointer;
-    transition: transform 0.3s ease;
-    position: relative;
-    width: 100%;
-    box-sizing: border-box;
-}
-.chat-messages {
-    flex: 1;
-    padding: 16px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    max-height: calc(100vh - 140px);
-}
-
-.message {
-    max-width: 85%;
-    padding: 12px 16px;
-    border-radius: 16px;
-    margin-bottom: 4px;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    white-space: pre-wrap;
-    position: relative;
-}
-
-.message-text {
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    white-space: pre-wrap;
-    line-height: 1.3; /* Уменьшили межстрочный интервал */
-    max-width: 100%;
-}
-
-/* Для админского чата */
-.admin-chat-messages {
-    flex: 1;
-    padding: 16px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    max-height: calc(100vh - 200px);
-}
-/* Стили для списка админов */
-.admin-admins-list {
-    max-height: 400px;
-    overflow-y: auto;
-    margin-top: 15px;
-}
-
-.admin-admin-item {
-    background: var(--card-bg);
-    border-radius: 12px;
-    padding: 15px;
-    margin-bottom: 10px;
-    border: 1px solid var(--border);
-}
-
-.admin-admin-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-.admin-admin-name {
-    font-weight: 600;
-    font-size: 16px;
-}
-
-.admin-admin-info {
-    color: var(--text-secondary);
-    font-size: 14px;
-}
-
-.admin-admin-actions {
-    display: flex;
-    gap: 8px;
-}
-/* 🔧 ФИКС ДЛЯ ВКЛАДКИ ЗАДАНИЙ - УСТРАНЕНИЕ СМЕЩЕНИЯ БЛОКОВ */
-.tasks-tab {
-    min-height: 500px;
-    position: relative;
-}
-
-.tasks-grid {
-    display: grid;
-    gap: 16px;
-    grid-template-columns: 1fr;
-    min-height: 200px;
-    position: relative;
-    height: auto !important; /* Гарантируем авто-высоту */
-}
-
-.task-card {
-    background: var(--card-bg);
-    border-radius: 16px;
-    padding: 16px;
-    border: 1px solid var(--border);
-    cursor: pointer;
-    transition: transform 0.3s ease;
-    position: relative;
-    width: 100%;
-    box-sizing: border-box;
-    margin-bottom: 0;
-    /* Убираем анимацию fade-in чтобы не было смещения */
-    animation: none !important;
-    opacity: 1 !important;
-    transform: none !important;
-}
-
-/* Убираем анимации для всех элементов в tasks-tab */
-.tasks-tab .fade-in {
-    animation: none !important;
-    opacity: 1 !important;
-}
-
-/* Фикс для контейнера фильтров */
-.filters-container {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-    overflow-x: auto;
-    padding-bottom: 5px;
-    flex-wrap: nowrap;
-    position: relative;
-    z-index: 1;
-}
-
-/* Фикс для поиска */
-.search-container {
-    margin-bottom: 20px;
-    position: relative;
-    z-index: 1;
-}
-
-/* Убираем задержки анимации */
-.task-card[style*="animation-delay"] {
-    animation-delay: 0s !important;
-}
-
-/* Фикс для вкладок заданий */
-.tasks-tabs {
-    display: flex;
-    margin-bottom: 20px;
-    background: var(--card-bg);
-    border-radius: 16px;
-    padding: 6px;
-    border: 1px solid var(--border);
-    overflow-x: auto;
-    white-space: nowrap;
-    position: relative;
-    z-index: 2;
-}
-
-/* Гарантируем что контейнеры не перекрываются */
-#new-tasks,
-#confirmation-tasks,
-#completed-tasks,
-#rejected-tasks {
-    position: relative;
-    min-height: 300px;
-    /* Убираем любые трансформации и анимации */
-    transform: none !important;
-    transition: none !important;
-    animation: none !important;
-}
-
-/* Фикс для пустого состояния */
-.no-tasks {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    text-align: center;
-    width: 100%;
-}
-
-/* Обеспечиваем плавное переключение без смещения */
-.tasks-grid {
-    display: grid !important;
-    grid-template-columns: 1fr !important;
-    gap: 16px !important;
-}
-
-/* Убираем все возможные transition для элементов задач */
-#new-tasks *,
-#confirmation-tasks *,
-#completed-tasks *,
-#rejected-tasks *,
-.task-card * {
-    transition: none !important;
-    animation: none !important;
-}
-
-/* Гарантируем одинаковые стили для всех контейнеров задач */
-.tasks-tab > div[id$="-tasks"] {
-    display: none;
-    position: relative;
-    min-height: 400px;
-}
-
-.tasks-tab > div[id$="-tasks"].active {
-    display: block;
-}
-
-/* Фикс для отображения активной вкладки */
-.tasks-tab > div[id$="-tasks"]:not(.active) {
-    display: none !important;
-}
-
-/* Убираем любые эффекты при переключении */
-.tasks-tab {
-    overflow: visible !important;
-}
-
-/* Дополнительный фикс для мобильных устройств */
-@media (max-width: 768px) {
-    .tasks-tab {
-        min-height: 600px;
-    }
-    
-    .tasks-grid {
-        min-height: 300px;
-    }
-    
-    #new-tasks,
-    #confirmation-tasks,
-    #completed-tasks,
-    #rejected-tasks {
-        min-height: 400px;
-    }
-}
-/* Стиль для индикатора загрузки */
-.loading-spinner {
-    font-size: 32px;
-    margin-bottom: 16px;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* Стили для формы добавления задания */
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
-    color: var(--text-primary);
-    font-size: 14px;
-}
-
-.form-row {
-    display: flex;
-    gap: 15px;
-    margin-bottom: 20px;
-}
-
-.form-row .form-group {
-    flex: 1;
-    margin-bottom: 0;
-}
-
-/* Область загрузки изображения */
-.image-upload-area {
-    border: 2px dashed var(--border);
-    border-radius: 12px;
-    padding: 30px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    background: var(--bg-secondary);
-    min-height: 150px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-}
-
-.image-upload-area:hover {
-    border-color: var(--accent);
-    background: rgba(99, 102, 241, 0.05);
-}
-
-.upload-placeholder {
-    color: var(--text-secondary);
-    pointer-events: none;
-}
-
-.image-preview {
-    max-width: 100%;
-    max-height: 200px;
-    border-radius: 8px;
-    object-fit: cover;
-}
-
-/* Кнопки формы */
-.btn-secondary {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    border: 1px solid var(--border);
-    padding: 12px 20px;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.btn-secondary:hover {
-    background: var(--card-bg);
-    border-color: var(--accent);
-}
+        /* Стили для уведомлений */
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--accent);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            max-width: 300px;
+            animation: slideIn 0.3s ease-out;
+            border: 1px solid var(--border);
+        }
+
+        .notification-error {
+            background: var(--error);
+        }
+
+        .notification-success {
+            background: var(--success);
+        }
+
+        .notification-warning {
+            background: var(--warning);
+        }
+
+        .notification-content {
+            flex: 1;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Стили для чата админа */
+        .admin-chat-list {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .chat-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .chat-item:hover {
+            background: var(--bg-secondary);
+            transform: translateY(-2px);
+        }
+
+        .chat-item.unread {
+            border-left: 4px solid var(--error);
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .chat-avatar-small {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--purple-gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .chat-info-small {
+            flex: 1;
+        }
+
+        .chat-name-small {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+
+        .chat-last-message {
+            font-size: 12px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 200px;
+        }
+
+        .chat-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+        }
+
+        .chat-time {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .unread-badge {
+            background: var(--error);
+            color: white;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: 600;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        /* Окно чата для админа */
+        .admin-chat-window {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(5, 5, 16, 0.95);
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .admin-chat-window.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .admin-chat-header {
+            background: var(--card-bg);
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .admin-chat-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .admin-chat-messages {
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: calc(100vh - 160px);
+        }
+
+        .admin-chat-input-container {
+            padding: 12px 16px;
+            background: var(--card-bg);
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+        }
+
+        .admin-chat-input {
+            flex: 1;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 12px 16px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .admin-chat-send {
+            background: var(--accent);
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .chat-item {
+                padding: 10px;
+            }
+            
+            .chat-last-message {
+                max-width: 150px;
+            }
+            
+            .notification {
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
+        }
+
+        /* Стили для текста о скриншоте */
+        .screenshot-note {
+            margin: 15px 0;
+            padding: 10px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            border-left: 3px solid var(--warning);
+        }
+
+        .screenshot-note p {
+            margin: 0;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Исправление вкладок заданий */
+        .tasks-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 6px;
+            border: 1px solid var(--border);
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .task-tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px 8px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            min-width: 80px;
+        }
+
+        .task-tab.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        /* Улучшенный дизайн для длинных слов */
+        .task-tab:last-child {
+            min-width: 90px;
+        }
+
+        /* Стили для уведомлений */
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--accent);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            max-width: 300px;
+            animation: slideIn 0.3s ease-out;
+            border: 1px solid var(--border);
+        }
+
+        .notification-error {
+            background: var(--error);
+        }
+
+        .notification-success {
+            background: var(--success);
+        }
+
+        .notification-warning {
+            background: var(--warning);
+        }
+
+        .notification-content {
+            flex: 1;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Стили для чата админа */
+        .admin-chat-list {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .chat-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .chat-item:hover {
+            background: var(--bg-secondary);
+            transform: translateY(-2px);
+        }
+
+        .chat-item.unread {
+            border-left: 4px solid var(--error);
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .chat-avatar-small {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--purple-gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .chat-info-small {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .chat-name-small {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-last-message {
+            font-size: 12px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 200px;
+        }
+
+        .chat-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        .chat-time {
+            font-size: 11px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .unread-badge {
+            background: var(--error);
+            color: white;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: 600;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        /* Окно чата для админа */
+        .admin-chat-window {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(5, 5, 16, 0.95);
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .admin-chat-window.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .admin-chat-header {
+            background: var(--card-bg);
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .admin-chat-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .admin-chat-messages {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .admin-chat-input-container {
+            padding: 12px 16px;
+            background: var(--card-bg);
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .admin-chat-input {
+            flex: 1;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 12px 16px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .admin-chat-send {
+            background: var(--accent);
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+        }
+
+        /* Стили для сообщений с фото */
+        .message-image {
+            margin-bottom: 5px;
+        }
+
+        .message-image img {
+            max-width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-align: right;
+            margin-top: 4px;
+        }
+
+        /* Стили для заданий админа */
+        .admin-task-item {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .admin-task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .admin-task-title {
+            font-weight: 600;
+            font-size: 16px;
+            flex: 1;
+        }
+
+        .admin-task-description {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .admin-task-details {
+            display: flex;
+            gap: 10px;
+            font-size: 12px;
+            flex-wrap: wrap;
+        }
+
+        .admin-task-price {
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-weight: 700;
+        }
+
+        .admin-task-category {
+            background: var(--bg-secondary);
+            padding: 2px 8px;
+            border-radius: 6px;
+        }
+
+        .admin-task-time {
+            color: var(--text-secondary);
+        }
+
+        /* Стили для текста о скриншоте */
+        .screenshot-note {
+            margin: 15px 0;
+            padding: 10px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            border-left: 3px solid var(--warning);
+        }
+
+        .screenshot-note p {
+            margin: 0;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .chat-item {
+                padding: 10px;
+            }
+            
+            .chat-last-message {
+                max-width: 150px;
+            }
+            
+            .notification {
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
+            
+            .admin-task-header {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .admin-task-details {
+                flex-wrap: wrap;
+            }
+            
+            .task-tab {
+                font-size: 11px;
+                padding: 8px 6px;
+                min-width: 70px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .bottom-nav {
+                bottom: 12px;
+                left: 12px;
+                right: 12px;
+                height: 70px;
+                padding: 8px;
+            }
+            
+            .nav-item {
+                padding: 4px 6px;
+            }
+            
+            .nav-icon {
+                font-size: 16px;
+            }
+            
+            .nav-label {
+                font-size: 9px;
+            }
+            
+            .main-content {
+                padding-bottom: 90px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .tasks-tabs {
+                padding: 4px;
+            }
+            
+            .task-tab {
+                font-size: 10px;
+                padding: 6px 4px;
+                min-width: 65px;
+            }
+        }
+
+        /* Стили для окна чата админа */
+        .admin-chat-window {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(5, 5, 16, 0.95);
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .admin-chat-window.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .admin-chat-header {
+            background: var(--card-bg);
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .admin-chat-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .admin-chat-messages {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .admin-chat-input-container {
+            padding: 12px 16px;
+            background: var(--card-bg);
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .admin-chat-input {
+            flex: 1;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 12px 16px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .admin-chat-send {
+            background: var(--accent);
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+        }
+
+        /* Адаптивность для чата */
+        @media (max-width: 768px) {
+            .admin-chat-header {
+                padding: 12px;
+            }
+            
+            .admin-chat-input-container {
+                padding: 10px 12px;
+            }
+        }
+
+        /* Стили для московского времени в постах */
+        .post-date {
+            font-size: 12px;
+            color: var(--text-secondary);
+            opacity: 0.8;
+        }
+
+        .post-author {
+            font-size: 13px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .admin-badge {
+            background: var(--purple-gradient);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        /* Улучшенные стили для чатов */
+        .chat-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+            min-width: 60px;
+        }
+
+        .chat-time {
+            font-size: 11px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .unread-badge {
+            background: var(--error);
+            color: white;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: 600;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        /* Адаптивность для чатов */
+        @media (max-width: 768px) {
+            .chat-item {
+                padding: 10px;
+            }
+            
+            .chat-last-message {
+                max-width: 150px;
+            }
+            
+            .chat-meta {
+                min-width: 50px;
+            }
+        }
+
+        /* Исправление текста в постах */
+        .post-content {
+            color: var(--text-primary);
+            line-height: 1.5;
+            margin-bottom: 12px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
+        }
+
+        .post-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            line-height: 1.3;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .post-item {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            animation: fadeIn 0.6s ease-out;
+            overflow: hidden;
+        }
+
+        /* Улучшенные стили для длинного текста */
+        .post-text-container {
+            max-height: none;
+            overflow: visible;
+        }
+
+        /* Плавное ограничение текста с кнопкой "Читать далее" */
+        .post-content.collapsed {
+            max-height: 150px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .post-content.collapsed::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(transparent, var(--card-bg));
+            pointer-events: none;
+        }
+
+        .read-more-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 8px;
+            display: inline-block;
+        }
+
+        /* 🔧 СТИЛИ ДЛЯ УПРАВЛЕНИЯ ЧАТАМИ */
+        .chat-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+
+        .chat-tab-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+        }
+
+        .chat-tab-btn.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .chat-stats {
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid var(--border);
+        }
+
+        .chat-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .chat-item:hover {
+            background: var(--bg-secondary);
+            transform: translateY(-2px);
+        }
+
+        .chat-item.unread {
+            border-left: 4px solid var(--error);
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .chat-item.archived {
+            opacity: 0.7;
+            background: rgba(100, 100, 100, 0.1);
+        }
+
+        .chat-avatar-small {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--purple-gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .chat-info-small {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .chat-name-small {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-last-message {
+            font-size: 12px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 200px;
+        }
+
+        .chat-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        .chat-time {
+            font-size: 11px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .chat-actions {
+            display: flex;
+            gap: 5px;
+            margin-left: 10px;
+        }
+
+        .chat-action-btn {
+            background: none;
+            border: none;
+            padding: 6px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .chat-delete-btn {
+            color: var(--error);
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .chat-delete-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .chat-archive-btn {
+            color: var(--warning);
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        .chat-archive-btn:hover {
+            background: rgba(245, 158, 11, 0.2);
+        }
+
+        .chat-restore-btn {
+            color: var(--success);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .chat-restore-btn:hover {
+            background: rgba(16, 185, 129, 0.2);
+        }
+
+        .unread-badge {
+            background: var(--error);
+            color: white;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: 600;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        .archived-badge {
+            background: var(--warning);
+            color: white;
+            border-radius: 6px;
+            padding: 1px 4px;
+            font-size: 9px;
+            margin-left: 5px;
+        }
+
+        /* Адаптивность для чатов */
+        @media (max-width: 768px) {
+            .chat-item {
+                padding: 10px;
+            }
+            
+            .chat-last-message {
+                max-width: 150px;
+            }
+            
+            .chat-actions {
+                flex-direction: column;
+                gap: 3px;
+            }
+            
+            .chat-action-btn {
+                padding: 4px;
+                font-size: 10px;
+            }
+        }
+
+        /* Стили для системы проверки заданий */
+        .confirmation-modal-content {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 24px;
+            width: 90%;
+            max-width: 400px;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            text-align: center;
+        }
+
+        .confirmation-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        .confirmation-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .confirmation-text {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .confirmation-buttons {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .confirmation-btn {
+            flex: 1;
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s ease;
+        }
+
+        .confirmation-yes {
+            background: var(--success);
+            color: white;
+        }
+
+        .confirmation-no {
+            background: var(--error);
+            color: white;
+        }
+
+        .confirmation-cancel {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        /* Стили для загрузки скриншота */
+        .screenshot-upload {
+            margin: 20px 0;
+        }
+
+        .screenshot-preview {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 12px;
+            margin: 16px 0;
+            display: none;
+        }
+
+        .upload-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        /* Стили для проверки заданий админом */
+        .verification-list {
+            max-height: 500px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .verification-item {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .verification-item:hover {
+            background: var(--bg-secondary);
+            transform: translateY(-2px);
+        }
+
+        .verification-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .verification-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--purple-gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            color: white;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .verification-user-info {
+            flex: 1;
+        }
+
+        .verification-user-name {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .verification-task-title {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .verification-price {
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .verification-time {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-align: right;
+        }
+
+        /* Модальное окно проверки задания */
+        .verification-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(5, 5, 16, 0.95);
+            z-index: 3000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            padding: 20px;
+        }
+
+        .verification-modal.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .verification-modal-content {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 24px;
+            width: 90%;
+            max-width: 500px;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .verification-modal-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .verification-modal-user {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+
+        .verification-modal-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--purple-gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 16px;
+            color: white;
+            font-weight: 600;
+            font-size: 20px;
+        }
+
+        .verification-modal-user-info {
+            flex: 1;
+        }
+
+        .verification-modal-user-name {
+            font-weight: 600;
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+
+        .verification-modal-task {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .verification-modal-price {
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-weight: 700;
+            font-size: 24px;
+        }
+
+        .verification-modal-screenshot {
+            width: 100%;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .verification-modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .verification-approve {
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .verification-reject {
+            background: var(--error);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        /* Стили для отклоненных заданий */
+        .rejected-task {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .rejected-badge {
+            background: var(--error);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .support-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+
+        /* Анимации */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .confirmation-buttons {
+                flex-direction: column;
+            }
+            
+            .verification-modal-actions {
+                flex-direction: column;
+            }
+            
+            .verification-modal-header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .verification-modal-user {
+                margin-bottom: 16px;
+            }
+        }
+
+        /* Минималистичный дизайн постов */
+        .posts-feed {
+            margin-top: 20px;
+        }
+
+        .post-item {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .post-item:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .post-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .post-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+            line-height: 1.3;
+        }
+
+        .post-author {
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .admin-badge {
+            background: var(--purple-gradient);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .post-date {
+            font-size: 11px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            margin-left: 10px;
+        }
+
+        .post-content {
+            color: var(--text-primary);
+            line-height: 1.5;
+            margin-bottom: 12px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 14px;
+        }
+
+        .post-image {
+            width: 100%;
+            border-radius: 8px;
+            margin: 10px 0;
+            max-height: 300px;
+            object-fit: cover;
+        }
+
+        .post-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        .post-actions {
+            display: flex;
+            gap: 15px;
+        }
+
+        .like-btn, .share-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .like-btn:hover, .share-btn:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .loading-posts {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+        }
+
+        .loading-spinner {
+            font-size: 24px;
+            margin-bottom: 12px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Адаптивность для постов */
+        @media (max-width: 768px) {
+            .post-item {
+                padding: 14px;
+                margin-bottom: 10px;
+            }
+            
+            .post-header {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .post-date {
+                margin-left: 0;
+                align-self: flex-start;
+            }
+            
+            .post-title {
+                font-size: 15px;
+            }
+            
+            .post-content {
+                font-size: 13px;
+            }
+        }
+
+        .back-button {
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 24px;
+            margin-right: 12px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .back-button:hover {
+            background: var(--bg-secondary);
+        }
+
+        .page-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 0 10px;
+        }
+
+        .page-title {
+            font-size: 24px;
+            font-weight: 700;
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .nav-icon img {
+            width: 24px;
+            height: 24px;
+            object-fit: contain;
+            filter: brightness(0) invert(0.7);
+            transition: all 0.3s ease;
+        }
+
+        .nav-item.active .nav-icon img {
+            filter: brightness(0) invert(1);
+        }
+
+        /* Светлая тема */
+        [data-theme="light"] {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --text-primary: #2d3748;
+            --text-secondary: #4a5568;
+            --accent: #6366f1;
+            --accent-hover: #4f46e5;
+            --card-bg: #ffffff;
+            --border: #e2e8f0;
+            --shadow: rgba(0, 0, 0, 0.1);
+            --nav-bg: rgba(255, 255, 255, 0.95);
+            --gold: #d97706;
+            --gold-gradient: linear-gradient(135deg, #f59e0b, #d97706);
+            --purple-gradient: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            --blue-gradient: linear-gradient(135deg, #3b82f6, #2563eb);
+            --teal-gradient: linear-gradient(135deg, #0ea5e9, #0369a1);
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        /* Переключатель темы */
+        .theme-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .theme-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .theme-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border);
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .theme-slider:before {
+            position: absolute;
+            content: "🌙";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 3px;
+            background-color: var(--accent);
+            transition: .4s;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        input:checked + .theme-slider {
+            background-color: var(--accent);
+        }
+
+        input:checked + .theme-slider:before {
+            content: "☀️";
+            transform: translateX(26px);
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: calc(100vh - 140px);
+        }
+
+        .message {
+            max-width: 85%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            margin-bottom: 4px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: pre-wrap;
+            position: relative;
+        }
+
+        .message-text {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: pre-wrap;
+            line-height: 1.3;
+            max-width: 100%;
+        }
+
+        /* Для админского чата */
+        .admin-chat-messages {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: calc(100vh - 200px);
+        }
+
+        /* Стили для списка админов */
+        .admin-admins-list {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .admin-admin-item {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .admin-admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .admin-admin-name {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .admin-admin-info {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .admin-admin-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* 🔧 ФИКС ДЛЯ ВКЛАДКИ ЗАДАНИЙ - УСТРАНЕНИЕ СМЕЩЕНИЯ БЛОКОВ */
+        .tasks-tab {
+            min-height: 500px;
+            position: relative;
+        }
+
+        .tasks-grid {
+            display: grid;
+            gap: 16px;
+            grid-template-columns: 1fr;
+            min-height: 200px;
+            position: relative;
+            height: auto !important;
+        }
+
+        /* Убираем анимации для всех элементов в tasks-tab */
+        .tasks-tab .fade-in {
+            animation: none !important;
+            opacity: 1 !important;
+        }
+
+        /* Фикс для контейнера фильтров */
+        .filters-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+            flex-wrap: nowrap;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Фикс для поиска */
+        .search-container {
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Убираем задержки анимации */
+        .task-card[style*="animation-delay"] {
+            animation-delay: 0s !important;
+        }
+
+        /* Фикс для вкладок заданий */
+        .tasks-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 6px;
+            border: 1px solid var(--border);
+            overflow-x: auto;
+            white-space: nowrap;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Гарантируем что контейнеры не перекрываются */
+        #new-tasks,
+        #confirmation-tasks,
+        #completed-tasks,
+        #rejected-tasks {
+            position: relative;
+            min-height: 300px;
+            /* Убираем любые трансформации и анимации */
+            transform: none !important;
+            transition: none !important;
+            animation: none !important;
+            height: auto;
+            min-height: auto;
+        }
+
+        /* Фикс для пустого состояния */
+        .no-tasks {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            width: 100%;
+        }
+
+        /* Обеспечиваем плавное переключение без смещения */
+        .tasks-grid {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+        }
+
+        /* Убираем все возможные transition для элементов задач */
+        #new-tasks *,
+        #confirmation-tasks *,
+        #completed-tasks *,
+        #rejected-tasks *,
+        .task-card * {
+            transition: none !important;
+            animation: none !important;
+        }
+
+        /* Гарантируем одинаковые стили для всех контейнеров задач */
+        .tasks-tab > div[id$="-tasks"] {
+            display: none;
+            position: relative;
+            min-height: 400px;
+        }
+
+        .tasks-tab > div[id$="-tasks"].active {
+            display: block;
+        }
+
+        /* Фикс для отображения активной вкладки */
+        .tasks-tab > div[id$="-tasks"]:not(.active) {
+            display: none !important;
+        }
+
+        /* Убираем любые эффекты при переключении */
+        .tasks-tab {
+            overflow: visible !important;
+        }
+
+        /* Дополнительный фикс для мобильных устройств */
+        @media (max-width: 768px) {
+            .tasks-tab {
+                min-height: 600px;
+            }
+            
+            .tasks-grid {
+                min-height: 300px;
+            }
+            
+            #new-tasks,
+            #confirmation-tasks,
+            #completed-tasks,
+            #rejected-tasks {
+                min-height: 400px;
+            }
+        }
+
+        /* Стиль для индикатора загрузки */
+        .loading-spinner {
+            font-size: 32px;
+            margin-bottom: 16px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Стили для формы добавления задания */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        /* Область загрузки изображения */
+        .image-upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: var(--bg-secondary);
+            min-height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .image-upload-area:hover {
+            border-color: var(--accent);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .upload-placeholder {
+            color: var(--text-secondary);
+            pointer-events: none;
+        }
+
+        .image-preview {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+
+        /* Кнопки формы */
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            padding: 12px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: var(--card-bg);
+            border-color: var(--accent);
+        }
     </style>
 </head>
 <body>
