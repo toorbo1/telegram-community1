@@ -9107,9 +9107,6 @@ function addAdminDebugButton() {
     document.body.appendChild(debugBtn);
 }
 
-// Вызовите при загрузке
-setTimeout(addAdminDebugButton, 2000);
-        // Функция показа вкладки админа - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function showAdminTab() {
     const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
     const isRegularAdmin = currentUser?.is_admin === true;
@@ -9120,8 +9117,15 @@ function showAdminTab() {
     }
     
     hideAllTabs();
-    document.getElementById('admin-tab').classList.add('active');
+    const adminTab = document.getElementById('admin-tab');
+    adminTab.classList.add('active');
+    adminTab.style.display = 'block';
     updateNavState('admin');
+    
+    // По умолчанию показываем секцию постов
+    setTimeout(() => {
+        showAdminSection('posts');
+    }, 50);
 }
 
         function showWithdrawPage() {
@@ -9147,13 +9151,20 @@ function showAdminTab() {
             showProfileTab();
         }
 
-        function hideAllTabs() {
-            // Скрываем все вкладки и страницы
-            const allElements = document.querySelectorAll('.tab-content, .page');
-            allElements.forEach(element => {
-                element.classList.remove('active');
-            });
-        }
+      function hideAllTabs() {
+    // Скрываем все вкладки и страницы
+    const allElements = document.querySelectorAll('.tab-content, .page');
+    allElements.forEach(element => {
+        element.classList.remove('active');
+        element.style.display = 'none';
+    });
+    
+    // Дополнительно скрываем все админ секции
+    const adminSections = document.querySelectorAll('.admin-section');
+    adminSections.forEach(section => {
+        section.style.display = 'none';
+    });
+}
 
         function updateNavState(activeTab) {
             document.querySelectorAll('.nav-item').forEach(item => {
@@ -9186,20 +9197,31 @@ function showAdminSection(section) {
         console.log(`❌ Hiding: ${sec.id}`);
     });
     
+    // Скрываем все кнопки админа которые могли остаться видимыми
+    const adminButtons = document.querySelectorAll('.admin-btn');
+    adminButtons.forEach(btn => {
+        btn.style.display = 'none';
+    });
+    
     // Показываем выбранную секцию
     const targetSection = document.getElementById('admin-' + section + '-section');
     if (targetSection) {
         targetSection.style.display = 'block';
         console.log(`✅ Showing: admin-${section}-section`);
         
+        // Показываем только кнопки относящиеся к этой секции
+        const sectionButtons = targetSection.querySelectorAll('.admin-btn');
+        sectionButtons.forEach(btn => {
+            btn.style.display = 'block';
+        });
+        
         // Загружаем данные для определенных секций
         switch(section) {
             case 'tasks':
                 console.log('📋 Loading tasks management...');
-                // Добавляем небольшую задержку чтобы DOM обновился
                 setTimeout(() => {
                     loadAdminTasks();
-                    debugAdminForm(); // Диагностика после загрузки
+                    debugAdminForm();
                 }, 100);
                 break;
             case 'payments':
