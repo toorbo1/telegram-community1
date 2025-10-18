@@ -6917,7 +6917,7 @@ function showTasksTab() {
         
     }, 50); // Уменьшаем задержку
 }
-// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ ЗАДАНИЙ С ДИАГНОСТИКОЙ
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ ЗАДАНИЙ
 async function loadTasks(search = '', category = 'all') {
     try {
         console.log('🎯 START loadTasks:', { 
@@ -6952,7 +6952,7 @@ async function loadTasks(search = '', category = 'all') {
             </div>
         `;
 
-        // Формируем URL
+        // Формируем URL с правильными параметрами
         const params = new URLSearchParams();
         params.append('userId', currentUser.id);
         if (search) params.append('search', search);
@@ -7027,7 +7027,7 @@ function getActiveCategoryName(activeTab) {
 }
 
 
-// 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ЗАДАНИЙ
+// 🔧 ФУНКЦИЯ ОТОБРАЖЕНИЯ ЗАДАНИЙ
 function displayTasks(tasks, category) {
     console.log(`🎯 START displayTasks: ${tasks?.length} tasks for ${category}`);
     

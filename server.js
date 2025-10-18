@@ -1426,7 +1426,7 @@ app.delete('/api/posts/:id', async (req, res) => {
 
 // В server.js - обновите endpoint получения заданий
 app.get('/api/tasks', async (req, res) => {
-    const { search, category, userId } = req.query; // Добавляем userId из query params
+    const { search, category, userId } = req.query;
     
     console.log('📥 Получен запрос на задания:', { search, category, userId });
     
