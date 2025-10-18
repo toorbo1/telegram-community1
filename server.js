@@ -1409,22 +1409,28 @@ app.delete('/api/posts/:id', async (req, res) => {
 
 // ==================== TASKS ENDPOINTS ====================
 
-// Get all tasks - ИСПРАВЛЕННАЯ ВЕРСИЯ С ДАННЫМИ ДЛЯ МОДАЛЬНОГО ОКНА
+// В server.js - обновите endpoint получения заданий
 app.get('/api/tasks', async (req, res) => {
-    const { search, category } = req.query;
+    const { search, category, userId } = req.query;
     
-    console.log('📥 Получен запрос на задания:', { search, category });
+    console.log('📥 Получен запрос на задания:', { search, category, userId });
     
     try {
         let query = `
             SELECT t.*, 
-                   COUNT(ut.id) as completed_count
+                   COUNT(ut.id) as completed_count,
+                   EXISTS(
+                       SELECT 1 FROM user_tasks ut2 
+                       WHERE ut2.task_id = t.id 
+                       AND ut2.user_id = $1 
+                       AND ut2.status IN ('active', 'pending_review', 'completed')
+                   ) as user_has_task
             FROM tasks t 
             LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
             WHERE t.status = 'active'
         `;
-        let params = [];
-        let paramCount = 0;
+        let params = [userId];
+        let paramCount = 1;
         
         if (search) {
             paramCount++;
@@ -1445,11 +1451,16 @@ app.get('/api/tasks', async (req, res) => {
         
         const result = await pool.query(query, params);
         
-        console.log(`✅ Найдено заданий: ${result.rows.length}`);
+        // Фильтруем задания: показываем только те, которые пользователь еще не начал
+        const filteredTasks = result.rows.filter(task => !task.user_has_task);
+        
+        console.log(`✅ Найдено заданий: ${result.rows.length}, доступно пользователю: ${filteredTasks.length}`);
         
         res.json({
             success: true,
-            tasks: result.rows
+            tasks: filteredTasks,
+            totalCount: result.rows.length,
+            availableCount: filteredTasks.length
         });
     } catch (error) {
         console.error('❌ Get tasks error:', error);
@@ -1567,7 +1578,7 @@ app.get('/api/admin/tasks', async (req, res) => {
 
 // ==================== USER TASKS ENDPOINTS ====================
 
-// Start task for user - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// В server.js - обновите endpoint начала задания
 app.post('/api/user/tasks/start', async (req, res) => {
     const { userId, taskId } = req.body;
     
@@ -1773,7 +1784,7 @@ app.post('/api/user/tasks/:userTaskId/submit', upload.single('screenshot'), asyn
     }
 });
 
-// Cancel task
+// В server.js - обновите endpoint отмены задания
 app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
     const userTaskId = req.params.userTaskId;
     const { userId } = req.body;
@@ -1786,14 +1797,33 @@ app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
     }
     
     try {
+        // Получаем информацию о задании перед удалением
+        const taskInfo = await pool.query(`
+            SELECT task_id FROM user_tasks 
+            WHERE id = $1 AND user_id = $2 AND status = 'active'
+        `, [userTaskId, userId]);
+        
+        if (taskInfo.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Задание не найдено или уже завершено'
+            });
+        }
+        
+        const taskId = taskInfo.rows[0].task_id;
+        
+        // Удаляем запись о выполнении задания
         await pool.query(`
             DELETE FROM user_tasks 
             WHERE id = $1 AND user_id = $2
         `, [userTaskId, userId]);
         
+        console.log(`✅ Task ${taskId} cancelled by user ${userId}`);
+        
         res.json({
             success: true,
-            message: 'Task cancelled successfully'
+            message: 'Задание отменено успешно',
+            taskId: taskId
         });
     } catch (error) {
         console.error('Cancel task error:', error);
@@ -2095,7 +2125,7 @@ app.get('/api/admin/task-verifications', async (req, res) => {
     }
 });
 
-// Approve task verification (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
+// В server.js - обновите функции подтверждения и отклонения
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
@@ -2156,7 +2186,7 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
     }
 });
 
-// Reject task verification (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
+
 app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
@@ -2184,10 +2214,10 @@ app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res
             WHERE id = $2
         `, [adminId, verificationId]);
         
-        // Update user task
+        // Update user task - ВОЗВРАЩАЕМ задание в активные для повторного выполнения
         await pool.query(`
             UPDATE user_tasks 
-            SET status = 'rejected', rejected_at = CURRENT_TIMESTAMP 
+            SET status = 'active', screenshot_url = NULL, submitted_at = NULL 
             WHERE id = $1
         `, [verificationData.user_task_id]);
         

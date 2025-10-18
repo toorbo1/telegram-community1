@@ -6412,7 +6412,7 @@ function testAddTask() {
         window.showTaskCategory = showTaskCategory;
         window.loadTasksForCategory = loadTasksForCategory;
         window.displayTasksForCategory = displayTasksForCategory;
-        
+
 // Функция для диагностики подтверждения заданий
 function debugTaskConfirmation() {
     console.log('🐛 DEBUG Task Confirmation System:');
@@ -6703,13 +6703,13 @@ function showTasksTab() {
         
     }, 50); // Уменьшаем задержку
 }
+// Обновите функцию загрузки заданий с передачей userId
 async function loadTasks(search = '', category = 'all') {
     try {
         console.log('🔄 ЗАГРУЗКА ЗАДАНИЙ - НАЧАЛО', { search, category });
         
         const newTasksContainer = document.getElementById('new-tasks');
         
-        // Проверяем, видна ли вкладка новых заданий
         if (!newTasksContainer || newTasksContainer.style.display !== 'block') {
             console.log('❌ Вкладка новых заданий не видна, отменяем загрузку');
             return;
@@ -6725,28 +6725,27 @@ async function loadTasks(search = '', category = 'all') {
             </div>
         `;
         
-        // Формируем URL
-        let url = '/api/tasks';
+        // Формируем URL с userId
+        let url = `/api/tasks?userId=${currentUser.id}`;
         const params = [];
         
         if (search) params.push(`search=${encodeURIComponent(search)}`);
         if (category && category !== 'all') params.push(`category=${encodeURIComponent(category)}`);
         
         if (params.length > 0) {
-            url += '?' + params.join('&');
+            url += '&' + params.join('&');
         }
         
         console.log('📡 Запрос к серверу:', url);
         
         // Делаем запрос
         const result = await makeRequest(url);
-        console.log('✅ Ответ от сервера получен, задач:', result.tasks?.length || 0);
+        console.log('✅ Ответ от сервера получен, доступно задач:', result.tasks?.length || 0);
         
         if (result.success) {
             allTasks = result.tasks || [];
-            console.log(`🎯 Отображаем ${allTasks.length} заданий`);
+            console.log(`🎯 Отображаем ${allTasks.length} заданий доступных пользователю`);
             
-            // Убеждаемся что контейнер еще виден
             if (newTasksContainer && newTasksContainer.style.display === 'block') {
                 displayTasks(allTasks, 'new');
                 console.log('✅ Задания успешно отображены');
@@ -6776,6 +6775,28 @@ async function loadTasks(search = '', category = 'all') {
         showNotification('Ошибка загрузки заданий', 'error');
     }
 }
+
+
+// В index.html - добавьте функцию для автоматического обновления интерфейса
+function updateTaskInterfaces() {
+    if (document.getElementById('tasks-tab').classList.contains('active')) {
+        const activeCategory = document.querySelector('.task-tab.active');
+        if (activeCategory) {
+            const category = getActiveCategoryName(activeCategory);
+            loadTasksForCategory(category);
+        }
+    }
+}
+
+function getActiveCategoryName(activeTab) {
+    const text = activeTab.textContent.toLowerCase();
+    if (text.includes('новые')) return 'new';
+    if (text.includes('подтверждение')) return 'confirmation';
+    if (text.includes('выполненные')) return 'completed';
+    if (text.includes('отклоненные')) return 'rejected';
+    return 'new';
+}
+
 
 // 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ЗАДАНИЙ С ФИКСАМИ ДЛЯ МОБИЛЬНЫХ
 function displayTasks(tasks, category) {
@@ -7374,29 +7395,36 @@ function showTaskConfirmation(userTaskId, taskName) {
     }
 }
 
-        async function cancelTask() {
-            if (!currentUserTaskId) return;
+// Обновите функцию отмены задания
+async function cancelTask() {
+    if (!currentUserTaskId) return;
 
-            try {
-                const result = await makeRequest(`/user/tasks/${currentUserTaskId}/cancel`, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        userId: currentUser.id
-                    })
-                });
+    try {
+        const result = await makeRequest(`/user/tasks/${currentUserTaskId}/cancel`, {
+            method: 'POST',
+            body: JSON.stringify({
+                userId: currentUser.id
+            })
+        });
 
-                if (result.success) {
-                    showNotification('Задание отменено', 'success');
-                    closeModal('cancel-confirmation-modal');
-                    loadUserTasks();
-                } else {
-                    showNotification('Ошибка: ' + result.error, 'error');
-                }
-            } catch (error) {
-                console.error('Error cancelling task:', error);
-                showNotification('Ошибка отмены задания', 'error');
-            }
+        if (result.success) {
+            showNotification('Задание отменено', 'success');
+            closeModal('cancel-confirmation-modal');
+            
+            // НЕМЕДЛЕННО обновляем списки
+            setTimeout(() => {
+                loadTasks(); // Возвращаем задание в новые
+                loadUserTasks(); // Убираем из активных
+            }, 500);
+            
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
         }
+    } catch (error) {
+        console.error('Error cancelling task:', error);
+        showNotification('Ошибка отмены задания', 'error');
+    }
+}
 
         // Загрузка заданий на проверку для админа
         async function loadTaskVerifications() {
@@ -9198,6 +9226,7 @@ function updateWithdrawPage() {
             document.getElementById(modalId).classList.remove('active');
         }
 
+// В index.html - обновите функцию начала задания
 async function startTask() {
     console.log('🎯 Starting task...', { selectedTaskId, currentUser });
     
@@ -9223,11 +9252,11 @@ async function startTask() {
             closeModal('task-modal');
             showNotification('✅ Задание начато! Выполните его и вернитесь для подтверждения.', 'success');
             
-            // Обновляем списки заданий
+            // НЕМЕДЛЕННО обновляем списки заданий
             setTimeout(() => {
-                loadTasks();
-                loadUserTasks();
-            }, 1000);
+                loadTasks(); // Обновляем новые задания (убираем начатое)
+                loadUserTasksForCategory('active'); // Добавляем в активные
+            }, 500);
             
         } else {
             showNotification('❌ Ошибка: ' + result.error, 'error');
@@ -9237,6 +9266,7 @@ async function startTask() {
         showNotification('❌ Ошибка начала задания: ' + error.message, 'error');
     }
 }
+
 // 🔧 ФУНКЦИЯ ДЛЯ ДИАГНОСТИКИ НАЧАЛА ЗАДАНИЯ
 function debugStartTask() {
     console.log('🐛 DEBUG Start Task:');
