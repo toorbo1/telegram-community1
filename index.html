@@ -5326,46 +5326,36 @@ html, body {
 
 
 function previewTaskImage(input) {
-    const area = document.getElementById('image-upload-area');
-    const placeholder = area.querySelector('.upload-placeholder');
+    if (!input.files || !input.files[0]) return;
+    
+    const file = input.files[0];
     const preview = document.getElementById('task-image-preview');
     
-    if (input.files && input.files[0]) {
-        const file = input.files[0];
-        
-        // Проверяем размер файла (максимум 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            showNotification('Размер изображения не должен превышать 5MB', 'error');
-            return;
-        }
-        
-        // Проверяем тип файла
-        if (!file.type.startsWith('image/')) {
-            showNotification('Пожалуйста, выберите изображение', 'error');
-            return;
-        }
-        
-        const reader = new FileReader();
-        
-        reader.onload = function(e) {
-            preview.src = e.target.result;
-            preview.style.display = 'block';
-            placeholder.style.display = 'none';
-            currentTaskImage = file;
-            
-            // Показываем красивую анимацию
-            area.style.borderColor = 'var(--success)';
-            area.style.background = 'rgba(16, 185, 129, 0.05)';
-        }
-        
-        reader.onerror = function() {
-            showNotification('Ошибка при загрузке изображения', 'error');
-        }
-        
-        reader.readAsDataURL(file);
+    // Проверка типа файла
+    if (!file.type.startsWith('image/')) {
+        showNotification('Пожалуйста, выберите изображение', 'error');
+        return;
     }
+    
+    // Проверка размера файла
+    if (file.size > 5 * 1024 * 1024) {
+        showNotification('Размер изображения не должен превышать 5MB', 'error');
+        return;
+    }
+    
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        preview.src = e.target.result;
+        preview.style.display = 'block';
+    };
+    
+    reader.onerror = function() {
+        showNotification('Ошибка при загрузке изображения', 'error');
+    };
+    
+    reader.readAsDataURL(file);
 }
-
 
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
@@ -6421,14 +6411,18 @@ async function loadTasksForCategory(category) {
 }
         // 🔧 ФУНКЦИЯ ОТОБРАЖЕНИЯ ЗАДАНИЙ ПО КАТЕГОРИИ
         function displayTasksForCategory(tasks, category) {
-            const container = document.getElementById(`${category}-tasks`);
-            if (!container) {
-                console.error(`❌ Контейнер не найден: ${category}-tasks`);
-                return;
-            }
-            
-            container.innerHTML = '';
-            
+    const container = document.getElementById(`${category}-tasks`);
+    if (!container) {
+        console.error(`Контейнер ${category}-tasks не найден`);
+        return;
+    }
+    
+    container.innerHTML = '';
+                if (!tasks || tasks.length === 0) {
+        container.innerHTML = `<div>Нет заданий</div>`;
+        return;
+    }
+    
             if (!tasks || tasks.length === 0) {
                 let message = '';
                 switch(category) {
@@ -6460,10 +6454,11 @@ async function loadTasksForCategory(category) {
             
             console.log(`🎯 Отображаем ${tasks.length} заданий в категории ${category}`);
             
-            tasks.forEach((task, index) => {
-                const taskElement = createTaskElement(task, category, index);
-                container.appendChild(taskElement);
-            });
+   
+                tasks.forEach(task => {
+        container.appendChild(createTaskElement(task));
+    });
+
         }
         // 🔧 ФУНКЦИЯ СОЗДАНИЯ ЭЛЕМЕНТА ЗАДАНИЯ
         function createTaskElement(task, category, index) {
@@ -7937,10 +7932,13 @@ async function addTask() {
         console.log('📤 Sending request to server:', requestData);
 
         // 🔧 ИСПРАВЛЕНИЕ: Правильный endpoint
-        const result = await makeRequest('/api/tasks', { // ← ДОБАВЬТЕ /api/
-            method: 'POST',
-            body: JSON.stringify(requestData)
-        });
+        const params = new URLSearchParams();
+params.append('userId', currentUser.id);
+if (search) params.append('search', search);
+if (category && category !== 'all') params.append('category', category);
+
+const url = `/api/tasks?${params.toString()}`;
+const result = await makeRequest(url);
 
         console.log('📨 Server response:', result);
 
