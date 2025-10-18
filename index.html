@@ -5303,6 +5303,7 @@ html, body {
         🧪 Test Add Task
     </button>
 </div> -->
+<input type="file" id="task-image-input" accept="image/*" style="display: none;" onchange="previewTaskImage(this)">
     <script>
         // 🔧 КОНФИГУРАЦИЯ
         console.log('🌐 Current URL:', window.location.href);
@@ -5312,15 +5313,16 @@ html, body {
         const tg = window.Telegram.WebApp;
         const ADMIN_ID = 8036875641;
 
-        // Глобальные переменные
-        let currentUser = null;
-        let currentChatId = null;
-        let currentAdminChat = null;
-        let selectedTaskId = null;
-        let allTasks = [];
-        let chatUpdateInterval = null;
-        let currentUserTaskId = null;
-        let currentVerificationId = null;
+     // 🔧 ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+let currentUser = null;
+let currentChatId = null;
+let currentAdminChat = null;
+let selectedTaskId = null;
+let allTasks = [];
+let chatUpdateInterval = null;
+let currentUserTaskId = null;
+let currentVerificationId = null;
+let currentTaskImage = null; // ← ДОБАВЬТЕ ЭТУ СТРОКУ
 
 // Функции для работы с загрузкой изображений
 
@@ -5330,16 +5332,22 @@ function previewTaskImage(input) {
     
     const file = input.files[0];
     const preview = document.getElementById('task-image-preview');
+    const placeholder = document.querySelector('.upload-placeholder');
+    
+    // Сохраняем файл в глобальную переменную
+    currentTaskImage = file;
     
     // Проверка типа файла
     if (!file.type.startsWith('image/')) {
         showNotification('Пожалуйста, выберите изображение', 'error');
+        currentTaskImage = null;
         return;
     }
     
     // Проверка размера файла
     if (file.size > 5 * 1024 * 1024) {
         showNotification('Размер изображения не должен превышать 5MB', 'error');
+        currentTaskImage = null;
         return;
     }
     
@@ -5348,15 +5356,19 @@ function previewTaskImage(input) {
     reader.onload = function(e) {
         preview.src = e.target.result;
         preview.style.display = 'block';
+        if (placeholder) {
+            placeholder.style.display = 'none';
+        }
     };
     
     reader.onerror = function() {
         showNotification('Ошибка при загрузке изображения', 'error');
+        currentTaskImage = null;
     };
     
     reader.readAsDataURL(file);
 }
-
+// Инициализация при загрузке страницы
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Initializing LinkGold app...');
@@ -5373,6 +5385,7 @@ document.addEventListener('DOMContentLoaded', function() {
         initializeTestUser();
     }
 });
+
 // Улучшенная функция для запросов
 // 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ ДЛЯ ЗАПРОСОВ
 async function makeRequest(endpoint, options = {}) {
@@ -10683,18 +10696,26 @@ setTimeout(() => {
 
 function clearTaskImage() {
     const input = document.getElementById('task-image-input');
-    const area = document.getElementById('image-upload-area');
     const preview = document.getElementById('task-image-preview');
-    const placeholder = area.querySelector('.upload-placeholder');
+    const placeholder = document.querySelector('.upload-placeholder');
     
-    input.value = '';
-    preview.style.display = 'none';
-    placeholder.style.display = 'block';
+    if (input) input.value = '';
+    if (preview) {
+        preview.src = '';
+        preview.style.display = 'none';
+    }
+    if (placeholder) {
+        placeholder.style.display = 'block';
+    }
+    
     currentTaskImage = null;
     
-    // Сбрасываем стили
-    area.style.borderColor = '';
-    area.style.background = '';
+    // Сбрасываем стили области загрузки
+    const area = document.getElementById('image-upload-area');
+    if (area) {
+        area.style.borderColor = '';
+        area.style.background = '';
+    }
 }
 // Функция загрузки заданий админа
 async function loadAdminTasks() {
@@ -10712,25 +10733,48 @@ async function loadAdminTasks() {
 // Drag and drop функциональность
 function initImageUploadDragDrop() {
     const area = document.getElementById('image-upload-area');
+    if (!area) return;
     
     area.addEventListener('dragover', function(e) {
         e.preventDefault();
         area.classList.add('dragover');
+        area.style.borderColor = 'var(--accent)';
+        area.style.background = 'rgba(99, 102, 241, 0.05)';
     });
     
     area.addEventListener('dragleave', function(e) {
         e.preventDefault();
         area.classList.remove('dragover');
+        area.style.borderColor = '';
+        area.style.background = '';
     });
     
     area.addEventListener('drop', function(e) {
         e.preventDefault();
         area.classList.remove('dragover');
+        area.style.borderColor = '';
+        area.style.background = '';
         
         const files = e.dataTransfer.files;
         if (files.length > 0) {
-            document.getElementById('task-image-input').files = files;
-            previewTaskImage(document.getElementById('task-image-input'));
+            const fileInput = document.getElementById('task-image-input');
+            if (fileInput) {
+                // Создаем новый DataTransfer для установки файла
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(files[0]);
+                fileInput.files = dataTransfer.files;
+                
+                // Запускаем превью
+                previewTaskImage(fileInput);
+            }
+        }
+    });
+    
+    // Обработчик клика на область загрузки
+    area.addEventListener('click', function() {
+        const fileInput = document.getElementById('task-image-input');
+        if (fileInput) {
+            fileInput.click();
         }
     });
 }
@@ -10758,6 +10802,12 @@ async function addTaskWithImage() {
             return;
         }
 
+        const price = parseFloat(taskData.price);
+        if (isNaN(price) || price <= 0) {
+            showNotification('Цена должна быть положительным числом!', 'error');
+            return;
+        }
+
         // Создаем FormData для отправки с файлом
         const formData = new FormData();
         
@@ -10769,68 +10819,39 @@ async function addTaskWithImage() {
         // Добавляем изображение если есть
         if (currentTaskImage) {
             formData.append('image', currentTaskImage);
+            console.log('📸 Adding image to form data:', currentTaskImage.name);
+        } else {
+            console.log('ℹ️ No image selected');
         }
 
         console.log('📤 Sending task with image...');
 
-        // Показываем прогресс загрузки
-        const progressBar = document.querySelector('.upload-progress-bar');
-        const progressContainer = document.querySelector('.upload-progress');
-        
-        if (progressContainer) {
-            progressContainer.style.display = 'block';
-        }
+        // Отправляем запрос
+        const response = await fetch('/api/tasks-with-image', {
+            method: 'POST',
+            body: formData
+            // Не устанавливаем Content-Type - браузер сам установит с boundary
+        });
 
-        const xhr = new XMLHttpRequest();
-        
-        xhr.upload.addEventListener('progress', function(e) {
-            if (e.lengthComputable) {
-                const percentComplete = (e.loaded / e.total) * 100;
-                if (progressBar) {
-                    progressBar.style.width = percentComplete + '%';
-                }
-            }
-        });
-        
-        xhr.addEventListener('load', function() {
-            try {
-                const result = JSON.parse(xhr.responseText);
-                
-                if (progressContainer) {
-                    progressContainer.style.display = 'none';
-                }
-                
-                if (result.success) {
-                    showNotification('✅ Задание с фото успешно создано!', 'success');
-                    
-                    // Очищаем форму
-                    clearTaskForm();
-                    clearTaskImage();
-                    
-                    // Обновляем списки
-                    setTimeout(() => {
-                        loadAdminTasks();
-                        loadTasks();
-                    }, 1000);
-                    
-                } else {
-                    throw new Error(result.error);
-                }
-            } catch (error) {
-                console.error('Error parsing response:', error);
-                showNotification('❌ Ошибка создания задания', 'error');
-            }
-        });
-        
-        xhr.addEventListener('error', function() {
-            if (progressContainer) {
-                progressContainer.style.display = 'none';
-            }
-            showNotification('❌ Ошибка сети при создании задания', 'error');
-        });
-        
-        xhr.open('POST', '/api/tasks-with-image');
-        xhr.send(formData);
+        const result = await response.json();
+        console.log('📨 Server response:', result);
+
+        if (result.success) {
+            showNotification('✅ Задание с фото успешно создано!', 'success');
+            
+            // Очищаем форму
+            clearTaskForm();
+            clearTaskImage();
+            
+            // Обновляем списки
+            setTimeout(() => {
+                loadAdminTasks();
+                loadTasks();
+            }, 1000);
+            
+        } else {
+            throw new Error(result.error || 'Unknown server error');
+        }
 
     } catch (error) {
         console.error('💥 Error in addTaskWithImage:', error);
@@ -10856,8 +10877,10 @@ function clearTaskForm() {
     // Сбрасываем выпадающие списки
     document.getElementById('admin-task-category').value = 'subscribe';
     document.getElementById('admin-task-difficulty').value = 'Легкая';
+    
+    // Очищаем изображение
+    clearTaskImage();
 }
-
 // Функция для отображения заданий с изображениями
 function displayTasksWithImages(tasks, category) {
     const container = document.getElementById(category + '-tasks');
