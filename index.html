@@ -7882,33 +7882,20 @@ addDebugButton();
             }
         }
 
-// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ДОБАВЛЕНИЯ ЗАДАНИЯ
 async function addTask() {
     console.log('🎯 Starting addTask function...');
     
     try {
-        if (!currentUser) {
-            showNotification('Пользователь не авторизован', 'error');
-            return;
-        }
-
         // Получаем значения из формы
-        const getElementValue = (id) => {
-            const element = document.getElementById(id);
-            const value = element ? element.value : '';
-            console.log(`🔍 ${id}: "${value}"`);
-            return value;
-        };
-
         const taskData = {
-            title: getElementValue('admin-task-title'),
-            description: getElementValue('admin-task-description'),
-            price: getElementValue('admin-task-price'),
-            category: getElementValue('admin-task-category'),
-            time_to_complete: getElementValue('admin-task-time'),
-            difficulty: getElementValue('admin-task-difficulty'),
-            people_required: getElementValue('admin-task-people'),
-            task_url: getElementValue('admin-task-url'),
+            title: document.getElementById('admin-task-title').value.trim(),
+            description: document.getElementById('admin-task-description').value.trim(),
+            price: document.getElementById('admin-task-price').value,
+            category: document.getElementById('admin-task-category').value,
+            time_to_complete: document.getElementById('admin-task-time').value || '5-10 минут',
+            difficulty: document.getElementById('admin-task-difficulty').value,
+            people_required: document.getElementById('admin-task-people').value || 1,
+            task_url: document.getElementById('admin-task-url').value || '',
             created_by: currentUser.id
         };
 
@@ -7949,8 +7936,8 @@ async function addTask() {
 
         console.log('📤 Sending request to server:', requestData);
 
-        // Отправляем запрос на сервер
-        const result = await makeRequest('/tasks', {
+        // 🔧 ИСПРАВЛЕНИЕ: Правильный endpoint
+        const result = await makeRequest('/api/tasks', { // ← ДОБАВЬТЕ /api/
             method: 'POST',
             body: JSON.stringify(requestData)
         });
@@ -7993,32 +7980,27 @@ async function addTask() {
         console.error('💥 Error in addTask:', error);
         showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
     }
+
 }
-// 🔧 ФУНКЦИЯ ДЛЯ ДИАГНОСТИКИ ПРОБЛЕМ - УДАЛИТЬ ИЗ SERVER.JS
+// Добавьте эту функцию для отладки
 function debugTaskCreation() {
     console.log('🐛 DEBUG Task Creation:');
-    
-    // Проверяем элементы формы
-    const elements = [
-        'admin-task-title',
-        'admin-task-description', 
-        'admin-task-price',
-        'admin-task-category',
-        'admin-task-time',
-        'admin-task-difficulty',
-        'admin-task-people',
-        'admin-task-url'
-    ];
-    
-    elements.forEach(id => {
-        const element = document.getElementById(id);
-        console.log(`- ${id}:`, element ? `"${element.value}"` : 'NOT FOUND');
-    });
-    
-    // Проверяем пользователя
     console.log('- currentUser:', currentUser);
+    console.log('- isAdmin:', currentUser?.is_admin);
     console.log('- API_BASE_URL:', API_BASE_URL);
+    
+    // Проверьте значения формы
+    const formData = {
+        title: document.getElementById('admin-task-title').value,
+        description: document.getElementById('admin-task-description').value,
+        price: document.getElementById('admin-task-price').value,
+        created_by: currentUser?.id
+    };
+    console.log('- Form data:', formData);
 }
+
+// Вызовите при создании задания
+debugTaskCreation();
 
 // Временно добавьте эту кнопку в админ-панель - УДАЛИТЬ ИЗ SERVER.JS
 function addTestButton() {

@@ -928,7 +928,6 @@ async function addTask() {
         showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
     }
 }
-/// Create task endpoint - УПРОЩЕННАЯ ВЕРСИЯ
 app.post('/api/tasks', async (req, res) => {
     console.log('📥 Received task creation request:', req.body);
     
@@ -949,8 +948,24 @@ app.post('/api/tasks', async (req, res) => {
         time_to_complete, difficulty, people_required, task_url
     });
     
+    // 🔧 ДОБАВЬТЕ ПРОВЕРКУ ПРАВ АДМИНА
+    if (!created_by) {
+        return res.status(400).json({
+            success: false,
+            error: 'Отсутствует ID создателя'
+        });
+    }
+    
+    const isAdmin = await checkAdminAccess(created_by);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Только администратор может создавать задания!'
+        });
+    }
+    
     // Базовая валидация
-    if (!title || !description || !price || !created_by) {
+    if (!title || !description || !price) {
         console.log('❌ Validation failed: missing required fields');
         return res.status(400).json({
             success: false,
