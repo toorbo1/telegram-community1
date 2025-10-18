@@ -56,57 +56,43 @@ body {
     box-sizing: border-box;
     overflow-x: hidden;
 }
-/* Мобильная адаптация */
+/* Адаптивность для мобильных */
 @media (max-width: 768px) {
-    .main-content {
-        padding: 12px;
-        padding-bottom: 90px;
-    }
-    
-    .tasks-tab {
-        min-height: 400px;
+    .tasks-grid {
+        gap: 14px;
     }
     
     .task-card {
-        padding: 14px;
-        /* УМЕНЬШАЕМ ВЫСОТУ ДЛЯ МОБИЛЬНЫХ */
-        min-height: 120px; /* Было 180px */
+        padding: 16px;
+        min-height: 180px;
     }
     
     .task-title {
-        font-size: 18px; /* Немного меньше на мобильных */
+        font-size: 16px;
     }
-
     
-    .task-header {
-        gap: 8px;
+    .task-description {
+        font-size: 13px;
     }
     
     .task-price {
-        font-size: 16px;
-        margin-left: 5px;
+        font-size: 18px;
+    }
+    
+    .task-image {
+        height: 100px;
+    }
+    
+    .task-image-placeholder {
+        height: 100px;
+        font-size: 13px;
     }
 }
 
 @media (max-width: 480px) {
-    .main-content {
-        padding: 10px;
-        padding-bottom: 80px;
-    }
-    
-    body {
-        padding: 10px;
-        padding-bottom: 100px;
-    }
-    
-    .tasks-tab {
-        min-height: 350px;
-    }
-    
     .task-card {
-        padding: 12px;
-        /* ЕЩЕ МЕНЬШЕ ДЛЯ ОЧЕНЬ МАЛЕНЬКИХ ЭКРАНОВ */
-        min-height: 110px; /* Было 150px */
+        padding: 14px;
+        min-height: 170px;
     }
     
     .task-header {
@@ -116,8 +102,8 @@ body {
     }
     
     .task-price {
-        margin-left: 0;
         align-self: flex-start;
+        font-size: 17px;
     }
     
     .task-footer {
@@ -129,14 +115,9 @@ body {
     .task-btn {
         width: 100%;
         text-align: center;
-    }
-        .task-title {
-        font-size: 17px;
-        -webkit-line-clamp: 2; /* Ограничиваем 2 строками */
-        line-clamp: 2;
+        padding: 10px 14px;
     }
 }
-
 
 /* 🔥 ОБНОВЛЕННЫЕ ЯРКИЕ БЛОКИ */
 :root {
@@ -1255,10 +1236,10 @@ body {
     transition: none !important;
 }
 
-/* 🔧 УМЕНЬШЕНИЕ ВЫСОТЫ БЛОКОВ ЗАДАНИЙ И ДОБАВЛЕНИЕ ПРОМЕЖУТКОВ */
+/* 🔧 ИСПРАВЛЕНИЕ ВЫСОТЫ БЛОКОВ - ПОЛНЫЙ КОНТЕНТ */
 .tasks-grid {
     display: grid;
-    gap: 12px; /* Увеличиваем промежутки между карточками */
+    gap: 16px; /* Хорошие промежутки между карточками */
     grid-template-columns: 1fr;
     min-height: 200px;
 }
@@ -1266,7 +1247,7 @@ body {
 .task-card {
     background: var(--card-bg);
     border-radius: 16px;
-    padding: 16px; /* Уменьшаем внутренние отступы */
+    padding: 18px; /* Увеличиваем отступы */
     border: 1px solid var(--border);
     cursor: pointer;
     transition: transform 0.3s ease;
@@ -1276,10 +1257,11 @@ body {
     margin-bottom: 0;
     display: flex;
     flex-direction: column;
-    min-height: 140px; /* Уменьшаем минимальную высоту */
-    max-height: 160px; /* Ограничиваем максимальную высоту */
-    overflow: hidden; /* Скрываем лишний контент */
+    min-height: 200px; /* Увеличиваем минимальную высоту */
+    /* УБИРАЕМ ВСЕ ОГРАНИЧЕНИЯ ВЫСОТЫ И ОБРЕЗКИ */
+    overflow: visible; /* Разрешаем показ всего контента */
 }
+
 
 /* Гарантируем отступы между карточками */
 .tasks-grid > .task-card {
@@ -2428,40 +2410,37 @@ body {
     width: 100%;
 }
 
-/* Уменьшаем заголовок */
+/* Заголовок - показываем полностью */
 .task-title {
-    font-size: 16px; /* Уменьшаем размер шрифта */
+    font-size: 17px;
     font-weight: 700;
-    margin-bottom: 6px;
-    line-height: 1.2;
+    margin-bottom: 10px;
+    line-height: 1.3;
     word-wrap: break-word;
     overflow-wrap: break-word;
     max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 2; /* Ограничиваем 2 строками */
-    -webkit-box-orient: vertical;
-    line-clamp: 2;
-    box-orient: vertical;
     color: var(--text-primary);
-    flex: 1;
+    flex-shrink: 0;
+    /* УБИРАЕМ ОГРАНИЧЕНИЕ СТРОК */
+    display: block;
+    overflow: visible;
 }
 
-/* Уменьшаем категорию */
+/* Категория */
 .task-category {
-    font-size: 11px; /* Уменьшаем размер шрифта */
+    font-size: 12px;
     color: var(--accent);
     background: rgba(99, 102, 241, 0.1);
-    padding: 4px 8px; /* Уменьшаем padding */
-    border-radius: 12px; /* Немного уменьшаем скругление */
+    padding: 5px 10px;
+    border-radius: 12px;
     display: inline-block;
     font-weight: 600;
     border: 1px solid rgba(99, 102, 241, 0.2);
+    flex-shrink: 0;
 }
-/* Уменьшаем цену */
+/* Цена */
 .task-price {
-    font-size: 18px; /* Уменьшаем размер цены */
+    font-size: 20px;
     font-weight: 800;
     background: var(--gold-gradient);
     -webkit-background-clip: text;
@@ -2470,22 +2449,23 @@ body {
     flex-shrink: 0;
     white-space: nowrap;
 }
-/* Уменьшаем мета-информацию */
+/* Мета-информация */
 .task-meta {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px; /* Уменьшаем отступ */
+    margin-bottom: 12px;
     flex-wrap: wrap;
-    gap: 6px; /* Уменьшаем промежутки */
+    gap: 8px;
+    flex-shrink: 0;
 }
 
-/* Уменьшаем изображение задания */
+/* Изображение задания */
 .task-image {
     width: 100%;
-    height: 80px; /* Уменьшаем высоту изображения */
-    border-radius: 10px; /* Немного уменьшаем скругление */
-    margin-bottom: 8px; /* Уменьшаем отступ */
+    height: 120px; /* Увеличиваем высоту изображения */
+    border-radius: 10px;
+    margin-bottom: 12px;
     object-fit: cover;
     background: var(--bg-secondary);
     display: flex;
@@ -2493,6 +2473,7 @@ body {
     justify-content: center;
     overflow: hidden;
     position: relative;
+    flex-shrink: 0;
 }
 .task-image img {
     width: 100%;
@@ -2506,34 +2487,33 @@ body {
 
 .task-image-placeholder {
     width: 100%;
-    height: 80px; /* Уменьшаем высоту плейсхолдера */
+    height: 120px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: linear-gradient(135deg, var(--bg-secondary), var(--card-bg));
-    border-radius: 10px; /* Немного уменьшаем скругление */
+    border-radius: 10px;
     color: var(--text-secondary);
-    font-size: 12px; /* Уменьшаем размер шрифта */
+    font-size: 14px;
     border: 2px dashed var(--border);
+    flex-shrink: 0;
 }
 
 
-/* Уменьшаем описание */
+/* Описание - показываем полностью */
 .task-description {
-    font-size: 13px; /* Уменьшаем размер шрифта */
+    font-size: 14px;
     color: var(--text-secondary);
-    margin-bottom: 10px;
-    line-height: 1.3;
+    margin-bottom: 15px;
+    line-height: 1.4;
     word-wrap: break-word;
     overflow-wrap: break-word;
     white-space: pre-wrap;
-    flex: 1;
-    display: -webkit-box;
-    -webkit-line-clamp: 2; /* Ограничиваем 2 строками */
-    -webkit-box-orient: vertical;
-    line-clamp: 2;
-    box-orient: vertical;
-    overflow: hidden;
+    flex: 1; /* Занимает доступное пространство */
+    /* УБИРАЕМ ОГРАНИЧЕНИЕ СТРОК */
+    display: block;
+    overflow: visible;
+    min-height: auto;
 }
 
 /* Плавное ограничение текста с кнопкой "Читать далее" */
@@ -2567,26 +2547,27 @@ body {
     align-self: flex-start;
 }
 
-/* Уменьшаем футер */
+/* Футер */
 .task-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: auto;
+    margin-top: auto; /* Прижимаем к низу */
     flex-shrink: 0;
     width: 100%;
-    padding-top: 8px; /* Уменьшаем отступ */
+    padding-top: 12px;
     border-top: 1px solid var(--border);
 }
 
-/* Уменьшаем время */
+/* Время */
 .task-time {
-    font-size: 11px; /* Уменьшаем размер шрифта */
+    font-size: 12px;
     color: var(--text-secondary);
     display: flex;
     align-items: center;
-    gap: 4px; /* Уменьшаем промежуток */
+    gap: 5px;
     font-weight: 500;
+    flex-shrink: 0;
 }
 
 
@@ -2596,22 +2577,20 @@ body {
 }
 
 
-/* Уменьшаем кнопку */
+/* Кнопка */
 .task-btn {
     background: var(--accent);
     color: white;
     border: none;
-    padding: 8px 16px; /* Уменьшаем padding */
-    border-radius: 10px; /* Немного уменьшаем скругление */
-    font-size: 13px; /* Уменьшаем размер шрифта */
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 14px;
     font-weight: 600;
     cursor: pointer;
     white-space: nowrap;
     flex-shrink: 0;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s ease;
     box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
-    position: relative;
-    overflow: hidden;
 }
 .task-btn::before {
     content: '';
@@ -2632,20 +2611,21 @@ body {
     transform: translateY(0);
     box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
 }
-/* Уменьшаем индикатор доступности */
+/* Индикатор доступности */
 .task-availability {
     position: absolute;
-    top: 12px; /* Уменьшаем отступ сверху */
-    right: 12px; /* Уменьшаем отступ справа */
+    top: 12px;
+    right: 12px;
     background: var(--purple-gradient);
     color: white;
-    padding: 3px 6px; /* Уменьшаем padding */
-    border-radius: 6px; /* Уменьшаем скругление */
-    font-size: 9px; /* Уменьшаем размер шрифта */
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
     z-index: 2;
 }
+
 
 /* Адаптивность для мобильных */
 @media (max-width: 768px) {
@@ -2766,13 +2746,14 @@ body {
     text-align: right;
     margin-top: 4px;
 }
-/* Уменьшаем сложность */
+/* Сложность */
 .task-difficulty {
-    font-size: 10px; /* Уменьшаем размер шрифта */
+    font-size: 11px;
     font-weight: 700;
-    padding: 3px 6px; /* Уменьшаем padding */
-    border-radius: 10px; /* Немного уменьшаем скругление */
+    padding: 4px 8px;
+    border-radius: 10px;
     text-transform: uppercase;
+    flex-shrink: 0;
 }
 
 .task-difficulty.легкая {
