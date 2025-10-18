@@ -127,16 +127,24 @@
         .stat-card:hover::after {
             opacity: 1;
         }
-.task-card {
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    margin: 0 !important;
-    padding: 12px !important;
-    overflow: hidden !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
-}
+        /* Исправляем фон для карточек заданий */
+        .task-card {
+            background: var(--card-bg) !important;
+            border-radius: 16px !important;
+            padding: 16px !important;
+            margin-bottom: 12px !important;
+            border: 1px solid var(--border) !important;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25) !important;
+            backdrop-filter: blur(10px) !important;
+            position: relative !important;
+            overflow: hidden !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            display: block !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+
 /* Гарантируем что контент не выходит за пределы */
 .task-card * {
     max-width: 100% !important;
@@ -434,6 +442,7 @@
             backdrop-filter: blur(10px);
         }
 
+        /* Улучшаем видимость вкладок */
         .task-tab {
             flex: 1;
             text-align: center;
@@ -445,13 +454,15 @@
             transition: all 0.3s ease;
             min-width: 70px;
             border: 1px solid transparent;
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
         }
 
         .task-tab.active {
-            background: var(--accent);
-            color: white;
-            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: var(--accent) !important;
+            color: white !important;
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3) !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
         }
 
         /* 🔥 ЯРКИЕ УВЕДОМЛЕНИЯ */
@@ -1600,13 +1611,17 @@
             flex-wrap: wrap;
         }
 
-     .task-title {
-    font-size: 15px !important;
-    line-height: 1.3 !important;
-    word-break: break-word !important;
-    overflow-wrap: break-word !important;
-    hyphens: auto !important;
-}
+        /* Улучшаем видимость контента в карточках */
+        .task-title {
+            font-size: 15px !important;
+            line-height: 1.3 !important;
+            word-break: break-word !important;
+            overflow-wrap: break-word !important;
+            hyphens: auto !important;
+            color: var(--text-primary) !important;
+            font-weight: 600 !important;
+            margin-bottom: 8px !important;
+        }
 
 
         /* Категория */
@@ -1622,16 +1637,15 @@
             flex-shrink: 0;
         }
 
-        /* Цена */
         .task-price {
-            font-size: 18px;
-            font-weight: 800;
-            background: var(--gold-gradient);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            flex-shrink: 0;
-            white-space: nowrap;
+            font-size: 18px !important;
+            font-weight: 800 !important;
+            background: var(--gold-gradient) !important;
+            -webkit-background-clip: text !important;
+            background-clip: text !important;
+            color: transparent !important;
+            flex-shrink: 0 !important;
+            white-space: nowrap !important;
         }
 
         /* Мета-информация */
@@ -1686,13 +1700,15 @@
             flex-shrink: 0;
         }
 
-      .task-description {
-    font-size: 13px !important;
-    line-height: 1.4 !important;
-    word-break: break-word !important;
-    overflow-wrap: break-word !important;
-    hyphens: auto !important;
-}
+        .task-description {
+            font-size: 13px !important;
+            line-height: 1.4 !important;
+            word-break: break-word !important;
+            overflow-wrap: break-word !important;
+            hyphens: auto !important;
+            color: var(--text-secondary) !important;
+            margin-bottom: 12px !important;
+        }
 
         /* Плавное ограничение текста с кнопкой "Читать далее" */
         .task-description.collapsed {
@@ -1755,20 +1771,21 @@
             font-size: 12px;
         }
 
-        /* Кнопка */
+        /* Исправляем отображение кнопок */
         .task-btn {
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 8px 14px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            white-space: nowrap;
-            flex-shrink: 0;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.25);
+            background: var(--accent) !important;
+            color: white !important;
+            border: none !important;
+            padding: 8px 14px !important;
+            border-radius: 8px !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            cursor: pointer !important;
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+            transition: all 0.3s ease !important;
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.25) !important;
+            display: inline-block !important;
         }
 
         .task-btn::before {
@@ -3764,15 +3781,14 @@ html, body {
             min-height: 400px;
             position: relative;
         }
-
+        /* Гарантируем видимость контейнеров заданий */
         .tasks-grid {
-            display: grid !important;
-            grid-template-columns: 1fr !important;
-            gap: 12px !important;
-            min-height: 180px;
-            position: relative;
-            height: auto !important;
+            display: block !important;
+            width: 100% !important;
+            opacity: 1 !important;
+            visibility: visible !important;
         }
+
 
         /* Убираем анимации для всех элементов в tasks-tab */
         .tasks-tab .fade-in {
@@ -3842,15 +3858,16 @@ html, body {
             width: 100%;
         }
 
-        /* Обеспечиваем плавное переключение без смещения */
+        /* Исправляем переключение вкладок */
         .tasks-tab > div[id$="-tasks"] {
-            display: none;
-            position: relative;
-            min-height: 300px;
+            display: none !important;
+            opacity: 0 !important;
+            transition: opacity 0.3s ease !important;
         }
 
         .tasks-tab > div[id$="-tasks"].active {
-            display: block;
+            display: block !important;
+            opacity: 1 !important;
         }
 
         /* Убираем любые эффекты при переключении */
@@ -6108,76 +6125,294 @@ function testAddTask() {
     console.log('✅ Form filled with test data');
     debugAdminForm();
 }
-function showTaskCategory(category) {
-    console.log('🔄 Переключение на категорию:', category);
-    
-    // Простая логика переключения
-    const tabs = document.querySelectorAll('.task-tab');
-    const containers = ['new-tasks', 'confirmation-tasks', 'completed-tasks', 'rejected-tasks'];
-    
-    // Скрываем все
-    tabs.forEach(tab => tab.classList.remove('active'));
-    containers.forEach(id => {
-        const container = document.getElementById(id);
-        if (container) {
-            container.style.display = 'none';
-            container.classList.remove('active');
+        // 🔧 ФИКС ДЛЯ ПЕРЕКЛЮЧЕНИЯ ВКЛАДОК ЗАДАНИЙ
+        function showTaskCategory(category) {
+            console.log('🔄 Переключение на категорию:', category);
+            
+            // Скрываем все вкладки
+            const tabs = document.querySelectorAll('.task-tab');
+            const containers = document.querySelectorAll('.tasks-grid');
+            
+            tabs.forEach(tab => tab.classList.remove('active'));
+            containers.forEach(container => {
+                container.classList.remove('active');
+                container.style.display = 'none';
+            });
+            
+            // Активируем выбранную вкладку
+            const activeTab = document.querySelector(`.task-tab:nth-child(${getTabIndex(category)})`);
+            if (activeTab) {
+                activeTab.classList.add('active');
+            }
+            
+            // Показываем выбранный контейнер
+            const targetContainer = document.getElementById(`${category}-tasks`);
+            if (targetContainer) {
+                targetContainer.classList.add('active');
+                targetContainer.style.display = 'block';
+                console.log(`✅ Контейнер ${category}-tasks показан`);
+                
+                // Загружаем данные для категории
+                loadTasksForCategory(category);
+            }
         }
-    });
-    
-    // Показываем выбранное
-    let tabIndex = 0;
-    let containerId = '';
-    
-    switch(category) {
-        case 'new': 
-            tabIndex = 0; 
-            containerId = 'new-tasks';
-            break;
-        case 'confirmation': 
-            tabIndex = 1; 
-            containerId = 'confirmation-tasks';
-            break;
-        case 'completed': 
-            tabIndex = 2; 
-            containerId = 'completed-tasks';
-            break;
-        case 'rejected': 
-            tabIndex = 3; 
-            containerId = 'rejected-tasks';
-            break;
-    }
-    
-    if (tabs[tabIndex]) {
-        tabs[tabIndex].classList.add('active');
-    }
-    
-    const targetContainer = document.getElementById(containerId);
-    if (targetContainer) {
-        targetContainer.style.display = 'block';
-        targetContainer.classList.add('active');
-        console.log(`✅ Контейнер ${containerId} показан`);
-    }
-    
-    // Загружаем данные для категории
-    setTimeout(() => {
-        console.log(`🚀 Загружаем данные для категории: ${category}`);
-        switch(category) {
-            case 'new':
-                loadTasks();
-                break;
-            case 'confirmation':
-                loadUserTasksForCategory('active');
-                break;
-            case 'completed':
-                loadUserTasksForCategory('completed');
-                break;
-            case 'rejected':
-                loadUserTasksForCategory('rejected');
-                break;
+
+        function getTabIndex(category) {
+            switch(category) {
+                case 'new': return 1;
+                case 'confirmation': return 2;
+                case 'completed': return 3;
+                case 'rejected': return 4;
+                default: return 1;
+            }
         }
-    }, 100);
-}
+        // 🔧 ФУНКЦИЯ ДЛЯ ЗАГРУЗКИ ЗАДАНИЙ ПО КАТЕГОРИИ
+        async function loadTasksForCategory(category) {
+            try {
+                console.log(`🔄 Загружаем задания для категории: ${category}`);
+                
+                let endpoint = '';
+                switch(category) {
+                    case 'new':
+                        endpoint = '/api/tasks';
+                        break;
+                    case 'confirmation':
+                        endpoint = `/user/${currentUser.id}/tasks/active`;
+                        break;
+                    case 'completed':
+                        endpoint = `/user/${currentUser.id}/tasks?status=completed`;
+                        break;
+                    case 'rejected':
+                        endpoint = `/user/${currentUser.id}/tasks?status=rejected`;
+                        break;
+                }
+                
+                const result = await makeRequest(endpoint);
+                
+                if (result.success) {
+                    displayTasksForCategory(result.tasks || [], category);
+                } else {
+                    console.error(`❌ Ошибка загрузки ${category} заданий:`, result.error);
+                    showNotification(`Ошибка загрузки ${category} заданий`, 'error');
+                }
+            } catch (error) {
+                console.error(`❌ Ошибка загрузки ${category} заданий:`, error);
+                showNotification(`Ошибка загрузки ${category} заданий`, 'error');
+            }
+        }
+        // 🔧 ФУНКЦИЯ ОТОБРАЖЕНИЯ ЗАДАНИЙ ПО КАТЕГОРИИ
+        function displayTasksForCategory(tasks, category) {
+            const container = document.getElementById(`${category}-tasks`);
+            if (!container) {
+                console.error(`❌ Контейнер не найден: ${category}-tasks`);
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            if (!tasks || tasks.length === 0) {
+                let message = '';
+                switch(category) {
+                    case 'new':
+                        message = 'Новых заданий пока нет';
+                        break;
+                    case 'confirmation':
+                        message = 'Нет заданий на подтверждении';
+                        break;
+                    case 'completed':
+                        message = 'Нет выполненных заданий';
+                        break;
+                    case 'rejected':
+                        message = 'Нет отклоненных заданий';
+                        break;
+                }
+                
+                container.innerHTML = `
+                    <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
+                        <div style="font-size: 18px; margin-bottom: 8px;">${message}</div>
+                        <div style="font-size: 14px; color: var(--text-secondary);">
+                            ${category === 'new' ? 'Новые задания появятся позже' : 'Следите за обновлениями'}
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            console.log(`🎯 Отображаем ${tasks.length} заданий в категории ${category}`);
+            
+            tasks.forEach((task, index) => {
+                const taskElement = createTaskElement(task, category, index);
+                container.appendChild(taskElement);
+            });
+        }
+        // 🔧 ФУНКЦИЯ СОЗДАНИЯ ЭЛЕМЕНТА ЗАДАНИЯ
+        function createTaskElement(task, category, index) {
+            const taskElement = document.createElement('div');
+            taskElement.className = 'task-card';
+            taskElement.style.animationDelay = `${index * 0.1}s`;
+            
+            // Форматируем данные в зависимости от категории
+            let taskHTML = '';
+            
+            switch(category) {
+                case 'new':
+                    taskHTML = createNewTaskHTML(task);
+                    break;
+                case 'confirmation':
+                    taskHTML = createConfirmationTaskHTML(task);
+                    break;
+                case 'completed':
+                    taskHTML = createCompletedTaskHTML(task);
+                    break;
+                case 'rejected':
+                    taskHTML = createRejectedTaskHTML(task);
+                    break;
+            }
+            
+            taskElement.innerHTML = taskHTML;
+            
+            // Добавляем обработчики событий
+            if (category === 'new') {
+                taskElement.addEventListener('click', function(e) {
+                    if (!e.target.classList.contains('task-btn')) {
+                        openTaskModal(task.id);
+                    }
+                });
+            }
+            
+            return taskElement;
+        }
+
+        // 🔧 HTML ДЛЯ НОВЫХ ЗАДАНИЙ
+        function createNewTaskHTML(task) {
+            const categoryDisplay = formatCategory(task.category);
+            const shortDescription = task.description.length > 120 
+                ? task.description.substring(0, 120) + '...' 
+                : task.description;
+            
+            const peopleRequired = task.people_required || 1;
+            const completedCount = task.completed_count || 0;
+            const availableTasks = Math.max(0, peopleRequired - completedCount);
+            
+            return `
+                ${availableTasks > 0 ? `<div class="task-availability">${availableTasks} осталось</div>` : ''}
+                
+                <div class="task-header">
+                    <div class="task-title">${escapeHtml(task.title)}</div>
+                    <div class="task-price">${task.price} ⭐</div>
+                </div>
+                
+                <div class="task-meta">
+                    <div class="task-category">${categoryDisplay}</div>
+                    ${task.difficulty ? `<div class="task-difficulty ${task.difficulty.toLowerCase()}">${task.difficulty}</div>` : ''}
+                </div>
+                
+                ${task.image_url ? `
+                    <div class="task-image">
+                        <img src="${task.image_url}" alt="${escapeHtml(task.title)}" 
+                             onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\\'task-image-placeholder\\'>🖼️ Изображение задания</div>';">
+                    </div>
+                ` : '<div class="task-image-placeholder">📋 Описание задания</div>'}
+                
+                <div class="task-description">
+                    ${escapeHtml(shortDescription)}
+                </div>
+                
+                ${peopleRequired > 1 ? `
+                    <div class="task-progress">
+                        <div class="task-progress-bar" style="width: ${Math.min(100, (completedCount / peopleRequired) * 100)}%"></div>
+                    </div>
+                    <div class="task-progress-text">
+                        Выполнено: ${completedCount}/${peopleRequired}
+                    </div>
+                ` : ''}
+                
+                <div class="task-footer">
+                    <div class="task-time">${task.time_to_complete || '5-10 минут'}</div>
+                    <button class="task-btn" onclick="event.stopPropagation(); openTaskModal(${task.id})">
+                        Начать задание
+                    </button>
+                </div>
+            `;
+        }
+
+        // 🔧 HTML ДЛЯ ЗАДАНИЙ НА ПОДТВЕРЖДЕНИИ
+        function createConfirmationTaskHTML(task) {
+            return `
+                <div class="task-header">
+                    <div style="flex: 1;">
+                        <div class="task-title">${escapeHtml(task.title)}</div>
+                        <div class="task-category">${task.category || 'Общее'}</div>
+                    </div>
+                    <div class="task-price">${task.price} ⭐</div>
+                </div>
+                <div class="task-description">${escapeHtml(task.description)}</div>
+                <div class="task-footer">
+                    <div class="task-time">Ожидает подтверждения</div>
+                    <button class="task-btn" onclick="event.stopPropagation(); showTaskConfirmation(${task.id}, '${escapeHtml(task.title)}')">
+                        Подтвердить выполнение
+                    </button>
+                </div>
+            `;
+        }
+
+        // 🔧 HTML ДЛЯ ВЫПОЛНЕННЫХ ЗАДАНИЙ
+        function createCompletedTaskHTML(task) {
+            return `
+                <div class="task-header">
+                    <div style="flex: 1;">
+                        <div class="task-title">${escapeHtml(task.title)}</div>
+                        <div class="task-category">${task.category || 'Общее'}</div>
+                    </div>
+                    <div class="task-price">${task.price} ⭐</div>
+                </div>
+                <div class="task-description">${escapeHtml(task.description)}</div>
+                <div class="task-footer">
+                    <div class="task-time">Выполнено</div>
+                    <div class="task-status completed">✅</div>
+                </div>
+            `;
+        }
+
+        // 🔧 HTML ДЛЯ ОТКЛОНЕННЫХ ЗАДАНИЙ
+        function createRejectedTaskHTML(task) {
+            return `
+                <div class="task-header">
+                    <div style="flex: 1;">
+                        <div class="task-title">${escapeHtml(task.title)}</div>
+                        <div class="task-category">${task.category || 'Общее'}</div>
+                    </div>
+                    <div class="task-price">${task.price} ⭐</div>
+                </div>
+                <div class="task-description">${escapeHtml(task.description)}</div>
+                <div class="task-footer">
+                    <div class="task-time">Отклонено</div>
+                    <button class="support-btn" onclick="openAdminChat()">Написать в поддержку</button>
+                </div>
+            `;
+        }
+
+        // 🔧 ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ СТРАНИЦЫ
+        document.addEventListener('DOMContentLoaded', function() {
+            // Гарантируем, что изначально показаны новые задания
+            setTimeout(() => {
+                const newTasksContainer = document.getElementById('new-tasks');
+                if (newTasksContainer) {
+                    newTasksContainer.classList.add('active');
+                    newTasksContainer.style.display = 'block';
+                }
+                
+                // Загружаем новые задания
+                loadTasksForCategory('new');
+            }, 500);
+        });
+
+        // 🔧 ЭКСПОРТ ФУНКЦИЙ
+        window.showTaskCategory = showTaskCategory;
+        window.loadTasksForCategory = loadTasksForCategory;
+        window.displayTasksForCategory = displayTasksForCategory;
+        
 // Функция для диагностики подтверждения заданий
 function debugTaskConfirmation() {
     console.log('🐛 DEBUG Task Confirmation System:');
