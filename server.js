@@ -107,6 +107,7 @@ async function checkAdminAccess(userId) {
 // setTimeout(debugWithdrawalSystem, 3000);
 // Упрощенная инициализация базы данных
 // Упрощенная инициализация базы данных
+// Упрощенная инициализация базы данных
 async function initDatabase() {
     try {
         console.log('🔄 Initializing simplified database...');
@@ -136,7 +137,7 @@ async function initDatabase() {
             ADD COLUMN IF NOT EXISTS is_first_login BOOLEAN DEFAULT true
         `);
 
-        // Таблица заданий
+        // Таблица заданий - ОБНОВЛЕННАЯ ВЕРСИЯ
         await pool.query(`
             CREATE TABLE IF NOT EXISTS tasks (
                 id SERIAL PRIMARY KEY,
@@ -150,9 +151,16 @@ async function initDatabase() {
                 people_required INTEGER DEFAULT 1,
                 repost_time TEXT DEFAULT '1 день',
                 task_url TEXT,
+                image_url TEXT, -- ДОБАВЛЕНА КОЛОНКА ДЛЯ ИЗОБРАЖЕНИЙ
                 status TEXT DEFAULT 'active',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
+        `);
+
+        // Добавляем колонку image_url если ее нет
+        await pool.query(`
+            ALTER TABLE tasks 
+            ADD COLUMN IF NOT EXISTS image_url TEXT
         `);
 
         // Таблица запросов на вывод
@@ -1574,6 +1582,7 @@ app.post('/api/tasks-with-image', upload.single('image'), async (req, res) => {
         let imageUrl = '';
         if (req.file) {
             imageUrl = `/uploads/${req.file.filename}`;
+            console.log('🖼️ Image uploaded:', imageUrl);
         }
 
         console.log('💾 Saving task to database with image...');
@@ -1608,12 +1617,120 @@ app.post('/api/tasks-with-image', upload.single('image'), async (req, res) => {
         
     } catch (error) {
         console.error('❌ Create task with image error:', error);
+        
+        // Если ошибка связана с отсутствием колонки, попробуем без изображения
+        if (error.message.includes('image_url')) {
+            console.log('🔄 Trying to save task without image_url...');
+            try {
+                const result = await pool.query(`
+                    INSERT INTO tasks (
+                        title, description, price, created_by, category,
+                        time_to_complete, difficulty, people_required, task_url
+                    ) 
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    RETURNING *
+                `, [
+                    title.trim(), 
+                    description.trim(), 
+                    taskPrice, 
+                    created_by,
+                    category || 'general',
+                    time_to_complete || '5-10 минут',
+                    difficulty || 'Легкая',
+                    parseInt(people_required) || 1,
+                    task_url || ''
+                ]);
+                
+                console.log('✅ Task saved without image successfully');
+                
+                return res.json({
+                    success: true,
+                    message: 'Задание успешно создано! (изображение не сохранено)',
+                    task: result.rows[0],
+                    note: 'image_url column missing'
+                });
+            } catch (fallbackError) {
+                console.error('❌ Fallback also failed:', fallbackError);
+            }
+        }
+        
         res.status(500).json({
             success: false,
             error: 'Ошибка базы данных: ' + error.message
         });
     }
 });
+// Debug endpoint to check table structure
+app.get('/api/debug/tasks-structure', async (req, res) => {
+    try {
+        const structure = await pool.query(`
+            SELECT column_name, data_type, is_nullable 
+            FROM information_schema.columns 
+            WHERE table_name = 'tasks' 
+            ORDER BY ordinal_position
+        `);
+        
+        res.json({
+            success: true,
+            columns: structure.rows
+        });
+    } catch (error) {
+        console.error('Tasks structure debug error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+// Функция для добавления недостающих колонок в таблицу tasks
+async function fixTasksTable() {
+    try {
+        console.log('🔧 Checking and fixing tasks table structure...');
+        
+        // Проверяем существование колонки image_url
+        const columnCheck = await pool.query(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'tasks' AND column_name = 'image_url'
+        `);
+        
+        if (columnCheck.rows.length === 0) {
+            console.log('❌ Column image_url not found, adding...');
+            await pool.query(`ALTER TABLE tasks ADD COLUMN image_url TEXT`);
+            console.log('✅ Column image_url added successfully');
+        } else {
+            console.log('✅ Column image_url already exists');
+        }
+        
+        // Проверяем другие важные колонки
+        const columnsToCheck = [
+            'created_by', 'category', 'time_to_complete', 
+            'difficulty', 'people_required', 'repost_time', 'task_url'
+        ];
+        
+        for (const column of columnsToCheck) {
+            const exists = await pool.query(`
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'tasks' AND column_name = $1
+            `, [column]);
+            
+            if (exists.rows.length === 0) {
+                console.log(`❌ Column ${column} not found, adding...`);
+                let columnType = 'TEXT';
+                if (column === 'created_by') columnType = 'BIGINT';
+                if (column === 'people_required') columnType = 'INTEGER';
+                
+                await pool.query(`ALTER TABLE tasks ADD COLUMN ${column} ${columnType}`);
+                console.log(`✅ Column ${column} added`);
+            }
+        }
+        
+        console.log('✅ Tasks table structure verified and fixed');
+    } catch (error) {
+        console.error('❌ Error fixing tasks table:', error);
+    }
+}
 // Test endpoint for task creation
 app.post('/api/test-task', async (req, res) => {
     console.log('🧪 Test task endpoint called:', req.body);
@@ -2972,11 +3089,12 @@ app.listen(PORT, '0.0.0.0', async () => {
     console.log(`🗄️ Database: PostgreSQL`);
     console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
     
-    // Принудительно исправляем структуру таблицы при запуске
+    // Принудительно исправляем структуру таблиц при запуске
     try {
         await fixWithdrawalTable();
-        console.log('✅ Table structure verified');
+        await fixTasksTable(); // ← ДОБАВЬТЕ ЭТУ СТРОКУ
+        console.log('✅ Table structures verified');
     } catch (error) {
-        console.error('❌ Error fixing table structure:', error);
+        console.error('❌ Error fixing table structures:', error);
     }
 });
