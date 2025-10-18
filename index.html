@@ -5322,6 +5322,67 @@ html, body {
         let currentUserTaskId = null;
         let currentVerificationId = null;
 
+// Функции для работы с загрузкой изображений
+
+
+function previewTaskImage(input) {
+    const area = document.getElementById('image-upload-area');
+    const placeholder = area.querySelector('.upload-placeholder');
+    const preview = document.getElementById('task-image-preview');
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        // Проверяем размер файла (максимум 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            showNotification('Размер изображения не должен превышать 5MB', 'error');
+            return;
+        }
+        
+        // Проверяем тип файла
+        if (!file.type.startsWith('image/')) {
+            showNotification('Пожалуйста, выберите изображение', 'error');
+            return;
+        }
+        
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            preview.style.display = 'block';
+            placeholder.style.display = 'none';
+            currentTaskImage = file;
+            
+            // Показываем красивую анимацию
+            area.style.borderColor = 'var(--success)';
+            area.style.background = 'rgba(16, 185, 129, 0.05)';
+        }
+        
+        reader.onerror = function() {
+            showNotification('Ошибка при загрузке изображения', 'error');
+        }
+        
+        reader.readAsDataURL(file);
+    }
+}
+
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Initializing LinkGold app...');
+    
+    // Инициализация drag and drop
+    initImageUploadDragDrop();
+    
+    if (typeof tg !== 'undefined') {
+        tg.expand();
+        tg.ready();
+        initializeTelegramUser();
+    } else {
+        console.log('Telegram Web App context not available');
+        initializeTestUser();
+    }
+});
 // Улучшенная функция для запросов
 // 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ ДЛЯ ЗАПРОСОВ
 async function makeRequest(endpoint, options = {}) {
@@ -10638,49 +10699,7 @@ setTimeout(() => {
         testAdminRights();
     }
 }, 3000);
-// Функции для работы с загрузкой изображений
-let currentTaskImage = null;
 
-function previewTaskImage(input) {
-    const area = document.getElementById('image-upload-area');
-    const placeholder = area.querySelector('.upload-placeholder');
-    const preview = document.getElementById('task-image-preview');
-    
-    if (input.files && input.files[0]) {
-        const file = input.files[0];
-        
-        // Проверяем размер файла (максимум 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            showNotification('Размер изображения не должен превышать 5MB', 'error');
-            return;
-        }
-        
-        // Проверяем тип файла
-        if (!file.type.startsWith('image/')) {
-            showNotification('Пожалуйста, выберите изображение', 'error');
-            return;
-        }
-        
-        const reader = new FileReader();
-        
-        reader.onload = function(e) {
-            preview.src = e.target.result;
-            preview.style.display = 'block';
-            placeholder.style.display = 'none';
-            currentTaskImage = file;
-            
-            // Показываем красивую анимацию
-            area.style.borderColor = 'var(--success)';
-            area.style.background = 'rgba(16, 185, 129, 0.05)';
-        }
-        
-        reader.onerror = function() {
-            showNotification('Ошибка при загрузке изображения', 'error');
-        }
-        
-        reader.readAsDataURL(file);
-    }
-}
 
 function clearTaskImage() {
     const input = document.getElementById('task-image-input');
