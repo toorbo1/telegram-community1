@@ -1256,31 +1256,31 @@ body {
 }
 
 /* 🔧 ОБНОВЛЕННЫЙ ДИЗАЙН КАРТОЧЕК ЗАДАНИЙ */
+/* 🔧 УМЕНЬШЕНИЕ ВЫСОТЫ БЛОКОВ ЗАДАНИЙ И ДОБАВЛЕНИЕ ПРОМЕЖУТКОВ */
 .tasks-grid {
     display: grid;
-    gap: 16px;
+    gap: 12px; /* Увеличиваем промежутки между карточками */
     grid-template-columns: 1fr;
     min-height: 200px;
 }
 
 .task-card {
     background: var(--card-bg);
-    border-radius: 20px;
-    padding: 20px;
-    border: 2px solid var(--border);
+    border-radius: 16px;
+    padding: 16px; /* Уменьшаем внутренние отступы */
+    border: 1px solid var(--border);
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.3s ease;
     position: relative;
     width: 100%;
     box-sizing: border-box;
     margin-bottom: 0;
     display: flex;
     flex-direction: column;
-    min-height: 180px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    overflow: hidden;
+    min-height: 140px; /* Уменьшаем минимальную высоту */
+    max-height: 160px; /* Ограничиваем максимальную высоту */
+    overflow: hidden; /* Скрываем лишний контент */
 }
-
 
 /* Гарантируем отступы между карточками */
 .tasks-grid > .task-card {
