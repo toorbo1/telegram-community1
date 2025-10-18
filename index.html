@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LinkGold - Платформа для заработка</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-        <style>
+           <style>
+        /* 🔧 ОСНОВНЫЕ ФИКСЫ ДЛЯ МОБИЛЬНЫХ */
         .tg-header {
             background: var(--bg-primary) !important;
         }
@@ -17,6 +18,7 @@
             font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Oxygen, Ubuntu, sans-serif;
             transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             -webkit-tap-highlight-color: transparent;
+            max-width: 100%;
         }
 
         :root {
@@ -45,8 +47,8 @@
             background: var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
-            padding: 16px;
-            padding-bottom: 120px;
+            padding: 12px;
+            padding-bottom: 100px;
             line-height: 1.6;
             background-image: 
                 radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.05) 0%, transparent 25%),
@@ -55,69 +57,7 @@
             width: 100%;
             box-sizing: border-box;
             overflow-x: hidden;
-        }
-
-        /* Адаптивность для мобильных */
-        @media (max-width: 768px) {
-            .tasks-grid {
-                gap: 14px;
-            }
-            
-            .task-card {
-                padding: 16px;
-                min-height: 180px;
-            }
-            
-            .task-title {
-                font-size: 16px;
-            }
-            
-            .task-description {
-                font-size: 13px;
-            }
-            
-            .task-price {
-                font-size: 18px;
-            }
-            
-            .task-image {
-                height: 100px;
-            }
-            
-            .task-image-placeholder {
-                height: 100px;
-                font-size: 13px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .task-card {
-                padding: 14px;
-                min-height: 170px;
-            }
-            
-            .task-header {
-                flex-direction: column;
-                gap: 8px;
-                align-items: flex-start;
-            }
-            
-            .task-price {
-                align-self: flex-start;
-                font-size: 17px;
-            }
-            
-            .task-footer {
-                flex-direction: column;
-                gap: 10px;
-                align-items: flex-start;
-            }
-            
-            .task-btn {
-                width: 100%;
-                text-align: center;
-                padding: 10px 14px;
-            }
+            position: relative;
         }
 
         /* 🔥 ОБНОВЛЕННЫЕ ЯРКИЕ БЛОКИ */
@@ -131,11 +71,11 @@
         /* 🔥 ЯРКИЕ КАРТОЧКИ */
         .card {
             background: var(--card-bg);
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 16px;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
             border: 1px solid var(--border);
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
             backdrop-filter: blur(10px);
             position: relative;
             overflow: hidden;
@@ -153,14 +93,14 @@
 
         /* 🔥 ЯРКИЕ СТАТИСТИЧЕСКИЕ КАРТОЧКИ */
         .stat-card {
-            border-radius: 18px;
-            padding: 20px;
+            border-radius: 16px;
+            padding: 16px;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             text-align: center;
-            min-height: 120px;
+            min-height: 100px;
             width: 48%;
             position: relative;
             overflow: hidden;
@@ -169,7 +109,7 @@
             transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
             transform: translateZ(0);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
         }
 
         .stat-card::after {
@@ -191,8 +131,8 @@
         /* ИСПРАВЛЕННЫЙ СТИЛЬ ДЛЯ КАРТОЧЕК ЗАДАНИЙ */
         .task-card {
             background: var(--card-bg);
-            border-radius: 16px;
-            padding: 18px;
+            border-radius: 14px;
+            padding: 14px;
             border: 1px solid var(--border);
             cursor: pointer;
             transition: transform 0.3s ease;
@@ -202,9 +142,8 @@
             margin-bottom: 0;
             display: flex;
             flex-direction: column;
-            /* ИСПРАВЛЕНИЕ: убираем огромную высоту */
-            min-height: 200px; /* Нормальная минимальная высота */
-            height: auto; /* позволяем высоте определяться контентом */
+            min-height: 160px;
+            height: auto;
             overflow: visible;
         }
 
@@ -220,8 +159,8 @@
         }
 
         .task-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.3);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
             border-color: var(--accent);
         }
 
@@ -231,8 +170,8 @@
             background: var(--accent);
             color: white;
             border: none;
-            padding: 14px 24px;
-            border-radius: 14px;
+            padding: 12px 20px;
+            border-radius: 12px;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
@@ -240,7 +179,7 @@
             transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
             transform: translateZ(0);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
             position: relative;
             overflow: hidden;
         }
@@ -262,57 +201,57 @@
 
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
         }
 
         .btn-primary {
             background: var(--gold-gradient);
             color: #000;
             font-weight: 700;
-            box-shadow: 0 4px 15px rgba(255, 204, 0, 0.4);
+            box-shadow: 0 4px 12px rgba(255, 204, 0, 0.4);
             border: 1px solid rgba(255, 215, 0, 0.3);
         }
 
         /* 🔥 ЯРКИЕ КАРТОЧКИ В ПРОФИЛЕ */
         .profile-stat {
             background: var(--card-bg);
-            border-radius: 16px;
-            padding: 20px;
+            border-radius: 14px;
+            padding: 16px;
             text-align: center;
             border: 1px solid var(--border);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
             backdrop-filter: blur(10px);
             transition: all 0.3s ease;
         }
 
         .profile-stat:hover {
             transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
         }
 
         /* 🔥 ЯРКИЙ NAVBAR */
         .bottom-nav {
             position: fixed;
-            bottom: 16px;
-            left: 16px;
-            right: 16px;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
             background: rgba(25, 25, 50, 0.95);
-            border-radius: 18px;
-            padding: 10px;
+            border-radius: 16px;
+            padding: 8px;
             display: flex;
             justify-content: space-around;
-            box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 -6px 25px rgba(0, 0, 0, 0.4);
             border: 1px solid var(--border);
             z-index: 1000;
             backdrop-filter: blur(20px);
-            height: 100px;
+            height: 70px;
         }
 
         .nav-item {
             text-align: center;
             cursor: pointer;
             padding: 6px 8px;
-            border-radius: 14px;
+            border-radius: 12px;
             flex: 1;
             opacity: 0.7;
             transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -327,7 +266,7 @@
         .nav-item.active {
             background: var(--accent);
             opacity: 1;
-            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+            box-shadow: 0 0 16px rgba(99, 102, 241, 0.4);
             transform: translateY(-2px);
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
@@ -335,12 +274,12 @@
         /* 🔥 ЯРКИЕ МОДАЛЬНЫЕ ОКНА */
         .modal-content {
             background: var(--card-bg);
-            border-radius: 20px;
-            padding: 24px;
-            width: 90%;
+            border-radius: 18px;
+            padding: 20px;
+            width: 95%;
             max-width: 400px;
             border: 1px solid var(--border);
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
             max-height: 80vh;
             overflow-y: auto;
             backdrop-filter: blur(20px);
@@ -349,11 +288,11 @@
         /* 🔥 ЯРКИЕ ПОСТЫ */
         .post-item {
             background: var(--card-bg);
-            border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 16px;
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 12px;
             border: 1px solid var(--border);
-            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
             backdrop-filter: blur(10px);
             animation: fadeIn 0.6s ease-out;
             overflow: hidden;
@@ -376,8 +315,8 @@
             width: 100%;
             background: rgba(30, 30, 60, 0.8);
             border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 14px 16px 14px 45px;
+            border-radius: 14px;
+            padding: 12px 16px 12px 45px;
             color: var(--text-primary);
             font-size: 14px;
             transition: all 0.3s ease;
@@ -393,19 +332,19 @@
         /* 🔥 ЯРКИЕ СЕКЦИИ АДМИНКИ */
         .admin-section {
             background: var(--card-bg);
-            border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 20px;
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 16px;
             border: 1px solid var(--border);
-            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
             backdrop-filter: blur(10px);
         }
 
         .admin-task-item {
             background: rgba(30, 30, 60, 0.8);
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 10px;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 8px;
             border: 1px solid var(--border);
             backdrop-filter: blur(10px);
             transition: all 0.3s ease;
@@ -414,17 +353,17 @@
         .admin-task-item:hover {
             background: rgba(35, 35, 70, 0.9);
             transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
 
         /* 🔥 ЯРКИЕ ГЕРОЙ БАННЕРЫ */
         .hero-banner {
-            border-radius: 20px;
+            border-radius: 16px;
             overflow: hidden;
-            margin-bottom: 20px;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+            margin-bottom: 16px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
             position: relative;
-            height: 180px;
+            height: 150px;
             background: linear-gradient(45deg, #1a1a3a, #252550);
             border: 1px solid var(--border);
         }
@@ -433,12 +372,12 @@
         .exchange-card {
             background: var(--gold-gradient);
             color: #000;
-            border-radius: 18px;
-            padding: 20px;
-            margin-bottom: 16px;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
             text-align: center;
             cursor: pointer;
-            box-shadow: 0 8px 25px rgba(255, 215, 0, 0.3);
+            box-shadow: 0 6px 20px rgba(255, 215, 0, 0.3);
             border: 1px solid rgba(255, 215, 0, 0.3);
             transition: all 0.3s ease;
             position: relative;
@@ -463,60 +402,60 @@
 
         .exchange-card:hover {
             transform: translateY(-3px);
-            box-shadow: 0 12px 35px rgba(255, 215, 0, 0.4);
+            box-shadow: 0 10px 25px rgba(255, 215, 0, 0.4);
         }
 
         /* 🔥 ЯРКИЕ ВКЛАДКИ */
         .tasks-tabs {
             display: flex;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             background: var(--card-bg);
-            border-radius: 16px;
+            border-radius: 14px;
             padding: 6px;
             border: 1px solid var(--border);
             overflow-x: auto;
             white-space: nowrap;
             position: relative;
             z-index: 2;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(10px);
         }
 
         .task-tab {
             flex: 1;
             text-align: center;
-            padding: 10px 8px;
-            border-radius: 12px;
+            padding: 8px 6px;
+            border-radius: 10px;
             cursor: pointer;
             font-size: 12px;
             font-weight: 600;
             transition: all 0.3s ease;
-            min-width: 80px;
+            min-width: 70px;
             border: 1px solid transparent;
         }
 
         .task-tab.active {
             background: var(--accent);
             color: white;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         /* 🔥 ЯРКИЕ УВЕДОМЛЕНИЯ */
         .notification {
             position: fixed;
-            top: 20px;
-            right: 20px;
+            top: 16px;
+            right: 16px;
             background: var(--accent);
             color: white;
-            padding: 12px 16px;
-            border-radius: 12px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+            padding: 10px 14px;
+            border-radius: 10px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
             z-index: 10000;
             display: flex;
             align-items: center;
-            gap: 12px;
-            max-width: 300px;
+            gap: 10px;
+            max-width: 280px;
             animation: slideIn 0.3s ease-out;
             border: 1px solid var(--border);
             backdrop-filter: blur(20px);
@@ -524,105 +463,73 @@
 
         /* 🔥 ЯРКИЙ ПРОГРЕСС БАР */
         .progress-bar {
-            height: 8px;
+            height: 6px;
             background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
+            border-radius: 3px;
             overflow: hidden;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         .progress-fill {
             height: 100%;
             background: var(--gold-gradient);
-            border-radius: 4px;
+            border-radius: 3px;
             width: 0%;
-            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+            box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
         }
 
         /* 🔥 ЯРКИЕ ИКОНКИ И АВАТАРЫ */
         .profile-avatar {
-            width: 80px;
-            height: 80px;
+            width: 70px;
+            height: 70px;
             border-radius: 50%;
             overflow: hidden;
-            margin-right: 16px;
+            margin-right: 14px;
             position: relative;
-            border: 3px solid var(--accent);
-            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+            border: 2px solid var(--accent);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
         }
 
         .chat-avatar-small {
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
             background: var(--purple-gradient);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-right: 12px;
+            margin-right: 10px;
             color: white;
             font-weight: 600;
-            font-size: 16px;
-            box-shadow: 0 4px 10px rgba(139, 92, 246, 0.3);
+            font-size: 14px;
+            box-shadow: 0 4px 8px rgba(139, 92, 246, 0.3);
             border: 2px solid rgba(255, 255, 255, 0.2);
         }
 
         /* 🔥 УСИЛЕННЫЕ ТЕНИ И ГЛУБИНА */
         .card, .task-card, .profile-stat, .admin-section {
             box-shadow: 
-                0 8px 30px rgba(0, 0, 0, 0.25),
+                0 6px 20px rgba(0, 0, 0, 0.25),
                 0 1px 3px rgba(255, 255, 255, 0.05) inset;
         }
 
         /* 🔥 УЛУЧШЕННЫЕ ГРАДИЕНТЫ */
         .stat-card.balance-card {
             background: linear-gradient(135deg, #8b5cf6, #7c3aed, #6d28d9);
-            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4);
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
         }
 
         .stat-card.support-card {
             background: linear-gradient(135deg, #0ea5e9, #0369a1, #075985);
-            box-shadow: 0 8px 25px rgba(14, 165, 233, 0.4);
+            box-shadow: 0 6px 20px rgba(14, 165, 233, 0.4);
         }
 
         /* 🔥 ПОДСВЕТКА ПРИ НАВЕДЕНИИ */
         .card:hover, .profile-stat:hover, .admin-task-item:hover {
             box-shadow: 
-                0 12px 35px rgba(0, 0, 0, 0.3),
+                0 8px 25px rgba(0, 0, 0, 0.3),
                 0 0 0 1px rgba(99, 102, 241, 0.1);
-        }
-
-        .bottom-nav {
-            position: fixed;
-            bottom: 16px;
-            left: 16px;
-            right: 16px;
-            background: var(--nav-bg);
-            border-radius: 18px;
-            padding: 10px;
-            display: flex;
-            justify-content: space-around;
-            box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--border);
-            z-index: 1000;
-            backdrop-filter: blur(15px);
-            height: 100px;
-        }
-
-        .nav-item {
-            text-align: center;
-            cursor: pointer;
-            padding: 6px 8px;
-            border-radius: 14px;
-            flex: 1;
-            opacity: 0.7;
-            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 35px;
         }
 
         .nav-icon {
@@ -638,10 +545,10 @@
         }
 
         .main-content {
-            min-height: calc(100vh - 200px);
+            min-height: calc(100vh - 120px);
             position: relative;
-            padding: 16px;
-            padding-bottom: 100px;
+            padding: 12px;
+            padding-bottom: 90px;
             width: 100%;
             box-sizing: border-box;
             overflow-x: hidden;
@@ -649,12 +556,12 @@
 
         /* Убедимся что контент не перекрывается */
         .tab-content {
-            min-height: calc(100vh - 250px);
-            padding-bottom: 20px;
+            min-height: calc(100vh - 200px);
+            padding-bottom: 16px;
         }
 
         .page {
-            padding-bottom: 100px;
+            padding-bottom: 90px;
         }
 
         .container {
@@ -664,11 +571,12 @@
             padding: 0;
             box-sizing: border-box;
             width: 100%;
+            overflow: hidden;
         }
 
         .header {
             text-align: center;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             position: relative;
         }
 
@@ -676,12 +584,12 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             cursor: pointer;
         }
 
         .logo-text {
-            font-size: 28px;
+            font-size: 24px;
             font-weight: 800;
             background: var(--gold-gradient);
             -webkit-background-clip: text;
@@ -691,63 +599,43 @@
         }
 
         .logo-icon {
-            width: 32px;
-            height: 32px;
-            margin-right: 10px;
-            border-radius: 8px;
+            width: 28px;
+            height: 28px;
+            margin-right: 8px;
+            border-radius: 6px;
             overflow: hidden;
         }
 
         .slogan {
-            font-size: 13px;
+            font-size: 12px;
             color: var(--text-secondary);
             font-weight: 500;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
 
         .video-icon {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            border-radius: 10px;
+            border-radius: 8px;
         }
 
         .video-container {
-            width: 100px;
-            height: 100px;
-            border-radius: 10px;
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
             overflow: hidden;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
         .video-medium {
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
         }
 
         .video-large {
-            width: 56px;
-            height: 56px;
-        }
-
-        .card {
-            background: var(--card-bg);
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 16px;
-            border: 1px solid var(--border);
-            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
-            backdrop-filter: blur(10px);
-        }
-
-        .hero-banner {
-            border-radius: 20px;
-            overflow: hidden;
-            margin-bottom: 20px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
-            position: relative;
-            height: 180px;
-            background: linear-gradient(45deg, #0f0f23, #1a1a3a);
+            width: 48px;
+            height: 48px;
         }
 
         .hero-banner video {
@@ -758,27 +646,9 @@
 
         .stats-grid {
             display: flex;
-            gap: 12px;
-            margin-bottom: 20px;
+            gap: 10px;
+            margin-bottom: 16px;
             justify-content: space-between;
-        }
-
-        .stat-card {
-            border-radius: 18px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            min-height: 120px;
-            width: 48%;
-            position: relative;
-            overflow: hidden;
-            cursor: pointer;
-            flex: 1;
-            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            transform: translateZ(0);
         }
 
         .stat-card:active {
@@ -787,44 +657,33 @@
 
         .balance-card {
             background: var(--purple-gradient);
-            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.2);
+            box-shadow: 0 6px 16px rgba(139, 92, 246, 0.2);
         }
 
         .support-card {
             background: var(--teal-gradient);
-            box-shadow: 0 6px 20px rgba(14, 165, 233, 0.2);
+            box-shadow: 0 6px 16px rgba(14, 165, 233, 0.2);
         }
 
         .stat-icon {
             display: flex;
             justify-content: center;
             align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .stat-label {
-            font-size: 12px;
-            font-weight: 600;
-            color: rgba(255, 255, 255, 0.95);
             margin-bottom: 8px;
         }
 
+        .stat-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.95);
+            margin-bottom: 6px;
+        }
+
         .stat-value {
-            font-size: 22px;
+            font-size: 18px;
             font-weight: 800;
             color: white;
             line-height: 1.2;
-        }
-
-        .exchange-card {
-            background: var(--gold-gradient);
-            color: #000;
-            border-radius: 18px;
-            padding: 20px;
-            margin-bottom: 16px;
-            text-align: center;
-            cursor: pointer;
-            box-shadow: 0 6px 20px rgba(255, 215, 0, 0.2);
         }
 
         .exchange-card:active {
@@ -835,64 +694,49 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
 
         .exchange-title {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 700;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
 
         .exchange-text {
-            font-size: 13px;
+            font-size: 12px;
             opacity: 0.9;
             line-height: 1.3;
         }
 
         .post-promo {
             background: var(--card-bg);
-            border-radius: 18px;
-            padding: 20px;
+            border-radius: 16px;
+            padding: 16px;
             text-align: center;
             border: 1px solid var(--border);
-            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
         }
 
         .post-icon {
             display: flex;
             justify-content: center;
             align-items: center;
-            margin-bottom: 14px;
+            margin-bottom: 12px;
         }
 
         .post-title {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 700;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             color: var(--text-primary);
         }
 
         .post-description {
             color: var(--text-secondary);
-            margin-bottom: 16px;
-            font-size: 13px;
+            margin-bottom: 14px;
+            font-size: 12px;
             line-height: 1.4;
-        }
-
-        .btn {
-            display: inline-block;
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 14px 24px;
-            border-radius: 14px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            text-align: center;
-            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            transform: translateZ(0);
         }
 
         .btn:active {
@@ -903,7 +747,7 @@
             background: var(--gold-gradient);
             color: #000;
             font-weight: 700;
-            box-shadow: 0 4px 12px rgba(255, 204, 0, 0.25);
+            box-shadow: 0 4px 10px rgba(255, 204, 0, 0.25);
         }
 
         .btn-full {
@@ -923,7 +767,7 @@
         }
 
         .tasks-button-container {
-            margin: 25px 0;
+            margin: 20px 0;
             text-align: center;
         }
 
@@ -931,15 +775,15 @@
             background: var(--purple-gradient);
             color: white;
             border: none;
-            padding: 14px 20px;
-            border-radius: 16px;
+            padding: 12px 16px;
+            border-radius: 14px;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.25);
+            box-shadow: 0 6px 16px rgba(139, 92, 246, 0.25);
             display: inline-flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
         .tasks-btn:active {
@@ -949,8 +793,8 @@
         .nav-item {
             text-align: center;
             cursor: pointer;
-            padding: 8px 12px;
-            border-radius: 14px;
+            padding: 6px 10px;
+            border-radius: 12px;
             flex: 1;
             opacity: 0.7;
             transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -959,7 +803,7 @@
         .nav-item.active {
             background: var(--accent);
             opacity: 1;
-            box-shadow: 0 0 20px rgba(99, 102, 241, 0.25);
+            box-shadow: 0 0 16px rgba(99, 102, 241, 0.25);
             transform: translateY(-2px);
         }
 
@@ -975,61 +819,49 @@
         .nav-item.notification::after {
             content: '';
             position: absolute;
-            top: 5px;
-            right: 5px;
-            width: 8px;
-            height: 8px;
+            top: 4px;
+            right: 4px;
+            width: 6px;
+            height: 6px;
             background: var(--error);
             border-radius: 50%;
-        }
-
-        .nav-icon {
-            font-size: 20px;
-            margin-bottom: 4px;
-            color: var(--text-secondary);
-        }
-
-        .nav-label {
-            font-size: 11px;
-            color: var(--text-secondary);
-            font-weight: 500;
         }
 
         /* Стили для страницы вывода средств */
         .withdraw-hero {
             text-align: center;
-            padding: 40px 20px;
+            padding: 30px 16px;
             background: var(--purple-gradient);
-            border-radius: 20px;
-            margin-bottom: 20px;
+            border-radius: 16px;
+            margin-bottom: 16px;
             color: white;
         }
 
         .withdraw-balance {
-            font-size: 64px;
+            font-size: 48px;
             font-weight: 800;
-            margin: 20px 0;
-            text-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            margin: 16px 0;
+            text-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
         }
 
         .withdraw-subtitle {
-            font-size: 16px;
+            font-size: 14px;
             opacity: 0.9;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
 
         .withdraw-btn {
             background: var(--gold-gradient);
             color: #000;
             border: none;
-            padding: 18px 32px;
-            border-radius: 16px;
-            font-size: 18px;
+            padding: 16px 24px;
+            border-radius: 14px;
+            font-size: 16px;
             font-weight: 700;
             cursor: pointer;
-            box-shadow: 0 8px 25px rgba(255, 215, 0, 0.3);
+            box-shadow: 0 6px 20px rgba(255, 215, 0, 0.3);
             width: 100%;
-            max-width: 280px;
+            max-width: 260px;
             margin: 0 auto;
         }
 
@@ -1039,34 +871,22 @@
 
         .withdraw-form {
             background: var(--card-bg);
-            border-radius: 20px;
-            padding: 24px;
-            margin-top: 20px;
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 16px;
             border: 1px solid var(--border);
             display: none;
         }
 
         .withdraw-info {
             background: var(--bg-secondary);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 20px;
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 16px;
         }
 
         .withdraw-history {
-            margin-top: 25px;
-        }
-
-        /* Адаптивность */
-        @media (max-width: 768px) {
-            .withdraw-balance {
-                font-size: 48px;
-            }
-            
-            .withdraw-btn {
-                padding: 16px 24px;
-                font-size: 16px;
-            }
+            margin-top: 20px;
         }
 
         .modal {
@@ -1084,7 +904,7 @@
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            padding: 20px;
+            padding: 16px;
         }
 
         .modal.active {
@@ -1092,29 +912,17 @@
             pointer-events: all;
         }
 
-        .modal-content {
-            background: var(--card-bg);
-            border-radius: 20px;
-            padding: 24px;
-            width: 90%;
-            max-width: 400px;
-            border: 1px solid var(--border);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
         .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             position: relative;
             flex-shrink: 0;
         }
 
         .modal-title {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 700;
             background: var(--gold-gradient);
             -webkit-background-clip: text;
@@ -1125,14 +933,14 @@
         .modal-close {
             background: none;
             border: none;
-            font-size: 24px;
+            font-size: 22px;
             color: var(--text-secondary);
             cursor: pointer;
             position: absolute;
-            top: -10px;
-            right: -10px;
-            width: 30px;
-            height: 30px;
+            top: -8px;
+            right: -8px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             background: var(--card-bg);
             display: flex;
@@ -1142,14 +950,14 @@
         }
 
         .modal-body {
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             text-align: left;
         }
 
         .balance-amount {
-            font-size: 48px;
+            font-size: 40px;
             font-weight: 800;
-            margin: 30px 0;
+            margin: 20px 0;
             background: var(--gold-gradient);
             -webkit-background-clip: text;
             background-clip: text;
@@ -1160,15 +968,15 @@
             background: var(--purple-gradient);
             color: white;
             border: none;
-            padding: 16px 24px;
-            border-radius: 14px;
-            font-size: 16px;
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
             width: 100%;
             text-align: center;
-            margin-top: 20px;
-            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.25);
+            margin-top: 16px;
+            box-shadow: 0 6px 16px rgba(139, 92, 246, 0.25);
         }
 
         .chat-modal {
@@ -1194,16 +1002,16 @@
         /* Уменьшаем заголовок чата */
         .chat-header {
             background: var(--card-bg);
-            padding: 12px 16px;
+            padding: 10px 14px;
             border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
         .chat-avatar {
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
             background: var(--purple-gradient);
             display: flex;
@@ -1213,8 +1021,8 @@
         }
 
         .chat-avatar .video-icon {
-            width: 24px;
-            height: 24px;
+            width: 20px;
+            height: 20px;
         }
 
         .chat-info {
@@ -1223,18 +1031,18 @@
 
         .chat-name {
             font-weight: 600;
-            font-size: 16px;
+            font-size: 15px;
         }
 
         .chat-status {
-            font-size: 13px;
+            font-size: 12px;
             color: var(--text-secondary);
         }
 
         .chat-close {
             background: none;
             border: none;
-            font-size: 24px;
+            font-size: 22px;
             color: var(--text-secondary);
             cursor: pointer;
         }
@@ -1242,12 +1050,12 @@
         /* Уменьшаем контейнеры чатов */
         .chat-messages {
             flex: 1;
-            padding: 120px;
+            padding: 16px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            max-height: calc(100vh - 140px);
+            gap: 6px;
+            max-height: calc(100vh - 120px);
         }
 
         .message {
@@ -1277,18 +1085,18 @@
 
         /* Уменьшаем поле ввода в чате */
         .chat-input {
-            padding: 10px 12px;
+            padding: 8px 10px;
             background: var(--card-bg);
             border-top: 1px solid var(--border);
             display: flex;
-            gap: 10px;
+            gap: 8px;
         }
 
         .chat-input input {
             flex: 1;
             background: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: 18px;
+            border-radius: 16px;
             padding: 10px 14px;
             color: var(--text-primary);
             font-size: 14px;
@@ -1298,8 +1106,8 @@
             background: var(--accent);
             border: none;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
+            width: 38px;
+            height: 38px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1332,19 +1140,19 @@
 
         .prices-content {
             background: var(--card-bg);
-            border-radius: 20px;
-            padding: 24px;
-            width: 90%;
-            max-width: 400px;
+            border-radius: 16px;
+            padding: 20px;
+            width: 95%;
+            max-width: 380px;
             border: 1px solid var(--border);
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
         }
 
         .prices-title {
             text-align: center;
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 700;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             background: var(--gold-gradient);
             -webkit-background-clip: text;
             background-clip: text;
@@ -1354,14 +1162,14 @@
         .price-grid {
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            margin-bottom: 20px;
+            gap: 10px;
+            margin-bottom: 16px;
         }
 
         .price-item {
             background: var(--bg-secondary);
-            padding: 16px;
-            border-radius: 14px;
+            padding: 14px;
+            border-radius: 12px;
             display: flex;
             justify-content: between;
             align-items: center;
@@ -1379,16 +1187,16 @@
             background-clip: text;
             color: transparent;
             font-weight: 800;
-            font-size: 18px;
+            font-size: 16px;
         }
 
         .prices-btn {
             background: var(--accent);
             color: white;
             border: none;
-            padding: 16px;
-            border-radius: 14px;
-            font-size: 15px;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             width: 100%;
@@ -1398,21 +1206,21 @@
         .profile-header {
             display: flex;
             align-items: center;
-            margin-bottom: 20px;
-            padding: 16px;
+            margin-bottom: 16px;
+            padding: 14px;
             background: var(--card-bg);
-            border-radius: 20px;
+            border-radius: 16px;
             border: 1px solid var(--border);
         }
         
         .profile-avatar {
-            width: 80px;
-            height: 80px;
+            width: 70px;
+            height: 70px;
             border-radius: 50%;
             overflow: hidden;
-            margin-right: 16px;
+            margin-right: 14px;
             position: relative;
-            border: 3px solid var(--accent);
+            border: 2px solid var(--accent);
         }
         
         .profile-avatar video {
@@ -1426,23 +1234,23 @@
         }
         
         .profile-name {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 700;
             margin-bottom: 4px;
         }
         
         .profile-id {
-            font-size: 13px;
+            font-size: 12px;
             color: var(--text-secondary);
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
         
         .profile-level {
             display: inline-block;
             background: var(--purple-gradient);
             padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
+            border-radius: 10px;
+            font-size: 11px;
             font-weight: 600;
             cursor: pointer;
         }
@@ -1450,20 +1258,20 @@
         .profile-stats {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-bottom: 20px;
+            gap: 10px;
+            margin-bottom: 16px;
         }
         
         .profile-stat {
             background: var(--card-bg);
-            border-radius: 16px;
-            padding: 16px;
+            border-radius: 14px;
+            padding: 14px;
             text-align: center;
             border: 1px solid var(--border);
         }
         
         .stat-value {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 700;
             margin-bottom: 4px;
             background: var(--gold-gradient);
@@ -1473,53 +1281,53 @@
         }
         
         .stat-label {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-secondary);
         }
         
         .profile-section {
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
         
         .section-title {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 700;
-            margin-bottom: 12px;
-            padding-left: 8px;
-            border-left: 4px solid var(--accent);
+            margin-bottom: 10px;
+            padding-left: 6px;
+            border-left: 3px solid var(--accent);
         }
         
         .profile-actions {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
         }
         
         .profile-action {
             display: flex;
             align-items: center;
-            padding: 16px;
+            padding: 14px;
             background: var(--card-bg);
-            border-radius: 16px;
+            border-radius: 14px;
             border: 1px solid var(--border);
             cursor: pointer;
         }
         
         .action-icon {
-            width: 24px;
-            height: 24px;
-            margin-right: 12px;
+            width: 22px;
+            height: 22px;
+            margin-right: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
             background: var(--blue-gradient);
-            border-radius: 8px;
+            border-radius: 6px;
             color: white;
         }
         
         .action-text {
             flex: 1;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 500;
         }
         
@@ -1528,17 +1336,17 @@
         }
         
         .level-progress {
-            margin-top: 20px;
+            margin-top: 16px;
             background: var(--card-bg);
-            border-radius: 16px;
-            padding: 16px;
+            border-radius: 14px;
+            padding: 14px;
             border: 1px solid var(--border);
         }
         
         .level-title {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
         
         .level-name {
@@ -1547,58 +1355,58 @@
         
         .level-count {
             color: var(--text-secondary);
-            font-size: 14px;
+            font-size: 13px;
         }
         
         .progress-bar {
-            height: 8px;
+            height: 6px;
             background: var(--bg-secondary);
-            border-radius: 4px;
+            border-radius: 3px;
             overflow: hidden;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
         
         .progress-fill {
             height: 100%;
             background: var(--gold-gradient);
-            border-radius: 4px;
+            border-radius: 3px;
             width: 0%;
         }
         
         .level-info {
-            font-size: 13px;
+            font-size: 12px;
             color: var(--text-secondary);
         }
         
         .referral-system {
             background: var(--card-bg);
-            border-radius: 16px;
-            padding: 16px;
-            margin: 20px 0;
+            border-radius: 14px;
+            padding: 14px;
+            margin: 16px 0;
             border: 1px solid var(--border);
         }
         
         .referral-title {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 700;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             text-align: center;
         }
         
         .referral-code {
             background: var(--bg-secondary);
-            border-radius: 12px;
-            padding: 12px;
-            margin-bottom: 16px;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 14px;
             text-align: center;
             border: 1px solid var(--border);
         }
         
         .code-value {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 700;
             letter-spacing: 2px;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             background: var(--gold-gradient);
             -webkit-background-clip: text;
             background-clip: text;
@@ -1609,7 +1417,7 @@
             background: var(--accent);
             color: white;
             border: none;
-            padding: 8px 16px;
+            padding: 8px 14px;
             border-radius: 8px;
             font-size: 12px;
             font-weight: 600;
@@ -1620,48 +1428,48 @@
         .referral-stats {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            margin-bottom: 16px;
+            gap: 8px;
+            margin-bottom: 14px;
         }
         
         .referral-stat {
             background: var(--bg-secondary);
-            border-radius: 10px;
-            padding: 12px;
+            border-radius: 8px;
+            padding: 10px;
             text-align: center;
             border: 1px solid var(--border);
         }
         
         .referral-value {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 700;
             margin-bottom: 4px;
         }
         
         .referral-label {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-secondary);
         }
         
         .referral-info {
-            font-size: 13px;
+            font-size: 12px;
             color: var(--text-secondary);
             text-align: center;
-            margin-top: 10px;
+            margin-top: 8px;
         }
         
         .about-content {
             background: var(--card-bg);
-            border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 20px;
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 16px;
             border: 1px solid var(--border);
         }
         
         .about-title {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 700;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
             text-align: center;
             background: var(--gold-gradient);
             -webkit-background-clip: text;
@@ -1670,92 +1478,51 @@
         }
         
         .about-text {
-            font-size: 14px;
+            font-size: 13px;
             line-height: 1.6;
             color: var(--text-secondary);
-            margin-bottom: 16px;
+            margin-bottom: 14px;
         }
         
         .about-features {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-bottom: 20px;
+            gap: 10px;
+            margin-bottom: 16px;
         }
         
         .about-feature {
             background: var(--bg-secondary);
-            border-radius: 12px;
-            padding: 12px;
+            border-radius: 10px;
+            padding: 10px;
             text-align: center;
             border: 1px solid var(--border);
         }
         
         .feature-icon {
-            font-size: 24px;
-            margin-bottom: 8px;
+            font-size: 20px;
+            margin-bottom: 6px;
         }
         
         .feature-text {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-secondary);
         }
         
         .about-footer {
             text-align: center;
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-secondary);
-            margin-top: 20px;
+            margin-top: 16px;
         }
         
         /* Стили для вкладки заданий */
         .tasks-tab {
-            padding-bottom: 20px;
-        }
-        
-        .tasks-tabs {
-            display: flex;
-            margin-bottom: 20px;
-            background: var(--card-bg);
-            border-radius: 16px;
-            padding: 8px;
-            border: 1px solid var(--border);
-        }
-        
-        .task-tab {
-            flex: 1;
-            text-align: center;
-            padding: 10px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-        
-        .task-tab.active {
-            background: var(--accent);
-            color: white;
-        }
-        
-        .task-tab.notification {
-            position: relative;
-            color: var(--error);
-        }
-        
-        .task-tab.notification::after {
-            content: '';
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            width: 8px;
-            height: 8px;
-            background: var(--error);
-            border-radius: 50%;
+            padding-bottom: 16px;
         }
         
         .search-container {
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             position: relative;
         }
         
@@ -1763,8 +1530,8 @@
             width: 100%;
             background: var(--card-bg);
             border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 14px 16px 14px 45px;
+            border-radius: 14px;
+            padding: 12px 16px 12px 45px;
             color: var(--text-primary);
             font-size: 14px;
         }
@@ -1779,18 +1546,18 @@
         
         .filters-container {
             display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
+            gap: 8px;
+            margin-bottom: 16px;
             overflow-x: auto;
-            padding-bottom: 5px;
+            padding-bottom: 4px;
         }
         
         .filter-btn {
             background: var(--card-bg);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 8px 16px;
-            font-size: 12px;
+            border-radius: 10px;
+            padding: 6px 12px;
+            font-size: 11px;
             color: var(--text-secondary);
             cursor: pointer;
             white-space: nowrap;
@@ -1805,7 +1572,7 @@
         /* ИСПРАВЛЕННЫЙ СТИЛЬ ДЛЯ ГРИДА ЗАДАНИЙ */
         .tasks-grid {
             display: grid;
-            gap: 16px;
+            gap: 12px;
             grid-template-columns: 1fr;
             min-height: 200px;
             height: auto;
@@ -1821,24 +1588,23 @@
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 15px;
-            gap: 12px;
+            margin-bottom: 12px;
+            gap: 10px;
             width: 100%;
             flex-wrap: wrap;
         }
 
         /* Заголовок - показываем полностью */
         .task-title {
-            font-size: 17px;
+            font-size: 15px;
             font-weight: 700;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             line-height: 1.3;
             word-wrap: break-word;
             overflow-wrap: break-word;
             max-width: 100%;
             color: var(--text-primary);
             flex-shrink: 0;
-            /* УБИРАЕМ ОГРАНИЧЕНИЕ СТРОК */
             display: block;
             overflow: visible;
             flex: 1;
@@ -1847,11 +1613,11 @@
 
         /* Категория */
         .task-category {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--accent);
             background: rgba(99, 102, 241, 0.1);
-            padding: 5px 10px;
-            border-radius: 12px;
+            padding: 4px 8px;
+            border-radius: 10px;
             display: inline-block;
             font-weight: 600;
             border: 1px solid rgba(99, 102, 241, 0.2);
@@ -1860,7 +1626,7 @@
 
         /* Цена */
         .task-price {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 800;
             background: var(--gold-gradient);
             -webkit-background-clip: text;
@@ -1875,18 +1641,18 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 6px;
             flex-shrink: 0;
         }
 
         /* Изображение задания */
         .task-image {
             width: 100%;
-            height: 120px;
-            border-radius: 10px;
-            margin-bottom: 12px;
+            height: 80px;
+            border-radius: 8px;
+            margin-bottom: 10px;
             object-fit: cover;
             background: var(--bg-secondary);
             display: flex;
@@ -1910,29 +1676,28 @@
 
         .task-image-placeholder {
             width: 100%;
-            height: 120px;
+            height: 80px;
             display: flex;
             align-items: center;
             justify-content: center;
             background: linear-gradient(135deg, var(--bg-secondary), var(--card-bg));
-            border-radius: 10px;
+            border-radius: 8px;
             color: var(--text-secondary);
-            font-size: 14px;
+            font-size: 12px;
             border: 2px dashed var(--border);
             flex-shrink: 0;
         }
 
         /* Описание - показываем полностью */
         .task-description {
-            font-size: 14px;
+            font-size: 13px;
             color: var(--text-secondary);
-            margin-bottom: 15px;
+            margin-bottom: 12px;
             line-height: 1.4;
             word-wrap: break-word;
             overflow-wrap: break-word;
             white-space: pre-wrap;
             flex: 1;
-            /* УБИРАЕМ ОГРАНИЧЕНИЕ СТРОК */
             display: block;
             overflow: visible;
             min-height: auto;
@@ -1940,7 +1705,7 @@
 
         /* Плавное ограничение текста с кнопкой "Читать далее" */
         .task-description.collapsed {
-            max-height: 60px;
+            max-height: 50px;
             overflow: hidden;
         }
 
@@ -1950,7 +1715,7 @@
             bottom: 0;
             left: 0;
             right: 0;
-            height: 30px;
+            height: 25px;
             background: linear-gradient(transparent, var(--card-bg));
             pointer-events: none;
         }
@@ -1959,12 +1724,12 @@
             background: var(--accent);
             color: white;
             border: none;
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-size: 11px;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 10px;
             font-weight: 600;
             cursor: pointer;
-            margin-top: 8px;
+            margin-top: 6px;
             display: inline-block;
             align-self: flex-start;
         }
@@ -1977,26 +1742,26 @@
             margin-top: auto;
             flex-shrink: 0;
             width: 100%;
-            padding-top: 12px;
+            padding-top: 10px;
             border-top: 1px solid var(--border);
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 6px;
         }
 
         /* Время */
         .task-time {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-secondary);
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 4px;
             font-weight: 500;
             flex-shrink: 0;
         }
 
         .task-time::before {
             content: '⏱️';
-            font-size: 14px;
+            font-size: 12px;
         }
 
         /* Кнопка */
@@ -2004,15 +1769,15 @@
             background: var(--accent);
             color: white;
             border: none;
-            padding: 10px 18px;
-            border-radius: 10px;
-            font-size: 14px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 13px;
             font-weight: 600;
             cursor: pointer;
             white-space: nowrap;
             flex-shrink: 0;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.25);
         }
 
         .task-btn::before {
@@ -2029,90 +1794,27 @@
         .task-btn:hover {
             background: var(--accent-hover);
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.35);
+            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
         }
 
         .task-btn:active {
             transform: translateY(0);
-            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+            box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
         }
 
         /* Индикатор доступности */
         .task-availability {
             position: absolute;
-            top: 12px;
-            right: 12px;
+            top: 10px;
+            right: 10px;
             background: var(--purple-gradient);
             color: white;
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 10px;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 9px;
             font-weight: 700;
             text-transform: uppercase;
             z-index: 2;
-        }
-
-        /* Адаптивность для мобильных */
-        @media (max-width: 768px) {
-            .tasks-grid {
-                gap: 10px;
-            }
-            
-            .task-card {
-                padding: 14px;
-                min-height: 130px;
-            }
-            
-            .task-title {
-                font-size: 15px;
-                -webkit-line-clamp: 2;
-                line-clamp: 2;
-            }
-            
-            .task-price {
-                font-size: 16px;
-            }
-            
-            .task-description {
-                font-size: 12px;
-                -webkit-line-clamp: 2;
-                line-clamp: 2;
-            }
-            
-            .task-btn {
-                padding: 6px 12px;
-                font-size: 12px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .task-card {
-                padding: 12px;
-                min-height: 120px;
-            }
-            
-            .task-header {
-                flex-direction: column;
-                gap: 6px;
-                align-items: flex-start;
-            }
-            
-            .task-price {
-                align-self: flex-start;
-                font-size: 15px;
-            }
-            
-            .task-footer {
-                flex-direction: column;
-                gap: 8px;
-                align-items: flex-start;
-            }
-            
-            .task-btn {
-                width: 100%;
-                text-align: center;
-                padding: 8px 12px;
-            }
         }
 
         /* 🔧 АНИМАЦИЯ ПОЯВЛЕНИЯ */
@@ -2133,17 +1835,17 @@
 
         /* 🔧 СТИЛИ ДЛЯ РАЗНЫХ СТАТУСОВ */
         .task-card.completed {
-            border-left: 4px solid var(--success);
+            border-left: 3px solid var(--success);
             background: linear-gradient(135deg, var(--card-bg), rgba(16, 185, 129, 0.05));
         }
 
         .task-card.pending {
-            border-left: 4px solid var(--warning);
+            border-left: 3px solid var(--warning);
             background: linear-gradient(135deg, var(--card-bg), rgba(245, 158, 11, 0.05));
         }
 
         .task-card.rejected {
-            border-left: 4px solid var(--error);
+            border-left: 3px solid var(--error);
             background: linear-gradient(135deg, var(--card-bg), rgba(239, 68, 68, 0.05));
         }
 
@@ -2153,7 +1855,7 @@
             height: 4px;
             background: var(--bg-secondary);
             border-radius: 2px;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             overflow: hidden;
         }
 
@@ -2165,18 +1867,18 @@
         }
 
         .task-progress-text {
-            font-size: 11px;
+            font-size: 10px;
             color: var(--text-secondary);
             text-align: right;
-            margin-top: 4px;
+            margin-top: 2px;
         }
 
         /* Сложность */
         .task-difficulty {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 700;
-            padding: 4px 8px;
-            border-radius: 10px;
+            padding: 3px 6px;
+            border-radius: 8px;
             text-transform: uppercase;
             flex-shrink: 0;
         }
@@ -2201,31 +1903,31 @@
 
         .no-tasks {
             text-align: center;
-            padding: 40px 20px;
+            padding: 30px 16px;
             color: var(--text-secondary);
         }
         
         .no-tasks-icon {
-            font-size: 40px;
-            margin-bottom: 16px;
+            font-size: 36px;
+            margin-bottom: 12px;
         }
         
         .task-modal-content {
             background: var(--card-bg);
-            border-radius: 20px;
-            padding: 24px;
+            border-radius: 16px;
+            padding: 20px;
             width: 95%;
-            max-width: 500px;
-            max-height: 85vh;
+            max-width: 480px;
+            max-height: 80vh;
             border: 1px solid var(--border);
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
             overflow-y: auto;
         }
 
         .task-modal-title {
-            font-size: 22px;
+            font-size: 20px;
             font-weight: 700;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             background: var(--gold-gradient);
             -webkit-background-clip: text;
             background-clip: text;
@@ -2239,17 +1941,17 @@
         .task-modal-category {
             display: inline-block;
             background: var(--bg-secondary);
-            padding: 4px 12px;
-            border-radius: 8px;
-            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
             color: var(--text-secondary);
-            margin-bottom: 16px;
+            margin-bottom: 14px;
         }
 
         .task-modal-price {
-            font-size: 28px;
+            font-size: 24px;
             font-weight: 800;
-            margin: 20px 0;
+            margin: 16px 0;
             background: var(--gold-gradient);
             -webkit-background-clip: text;
             background-clip: text;
@@ -2258,32 +1960,32 @@
         }
 
         .task-modal-description {
-            font-size: 15px;
+            font-size: 14px;
             color: var(--text-secondary);
             line-height: 1.6;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
             word-wrap: break-word;
             overflow-wrap: break-word;
             white-space: pre-wrap;
-            padding: 16px;
+            padding: 14px;
             background: var(--bg-secondary);
-            border-radius: 12px;
-            border-left: 4px solid var(--accent);
+            border-radius: 10px;
+            border-left: 3px solid var(--accent);
         }
 
         .task-modal-details {
             background: var(--bg-secondary);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 24px;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 20px;
             border: 1px solid var(--border);
         }
 
         .task-detail {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 12px;
-            padding-bottom: 8px;
+            margin-bottom: 10px;
+            padding-bottom: 6px;
             border-bottom: 1px solid rgba(255,255,255,0.1);
         }
 
@@ -2308,8 +2010,8 @@
 
         .task-modal-buttons {
             display: flex;
-            gap: 12px;
-            margin-top: 20px;
+            gap: 10px;
+            margin-top: 16px;
             flex-shrink: 0;
         }
 
@@ -2317,12 +2019,12 @@
             background: var(--bg-secondary);
             color: var(--text-primary);
             border: 1px solid var(--border);
-            padding: 14px 20px;
-            border-radius: 12px;
+            padding: 12px 16px;
+            border-radius: 10px;
             flex: 1;
             cursor: pointer;
             font-weight: 600;
-            font-size: 15px;
+            font-size: 14px;
             transition: all 0.3s ease;
         }
 
@@ -2330,44 +2032,44 @@
             background: var(--accent);
             color: white;
             border: none;
-            padding: 14px 20px;
-            border-radius: 12px;
+            padding: 12px 16px;
+            border-radius: 10px;
             flex: 1;
             cursor: pointer;
             font-weight: 600;
-            font-size: 15px;
+            font-size: 14px;
             transition: all 0.3s ease;
         }
 
         .task-modal-cancel:hover,
         .task-modal-start:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
         
         /* Стили для подтверждения задания */
         .confirmation-task {
             background: var(--card-bg);
-            border-radius: 16px;
-            padding: 16px;
+            border-radius: 14px;
+            padding: 14px;
             border: 1px solid var(--border);
-            margin-bottom: 16px;
+            margin-bottom: 14px;
         }
         
         .confirmation-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
         
         .confirmation-title {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
         }
         
         .confirmation-price {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 700;
             background: var(--gold-gradient);
             -webkit-background-clip: text;
@@ -2376,23 +2078,23 @@
         }
         
         .confirmation-question {
-            font-size: 14px;
-            margin-bottom: 16px;
+            font-size: 13px;
+            margin-bottom: 14px;
             text-align: center;
         }
         
         .confirmation-buttons {
             display: flex;
-            gap: 12px;
-            margin-bottom: 16px;
+            gap: 10px;
+            margin-bottom: 14px;
         }
         
         .confirmation-no {
             background: var(--bg-secondary);
             color: var(--text-primary);
             border: 1px solid var(--border);
-            padding: 10px;
-            border-radius: 10px;
+            padding: 8px;
+            border-radius: 8px;
             flex: 1;
             cursor: pointer;
             font-weight: 600;
@@ -2402,8 +2104,8 @@
             background: var(--accent);
             color: white;
             border: none;
-            padding: 10px;
-            border-radius: 10px;
+            padding: 8px;
+            border-radius: 8px;
             flex: 1;
             cursor: pointer;
             font-weight: 600;
@@ -2412,24 +2114,24 @@
         .confirmation-rejected {
             background: rgba(239, 68, 68, 0.1);
             border: 1px solid rgba(239, 68, 68, 0.3);
-            padding: 12px;
-            border-radius: 10px;
-            margin-top: 12px;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
         }
         
         .confirmation-rejected-text {
             color: var(--error);
-            font-size: 14px;
-            margin-bottom: 8px;
+            font-size: 13px;
+            margin-bottom: 6px;
         }
         
         .confirmation-support {
             background: var(--accent);
             color: white;
             border: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 12px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
             font-weight: 600;
             cursor: pointer;
             width: 100%;
@@ -2438,16 +2140,16 @@
         /* Стили для панели администратора */
         .admin-panel {
             background: var(--card-bg);
-            border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 20px;
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 16px;
             border: 1px solid var(--border);
         }
         
         .admin-title {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 700;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
             text-align: center;
             background: var(--gold-gradient);
             -webkit-background-clip: text;
@@ -2458,17 +2160,17 @@
         .admin-buttons {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-bottom: 20px;
+            gap: 10px;
+            margin-bottom: 16px;
         }
         
         .admin-btn {
             background: var(--accent);
             color: white;
             border: none;
-            padding: 12px;
-            border-radius: 12px;
-            font-size: 14px;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 13px;
             font-weight: 600;
             cursor: pointer;
             text-align: center;
@@ -2476,32 +2178,32 @@
         
         .admin-form {
             background: var(--bg-secondary);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 16px;
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 14px;
         }
         
         .admin-input {
             width: 100%;
             background: var(--card-bg);
             border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 12px;
+            border-radius: 8px;
+            padding: 10px;
             color: var(--text-primary);
             font-size: 14px;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
         
         .admin-textarea {
             width: 100%;
             background: var(--card-bg);
             border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 12px;
+            border-radius: 8px;
+            padding: 10px;
             color: var(--text-primary);
             font-size: 14px;
-            margin-bottom: 12px;
-            min-height: 100px;
+            margin-bottom: 10px;
+            min-height: 80px;
             resize: vertical;
         }
         
@@ -2509,8 +2211,8 @@
             background: var(--success);
             color: white;
             border: none;
-            padding: 12px;
-            border-radius: 10px;
+            padding: 10px;
+            border-radius: 8px;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
@@ -2518,63 +2220,8 @@
         }
         
         .admin-task-list {
-            max-height: 300px;
+            max-height: 280px;
             overflow-y: auto;
-        }
-        
-        .admin-task-item {
-            background: var(--card-bg);
-            border-radius: 10px;
-            padding: 12px;
-            margin-bottom: 10px;
-            border: 1px solid var(--border);
-        }
-        
-        .admin-task-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-        
-        .admin-task-title {
-            font-size: 14px;
-            font-weight: 600;
-        }
-        
-        .admin-task-actions {
-            display: flex;
-            gap: 8px;
-        }
-        
-        .admin-task-delete {
-            background: var(--error);
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 12px;
-            cursor: pointer;
-        }
-        
-        .admin-task-approve {
-            background: var(--success);
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 12px;
-            cursor: pointer;
-        }
-        
-        .admin-task-reject {
-            background: var(--error);
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 12px;
-            cursor: pointer;
         }
         
         .tab-content {
@@ -2604,66 +2251,55 @@
         /* Стили для постов */
         .post {
             background: var(--card-bg);
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-left: 4px solid var(--accent);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 12px;
+            border-left: 3px solid var(--accent);
         }
 
         .post-content {
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             white-space: pre-wrap;
         }
 
         .post-meta {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-secondary);
             border-top: 1px solid var(--border);
-            padding-top: 10px;
+            padding-top: 8px;
         }
 
         .admin-badge {
             display: inline-block;
             background: var(--error);
             color: white;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 10px;
-            margin-left: 8px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 9px;
+            margin-left: 6px;
             text-transform: uppercase;
         }
 
         /* Стили для админ-чатов */
         .admin-chats-container {
-            max-height: 400px;
+            max-height: 350px;
             overflow-y: auto;
-            margin-top: 15px;
+            margin-top: 12px;
         }
 
         .chat-item {
             display: flex;
             align-items: center;
-            padding: 12px;
+            padding: 10px;
             background: var(--bg-secondary);
-            border-radius: 12px;
-            margin-bottom: 8px;
+            border-radius: 10px;
+            margin-bottom: 6px;
             cursor: pointer;
             border: 1px solid var(--border);
         }
 
         .chat-item.unread {
-            border-left: 4px solid var(--error);
-        }
-
-        .chat-avatar-small {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--purple-gradient);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 12px;
+            border-left: 3px solid var(--error);
         }
 
         .chat-info-small {
@@ -2672,48 +2308,40 @@
 
         .chat-name-small {
             font-weight: 600;
-            font-size: 14px;
+            font-size: 13px;
         }
 
         .chat-last-message {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-secondary);
             margin-top: 2px;
         }
 
         .unread-indicator {
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
             background: var(--error);
             border-radius: 50%;
         }
 
         /* Стили для страниц (вместо модальных окон) */
-        .page {
-            display: none;
-        }
-
-        .page.active {
-            display: block;
-        }
-
         .page-header {
             display: flex;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
 
         .back-button {
             background: none;
             border: none;
             color: var(--text-primary);
-            font-size: 24px;
-            margin-right: 12px;
+            font-size: 22px;
+            margin-right: 10px;
             cursor: pointer;
         }
 
         .page-title {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: 700;
             background: var(--gold-gradient);
             -webkit-background-clip: text;
@@ -2724,9 +2352,9 @@
         /* Стили для проверки заданий */
         .verification-item {
             background: var(--card-bg);
-            border-radius: 16px;
-            padding: 16px;
-            margin-bottom: 12px;
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 10px;
             border: 1px solid var(--border);
         }
 
@@ -2734,7 +2362,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
 
         .verification-user {
@@ -2747,13 +2375,13 @@
 
         .verification-image {
             width: 100%;
-            border-radius: 12px;
-            margin-bottom: 12px;
+            border-radius: 10px;
+            margin-bottom: 10px;
         }
 
         .verification-actions {
             display: flex;
-            gap: 12px;
+            gap: 10px;
         }
 
         @keyframes fadeIn {
@@ -2801,24 +2429,6 @@
             }
         }
 
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: var(--accent);
-            color: white;
-            padding: 12px 16px;
-            border-radius: 12px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-            z-index: 10000;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            max-width: 300px;
-            animation: slideIn 0.3s ease-out;
-            border: 1px solid var(--border);
-        }
-
         .notification-error {
             background: var(--error);
         }
@@ -2833,7 +2443,7 @@
 
         .notification-content {
             flex: 1;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
         }
 
@@ -2841,11 +2451,11 @@
             background: none;
             border: none;
             color: white;
-            font-size: 18px;
+            font-size: 16px;
             cursor: pointer;
             padding: 0;
-            width: 20px;
-            height: 20px;
+            width: 18px;
+            height: 18px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -2853,21 +2463,9 @@
 
         /* Стили для чата админа */
         .admin-chat-list {
-            max-height: 400px;
+            max-height: 350px;
             overflow-y: auto;
-            margin-top: 15px;
-        }
-
-        .chat-item {
-            display: flex;
-            align-items: center;
-            padding: 12px;
-            background: var(--card-bg);
-            border-radius: 12px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            border: 1px solid var(--border);
-            transition: all 0.3s ease;
+            margin-top: 12px;
         }
 
         .chat-item:hover {
@@ -2876,312 +2474,8 @@
         }
 
         .chat-item.unread {
-            border-left: 4px solid var(--error);
+            border-left: 3px solid var(--error);
             background: rgba(239, 68, 68, 0.05);
-        }
-
-        .chat-avatar-small {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--purple-gradient);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 12px;
-            color: white;
-            font-weight: 600;
-            font-size: 16px;
-        }
-
-        .chat-info-small {
-            flex: 1;
-        }
-
-        .chat-name-small {
-            font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 2px;
-        }
-
-        .chat-last-message {
-            font-size: 12px;
-            color: var(--text-secondary);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 200px;
-        }
-
-        .chat-meta {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 4px;
-        }
-
-        .chat-time {
-            font-size: 11px;
-            color: var(--text-secondary);
-        }
-
-        .unread-badge {
-            background: var(--error);
-            color: white;
-            border-radius: 10px;
-            padding: 2px 6px;
-            font-size: 10px;
-            font-weight: 600;
-            min-width: 18px;
-            text-align: center;
-        }
-
-        /* Окно чата для админа */
-        .admin-chat-window {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(5, 5, 16, 0.95);
-            z-index: 2000;
-            display: flex;
-            flex-direction: column;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-
-        .admin-chat-window.active {
-            opacity: 1;
-            pointer-events: all;
-        }
-
-        .admin-chat-header {
-            background: var(--card-bg);
-            padding: 16px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .admin-chat-user {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .admin-chat-messages {
-            flex: 1;
-            padding: 12px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            max-height: calc(100vh - 160px);
-        }
-
-        .admin-chat-input-container {
-            padding: 12px 16px;
-            background: var(--card-bg);
-            border-top: 1px solid var(--border);
-            display: flex;
-            gap: 12px;
-        }
-
-        .admin-chat-input {
-            flex: 1;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 12px 16px;
-            color: var(--text-primary);
-            font-size: 14px;
-        }
-
-        .admin-chat-send {
-            background: var(--accent);
-            border: none;
-            border-radius: 50%;
-            width: 44px;
-            height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            cursor: pointer;
-        }
-
-        /* Адаптивность */
-        @media (max-width: 768px) {
-            .chat-item {
-                padding: 10px;
-            }
-            
-            .chat-last-message {
-                max-width: 150px;
-            }
-            
-            .notification {
-                right: 10px;
-                left: 10px;
-                max-width: none;
-            }
-        }
-
-        /* Стили для текста о скриншоте */
-        .screenshot-note {
-            margin: 15px 0;
-            padding: 10px;
-            background: var(--bg-secondary);
-            border-radius: 8px;
-            border-left: 3px solid var(--warning);
-        }
-
-        .screenshot-note p {
-            margin: 0;
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-
-        /* Исправление вкладок заданий */
-        .tasks-tabs {
-            display: flex;
-            margin-bottom: 20px;
-            background: var(--card-bg);
-            border-radius: 16px;
-            padding: 6px;
-            border: 1px solid var(--border);
-            overflow-x: auto;
-            white-space: nowrap;
-        }
-
-        .task-tab {
-            flex: 1;
-            text-align: center;
-            padding: 10px 8px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            min-width: 80px;
-        }
-
-        .task-tab.active {
-            background: var(--accent);
-            color: white;
-        }
-
-        /* Улучшенный дизайн для длинных слов */
-        .task-tab:last-child {
-            min-width: 90px;
-        }
-
-        /* Стили для уведомлений */
-        @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: var(--accent);
-            color: white;
-            padding: 12px 16px;
-            border-radius: 12px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-            z-index: 10000;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            max-width: 300px;
-            animation: slideIn 0.3s ease-out;
-            border: 1px solid var(--border);
-        }
-
-        .notification-error {
-            background: var(--error);
-        }
-
-        .notification-success {
-            background: var(--success);
-        }
-
-        .notification-warning {
-            background: var(--warning);
-        }
-
-        .notification-content {
-            flex: 1;
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        .notification-close {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 18px;
-            cursor: pointer;
-            padding: 0;
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* Стили для чата админа */
-        .admin-chat-list {
-            max-height: 400px;
-            overflow-y: auto;
-            margin-top: 15px;
-        }
-
-        .chat-item {
-            display: flex;
-            align-items: center;
-            padding: 12px;
-            background: var(--card-bg);
-            border-radius: 12px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            border: 1px solid var(--border);
-            transition: all 0.3s ease;
-        }
-
-        .chat-item:hover {
-            background: var(--bg-secondary);
-            transform: translateY(-2px);
-        }
-
-        .chat-item.unread {
-            border-left: 4px solid var(--error);
-            background: rgba(239, 68, 68, 0.05);
-        }
-
-        .chat-avatar-small {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--purple-gradient);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 12px;
-            color: white;
-            font-weight: 600;
-            font-size: 16px;
         }
 
         .chat-info-small {
@@ -3191,7 +2485,7 @@
 
         .chat-name-small {
             font-weight: 600;
-            font-size: 14px;
+            font-size: 13px;
             margin-bottom: 2px;
             white-space: nowrap;
             overflow: hidden;
@@ -3199,24 +2493,24 @@
         }
 
         .chat-last-message {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-secondary);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 200px;
+            max-width: 180px;
         }
 
         .chat-meta {
             display: flex;
             flex-direction: column;
             align-items: flex-end;
-            gap: 4px;
+            gap: 3px;
             flex-shrink: 0;
         }
 
         .chat-time {
-            font-size: 11px;
+            font-size: 10px;
             color: var(--text-secondary);
             white-space: nowrap;
         }
@@ -3224,11 +2518,11 @@
         .unread-badge {
             background: var(--error);
             color: white;
-            border-radius: 10px;
-            padding: 2px 6px;
-            font-size: 10px;
+            border-radius: 8px;
+            padding: 2px 5px;
+            font-size: 9px;
             font-weight: 600;
-            min-width: 18px;
+            min-width: 16px;
             text-align: center;
         }
 
@@ -3255,7 +2549,7 @@
 
         .admin-chat-header {
             background: var(--card-bg);
-            padding: 16px;
+            padding: 14px;
             border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
@@ -3265,24 +2559,24 @@
         .admin-chat-user {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
         }
 
         .admin-chat-messages {
             flex: 1;
-            padding: 16px;
+            padding: 14px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
         }
 
         .admin-chat-input-container {
-            padding: 12px 16px;
+            padding: 10px 14px;
             background: var(--card-bg);
             border-top: 1px solid var(--border);
             display: flex;
-            gap: 12px;
+            gap: 10px;
             align-items: center;
         }
 
@@ -3290,8 +2584,8 @@
             flex: 1;
             background: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 12px 16px;
+            border-radius: 18px;
+            padding: 10px 14px;
             color: var(--text-primary);
             font-size: 14px;
         }
@@ -3300,8 +2594,8 @@
             background: var(--accent);
             border: none;
             border-radius: 50%;
-            width: 44px;
-            height: 44px;
+            width: 40px;
+            height: 40px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -3311,54 +2605,46 @@
 
         /* Стили для сообщений с фото */
         .message-image {
-            margin-bottom: 5px;
+            margin-bottom: 4px;
         }
 
         .message-image img {
             max-width: 100%;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
         }
 
         .message-time {
-            font-size: 11px;
+            font-size: 10px;
             color: var(--text-secondary);
             text-align: right;
-            margin-top: 4px;
+            margin-top: 3px;
         }
 
         /* Стили для заданий админа */
-        .admin-task-item {
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 10px;
-            border: 1px solid var(--border);
-        }
-
         .admin-task-header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
 
         .admin-task-title {
             font-weight: 600;
-            font-size: 16px;
+            font-size: 14px;
             flex: 1;
         }
 
         .admin-task-description {
             color: var(--text-secondary);
-            font-size: 14px;
-            margin-bottom: 8px;
+            font-size: 13px;
+            margin-bottom: 6px;
         }
 
         .admin-task-details {
             display: flex;
-            gap: 10px;
-            font-size: 12px;
+            gap: 8px;
+            font-size: 11px;
             flex-wrap: wrap;
         }
 
@@ -3372,8 +2658,8 @@
 
         .admin-task-category {
             background: var(--bg-secondary);
-            padding: 2px 8px;
-            border-radius: 6px;
+            padding: 2px 6px;
+            border-radius: 4px;
         }
 
         .admin-task-time {
@@ -3382,27 +2668,27 @@
 
         /* Стили для текста о скриншоте */
         .screenshot-note {
-            margin: 15px 0;
-            padding: 10px;
+            margin: 12px 0;
+            padding: 8px;
             background: var(--bg-secondary);
-            border-radius: 8px;
-            border-left: 3px solid var(--warning);
+            border-radius: 6px;
+            border-left: 2px solid var(--warning);
         }
 
         .screenshot-note p {
             margin: 0;
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-secondary);
         }
 
         /* Адаптивность */
         @media (max-width: 768px) {
             .chat-item {
-                padding: 10px;
+                padding: 8px;
             }
             
             .chat-last-message {
-                max-width: 150px;
+                max-width: 140px;
             }
             
             .notification {
@@ -3413,7 +2699,7 @@
             
             .admin-task-header {
                 flex-direction: column;
-                gap: 8px;
+                gap: 6px;
             }
             
             .admin-task-details {
@@ -3422,18 +2708,18 @@
             
             .task-tab {
                 font-size: 11px;
-                padding: 8px 6px;
-                min-width: 70px;
+                padding: 6px 4px;
+                min-width: 65px;
             }
         }
 
         @media (max-width: 480px) {
             .bottom-nav {
-                bottom: 12px;
-                left: 12px;
-                right: 12px;
-                height: 70px;
-                padding: 8px;
+                bottom: 8px;
+                left: 8px;
+                right: 8px;
+                height: 65px;
+                padding: 6px;
             }
             
             .nav-item {
@@ -3449,46 +2735,56 @@
             }
             
             .main-content {
-                padding-bottom: 90px;
+                padding-bottom: 80px;
+            }
+
+            .task-card {
+                min-height: 140px !important;
+                padding: 12px !important;
+            }
+            
+            .task-title {
+                font-size: 14px !important;
+            }
+            
+            .task-description {
+                font-size: 12px !important;
+            }
+            
+            .task-price {
+                font-size: 16px !important;
+            }
+            
+            .task-image,
+            .task-image-placeholder {
+                height: 70px !important;
             }
         }
 
-        @media (max-width: 480px) {
-            .tasks-tabs {
-                padding: 4px;
+        @media (max-width: 360px) {
+            .task-card {
+                min-height: 130px !important;
+                padding: 10px !important;
             }
             
-            .task-tab {
-                font-size: 10px;
-                padding: 6px 4px;
-                min-width: 65px;
+            .task-title {
+                font-size: 13px !important;
+            }
+            
+            .main-content {
+                padding: 6px !important;
+                padding-bottom: 75px !important;
+            }
+            
+            .bottom-nav {
+                height: 60px !important;
             }
         }
 
         /* Стили для окна чата админа */
-        .admin-chat-window {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(5, 5, 16, 0.95);
-            z-index: 2000;
-            display: flex;
-            flex-direction: column;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-
-        .admin-chat-window.active {
-            opacity: 1;
-            pointer-events: all;
-        }
-
         .admin-chat-header {
             background: var(--card-bg);
-            padding: 16px;
+            padding: 12px;
             border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
@@ -3498,82 +2794,59 @@
         .admin-chat-user {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 8px;
         }
 
         .admin-chat-messages {
             flex: 1;
-            padding: 16px;
+            padding: 12px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 8px;
         }
 
         .admin-chat-input-container {
-            padding: 12px 16px;
+            padding: 8px 12px;
             background: var(--card-bg);
             border-top: 1px solid var(--border);
             display: flex;
-            gap: 12px;
+            gap: 8px;
             align-items: center;
-        }
-
-        .admin-chat-input {
-            flex: 1;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 12px 16px;
-            color: var(--text-primary);
-            font-size: 14px;
-        }
-
-        .admin-chat-send {
-            background: var(--accent);
-            border: none;
-            border-radius: 50%;
-            width: 44px;
-            height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            cursor: pointer;
         }
 
         /* Адаптивность для чата */
         @media (max-width: 768px) {
             .admin-chat-header {
-                padding: 12px;
+                padding: 10px;
             }
             
             .admin-chat-input-container {
-                padding: 10px 12px;
+                padding: 8px 10px;
             }
         }
 
         /* Стили для московского времени в постах */
         .post-date {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-secondary);
             opacity: 0.8;
         }
 
         .post-author {
-            font-size: 13px;
+            font-size: 12px;
             color: var(--text-secondary);
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
         }
 
         .admin-badge {
             background: var(--purple-gradient);
             color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 10px;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 9px;
             font-weight: 600;
         }
 
@@ -3582,39 +2855,22 @@
             display: flex;
             flex-direction: column;
             align-items: flex-end;
-            gap: 4px;
-            min-width: 60px;
-        }
-
-        .chat-time {
-            font-size: 11px;
-            color: var(--text-secondary);
-            white-space: nowrap;
-        }
-
-        .unread-badge {
-            background: var(--error);
-            color: white;
-            border-radius: 10px;
-            padding: 2px 6px;
-            font-size: 10px;
-            font-weight: 600;
-            min-width: 18px;
-            text-align: center;
+            gap: 3px;
+            min-width: 50px;
         }
 
         /* Адаптивность для чатов */
         @media (max-width: 768px) {
             .chat-item {
-                padding: 10px;
+                padding: 8px;
             }
             
             .chat-last-message {
-                max-width: 150px;
+                max-width: 130px;
             }
             
             .chat-meta {
-                min-width: 50px;
+                min-width: 45px;
             }
         }
 
@@ -3622,7 +2878,7 @@
         .post-content {
             color: var(--text-primary);
             line-height: 1.5;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             white-space: pre-wrap;
             word-wrap: break-word;
             overflow-wrap: break-word;
@@ -3630,10 +2886,10 @@
         }
 
         .post-title {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 700;
             color: var(--text-primary);
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             line-height: 1.3;
             word-wrap: break-word;
             overflow-wrap: break-word;
@@ -3641,11 +2897,11 @@
 
         .post-item {
             background: var(--card-bg);
-            border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 16px;
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 12px;
             border: 1px solid var(--border);
-            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
             backdrop-filter: blur(10px);
             animation: fadeIn 0.6s ease-out;
             overflow: hidden;
@@ -3659,7 +2915,7 @@
 
         /* Плавное ограничение текста с кнопкой "Читать далее" */
         .post-content.collapsed {
-            max-height: 150px;
+            max-height: 120px;
             overflow: hidden;
             position: relative;
         }
@@ -3670,7 +2926,7 @@
             bottom: 0;
             left: 0;
             right: 0;
-            height: 60px;
+            height: 50px;
             background: linear-gradient(transparent, var(--card-bg));
             pointer-events: none;
         }
@@ -3679,30 +2935,30 @@
             background: var(--accent);
             color: white;
             border: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 12px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
             font-weight: 600;
             cursor: pointer;
-            margin-top: 8px;
+            margin-top: 6px;
             display: inline-block;
         }
 
         /* 🔧 СТИЛИ ДЛЯ УПРАВЛЕНИЯ ЧАТАМИ */
         .chat-tabs {
             display: flex;
-            gap: 8px;
-            margin-bottom: 15px;
+            gap: 6px;
+            margin-bottom: 12px;
             overflow-x: auto;
-            padding-bottom: 5px;
+            padding-bottom: 4px;
         }
 
         .chat-tab-btn {
             background: var(--card-bg);
             border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 8px 12px;
-            font-size: 12px;
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 11px;
             color: var(--text-secondary);
             cursor: pointer;
             white-space: nowrap;
@@ -3717,33 +2973,10 @@
 
         .chat-stats {
             background: var(--bg-secondary);
-            border-radius: 10px;
-            padding: 12px;
-            margin-bottom: 15px;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 12px;
             border: 1px solid var(--border);
-        }
-
-        .chat-item {
-            display: flex;
-            align-items: center;
-            padding: 12px;
-            background: var(--card-bg);
-            border-radius: 12px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            border: 1px solid var(--border);
-            transition: all 0.3s ease;
-            position: relative;
-        }
-
-        .chat-item:hover {
-            background: var(--bg-secondary);
-            transform: translateY(-2px);
-        }
-
-        .chat-item.unread {
-            border-left: 4px solid var(--error);
-            background: rgba(239, 68, 68, 0.05);
         }
 
         .chat-item.archived {
@@ -3751,71 +2984,19 @@
             background: rgba(100, 100, 100, 0.1);
         }
 
-        .chat-avatar-small {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--purple-gradient);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 12px;
-            color: white;
-            font-weight: 600;
-            font-size: 16px;
-            flex-shrink: 0;
-        }
-
-        .chat-info-small {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .chat-name-small {
-            font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 2px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .chat-last-message {
-            font-size: 12px;
-            color: var(--text-secondary);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 200px;
-        }
-
-        .chat-meta {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 4px;
-            flex-shrink: 0;
-        }
-
-        .chat-time {
-            font-size: 11px;
-            color: var(--text-secondary);
-            white-space: nowrap;
-        }
-
         .chat-actions {
             display: flex;
-            gap: 5px;
-            margin-left: 10px;
+            gap: 4px;
+            margin-left: 8px;
         }
 
         .chat-action-btn {
             background: none;
             border: none;
-            padding: 6px;
-            border-radius: 6px;
+            padding: 4px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 10px;
             transition: all 0.3s ease;
         }
 
@@ -3846,68 +3027,57 @@
             background: rgba(16, 185, 129, 0.2);
         }
 
-        .unread-badge {
-            background: var(--error);
-            color: white;
-            border-radius: 10px;
-            padding: 2px 6px;
-            font-size: 10px;
-            font-weight: 600;
-            min-width: 18px;
-            text-align: center;
-        }
-
         .archived-badge {
             background: var(--warning);
             color: white;
-            border-radius: 6px;
-            padding: 1px 4px;
-            font-size: 9px;
-            margin-left: 5px;
+            border-radius: 4px;
+            padding: 1px 3px;
+            font-size: 8px;
+            margin-left: 4px;
         }
 
         /* Адаптивность для чатов */
         @media (max-width: 768px) {
             .chat-item {
-                padding: 10px;
+                padding: 8px;
             }
             
             .chat-last-message {
-                max-width: 150px;
+                max-width: 120px;
             }
             
             .chat-actions {
                 flex-direction: column;
-                gap: 3px;
+                gap: 2px;
             }
             
             .chat-action-btn {
-                padding: 4px;
-                font-size: 10px;
+                padding: 3px;
+                font-size: 9px;
             }
         }
 
         /* Стили для системы проверки заданий */
         .confirmation-modal-content {
             background: var(--card-bg);
-            border-radius: 20px;
-            padding: 24px;
-            width: 90%;
-            max-width: 400px;
+            border-radius: 16px;
+            padding: 20px;
+            width: 95%;
+            max-width: 380px;
             border: 1px solid var(--border);
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
             text-align: center;
         }
 
         .confirmation-icon {
-            font-size: 64px;
-            margin-bottom: 16px;
+            font-size: 56px;
+            margin-bottom: 12px;
         }
 
         .confirmation-title {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: 700;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             background: var(--gold-gradient);
             -webkit-background-clip: text;
             background-clip: text;
@@ -3915,23 +3085,23 @@
         }
 
         .confirmation-text {
-            font-size: 16px;
+            font-size: 14px;
             color: var(--text-secondary);
-            margin-bottom: 24px;
+            margin-bottom: 20px;
             line-height: 1.5;
         }
 
         .confirmation-buttons {
             display: flex;
-            gap: 12px;
-            margin-bottom: 20px;
+            gap: 10px;
+            margin-bottom: 16px;
         }
 
         .confirmation-btn {
             flex: 1;
-            padding: 14px 20px;
-            border-radius: 12px;
-            font-size: 16px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             border: none;
@@ -3956,14 +3126,14 @@
 
         /* Стили для загрузки скриншота */
         .screenshot-upload {
-            margin: 20px 0;
+            margin: 16px 0;
         }
 
         .screenshot-preview {
             max-width: 100%;
-            max-height: 300px;
-            border-radius: 12px;
-            margin: 16px 0;
+            max-height: 250px;
+            border-radius: 10px;
+            margin: 12px 0;
             display: none;
         }
 
@@ -3971,15 +3141,15 @@
             background: var(--accent);
             color: white;
             border: none;
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-size: 14px;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 13px;
             font-weight: 600;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            margin-bottom: 16px;
+            gap: 6px;
+            margin-bottom: 12px;
         }
 
         .file-input {
@@ -3988,16 +3158,16 @@
 
         /* Стили для проверки заданий админом */
         .verification-list {
-            max-height: 500px;
+            max-height: 450px;
             overflow-y: auto;
-            margin-top: 15px;
+            margin-top: 12px;
         }
 
         .verification-item {
             background: var(--card-bg);
-            border-radius: 16px;
-            padding: 16px;
-            margin-bottom: 12px;
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 10px;
             border: 1px solid var(--border);
             cursor: pointer;
             transition: all 0.3s ease;
@@ -4011,21 +3181,21 @@
         .verification-header {
             display: flex;
             align-items: center;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
 
         .verification-avatar {
-            width: 50px;
-            height: 50px;
+            width: 45px;
+            height: 45px;
             border-radius: 50%;
             background: var(--purple-gradient);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-right: 12px;
+            margin-right: 10px;
             color: white;
             font-weight: 600;
-            font-size: 18px;
+            font-size: 16px;
         }
 
         .verification-user-info {
@@ -4034,13 +3204,13 @@
 
         .verification-user-name {
             font-weight: 600;
-            font-size: 16px;
-            margin-bottom: 4px;
+            font-size: 14px;
+            margin-bottom: 3px;
         }
 
         .verification-task-title {
             color: var(--text-secondary);
-            font-size: 14px;
+            font-size: 12px;
         }
 
         .verification-price {
@@ -4049,11 +3219,11 @@
             background-clip: text;
             color: transparent;
             font-weight: 700;
-            font-size: 18px;
+            font-size: 16px;
         }
 
         .verification-time {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-secondary);
             text-align: right;
         }
@@ -4074,7 +3244,7 @@
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            padding: 20px;
+            padding: 16px;
         }
 
         .verification-modal.active {
@@ -4084,10 +3254,10 @@
 
         .verification-modal-content {
             background: var(--card-bg);
-            border-radius: 20px;
-            padding: 24px;
-            width: 90%;
-            max-width: 500px;
+            border-radius: 16px;
+            padding: 20px;
+            width: 95%;
+            max-width: 480px;
             border: 1px solid var(--border);
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
             max-height: 80vh;
@@ -4097,7 +3267,7 @@
         .verification-modal-header {
             display: flex;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
 
         .verification-modal-user {
@@ -4107,17 +3277,17 @@
         }
 
         .verification-modal-avatar {
-            width: 60px;
-            height: 60px;
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
             background: var(--purple-gradient);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-right: 16px;
+            margin-right: 12px;
             color: white;
             font-weight: 600;
-            font-size: 20px;
+            font-size: 18px;
         }
 
         .verification-modal-user-info {
@@ -4126,13 +3296,13 @@
 
         .verification-modal-user-name {
             font-weight: 600;
-            font-size: 18px;
-            margin-bottom: 4px;
+            font-size: 16px;
+            margin-bottom: 3px;
         }
 
         .verification-modal-task {
             color: var(--text-secondary);
-            font-size: 14px;
+            font-size: 13px;
         }
 
         .verification-modal-price {
@@ -4141,29 +3311,29 @@
             background-clip: text;
             color: transparent;
             font-weight: 700;
-            font-size: 24px;
+            font-size: 20px;
         }
 
         .verification-modal-screenshot {
             width: 100%;
-            border-radius: 12px;
-            margin: 20px 0;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            margin: 16px 0;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
         }
 
         .verification-modal-actions {
             display: flex;
-            gap: 12px;
-            margin-top: 20px;
+            gap: 10px;
+            margin-top: 16px;
         }
 
         .verification-approve {
             background: var(--success);
             color: white;
             border: none;
-            padding: 14px 20px;
-            border-radius: 12px;
-            font-size: 16px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             flex: 1;
@@ -4173,9 +3343,9 @@
             background: var(--error);
             color: white;
             border: none;
-            padding: 14px 20px;
-            border-radius: 12px;
-            font-size: 16px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             flex: 1;
@@ -4190,23 +3360,23 @@
         .rejected-badge {
             background: var(--error);
             color: white;
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 12px;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 10px;
             font-weight: 600;
-            margin-left: 8px;
+            margin-left: 6px;
         }
 
         .support-btn {
             background: var(--accent);
             color: white;
             border: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 12px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
             font-weight: 600;
             cursor: pointer;
-            margin-top: 8px;
+            margin-top: 6px;
         }
 
         /* Анимации */
@@ -4236,22 +3406,13 @@
             }
             
             .verification-modal-user {
-                margin-bottom: 16px;
+                margin-bottom: 12px;
             }
         }
 
         /* Минималистичный дизайн постов */
         .posts-feed {
-            margin-top: 20px;
-        }
-
-        .post-item {
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 12px;
-            border: 1px solid var(--border);
-            transition: all 0.3s ease;
+            margin-top: 16px;
         }
 
         .post-item:hover {
@@ -4263,55 +3424,29 @@
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 12px;
-        }
-
-        .post-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 6px;
-            line-height: 1.3;
+            margin-bottom: 10px;
         }
 
         .post-author {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-secondary);
             display: flex;
             align-items: center;
-            gap: 6px;
-        }
-
-        .admin-badge {
-            background: var(--purple-gradient);
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: 600;
+            gap: 4px;
         }
 
         .post-date {
-            font-size: 11px;
+            font-size: 10px;
             color: var(--text-secondary);
             white-space: nowrap;
-            margin-left: 10px;
-        }
-
-        .post-content {
-            color: var(--text-primary);
-            line-height: 1.5;
-            margin-bottom: 12px;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            font-size: 14px;
+            margin-left: 8px;
         }
 
         .post-image {
             width: 100%;
-            border-radius: 8px;
-            margin: 10px 0;
-            max-height: 300px;
+            border-radius: 6px;
+            margin: 8px 0;
+            max-height: 250px;
             object-fit: cover;
         }
 
@@ -4319,26 +3454,26 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding-top: 12px;
+            padding-top: 10px;
             border-top: 1px solid var(--border);
         }
 
         .post-actions {
             display: flex;
-            gap: 15px;
+            gap: 12px;
         }
 
         .like-btn, .share-btn {
             background: none;
             border: none;
             color: var(--text-secondary);
-            font-size: 13px;
+            font-size: 12px;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 4px;
-            padding: 6px 10px;
-            border-radius: 6px;
+            gap: 3px;
+            padding: 4px 8px;
+            border-radius: 4px;
             transition: all 0.3s ease;
         }
 
@@ -4349,13 +3484,13 @@
 
         .loading-posts {
             text-align: center;
-            padding: 40px 20px;
+            padding: 30px 16px;
             color: var(--text-secondary);
         }
 
         .loading-spinner {
-            font-size: 24px;
-            margin-bottom: 12px;
+            font-size: 20px;
+            margin-bottom: 10px;
             animation: spin 1s linear infinite;
         }
 
@@ -4367,13 +3502,13 @@
         /* Адаптивность для постов */
         @media (max-width: 768px) {
             .post-item {
-                padding: 14px;
-                margin-bottom: 10px;
+                padding: 12px;
+                margin-bottom: 8px;
             }
             
             .post-header {
                 flex-direction: column;
-                gap: 8px;
+                gap: 6px;
             }
             
             .post-date {
@@ -4382,11 +3517,11 @@
             }
             
             .post-title {
-                font-size: 15px;
+                font-size: 14px;
             }
             
             .post-content {
-                font-size: 13px;
+                font-size: 12px;
             }
         }
 
@@ -4394,11 +3529,11 @@
             background: none;
             border: none;
             color: var(--text-primary);
-            font-size: 24px;
-            margin-right: 12px;
+            font-size: 20px;
+            margin-right: 10px;
             cursor: pointer;
-            padding: 8px;
-            border-radius: 8px;
+            padding: 6px;
+            border-radius: 6px;
             transition: all 0.3s ease;
         }
 
@@ -4406,25 +3541,9 @@
             background: var(--bg-secondary);
         }
 
-        .page-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
-            padding: 0 10px;
-        }
-
-        .page-title {
-            font-size: 24px;
-            font-weight: 700;
-            background: var(--gold-gradient);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-        }
-
         .nav-icon img {
-            width: 24px;
-            height: 24px;
+            width: 20px;
+            height: 20px;
             object-fit: contain;
             filter: brightness(0) invert(0.7);
             transition: all 0.3s ease;
@@ -4460,8 +3579,8 @@
         .theme-switch {
             position: relative;
             display: inline-block;
-            width: 60px;
-            height: 34px;
+            width: 50px;
+            height: 28px;
         }
 
         .theme-switch input {
@@ -4480,14 +3599,14 @@
             background-color: var(--bg-secondary);
             border: 1px solid var(--border);
             transition: .4s;
-            border-radius: 34px;
+            border-radius: 28px;
         }
 
         .theme-slider:before {
             position: absolute;
             content: "🌙";
-            height: 26px;
-            width: 26px;
+            height: 20px;
+            width: 20px;
             left: 4px;
             bottom: 3px;
             background-color: var(--accent);
@@ -4496,7 +3615,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
+            font-size: 12px;
         }
 
         input:checked + .theme-slider {
@@ -4505,28 +3624,18 @@
 
         input:checked + .theme-slider:before {
             content: "☀️";
-            transform: translateX(26px);
+            transform: translateX(22px);
         }
 
-        .chat-messages {
+        /* Для админского чата */
+        .admin-chat-messages {
             flex: 1;
-            padding: 16px;
+            padding: 12px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            max-height: calc(100vh - 140px);
-        }
-
-        .message {
-            max-width: 85%;
-            padding: 12px 16px;
-            border-radius: 16px;
-            margin-bottom: 4px;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            white-space: pre-wrap;
-            position: relative;
+            gap: 8px;
+            max-height: calc(100vh - 160px);
         }
 
         .message-text {
@@ -4537,29 +3646,18 @@
             max-width: 100%;
         }
 
-        /* Для админского чата */
-        .admin-chat-messages {
-            flex: 1;
-            padding: 16px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            max-height: calc(100vh - 200px);
-        }
-
         /* Стили для списка админов */
         .admin-admins-list {
-            max-height: 400px;
+            max-height: 350px;
             overflow-y: auto;
-            margin-top: 15px;
+            margin-top: 12px;
         }
 
         .admin-admin-item {
             background: var(--card-bg);
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 10px;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 8px;
             border: 1px solid var(--border);
         }
 
@@ -4567,35 +3665,35 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
 
         .admin-admin-name {
             font-weight: 600;
-            font-size: 16px;
+            font-size: 14px;
         }
 
         .admin-admin-info {
             color: var(--text-secondary);
-            font-size: 14px;
+            font-size: 12px;
         }
 
         .admin-admin-actions {
             display: flex;
-            gap: 8px;
+            gap: 6px;
         }
 
         /* 🔧 ФИКС ДЛЯ ВКЛАДКИ ЗАДАНИЙ - УСТРАНЕНИЕ СМЕЩЕНИЯ БЛОКОВ */
         .tasks-tab {
-            min-height: 500px;
+            min-height: 400px;
             position: relative;
         }
 
         .tasks-grid {
-            display: grid;
-            gap: 16px;
-            grid-template-columns: 1fr;
-            min-height: 200px;
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+            min-height: 180px;
             position: relative;
             height: auto !important;
         }
@@ -4609,10 +3707,10 @@
         /* Фикс для контейнера фильтров */
         .filters-container {
             display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
+            gap: 8px;
+            margin-bottom: 16px;
             overflow-x: auto;
-            padding-bottom: 5px;
+            padding-bottom: 3px;
             flex-wrap: nowrap;
             position: relative;
             z-index: 1;
@@ -4620,7 +3718,7 @@
 
         /* Фикс для поиска */
         .search-container {
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             position: relative;
             z-index: 1;
         }
@@ -4633,9 +3731,9 @@
         /* Фикс для вкладок заданий */
         .tasks-tabs {
             display: flex;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             background: var(--card-bg);
-            border-radius: 16px;
+            border-radius: 14px;
             padding: 6px;
             border: 1px solid var(--border);
             overflow-x: auto;
@@ -4650,8 +3748,7 @@
         #completed-tasks,
         #rejected-tasks {
             position: relative;
-            min-height: 300px;
-            /* Убираем любые трансформации и анимации */
+            min-height: 250px;
             transform: none !important;
             transition: none !important;
             animation: none !important;
@@ -4670,36 +3767,14 @@
         }
 
         /* Обеспечиваем плавное переключение без смещения */
-        .tasks-grid {
-            display: grid !important;
-            grid-template-columns: 1fr !important;
-            gap: 16px !important;
-        }
-
-        /* Убираем все возможные transition для элементов задач */
-        #new-tasks *,
-        #confirmation-tasks *,
-        #completed-tasks *,
-        #rejected-tasks *,
-        .task-card * {
-            transition: none !important;
-            animation: none !important;
-        }
-
-        /* Гарантируем одинаковые стили для всех контейнеров задач */
         .tasks-tab > div[id$="-tasks"] {
             display: none;
             position: relative;
-            min-height: 400px;
+            min-height: 300px;
         }
 
         .tasks-tab > div[id$="-tasks"].active {
             display: block;
-        }
-
-        /* Фикс для отображения активной вкладки */
-        .tasks-tab > div[id$="-tasks"]:not(.active) {
-            display: none !important;
         }
 
         /* Убираем любые эффекты при переключении */
@@ -4710,50 +3785,45 @@
         /* Дополнительный фикс для мобильных устройств */
         @media (max-width: 768px) {
             .tasks-tab {
-                min-height: 600px;
+                min-height: 500px;
             }
             
             .tasks-grid {
-                min-height: 300px;
+                min-height: 250px;
             }
             
             #new-tasks,
             #confirmation-tasks,
             #completed-tasks,
             #rejected-tasks {
-                min-height: 400px;
+                min-height: 350px;
             }
         }
 
         /* Стиль для индикатора загрузки */
         .loading-spinner {
-            font-size: 32px;
-            margin-bottom: 16px;
+            font-size: 28px;
+            margin-bottom: 12px;
             animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
         }
 
         /* Стили для формы добавления задания */
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             font-weight: 600;
             color: var(--text-primary);
-            font-size: 14px;
+            font-size: 13px;
         }
 
         .form-row {
             display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
+            gap: 12px;
+            margin-bottom: 16px;
         }
 
         .form-row .form-group {
@@ -4764,13 +3834,13 @@
         /* Область загрузки изображения */
         .image-upload-area {
             border: 2px dashed var(--border);
-            border-radius: 12px;
-            padding: 30px;
+            border-radius: 10px;
+            padding: 20px;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s ease;
             background: var(--bg-secondary);
-            min-height: 150px;
+            min-height: 120px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -4789,8 +3859,8 @@
 
         .image-preview {
             max-width: 100%;
-            max-height: 200px;
-            border-radius: 8px;
+            max-height: 160px;
+            border-radius: 6px;
             object-fit: cover;
         }
 
@@ -4799,8 +3869,8 @@
             background: var(--bg-secondary);
             color: var(--text-primary);
             border: 1px solid var(--border);
-            padding: 12px 20px;
-            border-radius: 10px;
+            padding: 10px 16px;
+            border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
             transition: all 0.3s ease;
@@ -4809,6 +3879,67 @@
         .btn-secondary:hover {
             background: var(--card-bg);
             border-color: var(--accent);
+        }
+
+        /* 🔧 ФИНАЛЬНЫЕ ФИКСЫ ДЛЯ МОБИЛЬНЫХ */
+        @media (max-width: 480px) {
+            body {
+                padding: 8px;
+                padding-bottom: 80px;
+            }
+            
+            .main-content {
+                padding: 8px;
+                padding-bottom: 80px;
+            }
+            
+            .card {
+                padding: 12px;
+                margin-bottom: 10px;
+            }
+            
+            .task-card {
+                min-height: 140px;
+                padding: 12px;
+            }
+            
+            .hero-banner {
+                height: 130px;
+            }
+            
+            .stat-card {
+                min-height: 90px;
+                padding: 12px;
+            }
+            
+            .stat-value {
+                font-size: 16px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            body {
+                padding: 6px;
+                padding-bottom: 75px;
+            }
+            
+            .main-content {
+                padding: 6px;
+                padding-bottom: 75px;
+            }
+            
+            .task-card {
+                min-height: 130px;
+                padding: 10px;
+            }
+            
+            .task-title {
+                font-size: 13px;
+            }
+            
+            .task-price {
+                font-size: 15px;
+            }
         }
     </style>
 </head>
