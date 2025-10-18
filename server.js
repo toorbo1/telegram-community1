@@ -125,20 +125,17 @@ async function initDatabase() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-// В функции initDatabase() добавим:
-await pool.query(`
-    ALTER TABLE user_profiles 
-    ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE,
-    ADD COLUMN IF NOT EXISTS referred_by BIGINT,
-    ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS referral_earned REAL DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS is_first_login BOOLEAN DEFAULT true
-`);
 
-// Создаем индекс для быстрого поиска по реферальному коду
-await pool.query(`
-    CREATE INDEX IF NOT EXISTS idx_referral_code ON user_profiles(referral_code)
-`);
+        // Добавляем реферальные поля
+        await pool.query(`
+            ALTER TABLE user_profiles 
+            ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE,
+            ADD COLUMN IF NOT EXISTS referred_by BIGINT,
+            ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS referral_earned REAL DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS is_first_login BOOLEAN DEFAULT true
+        `);
+
         // Таблица заданий
         await pool.query(`
             CREATE TABLE IF NOT EXISTS tasks (
@@ -158,7 +155,7 @@ await pool.query(`
             )
         `);
 
-        // Таблица запросов на вывод - ИСПРАВЛЕННАЯ ВЕРСИЯ
+        // Таблица запросов на вывод
         await pool.query(`
             CREATE TABLE IF NOT EXISTS withdrawal_requests (
                 id SERIAL PRIMARY KEY,
@@ -171,30 +168,6 @@ await pool.query(`
                 completed_at TIMESTAMP,
                 completed_by BIGINT
             )
-        `);
-
-        // Добавляем недостающие колонки если таблица уже существует
-        await pool.query(`
-            DO $$ 
-            BEGIN
-                -- Добавляем username если не существует
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                              WHERE table_name='withdrawal_requests' AND column_name='username') THEN
-                    ALTER TABLE withdrawal_requests ADD COLUMN username TEXT;
-                END IF;
-                
-                -- Добавляем first_name если не существует
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                              WHERE table_name='withdrawal_requests' AND column_name='first_name') THEN
-                    ALTER TABLE withdrawal_requests ADD COLUMN first_name TEXT;
-                END IF;
-                
-                -- Добавляем completed_by если не существует
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                              WHERE table_name='withdrawal_requests' AND column_name='completed_by') THEN
-                    ALTER TABLE withdrawal_requests ADD COLUMN completed_by BIGINT;
-                END IF;
-            END $$;
         `);
 
         // Таблица постов
@@ -271,6 +244,21 @@ await pool.query(`
             )
         `);
 
+        // Таблица прав доступа администраторов
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS admin_permissions (
+                admin_id BIGINT PRIMARY KEY,
+                can_posts BOOLEAN DEFAULT true,
+                can_tasks BOOLEAN DEFAULT true,
+                can_verification BOOLEAN DEFAULT true,
+                can_support BOOLEAN DEFAULT true,
+                can_payments BOOLEAN DEFAULT true,
+                can_admins BOOLEAN DEFAULT false,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (admin_id) REFERENCES user_profiles(user_id)
+            )
+        `);
+
         // Добавляем недостающие колонки
         await pool.query(`
             ALTER TABLE support_chats 
@@ -312,7 +300,7 @@ await pool.query(`
                 updated_at = CURRENT_TIMESTAMP
         `, [ADMIN_ID, 'linkgold_admin', 'Главный', 'Администратор', true]);
 
-        // В функции initDatabase() убедитесь, что задания создаются
+        // Создаем тестовые задания если их нет
         const tasksCount = await pool.query('SELECT COUNT(*) FROM tasks WHERE status = $1', ['active']);
         if (parseInt(tasksCount.rows[0].count) === 0) {
             console.log('📝 Создаем тестовые задания...');
@@ -328,6 +316,7 @@ await pool.query(`
             console.log('✅ Тестовые задания созданы');
         }
 
+        // Создаем тестовый пост если нет постов
         const postsCount = await pool.query('SELECT COUNT(*) FROM posts');
         if (parseInt(postsCount.rows[0].count) === 0) {
             await pool.query(`
@@ -2362,7 +2351,7 @@ app.get('/api/admin/admins-list', async (req, res) => {
                 (SELECT COUNT(*) FROM support_messages WHERE user_id = up.user_id AND is_admin = true) as support_count,
                 -- Статистика выплат
                 (SELECT COUNT(*) FROM withdrawal_requests WHERE completed_by = up.user_id) as payments_count,
-                -- Права доступа
+                -- Права доступа (используем COALESCE для обработки NULL значений)
                 COALESCE(ap.can_posts, true) as can_posts,
                 COALESCE(ap.can_tasks, true) as can_tasks,
                 COALESCE(ap.can_verification, true) as can_verification,
