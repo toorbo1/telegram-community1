@@ -167,7 +167,153 @@
             height: auto;
             overflow: visible;
         } */
+/* Стили для области загрузки изображения */
+.image-upload-area {
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: var(--bg-secondary);
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
 
+.image-upload-area:hover {
+    border-color: var(--accent);
+    background: rgba(99, 102, 241, 0.05);
+    transform: translateY(-2px);
+}
+
+.image-upload-area.dragover {
+    border-color: var(--accent);
+    background: rgba(99, 102, 241, 0.1);
+    transform: scale(1.02);
+}
+
+.upload-placeholder {
+    color: var(--text-secondary);
+    pointer-events: none;
+    transition: all 0.3s ease;
+}
+
+.image-preview {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 12px;
+    object-fit: cover;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Улучшенный дизайн для карточек заданий с изображениями */
+.task-card-with-image {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.task-image-container {
+    width: 100%;
+    height: 160px;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    position: relative;
+}
+
+.task-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+}
+
+.task-card:hover .task-image {
+    transform: scale(1.05);
+}
+
+.task-image-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        to bottom,
+        transparent 0%,
+        transparent 60%,
+        rgba(0, 0, 0, 0.4) 100%
+    );
+    border-radius: 12px;
+}
+
+.task-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: var(--accent);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    z-index: 2;
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+    .image-upload-area {
+        min-height: 150px;
+        padding: 20px;
+    }
+    
+    .task-image-container {
+        height: 120px;
+    }
+    
+    .image-preview {
+        max-height: 200px;
+    }
+}
+
+/* Анимация загрузки */
+.upload-progress {
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-top: 10px;
+    overflow: hidden;
+    display: none;
+}
+
+.upload-progress-bar {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+/* Стили для сетки заданий с изображениями */
+.tasks-grid-with-images {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+
+@media (max-width: 768px) {
+    .tasks-grid-with-images {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+}
         .task-card::before {
             content: '';
             position: absolute;
@@ -4374,9 +4520,30 @@ html, body {
 </div>
      <!-- Секция управления заданиями -->
     <!-- Управление заданиями -->
+<!-- В секции админ-панели для добавления заданий -->
 <div id="admin-tasks-section" class="admin-section" style="display: none;">
     <div class="admin-form">
         <h3>➕ Добавить новое задание</h3>
+        
+        <div class="form-group">
+            <label>🖼️ Изображение задания</label>
+            <div class="image-upload-area" id="image-upload-area" onclick="document.getElementById('task-image-input').click()">
+                <div class="upload-placeholder">
+                    <div style="font-size: 48px; margin-bottom: 10px;">📷</div>
+                    <div>Нажмите для загрузки изображения</div>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 5px;">
+                        Рекомендуется: 800x400px, JPG/PNG
+                    </div>
+                </div>
+                <img id="task-image-preview" class="image-preview" style="display: none;">
+            </div>
+            <input type="file" id="task-image-input" accept="image/*" style="display: none;" onchange="previewTaskImage(this)">
+            <button type="button" class="btn btn-secondary" onclick="clearTaskImage()" style="margin-top: 10px; width: 100%;">
+                ❌ Очистить изображение
+            </button>
+        </div>
+        
+
         
         <div class="form-group">
             <label>Название задания *</label>
@@ -4431,7 +4598,7 @@ html, body {
             <input type="url" class="admin-input" id="admin-task-url" placeholder="https://...">
         </div>
 
-    <div style="text-align: center; margin: 20px 0;">
+    <!-- <div style="text-align: center; margin: 20px 0;">
     <button class="btn btn-warning" onclick="debugAdminForm()" style="padding: 10px; font-size: 12px;">
         🐛 Debug Form
     </button>
@@ -4441,12 +4608,13 @@ html, body {
     <button class="btn btn-info" onclick="testServerConnection()" style="padding: 10px; font-size: 12px; margin-left: 10px;">
         🔗 Test Server
     </button>
-</div>
+</div> -->
         
-        <button class="admin-submit" onclick="addTask()" style="margin-top: 20px;">
-            ✅ Добавить задание
+        <button class="admin-submit" onclick="addTaskWithImage()">
+            ✅ Добавить задание с фото
         </button>
     </div>
+</div>
 
     <!-- Список заданий -->
     <div style="margin-top: 30px;">
@@ -4991,6 +5159,10 @@ html, body {
         </div>
         <div class="modal-body">
             <div class="task-modal-category" id="task-modal-category">Категория</div>
+            
+            <!-- Контейнер для изображения задания -->
+            <div id="task-modal-image-container"></div>
+            
             <div class="task-modal-price" id="task-modal-price">0 ⭐</div>
             <div class="task-modal-description" id="task-modal-description">Описание задания</div>
             
@@ -7258,6 +7430,7 @@ function getTabIndex(category) {
 
 
 
+// Обновим функцию открытия модального окна задания
 function openTaskModal(taskId) {
     console.log('📖 Opening task modal for task:', taskId);
     
@@ -7272,25 +7445,30 @@ function openTaskModal(taskId) {
         document.getElementById('task-modal-price').textContent = `${task.price} ⭐`;
         document.getElementById('task-modal-description').textContent = task.description;
         
-        // Отображаем реальные данные из базы
+        // Добавляем изображение в модальное окно если есть
+        const modalImageContainer = document.getElementById('task-modal-image-container');
+        if (modalImageContainer) {
+            if (task.image_url) {
+                modalImageContainer.innerHTML = `
+                    <div style="margin: 16px 0; border-radius: 12px; overflow: hidden;">
+                        <img src="${task.image_url}" alt="${escapeHtml(task.title)}" 
+                             style="width: 100%; max-height: 300px; object-fit: cover; border-radius: 12px;"
+                             onerror="this.style.display='none'">
+                    </div>
+                `;
+            } else {
+                modalImageContainer.innerHTML = '';
+            }
+        }
+        
+        // Остальные данные...
         document.getElementById('task-modal-time').textContent = task.time_to_complete || '5 минут';
         document.getElementById('task-modal-difficulty').textContent = task.difficulty || 'Легкая';
         
-        // Рассчитываем сколько заданий осталось
         const peopleRequired = task.people_required || 1;
         const completedCount = task.completed_count || 0;
         const availableTasks = Math.max(0, peopleRequired - completedCount);
         document.getElementById('task-modal-available').textContent = `${availableTasks} заданий`;
-        
-        // Показываем URL задания если есть
-        const urlElement = document.getElementById('task-modal-url');
-        if (urlElement) {
-            if (task.task_url) {
-                urlElement.innerHTML = `<span class="task-detail-label">Ссылка:</span><span class="task-detail-value"><a href="${task.task_url}" target="_blank" style="color: var(--accent);">Перейти к заданию</a></span>`;
-            } else {
-                urlElement.innerHTML = '';
-            }
-        }
         
         document.getElementById('task-modal').classList.add('active');
         console.log('✅ Task modal opened successfully');
@@ -10460,28 +10638,52 @@ setTimeout(() => {
         testAdminRights();
     }
 }, 3000);
-// Предпросмотр изображения
+// Функции для работы с загрузкой изображений
+let currentTaskImage = null;
+
 function previewTaskImage(input) {
     const area = document.getElementById('image-upload-area');
-    const preview = document.getElementById('task-image-preview');
     const placeholder = area.querySelector('.upload-placeholder');
+    const preview = document.getElementById('task-image-preview');
     
     if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        // Проверяем размер файла (максимум 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            showNotification('Размер изображения не должен превышать 5MB', 'error');
+            return;
+        }
+        
+        // Проверяем тип файла
+        if (!file.type.startsWith('image/')) {
+            showNotification('Пожалуйста, выберите изображение', 'error');
+            return;
+        }
+        
         const reader = new FileReader();
         
         reader.onload = function(e) {
             preview.src = e.target.result;
             preview.style.display = 'block';
             placeholder.style.display = 'none';
+            currentTaskImage = file;
+            
+            // Показываем красивую анимацию
+            area.style.borderColor = 'var(--success)';
+            area.style.background = 'rgba(16, 185, 129, 0.05)';
         }
         
-        reader.readAsDataURL(input.files[0]);
+        reader.onerror = function() {
+            showNotification('Ошибка при загрузке изображения', 'error');
+        }
+        
+        reader.readAsDataURL(file);
     }
 }
 
-// Очистка изображения
 function clearTaskImage() {
-    const input = document.getElementById('admin-task-image');
+    const input = document.getElementById('task-image-input');
     const area = document.getElementById('image-upload-area');
     const preview = document.getElementById('task-image-preview');
     const placeholder = area.querySelector('.upload-placeholder');
@@ -10489,10 +10691,12 @@ function clearTaskImage() {
     input.value = '';
     preview.style.display = 'none';
     placeholder.style.display = 'block';
+    currentTaskImage = null;
+    
+    // Сбрасываем стили
+    area.style.borderColor = '';
+    area.style.background = '';
 }
-
-
-
 // Функция загрузки заданий админа
 async function loadAdminTasks() {
     if (!currentUser) return;
@@ -10506,6 +10710,256 @@ async function loadAdminTasks() {
         console.error('Error loading admin tasks:', error);
     }
 }
+// Drag and drop функциональность
+function initImageUploadDragDrop() {
+    const area = document.getElementById('image-upload-area');
+    
+    area.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        area.classList.add('dragover');
+    });
+    
+    area.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        area.classList.remove('dragover');
+    });
+    
+    area.addEventListener('drop', function(e) {
+        e.preventDefault();
+        area.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            document.getElementById('task-image-input').files = files;
+            previewTaskImage(document.getElementById('task-image-input'));
+        }
+    });
+}
+// Функция для добавления задания с изображением
+async function addTaskWithImage() {
+    console.log('🎯 Starting add task with image...');
+    
+    try {
+        // Получаем данные формы
+        const taskData = {
+            title: document.getElementById('admin-task-title').value.trim(),
+            description: document.getElementById('admin-task-description').value.trim(),
+            price: document.getElementById('admin-task-price').value,
+            category: document.getElementById('admin-task-category').value,
+            time_to_complete: document.getElementById('admin-task-time').value || '5-10 минут',
+            difficulty: document.getElementById('admin-task-difficulty').value,
+            people_required: document.getElementById('admin-task-people').value || 1,
+            task_url: document.getElementById('admin-task-url').value || '',
+            created_by: currentUser.id
+        };
+
+        // Валидация
+        if (!taskData.title || !taskData.description || !taskData.price) {
+            showNotification('Заполните название, описание и цену задания!', 'error');
+            return;
+        }
+
+        // Создаем FormData для отправки с файлом
+        const formData = new FormData();
+        
+        // Добавляем текстовые данные
+        Object.keys(taskData).forEach(key => {
+            formData.append(key, taskData[key]);
+        });
+        
+        // Добавляем изображение если есть
+        if (currentTaskImage) {
+            formData.append('image', currentTaskImage);
+        }
+
+        console.log('📤 Sending task with image...');
+
+        // Показываем прогресс загрузки
+        const progressBar = document.querySelector('.upload-progress-bar');
+        const progressContainer = document.querySelector('.upload-progress');
+        
+        if (progressContainer) {
+            progressContainer.style.display = 'block';
+        }
+
+        const xhr = new XMLHttpRequest();
+        
+        xhr.upload.addEventListener('progress', function(e) {
+            if (e.lengthComputable) {
+                const percentComplete = (e.loaded / e.total) * 100;
+                if (progressBar) {
+                    progressBar.style.width = percentComplete + '%';
+                }
+            }
+        });
+        
+        xhr.addEventListener('load', function() {
+            try {
+                const result = JSON.parse(xhr.responseText);
+                
+                if (progressContainer) {
+                    progressContainer.style.display = 'none';
+                }
+                
+                if (result.success) {
+                    showNotification('✅ Задание с фото успешно создано!', 'success');
+                    
+                    // Очищаем форму
+                    clearTaskForm();
+                    clearTaskImage();
+                    
+                    // Обновляем списки
+                    setTimeout(() => {
+                        loadAdminTasks();
+                        loadTasks();
+                    }, 1000);
+                    
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                console.error('Error parsing response:', error);
+                showNotification('❌ Ошибка создания задания', 'error');
+            }
+        });
+        
+        xhr.addEventListener('error', function() {
+            if (progressContainer) {
+                progressContainer.style.display = 'none';
+            }
+            showNotification('❌ Ошибка сети при создании задания', 'error');
+        });
+        
+        xhr.open('POST', '/api/tasks-with-image');
+        xhr.send(formData);
+
+    } catch (error) {
+        console.error('💥 Error in addTaskWithImage:', error);
+        showNotification(`❌ Ошибка: ${error.message}`, 'error');
+    }
+}
+
+function clearTaskForm() {
+    const formFields = [
+        'admin-task-title', 
+        'admin-task-description', 
+        'admin-task-price', 
+        'admin-task-time', 
+        'admin-task-people', 
+        'admin-task-url'
+    ];
+    
+    formFields.forEach(fieldId => {
+        const element = document.getElementById(fieldId);
+        if (element) element.value = '';
+    });
+    
+    // Сбрасываем выпадающие списки
+    document.getElementById('admin-task-category').value = 'subscribe';
+    document.getElementById('admin-task-difficulty').value = 'Легкая';
+}
+
+// Функция для отображения заданий с изображениями
+function displayTasksWithImages(tasks, category) {
+    const container = document.getElementById(category + '-tasks');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!tasks || tasks.length === 0) {
+        container.innerHTML = `
+            <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
+                <div>Заданий пока нет</div>
+                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
+                    Новые задания появятся позже
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    tasks.forEach((task, index) => {
+        const taskElement = createTaskCardWithImage(task, category, index);
+        container.appendChild(taskElement);
+    });
+}
+
+// Создание карточки задания с изображением
+function createTaskCardWithImage(task, category, index) {
+    const taskElement = document.createElement('div');
+    taskElement.className = 'task-card task-card-with-image';
+    taskElement.style.animationDelay = `${index * 0.1}s`;
+    
+    const hasImage = task.image_url && task.image_url !== '';
+    const peopleRequired = task.people_required || 1;
+    const completedCount = task.completed_count || 0;
+    const availableTasks = Math.max(0, peopleRequired - completedCount);
+    
+    taskElement.innerHTML = `
+        ${hasImage ? `
+            <div class="task-image-container">
+                <img src="${task.image_url}" alt="${escapeHtml(task.title)}" class="task-image"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='none';">
+                <div class="task-image-overlay"></div>
+                ${availableTasks > 0 ? `<div class="task-badge">${availableTasks} осталось</div>` : ''}
+            </div>
+        ` : `
+            <div class="task-image-placeholder" style="height: 120px; margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-secondary);">
+                    <div style="text-align: center;">
+                        <div style="font-size: 32px; margin-bottom: 8px;">📋</div>
+                        <div style="font-size: 12px;">Описание задания</div>
+                    </div>
+                </div>
+                ${availableTasks > 0 ? `<div class="task-availability">${availableTasks} осталось</div>` : ''}
+            </div>
+        `}
+        
+        <div class="task-header">
+            <div class="task-title">${escapeHtml(task.title)}</div>
+            <div class="task-price">${task.price} ⭐</div>
+        </div>
+        
+        <div class="task-meta">
+            <div class="task-category">${formatCategory(task.category)}</div>
+            ${task.difficulty ? `<div class="task-difficulty ${task.difficulty.toLowerCase()}">${task.difficulty}</div>` : ''}
+        </div>
+        
+        <div class="task-description">
+            ${escapeHtml(task.description.length > 100 ? task.description.substring(0, 100) + '...' : task.description)}
+        </div>
+        
+        ${peopleRequired > 1 ? `
+            <div class="task-progress">
+                <div class="task-progress-bar" style="width: ${Math.min(100, (completedCount / peopleRequired) * 100)}%"></div>
+            </div>
+            <div class="task-progress-text">
+                Выполнено: ${completedCount}/${peopleRequired}
+            </div>
+        ` : ''}
+        
+        <div class="task-footer">
+            <div class="task-time">${task.time_to_complete || '5-10 минут'}</div>
+            <button class="task-btn" onclick="event.stopPropagation(); openTaskModal(${task.id})">
+                ${category === 'new' ? 'Начать задание' : 'Подробнее'}
+            </button>
+        </div>
+    `;
+    
+    taskElement.addEventListener('click', function(e) {
+        if (!e.target.classList.contains('task-btn')) {
+            openTaskModal(task.id);
+        }
+    });
+    
+    return taskElement;
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    initImageUploadDragDrop();
+});
 
 // 🔧 ФУНКЦИЯ ОТОБРАЖЕНИЯ АДМИН-ЗАДАНИЙ
 function displayAdminTasks(tasks) {

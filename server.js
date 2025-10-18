@@ -1522,6 +1522,83 @@ app.get('/api/debug/tasks-test', async (req, res) => {
         });
     }
 });
+// В server.js добавим endpoint для заданий с изображениями
+app.post('/api/tasks-with-image', upload.single('image'), async (req, res) => {
+    console.log('📥 Received task creation request with image');
+    
+    const { 
+        title, 
+        description, 
+        price, 
+        created_by,
+        category,
+        time_to_complete,
+        difficulty,
+        people_required,
+        task_url
+    } = req.body;
+    
+    // Базовая валидация
+    if (!title || !description || !price || !created_by) {
+        return res.status(400).json({
+            success: false,
+            error: 'Заполните все обязательные поля'
+        });
+    }
+    
+    try {
+        const taskPrice = parseFloat(price);
+        if (isNaN(taskPrice) || taskPrice <= 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'Цена должна быть положительным числом!'
+            });
+        }
+
+        // Обрабатываем изображение если есть
+        let imageUrl = '';
+        if (req.file) {
+            imageUrl = `/uploads/${req.file.filename}`;
+        }
+
+        console.log('💾 Saving task to database with image...');
+        
+        const result = await pool.query(`
+            INSERT INTO tasks (
+                title, description, price, created_by, category,
+                time_to_complete, difficulty, people_required, task_url, image_url
+            ) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            RETURNING *
+        `, [
+            title.trim(), 
+            description.trim(), 
+            taskPrice, 
+            created_by,
+            category || 'general',
+            time_to_complete || '5-10 минут',
+            difficulty || 'Легкая',
+            parseInt(people_required) || 1,
+            task_url || '',
+            imageUrl
+        ]);
+        
+        console.log('✅ Task with image saved successfully:', result.rows[0]);
+        
+        res.json({
+            success: true,
+            message: imageUrl ? 'Задание с фото успешно создано!' : 'Задание успешно создано!',
+            task: result.rows[0]
+        });
+        
+    } catch (error) {
+        console.error('❌ Create task with image error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка базы данных: ' + error.message
+        });
+    }
+});
 // Test endpoint for task creation
 app.post('/api/test-task', async (req, res) => {
     console.log('🧪 Test task endpoint called:', req.body);
