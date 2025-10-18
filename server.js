@@ -137,7 +137,7 @@ async function initDatabase() {
             ADD COLUMN IF NOT EXISTS is_first_login BOOLEAN DEFAULT true
         `);
 
-        // Таблица заданий - ОБНОВЛЕННАЯ ВЕРСИЯ
+        // Таблица заданий - ОБНОВЛЕННАЯ ВЕРСИЯ С image_url
         await pool.query(`
             CREATE TABLE IF NOT EXISTS tasks (
                 id SERIAL PRIMARY KEY,
@@ -157,12 +157,11 @@ async function initDatabase() {
             )
         `);
 
-        // Добавляем колонку image_url если ее нет
+        // Гарантируем, что колонка image_url существует
         await pool.query(`
             ALTER TABLE tasks 
             ADD COLUMN IF NOT EXISTS image_url TEXT
         `);
-
         // Таблица запросов на вывод
         await pool.query(`
             CREATE TABLE IF NOT EXISTS withdrawal_requests (
@@ -851,7 +850,54 @@ function clearTaskImage() {
     input.value = '';
     preview.style.display = 'none';
 }
-
+async function fixTasksTable() {
+    try {
+        console.log('🔧 Checking and fixing tasks table structure...');
+        
+        // Проверяем существование колонки image_url
+        const columnCheck = await pool.query(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'tasks' AND column_name = 'image_url'
+        `);
+        
+        if (columnCheck.rows.length === 0) {
+            console.log('❌ Column image_url not found, adding...');
+            await pool.query(`ALTER TABLE tasks ADD COLUMN image_url TEXT`);
+            console.log('✅ Column image_url added successfully');
+        } else {
+            console.log('✅ Column image_url already exists');
+        }
+        
+        // Проверяем другие важные колонки
+        const columnsToCheck = [
+            'created_by', 'category', 'time_to_complete', 
+            'difficulty', 'people_required', 'repost_time', 'task_url'
+        ];
+        
+        for (const column of columnsToCheck) {
+            const exists = await pool.query(`
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'tasks' AND column_name = $1
+            `, [column]);
+            
+            if (exists.rows.length === 0) {
+                console.log(`❌ Column ${column} not found, adding...`);
+                let columnType = 'TEXT';
+                if (column === 'created_by') columnType = 'BIGINT';
+                if (column === 'people_required') columnType = 'INTEGER';
+                
+                await pool.query(`ALTER TABLE tasks ADD COLUMN ${column} ${columnType}`);
+                console.log(`✅ Column ${column} added`);
+            }
+        }
+        
+        console.log('✅ Tasks table structure verified and fixed');
+    } catch (error) {
+        console.error('❌ Error fixing tasks table:', error);
+    }
+}
 // Обновленная функция добавления задания с изображением
 async function addTask() {
     console.log('🎯 Starting addTask function...');
@@ -1545,7 +1591,6 @@ app.get('/api/debug/tasks-test', async (req, res) => {
         });
     }
 });
-// В server.js добавим endpoint для заданий с изображениями
 app.post('/api/tasks-with-image', upload.single('image'), async (req, res) => {
     console.log('📥 Received task creation request with image');
     
@@ -1660,7 +1705,6 @@ app.post('/api/tasks-with-image', upload.single('image'), async (req, res) => {
         });
     }
 });
-// Debug endpoint to check table structure
 app.get('/api/debug/tasks-structure', async (req, res) => {
     try {
         const structure = await pool.query(`
