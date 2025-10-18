@@ -5151,7 +5151,7 @@ html, body {
         let currentVerificationId = null;
 
 // Улучшенная функция для запросов
-// В index.html - обновите функцию makeRequest для обработки GET параметров
+// 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ ДЛЯ ЗАПРОСОВ
 async function makeRequest(endpoint, options = {}) {
     try {
         // Формируем полный URL
@@ -5164,13 +5164,6 @@ async function makeRequest(endpoint, options = {}) {
             url = API_BASE_URL + '/api' + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
         }
         
-        // Для GET запросов добавляем параметры в URL
-        if (options.method === 'GET' && options.body) {
-            const params = new URLSearchParams(options.body);
-            url += '?' + params.toString();
-            delete options.body; // Удаляем body для GET запроса
-        }
-        
         console.log(`🚀 Making ${options.method || 'GET'} request to: ${url}`);
         
         const response = await fetch(url, {
@@ -5181,13 +5174,47 @@ async function makeRequest(endpoint, options = {}) {
             ...options
         });
 
-        // ... остальной код без изменений
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('📨 Response received:', data);
+        return data;
+        
     } catch (error) {
         console.error('💥 Request failed:', error);
         showNotification(`⚠️ Ошибка: ${error.message}`, 'error');
         throw error;
     }
 }
+
+// 🔧 КНОПКА ДЛЯ ТЕСТИРОВАНИЯ ЗАГРУЗКИ ЗАДАНИЙ
+function addTasksDebugButton() {
+    const debugBtn = document.createElement('button');
+    debugBtn.textContent = '🐛 Debug Tasks Load';
+    debugBtn.style.position = 'fixed';
+    debugBtn.style.top = '300px';
+    debugBtn.style.right = '10px';
+    debugBtn.style.zIndex = '10000';
+    debugBtn.style.padding = '10px';
+    debugBtn.style.background = 'blue';
+    debugBtn.style.color = 'white';
+    debugBtn.style.border = 'none';
+    debugBtn.style.borderRadius = '5px';
+    debugBtn.style.fontSize = '12px';
+    debugBtn.onclick = function() {
+        console.log('🐛 DEBUG Tasks Loading:');
+        console.log('- currentUser:', currentUser);
+        console.log('- API_BASE_URL:', API_BASE_URL);
+        loadTasks();
+    };
+    document.body.appendChild(debugBtn);
+}
+
+// Вызовите при загрузке
+setTimeout(addTasksDebugButton, 2000);
+
 // Функция для тестирования endpoint'ов
 async function testEndpoints() {
     if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) return;
@@ -6662,7 +6689,7 @@ function showTasksTab() {
         
     }, 50); // Уменьшаем задержку
 }
-// В index.html - обновите функцию загрузки заданий с поиском
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ ЗАДАНИЙ
 async function loadTasks(search = '', category = 'all') {
     try {
         console.log('🔄 ЗАГРУЗКА ЗАДАНИЙ - НАЧАЛО', { search, category, userId: currentUser?.id });
@@ -6684,21 +6711,19 @@ async function loadTasks(search = '', category = 'all') {
             </div>
         `;
         
-        // Формируем URL с userId как query parameter
+        // Формируем URL с query параметрами
         let url = `/api/tasks?userId=${currentUser.id}`;
-        const params = [];
         
-        if (search) params.push(`search=${encodeURIComponent(search)}`);
-        if (category && category !== 'all') params.push(`category=${encodeURIComponent(category)}`);
-        
-        if (params.length > 0) {
-            url += '&' + params.join('&');
-        }
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (category && category !== 'all') url += `&category=${encodeURIComponent(category)}`;
         
         console.log('📡 Запрос к серверу:', url);
         
-        // Делаем GET запрос (не POST)
-        const result = await makeRequest(url);
+        // Делаем чистый GET запрос без body
+        const result = await makeRequest(url, {
+            method: 'GET'
+        });
+        
         console.log('✅ Ответ от сервера получен, доступно задач:', result.tasks?.length || 0);
         
         if (result.success) {
