@@ -136,6 +136,481 @@ body {
         line-clamp: 2;
     }
 }
+
+
+/* 🔥 ОБНОВЛЕННЫЕ ЯРКИЕ БЛОКИ */
+:root {
+    --card-bg: rgba(20, 20, 40, 0.95);
+    --bg-secondary: rgba(25, 25, 50, 0.9);
+    --border: rgba(99, 102, 241, 0.3);
+    --shadow: rgba(99, 102, 241, 0.15);
+}
+
+/* 🔥 ЯРКИЕ КАРТОЧКИ */
+.card {
+    background: var(--card-bg);
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+
+/* 🔥 ЯРКИЕ СТАТИСТИЧЕСКИЕ КАРТОЧКИ */
+.stat-card {
+    border-radius: 18px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    min-height: 120px;
+    width: 48%;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    flex: 1;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform: translateZ(0);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.stat-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.stat-card:hover::after {
+    opacity: 1;
+}
+
+/* 🔥 ЯРКИЕ КАРТОЧКИ ЗАДАНИЙ */
+.task-card {
+    background: var(--card-bg);
+    border-radius: 20px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 180px;
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+}
+
+.task-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--purple-gradient));
+    opacity: 0.7;
+}
+
+.task-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.3);
+    border-color: var(--accent);
+}
+
+/* 🔥 ЯРКИЕ КНОПКИ */
+.btn {
+    display: inline-block;
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 14px 24px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform: translateZ(0);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+.btn:hover::before {
+    left: 100%;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+}
+
+.btn-primary {
+    background: var(--gold-gradient);
+    color: #000;
+    font-weight: 700;
+    box-shadow: 0 4px 15px rgba(255, 204, 0, 0.4);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+/* 🔥 ЯРКИЕ КАРТОЧКИ В ПРОФИЛЕ */
+.profile-stat {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    border: 1px solid var(--border);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.profile-stat:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+/* 🔥 ЯРКИЙ NAVBAR */
+.bottom-nav {
+    position: fixed;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    background: rgba(25, 25, 50, 0.95);
+    border-radius: 18px;
+    padding: 10px;
+    display: flex;
+    justify-content: space-around;
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--border);
+    z-index: 1000;
+    backdrop-filter: blur(20px);
+    height: 100px;
+}
+
+.nav-item {
+    text-align: center;
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 14px;
+    flex: 1;
+    opacity: 0.7;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 35px;
+    border: 1px solid transparent;
+}
+
+.nav-item.active {
+    background: var(--accent);
+    opacity: 1;
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+    transform: translateY(-2px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* 🔥 ЯРКИЕ МОДАЛЬНЫЕ ОКНА */
+.modal-content {
+    background: var(--card-bg);
+    border-radius: 20px;
+    padding: 24px;
+    width: 90%;
+    max-width: 400px;
+    border: 1px solid var(--border);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+    max-height: 80vh;
+    overflow-y: auto;
+    backdrop-filter: blur(20px);
+}
+
+/* 🔥 ЯРКИЕ ПОСТЫ */
+.post-item {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+    animation: fadeIn 0.6s ease-out;
+    overflow: hidden;
+    position: relative;
+}
+
+.post-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--accent);
+    opacity: 0.7;
+}
+
+/* 🔥 ЯРКИЕ ФОРМЫ */
+.admin-input, .search-input {
+    width: 100%;
+    background: rgba(30, 30, 60, 0.8);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px 16px 14px 45px;
+    color: var(--text-primary);
+    font-size: 14px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.admin-input:focus, .search-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    background: rgba(35, 35, 70, 0.9);
+}
+
+/* 🔥 ЯРКИЕ СЕКЦИИ АДМИНКИ */
+.admin-section {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(10px);
+}
+
+.admin-task-item {
+    background: rgba(30, 30, 60, 0.8);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.admin-task-item:hover {
+    background: rgba(35, 35, 70, 0.9);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* 🔥 ЯРКИЕ ГЕРОЙ БАННЕРЫ */
+.hero-banner {
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    position: relative;
+    height: 180px;
+    background: linear-gradient(45deg, #1a1a3a, #252550);
+    border: 1px solid var(--border);
+}
+
+/* 🔥 ЯРКИЕ КАРТОЧКИ ОБМЕНА */
+.exchange-card {
+    background: var(--gold-gradient);
+    color: #000;
+    border-radius: 18px;
+    padding: 20px;
+    margin-bottom: 16px;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.3);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.exchange-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.exchange-card:hover::before {
+    opacity: 1;
+}
+
+.exchange-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 35px rgba(255, 215, 0, 0.4);
+}
+
+/* 🔥 ЯРКИЕ ВКЛАДКИ */
+.tasks-tabs {
+    display: flex;
+    margin-bottom: 20px;
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 6px;
+    border: 1px solid var(--border);
+    overflow-x: auto;
+    white-space: nowrap;
+    position: relative;
+    z-index: 2;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.task-tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px 8px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    min-width: 80px;
+    border: 1px solid transparent;
+}
+
+.task-tab.active {
+    background: var(--accent);
+    color: white;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* 🔥 ЯРКИЕ УВЕДОМЛЕНИЯ */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--accent);
+    color: white;
+    padding: 12px 16px;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: 300px;
+    animation: slideIn 0.3s ease-out;
+    border: 1px solid var(--border);
+    backdrop-filter: blur(20px);
+}
+
+/* 🔥 ЯРКИЙ ПРОГРЕСС БАР */
+.progress-bar {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--gold-gradient);
+    border-radius: 4px;
+    width: 0%;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+/* 🔥 ЯРКИЕ ИКОНКИ И АВАТАРЫ */
+.profile-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-right: 16px;
+    position: relative;
+    border: 3px solid var(--accent);
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+}
+
+.chat-avatar-small {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--purple-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    color: white;
+    font-weight: 600;
+    font-size: 16px;
+    box-shadow: 0 4px 10px rgba(139, 92, 246, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+/* 🔥 УСИЛЕННЫЕ ТЕНИ И ГЛУБИНА */
+.card, .task-card, .profile-stat, .admin-section {
+    box-shadow: 
+        0 8px 30px rgba(0, 0, 0, 0.25),
+        0 1px 3px rgba(255, 255, 255, 0.05) inset;
+}
+
+/* 🔥 УЛУЧШЕННЫЕ ГРАДИЕНТЫ */
+.stat-card.balance-card {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed, #6d28d9);
+    box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4);
+}
+
+.stat-card.support-card {
+    background: linear-gradient(135deg, #0ea5e9, #0369a1, #075985);
+    box-shadow: 0 8px 25px rgba(14, 165, 233, 0.4);
+}
+
+/* 🔥 ПОДСВЕТКА ПРИ НАВЕДЕНИИ */
+.card:hover, .profile-stat:hover, .admin-task-item:hover {
+    box-shadow: 
+        0 12px 35px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(99, 102, 241, 0.1);
+}
+
 .bottom-nav {
     position: fixed;
     bottom: 16px;
