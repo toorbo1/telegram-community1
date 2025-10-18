@@ -2332,13 +2332,10 @@ app.get('/api/withdraw/history/:userId', async (req, res) => {
 
 // ==================== ADMIN MANAGEMENT ENDPOINTS ====================
 
-// Получение списка всех админов - ТОЛЬКО для главного админа
+// Получение списка всех админов с расширенной статистикой
 app.get('/api/admin/admins-list', async (req, res) => {
     const { adminId } = req.query;
     
-    console.log('🛠️ Received admins-list request from:', adminId);
-    
-    // Проверяем права доступа - только главный админ
     if (!adminId || parseInt(adminId) !== ADMIN_ID) {
         return res.status(403).json({
             success: false,
@@ -2349,20 +2346,35 @@ app.get('/api/admin/admins-list', async (req, res) => {
     try {
         const result = await pool.query(`
             SELECT 
-                user_id, 
-                username, 
-                first_name, 
-                last_name, 
-                is_admin,
-                created_at 
-            FROM user_profiles 
-            WHERE is_admin = true 
+                up.user_id, 
+                up.username, 
+                up.first_name, 
+                up.last_name, 
+                up.is_admin,
+                up.created_at,
+                -- Статистика постов
+                (SELECT COUNT(*) FROM posts WHERE author_id = up.user_id) as posts_count,
+                -- Статистика заданий
+                (SELECT COUNT(*) FROM tasks WHERE created_by = up.user_id) as tasks_count,
+                -- Статистика проверок
+                (SELECT COUNT(*) FROM task_verifications WHERE reviewed_by = up.user_id) as verifications_count,
+                -- Статистика поддержки
+                (SELECT COUNT(*) FROM support_messages WHERE user_id = up.user_id AND is_admin = true) as support_count,
+                -- Статистика выплат
+                (SELECT COUNT(*) FROM withdrawal_requests WHERE completed_by = up.user_id) as payments_count,
+                -- Права доступа
+                COALESCE(ap.can_posts, true) as can_posts,
+                COALESCE(ap.can_tasks, true) as can_tasks,
+                COALESCE(ap.can_verification, true) as can_verification,
+                COALESCE(ap.can_support, true) as can_support,
+                COALESCE(ap.can_payments, true) as can_payments
+            FROM user_profiles up
+            LEFT JOIN admin_permissions ap ON up.user_id = ap.admin_id
+            WHERE up.is_admin = true 
             ORDER BY 
-                CASE WHEN user_id = $1 THEN 0 ELSE 1 END,
-                created_at DESC
+                CASE WHEN up.user_id = $1 THEN 0 ELSE 1 END,
+                up.created_at DESC
         `, [ADMIN_ID]);
-        
-        console.log(`✅ Found ${result.rows.length} admins`);
         
         res.json({
             success: true,
@@ -2378,6 +2390,70 @@ app.get('/api/admin/admins-list', async (req, res) => {
     }
 });
 
+// Обновление прав доступа админа
+app.post('/api/admin/update-permissions', async (req, res) => {
+    const { adminId, targetAdminId, permission, enabled } = req.body;
+    
+    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied - only main admin can update permissions'
+        });
+    }
+    
+    try {
+        // Создаем таблицу для прав доступа если её нет
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS admin_permissions (
+                admin_id BIGINT PRIMARY KEY,
+                can_posts BOOLEAN DEFAULT true,
+                can_tasks BOOLEAN DEFAULT true,
+                can_verification BOOLEAN DEFAULT true,
+                can_support BOOLEAN DEFAULT true,
+                can_payments BOOLEAN DEFAULT true,
+                can_admins BOOLEAN DEFAULT false,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (admin_id) REFERENCES user_profiles(user_id)
+            )
+        `);
+        
+        const columnMap = {
+            'posts': 'can_posts',
+            'tasks': 'can_tasks', 
+            'verification': 'can_verification',
+            'support': 'can_support',
+            'payments': 'can_payments',
+            'admins': 'can_admins'
+        };
+        
+        const column = columnMap[permission];
+        if (!column) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid permission type'
+            });
+        }
+        
+        await pool.query(`
+            INSERT INTO admin_permissions (admin_id, ${column})
+            VALUES ($1, $2)
+            ON CONFLICT (admin_id)
+            DO UPDATE SET ${column} = $2, updated_at = CURRENT_TIMESTAMP
+        `, [targetAdminId, enabled]);
+        
+        res.json({
+            success: true,
+            message: 'Права доступа обновлены'
+        });
+        
+    } catch (error) {
+        console.error('Update permissions error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
 // Добавление нового админа по юзернейму - ТОЛЬКО для главного админа
 app.post('/api/admin/add-admin', async (req, res) => {
     const { adminId, username } = req.body;
