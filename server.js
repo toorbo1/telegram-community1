@@ -1490,7 +1490,38 @@ app.get('/api/debug/tasks', async (req, res) => {
         });
     }
 });
-
+// В server.js добавьте:
+app.get('/api/debug/tasks-test', async (req, res) => {
+    try {
+        const { userId } = req.query;
+        console.log('🧪 Debug tasks request for user:', userId);
+        
+        const tasks = await pool.query(`
+            SELECT * FROM tasks 
+            WHERE status = 'active'
+            ORDER BY created_at DESC
+            LIMIT 5
+        `);
+        
+        console.log('📊 Found tasks:', tasks.rows.length);
+        
+        res.json({
+            success: true,
+            tasks: tasks.rows,
+            debug: {
+                userId: userId,
+                timestamp: new Date().toISOString(),
+                taskCount: tasks.rows.length
+            }
+        });
+    } catch (error) {
+        console.error('Debug tasks error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 // Test endpoint for task creation
 app.post('/api/test-task', async (req, res) => {
     console.log('🧪 Test task endpoint called:', req.body);
