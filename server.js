@@ -2533,15 +2533,14 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
         });
     }
 });
-
-// В server.js - обновим endpoint отклонения задания
+// Отклонение задания для ВСЕХ админов
 app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
     
     console.log('❌ Отклонение задания админом:', { verificationId, adminId });
     
-    // Проверка прав администратора
+    // Проверка прав администратора - РАЗРЕШАЕМ ВСЕМ АДМИНАМ
     const isAdmin = await checkAdminAccess(adminId);
     if (!isAdmin) {
         return res.status(403).json({
@@ -2573,7 +2572,7 @@ app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res
             WHERE id = $2
         `, [adminId, verificationId]);
         
-        // ВАЖНОЕ ИЗМЕНЕНИЕ: Обновляем статус задания пользователя на 'rejected'
+        // Update user task
         await pool.query(`
             UPDATE user_tasks 
             SET status = 'rejected', completed_at = CURRENT_TIMESTAMP 
@@ -2592,7 +2591,6 @@ app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res
         });
     }
 });
-
 // ==================== WITHDRAWAL ENDPOINTS ====================
 
 // Request withdrawal - ОБНОВЛЕННАЯ ВЕРСИЯ С ПРОВЕРКОЙ МИНИМУМА
