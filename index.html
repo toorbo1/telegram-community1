@@ -4613,22 +4613,21 @@ html, body {
         </div>
     </div>
 
-<!-- Вкладка админа -->
 <div id="admin-tab" class="tab-content">
     <div class="page-header">
         <button class="back-button" onclick="showMainTab()">←</button>
         <div class="page-title">Панель администратора</div>
     </div>
 
-   <div class="admin-buttons">
-    <button class="admin-btn" onclick="showAdminSection('posts')">📝 Посты</button>
-    <button class="admin-btn" onclick="loadAdminTasksSection()">📋 Задания</button>
-    <button class="admin-btn" onclick="showAdminSection('verification')">✅ Проверка</button>
-    <button class="admin-btn" onclick="showAdminSection('support')">💬 Поддержка</button>
-    <button class="admin-btn" onclick="showAdminSection('payments')">💳 Оплаты</button>
-    <!-- ДОБАВИТЬ ЭТУ КНОПКУ -->
-    <button class="admin-btn" onclick="showAdminSection('admins')">👥 Админы</button>
-</div>
+    <div class="admin-buttons">
+        <button class="admin-btn" onclick="showAdminSection('posts')">📝 Посты</button>
+        <button class="admin-btn" onclick="showAdminSection('tasks')">📋 Задания</button>
+        <button class="admin-btn" onclick="showAdminSection('verification')">✅ Проверка</button>
+        <button class="admin-btn" onclick="showAdminSection('support')">💬 Поддержка</button>
+        <button class="admin-btn" onclick="showAdminSection('payments')">💳 Оплаты</button>
+        <button class="admin-btn" onclick="showAdminSection('admins')">👥 Админы</button>
+    </div>
+
 <!-- Управление админами -->
 <div id="admin-admins-section" class="admin-section" style="display: none;">
     <div class="admin-form">
@@ -8905,23 +8904,11 @@ function showAdminSection(section) {
         console.log(`❌ Hiding: ${sec.id}`);
     });
     
-    // Скрываем все кнопки админа которые могли остаться видимыми
-    const adminButtons = document.querySelectorAll('.admin-btn');
-    adminButtons.forEach(btn => {
-        btn.style.display = 'none';
-    });
-    
     // Показываем выбранную секцию
     const targetSection = document.getElementById('admin-' + section + '-section');
     if (targetSection) {
         targetSection.style.display = 'block';
         console.log(`✅ Showing: admin-${section}-section`);
-        
-        // Показываем только кнопки относящиеся к этой секции
-        const sectionButtons = targetSection.querySelectorAll('.admin-btn');
-        sectionButtons.forEach(btn => {
-            btn.style.display = 'block';
-        });
         
         // Загружаем данные для определенных секций
         switch(section) {
@@ -8929,7 +8916,6 @@ function showAdminSection(section) {
                 console.log('📋 Loading tasks management...');
                 setTimeout(() => {
                     loadAdminTasks();
-                    debugAdminForm();
                 }, 100);
                 break;
             case 'payments':
