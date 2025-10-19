@@ -7128,16 +7128,6 @@ if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
                     ${task.difficulty ? `<div class="task-difficulty ${task.difficulty.toLowerCase()}">${task.difficulty}</div>` : ''}
                 </div>
                 
-                ${task.image_url ? `
-                    <div class="task-image">
-                        <img src="${task.image_url}" alt="${escapeHtml(task.title)}" 
-                             onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\\'task-image-placeholder\\'>🖼️ Изображение задания</div>';">
-                    </div>
-                ` : '<div class="task-image-placeholder">📋 Описание задания</div>'}
-                
-                <div class="task-description">
-                    ${escapeHtml(shortDescription)}
-                </div>
                 
                 ${peopleRequired > 1 ? `
                     <div class="task-progress">
