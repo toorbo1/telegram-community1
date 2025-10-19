@@ -2511,7 +2511,41 @@ body {
             margin-bottom: 12px;
             border-left: 3px solid var(--accent);
         }
+/* В раздел CSS добавьте */
+.task-card.rejected {
+    border-left: 3px solid var(--error);
+    background: linear-gradient(135deg, var(--card-bg), rgba(239, 68, 68, 0.05));
+}
 
+.task-card.rejected:hover {
+    border-color: var(--error);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.rejection-info {
+    background: rgba(239, 68, 68, 0.1) !important;
+    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+    border-radius: 8px;
+    padding: 10px;
+    margin: 10px 0;
+}
+
+.support-btn {
+    background: var(--accent) !important;
+    color: white !important;
+    border: none !important;
+    padding: 8px 12px !important;
+    border-radius: 6px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+}
+
+.support-btn:hover {
+    background: var(--accent-hover) !important;
+    transform: translateY(-1px) !important;
+}
         .post-content {
             margin-bottom: 8px;
             white-space: pre-wrap;
@@ -6459,6 +6493,7 @@ function getCategoryName(category) {
 }
 
 
+// В index.html - обновим функцию загрузки отклоненных заданий
 async function loadTasksForCategory(category) {
     try {
         console.log(`🔄 Загружаем задания для категории: ${category} для пользователя:`, currentUser?.id);
@@ -6483,6 +6518,7 @@ async function loadTasksForCategory(category) {
                 endpoint = `/api/user/${currentUser.id}/tasks?status=completed`;
                 break;
             case 'rejected':
+                // Загружаем отклоненные задания
                 endpoint = `/api/user/${currentUser.id}/tasks?status=rejected`;
                 break;
         }
@@ -6967,23 +7003,117 @@ if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
             `;
         }
 
-        // 🔧 HTML ДЛЯ ОТКЛОНЕННЫХ ЗАДАНИЙ
-        function createRejectedTaskHTML(task) {
-            return `
-                <div class="task-header">
-                    <div style="flex: 1;">
-                        <div class="task-title">${escapeHtml(task.title)}</div>
-                        <div class="task-category">${task.category || 'Общее'}</div>
-                    </div>
-                    <div class="task-price">${task.price} ⭐</div>
-                </div>
-                <div class="task-description">${escapeHtml(task.description)}</div>
-                <div class="task-footer">
-                    <div class="task-time">Отклонено</div>
-                    <button class="support-btn" onclick="openAdminChat()">Написать в поддержку</button>
-                </div>
-            `;
+     // В index.html - обновим функцию создания карточки отклоненного задания
+function createRejectedTaskHTML(task) {
+    return `
+        <div class="task-header">
+            <div style="flex: 1;">
+                <div class="task-title">${escapeHtml(task.title)}</div>
+                <div class="task-category">${task.category || 'Общее'}</div>
+            </div>
+            <div class="task-price">${task.price} ⭐</div>
+        </div>
+        <div class="task-description">${escapeHtml(task.description)}</div>
+        
+        <!-- Блок с информацией об отклонении -->
+        <div class="rejection-info" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 10px; margin: 10px 0;">
+            <div style="color: var(--error); font-size: 12px; font-weight: 600; margin-bottom: 5px;">
+                ❌ Задание отклонено администратором
+            </div>
+            <div style="color: var(--text-secondary); font-size: 11px;">
+                Если вы считаете, что это ошибка, напишите в поддержку
+            </div>
+        </div>
+        
+        <div class="task-footer">
+            <div class="task-time">Отклонено</div>
+            <button class="support-btn" onclick="openAdminChat()" style="background: var(--accent); color: white; border: none; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                Написать в поддержку
+            </button>
+        </div>
+    `;
+}
+// В index.html - добавим функцию для открытия чата с контекстом задания
+function openSupportChatForTask(task) {
+    // Сохраняем информацию о задании для поддержки
+    const taskInfo = {
+        id: task.id,
+        title: task.title,
+        price: task.price,
+        category: task.category
+    };
+    
+    // Можно сохранить в localStorage или глобальную переменную
+    localStorage.setItem('supportTaskContext', JSON.stringify(taskInfo));
+    
+    // Открываем чат поддержки
+    openAdminChat();
+    
+    // Автоматически добавляем информацию о задании в первое сообщение
+    setTimeout(() => {
+        const chatInput = document.getElementById('chat-input-field');
+        if (chatInput) {
+            chatInput.placeholder = `Вопрос по отклоненному заданию: "${task.title}"...`;
         }
+    }, 500);
+}
+
+// Обновим функцию открытия чата для обработки контекста задания
+async function openAdminChat() {
+    if (!currentUser) {
+        showNotification('Пользователь не авторизован', 'error');
+        return;
+    }
+    
+    try {
+        console.log('👤 User opening support chat, ID:', currentUser.id);
+        
+        // Получаем или создаем чат для пользователя
+        const chatResult = await makeRequest(`/support/user-chat/${currentUser.id}`);
+        
+        if (chatResult.success) {
+            currentChatId = chatResult.chat.id;
+            console.log('✅ Chat ID:', currentChatId);
+            
+            // Проверяем есть ли контекст задания
+            const taskContext = localStorage.getItem('supportTaskContext');
+            if (taskContext) {
+                const taskInfo = JSON.parse(taskContext);
+                
+                // Добавляем автоматическое сообщение о задании
+                const autoMessage = `Здравствуйте! У меня вопрос по отклоненному заданию: "${taskInfo.title}" (${taskInfo.price}⭐). `;
+                const chatInput = document.getElementById('chat-input-field');
+                if (chatInput) {
+                    chatInput.value = autoMessage;
+                }
+                
+                // Очищаем контекст после использования
+                localStorage.removeItem('supportTaskContext');
+            }
+            
+            // Загружаем сообщения
+            try {
+                const messagesResult = await makeRequest(`/support/chats/${currentChatId}/messages`);
+                if (messagesResult.success) {
+                    displayChatMessages(messagesResult.messages);
+                }
+            } catch (messagesError) {
+                console.log('No messages yet or error loading messages:', messagesError);
+                // Показываем пустой чат с приветствием
+                displayChatMessages([]);
+            }
+            
+            // Показываем чат
+            document.getElementById('admin-chat').classList.add('active');
+            
+        } else {
+            throw new Error(chatResult.error || 'Failed to create chat');
+        }
+    } catch (error) {
+        console.error('❌ Error opening user chat:', error);
+        showNotification('Ошибка открытия чата: ' + error.message, 'error');
+    }
+}
 
         // 🔧 ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ СТРАНИЦЫ
         document.addEventListener('DOMContentLoaded', function() {
@@ -11272,9 +11402,13 @@ function displayTasksWithImages(tasks, category) {
         container.appendChild(taskElement);
     });
 }
+// В index.html - обновим функцию создания карточки задания для отклоненных
 function createTaskCardWithImage(task, category, index) {
     const taskElement = document.createElement('div');
     taskElement.className = 'task-card task-card-with-image';
+    if (category === 'rejected') {
+        taskElement.classList.add('rejected');
+    }
     taskElement.style.animationDelay = `${index * 0.1}s`;
     
     const hasImage = task.image_url && task.image_url !== '';
@@ -11361,6 +11495,11 @@ function createTaskCardWithImage(task, category, index) {
                 openTaskModal(task.id);
             }
         });
+    }
+       if (category === 'rejected') {
+        taskElement.innerHTML = createRejectedTaskHTML(task);
+    } else {
+        // ... стандартный код для других категорий ...
     }
     
     return taskElement;

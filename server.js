@@ -2534,14 +2534,14 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
     }
 });
 
-// Отклонение задания для ВСЕХ админов
+// В server.js - обновим endpoint отклонения задания
 app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
     
     console.log('❌ Отклонение задания админом:', { verificationId, adminId });
     
-    // Проверка прав администратора - РАЗРЕШАЕМ ВСЕМ АДМИНАМ
+    // Проверка прав администратора
     const isAdmin = await checkAdminAccess(adminId);
     if (!isAdmin) {
         return res.status(403).json({
@@ -2573,10 +2573,10 @@ app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res
             WHERE id = $2
         `, [adminId, verificationId]);
         
-        // Update user task - ВОЗВРАЩАЕМ задание в активные для повторного выполнения
+        // ВАЖНОЕ ИЗМЕНЕНИЕ: Обновляем статус задания пользователя на 'rejected'
         await pool.query(`
             UPDATE user_tasks 
-            SET status = 'active', screenshot_url = NULL, submitted_at = NULL 
+            SET status = 'rejected', completed_at = CURRENT_TIMESTAMP 
             WHERE id = $1
         `, [verificationData.user_task_id]);
         
