@@ -5533,25 +5533,24 @@ async function makeRequest(endpoint, options = {}) {
     }
 }
 
-// 🔧 КНОПКА ДЛЯ ТЕСТИРОВАНИЯ ЗАГРУЗКИ ЗАДАНИЙ
 function addTasksDebugButton() {
     const debugBtn = document.createElement('button');
-    debugBtn.textContent = '🐛 Debug Tasks Load';
+    debugBtn.textContent = '🐛 Debug Tasks';
     debugBtn.style.position = 'fixed';
-    debugBtn.style.top = '300px';
+    debugBtn.style.top = '50px';
     debugBtn.style.right = '10px';
     debugBtn.style.zIndex = '10000';
     debugBtn.style.padding = '10px';
-    debugBtn.style.background = 'blue';
+    debugBtn.style.background = 'red';
     debugBtn.style.color = 'white';
     debugBtn.style.border = 'none';
     debugBtn.style.borderRadius = '5px';
     debugBtn.style.fontSize = '12px';
     debugBtn.onclick = function() {
-        console.log('🐛 DEBUG Tasks Loading:');
+        console.log('🐛 DEBUG Tasks:');
         console.log('- currentUser:', currentUser);
         console.log('- API_BASE_URL:', API_BASE_URL);
-        loadTasks();
+        loadTasksForCategory('new');
     };
     document.body.appendChild(debugBtn);
 }
@@ -6456,9 +6455,8 @@ function testAddTask() {
     console.log('✅ Form filled with test data');
     debugAdminForm();
 }
-// В index.html - обновите функцию переключения категорий
 function showTaskCategory(category) {
-    console.log('🔄 Переключение на категорию:', category, 'для пользователя:', currentUser?.id);
+    console.log('🔄 Переключение на категорию:', category);
     
     // Скрываем все вкладки
     const tabs = document.querySelectorAll('.task-tab');
@@ -6471,7 +6469,9 @@ function showTaskCategory(category) {
     });
     
     // Активируем выбранную вкладку
-    const activeTab = document.querySelector(`.task-tab:nth-child(${getTabIndex(category)})`);
+    const activeTab = Array.from(tabs).find(tab => 
+        tab.textContent.toLowerCase().includes(getCategoryName(category))
+    );
     if (activeTab) {
         activeTab.classList.add('active');
     }
@@ -6483,41 +6483,54 @@ function showTaskCategory(category) {
         targetContainer.style.display = 'block';
         console.log(`✅ Контейнер ${category}-tasks показан`);
         
-        // Загружаем данные для категории с учетом userId
+        // Загружаем данные для категории
         loadTasksForCategory(category);
     }
 }
 
+function getCategoryName(category) {
+    const names = {
+        'new': 'новые',
+        'confirmation': 'подтверждение', 
+        'completed': 'выполненные',
+        'rejected': 'отклоненные'
+    };
+    return names[category] || category;
+}
 
-// В index.html - обновите функцию загрузки заданий по категориям
+
 async function loadTasksForCategory(category) {
     try {
         console.log(`🔄 Загружаем задания для категории: ${category} для пользователя:`, currentUser?.id);
         
+        if (!currentUser) {
+            console.log('❌ Пользователь не авторизован');
+            return;
+        }
+
         let endpoint = '';
-        let params = {};
+        let params = new URLSearchParams();
         
         switch(category) {
             case 'new':
-                // Для новых заданий передаем userId чтобы исключить уже начатые
                 endpoint = '/api/tasks';
-                params = { userId: currentUser.id };
+                params.append('userId', currentUser.id);
                 break;
             case 'confirmation':
-                endpoint = `/user/${currentUser.id}/tasks/active`;
+                endpoint = `/api/user/${currentUser.id}/tasks/active`;
                 break;
             case 'completed':
-                endpoint = `/user/${currentUser.id}/tasks?status=completed`;
+                endpoint = `/api/user/${currentUser.id}/tasks?status=completed`;
                 break;
             case 'rejected':
-                endpoint = `/user/${currentUser.id}/tasks?status=rejected`;
+                endpoint = `/api/user/${currentUser.id}/tasks?status=rejected`;
                 break;
         }
         
-        const result = await makeRequest(endpoint, {
-            method: 'GET',
-            ...(category === 'new' && { body: JSON.stringify(params) })
-        });
+        const url = endpoint + (params.toString() ? `?${params.toString()}` : '');
+        console.log('📡 Request URL:', url);
+
+        const result = await makeRequest(url);
         
         if (result.success) {
             displayTasksForCategory(result.tasks || [], category);
@@ -6530,57 +6543,51 @@ async function loadTasksForCategory(category) {
         showNotification(`Ошибка загрузки ${category} заданий`, 'error');
     }
 }
-        // 🔧 ФУНКЦИЯ ОТОБРАЖЕНИЯ ЗАДАНИЙ ПО КАТЕГОРИИ
-        function displayTasksForCategory(tasks, category) {
+function displayTasksForCategory(tasks, category) {
     const container = document.getElementById(`${category}-tasks`);
     if (!container) {
-        console.error(`Контейнер ${category}-tasks не найден`);
+        console.error(`❌ Контейнер ${category}-tasks не найден`);
         return;
     }
     
     container.innerHTML = '';
-                if (!tasks || tasks.length === 0) {
-        container.innerHTML = `<div>Нет заданий</div>`;
+    
+    if (!tasks || tasks.length === 0) {
+        let message = '';
+        switch(category) {
+            case 'new':
+                message = 'Новых заданий пока нет';
+                break;
+            case 'confirmation':
+                message = 'Нет заданий на подтверждении';
+                break;
+            case 'completed':
+                message = 'Нет выполненных заданий';
+                break;
+            case 'rejected':
+                message = 'Нет отклоненных заданий';
+                break;
+        }
+        
+        container.innerHTML = `
+            <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
+                <div style="font-size: 18px; margin-bottom: 8px;">${message}</div>
+                <div style="font-size: 14px; color: var(--text-secondary);">
+                    ${category === 'new' ? 'Новые задания появятся позже' : 'Следите за обновлениями'}
+                </div>
+            </div>
+        `;
         return;
     }
     
-            if (!tasks || tasks.length === 0) {
-                let message = '';
-                switch(category) {
-                    case 'new':
-                        message = 'Новых заданий пока нет';
-                        break;
-                    case 'confirmation':
-                        message = 'Нет заданий на подтверждении';
-                        break;
-                    case 'completed':
-                        message = 'Нет выполненных заданий';
-                        break;
-                    case 'rejected':
-                        message = 'Нет отклоненных заданий';
-                        break;
-                }
-                
-                container.innerHTML = `
-                    <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
-                        <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
-                        <div style="font-size: 18px; margin-bottom: 8px;">${message}</div>
-                        <div style="font-size: 14px; color: var(--text-secondary);">
-                            ${category === 'new' ? 'Новые задания появятся позже' : 'Следите за обновлениями'}
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-            
-            console.log(`🎯 Отображаем ${tasks.length} заданий в категории ${category}`);
-            
-   
-                tasks.forEach(task => {
-        container.appendChild(createTaskElement(task));
+    console.log(`🎯 Отображаем ${tasks.length} заданий в категории ${category}`);
+    
+    tasks.forEach((task, index) => {
+        const taskElement = createTaskCardWithImage(task, category, index);
+        container.appendChild(taskElement);
     });
-
-        }
+}
         // 🔧 ФУНКЦИЯ СОЗДАНИЯ ЭЛЕМЕНТА ЗАДАНИЯ
         function createTaskElement(task, category, index) {
             const taskElement = document.createElement('div');
@@ -7247,7 +7254,7 @@ async function initializeApp() {
     setTimeout(() => {
         if (currentUser) {
             console.log('👤 User authenticated, loading tasks...');
-            loadTasks();
+            loadTasksForCategory('new');
         } else {
             console.log('❌ No user for task loading');
         }
@@ -10952,7 +10959,6 @@ function displayTasksWithImages(tasks, category) {
     });
 }
 
-// В функции createTaskCardWithImage замените блок с изображением:
 function createTaskCardWithImage(task, category, index) {
     const taskElement = document.createElement('div');
     taskElement.className = 'task-card task-card-with-image';
@@ -10981,7 +10987,6 @@ function createTaskCardWithImage(task, category, index) {
             </div>
         `}
         
-        <!-- остальной контент карточки без изменений -->
         <div class="task-header">
             <div class="task-title">${escapeHtml(task.title)}</div>
             <div class="task-price">${task.price} ⭐</div>
@@ -11013,11 +11018,13 @@ function createTaskCardWithImage(task, category, index) {
         </div>
     `;
     
-    taskElement.addEventListener('click', function(e) {
-        if (!e.target.classList.contains('task-btn')) {
-            openTaskModal(task.id);
-        }
-    });
+    if (category === 'new') {
+        taskElement.addEventListener('click', function(e) {
+            if (!e.target.classList.contains('task-btn')) {
+                openTaskModal(task.id);
+            }
+        });
+    }
     
     return taskElement;
 }
