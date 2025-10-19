@@ -11179,32 +11179,25 @@ function createTaskCardWithImage(task, category, index) {
     const completedCount = task.completed_count || 0;
     const availableTasks = Math.max(0, peopleRequired - completedCount);
     
-    // 🔧 ИСПРАВЛЕНИЕ: Правильное отображение изображений
+    // 🔧 ИСПРАВЛЕНИЕ: Убираем блок с "📋 Описание задания"
     let imageHtml = '';
     if (hasImage) {
-        // Используем правильный контейнер для изображения
         imageHtml = `
             <div class="task-image-container">
                 <img src="${task.image_url}" alt="${escapeHtml(task.title)}" 
                      class="task-image"
-                     onerror="this.onerror=null; this.style.display='none'; this.parentElement.innerHTML='<div class=\"task-image-placeholder\">🖼️ Изображение не загружено</div>';">
-                <div class="task-image-overlay"></div>
+                     onerror="this.onerror=null; this.style.display='none';">
                 ${availableTasks > 0 && category === 'new' ? `<div class="task-badge">${availableTasks} осталось</div>` : ''}
             </div>
         `;
     } else {
+        // УБИРАЕМ этот блок полностью или заменяем на что-то другое
         imageHtml = `
-            <div class="task-image-placeholder" style="aspect-ratio: 16/9;">
-                <div style="text-align: center;">
-                    <div style="font-size: 32px; margin-bottom: 8px;">📋</div>
-                    <div style="font-size: 12px;">Описание задания</div>
-                </div>
-                ${availableTasks > 0 && category === 'new' ? `<div class="task-availability">${availableTasks} осталось</div>` : ''}
-            </div>
+            ${availableTasks > 0 && category === 'new' ? `<div class="task-availability">${availableTasks} осталось</div>` : ''}
         `;
     }
     
-    // Определяем текст кнопки в зависимости от категории
+    // Остальной код функции остается без изменений...
     let buttonHtml = '';
     switch(category) {
         case 'new':
@@ -11262,7 +11255,6 @@ function createTaskCardWithImage(task, category, index) {
         </div>
     `;
     
-    // Добавляем обработчик клика только для новых заданий
     if (category === 'new') {
         taskElement.addEventListener('click', function(e) {
             if (!e.target.classList.contains('task-btn')) {
