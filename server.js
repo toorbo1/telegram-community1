@@ -73,7 +73,7 @@ const upload = multer({
 });
 
 
-// Функция проверки прав администратора - ОБНОВЛЕННАЯ ВЕРСИЯ
+// Улучшенная функция проверки прав администратора
 async function checkAdminAccess(userId) {
     try {
         const result = await pool.query(
@@ -1090,10 +1090,7 @@ app.get('/api/health', async (req, res) => {
     }
 });
 // ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
-
-// ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
-
-// Get withdrawal requests for admin - ОБНОВЛЕННАЯ ВЕРСИЯ ДЛЯ ВСЕХ АДМИНОВ
+// Получение заявок на вывод для всех админов
 app.get('/api/admin/withdrawal-requests', async (req, res) => {
     const { adminId } = req.query;
     
@@ -1165,7 +1162,7 @@ async function fixWithdrawalTableStructure() {
 
 
 
-// Complete withdrawal request - ОБНОВЛЕННАЯ ВЕРСИЯ ДЛЯ ВСЕХ АДМИНОВ
+// Подтверждение выплаты для всех админов
 app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) => {
     const requestId = req.params.requestId;
     const { adminId } = req.body;
@@ -1182,7 +1179,7 @@ app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) 
     }
     
     try {
-        // Остальной код остается без изменений...
+        // Проверяем существование запроса
         const requestCheck = await pool.query(
             'SELECT * FROM withdrawal_requests WHERE id = $1 AND status = $2',
             [requestId, 'pending']
@@ -1195,7 +1192,36 @@ app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) 
             });
         }
         
-        // ... остальная логика обработки
+        const withdrawalRequest = requestCheck.rows[0];
+        
+        // Обновляем статус запроса
+        await pool.query(`
+            UPDATE withdrawal_requests 
+            SET status = 'completed', 
+                completed_at = CURRENT_TIMESTAMP,
+                completed_by = $1
+            WHERE id = $2
+        `, [adminId, requestId]);
+        
+        console.log(`✅ Выплата подтверждена админом ${adminId} для запроса ${requestId}`);
+        
+        // Отправляем уведомление пользователю через бота (если бот активен)
+        if (bot) {
+            try {
+                await bot.sendMessage(
+                    withdrawalRequest.user_id,
+                    `🎉 Ваша заявка на вывод ${withdrawalRequest.amount}⭐ была обработана и средства перечислены!`
+                );
+            } catch (botError) {
+                console.log('Не удалось отправить уведомление пользователю:', botError.message);
+            }
+        }
+        
+        res.json({
+            success: true,
+            message: 'Выплата успешно подтверждена!'
+        });
+        
     } catch (error) {
         console.error('❌ Complete withdrawal error:', error);
         res.status(500).json({
@@ -1204,7 +1230,6 @@ app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) 
         });
     }
 });
-
 // Обновим endpoint /api/user/auth
 app.post('/api/user/auth', async (req, res) => {
     const { user, referralCode } = req.body; // Добавляем referralCode
@@ -2294,8 +2319,21 @@ app.delete('/api/support/chats/:chatId', async (req, res) => {
 
 // ==================== TASK VERIFICATION ENDPOINTS ====================
 
-// Task verification system (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
+// Система проверки заданий для всех админов
 app.get('/api/admin/task-verifications', async (req, res) => {
+    const { adminId } = req.query;
+    
+    console.log('🔄 Запрос на проверку заданий от админа:', adminId);
+    
+    // Проверка прав администратора - РАЗРЕШАЕМ ВСЕМ АДМИНАМ
+    const isAdmin = await checkAdminAccess(adminId);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен. Только администраторы могут проверять задания.'
+        });
+    }
+    
     try {
         const result = await pool.query(`
             SELECT tv.*, u.username, u.first_name, u.last_name
@@ -2305,12 +2343,14 @@ app.get('/api/admin/task-verifications', async (req, res) => {
             ORDER BY tv.submitted_at DESC
         `);
         
+        console.log(`✅ Найдено ${result.rows.length} заданий на проверку для админа ${adminId}`);
+        
         res.json({
             success: true,
             verifications: result.rows
         });
     } catch (error) {
-        console.error('Get verifications error:', error);
+        console.error('❌ Get verifications error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message

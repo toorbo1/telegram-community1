@@ -4737,8 +4737,8 @@ html, body {
 
     <!-- Другие секции... -->
 </div>
-<!-- В админ-панели добавьте кнопку
-<button class="admin-btn" onclick="showAdminSection('payments')">💳 Оплаты</button> -->
+<!-- В админ-панели добавьте кнопку -->
+<button class="admin-btn" onclick="showAdminSection('payments')">💳 Оплаты</button>
 
 <!-- И секцию для управления оплатами -->
 <div id="admin-payments-section" class="admin-section" style="display: none;">
@@ -8915,6 +8915,11 @@ function showAdminSection(section) {
         
         // Загружаем данные для определенных секций
         switch(section) {
+            // В функции showAdminSection добавьте обработку секции payments
+case 'payments':
+    console.log('💳 Loading withdrawal requests...');
+    loadWithdrawalRequests();
+    break;
             case 'posts':
                 console.log('📝 Loading posts management...');
                 loadAdminPosts();
@@ -9205,35 +9210,27 @@ function displayWithdrawHistory(operations) {
         container.appendChild(operationElement);
     });
 }
+// Функция загрузки заявок на вывод
 async function loadWithdrawalRequests() {
-    console.log('🔄 Loading withdrawal requests...');
-    
-    if (!currentUser) {
-        console.log('❌ No current user');
-        return;
-    }
+    if (!currentUser) return;
     
     try {
         const result = await makeRequest(`/admin/withdrawal-requests?adminId=${currentUser.id}`);
-        console.log('📨 Withdrawal requests response:', result);
         
         if (result.success) {
             displayWithdrawalRequests(result.requests);
         } else {
-            console.error('❌ Failed to load requests:', result.error);
+            console.error('❌ Failed to load withdrawal requests:', result.error);
         }
     } catch (error) {
         console.error('❌ Load withdrawal requests error:', error);
     }
 }
 
-// Функция отображения запросов на вывод для админов - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// Функция отображения заявок на вывод
 function displayWithdrawalRequests(requests) {
     const container = document.getElementById('withdrawal-requests-list');
-    if (!container) {
-        console.error('❌ Контейнер не найден');
-        return;
-    }
+    if (!container) return;
     
     container.innerHTML = '';
     
@@ -9254,8 +9251,6 @@ function displayWithdrawalRequests(requests) {
         `;
         return;
     }
-    
-    console.log(`✅ Отображаем ${requests.length} заявок`);
     
     requests.forEach(request => {
         const requestElement = document.createElement('div');
@@ -9291,19 +9286,13 @@ function displayWithdrawalRequests(requests) {
     });
 }
 
+// Функция подтверждения выплаты
 async function completeWithdrawal(requestId) {
-    console.log('🔧 completeWithdrawal called:', {
-        requestId,
-        currentUser: currentUser,
-        currentUserId: currentUser?.id
-    });
-    
     if (!confirm('Вы уверены, что перечислили средства пользователю?')) {
         return;
     }
     
     try {
-        console.log('📤 Sending complete request...');
         const result = await makeRequest(`/admin/withdrawal-requests/${requestId}/complete`, {
             method: 'POST',
             body: JSON.stringify({
@@ -9311,11 +9300,9 @@ async function completeWithdrawal(requestId) {
             })
         });
         
-        console.log('📨 Complete response:', result);
-        
         if (result.success) {
             showNotification('✅ Выплата подтверждена!', 'success');
-            loadWithdrawalRequests();
+            loadWithdrawalRequests(); // Обновляем список
         } else {
             showNotification('❌ Ошибка: ' + result.error, 'error');
         }
@@ -9324,12 +9311,12 @@ async function completeWithdrawal(requestId) {
         showNotification('❌ Ошибка подтверждения выплаты: ' + error.message, 'error');
     }
 }
+
 // Обновите функцию показа секции оплат
 function showAdminPaymentsSection() {
     showAdminSection('payments');
     loadWithdrawalRequests();
 }
-
        // Обновление страницы вывода
 function updateWithdrawPage() {
     const balanceDisplay = document.getElementById('withdraw-balance-display');
@@ -11412,6 +11399,10 @@ window.loadAdminsList = loadAdminsList;
 window.addNewAdmin = addNewAdmin;
 window.removeAdmin = removeAdmin;
 window.updateAdminPermissions = updateAdminPermissions;
+// Добавьте в конец файла
+window.loadWithdrawalRequests = loadWithdrawalRequests;
+window.completeWithdrawal = completeWithdrawal;
+window.showAdminPaymentsSection = showAdminPaymentsSection;
 </script>
 </body>
 </html>
