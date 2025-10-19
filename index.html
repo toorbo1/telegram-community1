@@ -8890,15 +8890,22 @@ function showAdminTab() {
                     break;
             }
         }
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ПОКАЗА СЕКЦИЙ АДМИН-ПАНЕЛИ
 function showAdminSection(section) {
     console.log('🔄 Switching to admin section:', section);
     
-    // Скрываем все админ секции
+    // Скрываем ВСЕ админ секции
     const adminSections = document.querySelectorAll('.admin-section');
     adminSections.forEach(sec => {
         sec.style.display = 'none';
         console.log(`❌ Hiding: ${sec.id}`);
     });
+    
+    // Скрываем контейнер "Созданные задания" если он виден
+    const createdTasksContainer = document.getElementById('admin-tasks-list');
+    if (createdTasksContainer && createdTasksContainer.parentElement) {
+        createdTasksContainer.parentElement.style.display = 'none';
+    }
     
     // Показываем выбранную секцию
     const targetSection = document.getElementById('admin-' + section + '-section');
@@ -8914,6 +8921,11 @@ function showAdminSection(section) {
                 break;
             case 'tasks':
                 console.log('📋 Loading tasks management...');
+                // Показываем контейнер "Созданные задания" только для секции tasks
+                const tasksContainer = document.getElementById('admin-tasks-list');
+                if (tasksContainer && tasksContainer.parentElement) {
+                    tasksContainer.parentElement.style.display = 'block';
+                }
                 setTimeout(() => {
                     loadAdminTasks();
                 }, 100);
@@ -10238,7 +10250,42 @@ initTheme();
                 showNotification('Ошибка удаления чата', 'error');
             }
         }
+// 🔧 ФУНКЦИЯ ДЛЯ ПОЛНОЙ ОЧИСТКИ АДМИН-ПАНЕЛИ
+function resetAdminPanel() {
+    console.log('🧹 Resetting admin panel display...');
+    
+    // Скрываем все секции
+    const allSections = document.querySelectorAll('.admin-section');
+    allSections.forEach(section => {
+        section.style.display = 'none';
+    });
+    
+    // Скрываем контейнер созданных заданий
+    const tasksContainer = document.getElementById('admin-tasks-list-container');
+    if (tasksContainer) {
+        tasksContainer.style.display = 'none';
+    }
+    
+    console.log('✅ Admin panel reset complete');
+}
 
+// Вызывайте эту функцию при переключении между основными вкладками
+function showAdminTab() {
+    const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
+    const isRegularAdmin = currentUser?.is_admin === true;
+    
+    if (!currentUser || (!isMainAdmin && !isRegularAdmin)) {
+        showNotification('Доступ запрещен!', 'error');
+        return;
+    }
+    
+    hideAllTabs();
+    document.getElementById('admin-tab').classList.add('active');
+    updateNavState('admin');
+    
+    // Сбрасываем панель при каждом открытии
+    resetAdminPanel();
+}
         // Функция для воспроизведения звука при начислении средств
         function playMoneySound() {
             try {
