@@ -4288,6 +4288,27 @@ html, body {
     z-index: 2;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
+.task-status {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.task-status.completed {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.task-status.rejected {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
     </style>
 </head>
 <body>
@@ -7328,7 +7349,6 @@ async function initializeApp() {
     
     console.log('🎉 App initialized successfully');
 }
-// Функция для загрузки заданий на подтверждение - ИСПРАВЛЕННАЯ ВЕРСИЯ
 async function loadUserTasksForCategory(status) {
     if (!currentUser) return;
     
@@ -7338,13 +7358,13 @@ async function loadUserTasksForCategory(status) {
         let endpoint = '';
         switch(status) {
             case 'active':
-                endpoint = `/user/${currentUser.id}/tasks/active`;
+                endpoint = `/api/user/${currentUser.id}/tasks/active`;
                 break;
             case 'completed':
-                endpoint = `/user/${currentUser.id}/tasks?status=completed`;
+                endpoint = `/api/user/${currentUser.id}/tasks?status=completed`;
                 break;
             case 'rejected':
-                endpoint = `/user/${currentUser.id}/tasks?status=rejected`;
+                endpoint = `/api/user/${currentUser.id}/tasks?status=rejected`;
                 break;
             default:
                 return;
@@ -7353,7 +7373,13 @@ async function loadUserTasksForCategory(status) {
         const result = await makeRequest(endpoint);
         
         if (result.success) {
-            displayUserTasksForCategory(result.tasks, status);
+            // Для заданий на подтверждение используем user_task_id
+            const tasksWithCorrectId = result.tasks.map(task => ({
+                ...task,
+                id: task.id // это user_task_id для заданий на подтверждение
+            }));
+            
+            displayUserTasksForCategory(tasksWithCorrectId, status);
         } else {
             console.error('❌ Error loading user tasks:', result.error);
         }
@@ -7362,7 +7388,6 @@ async function loadUserTasksForCategory(status) {
     }
 }
 
-// Функция для отображения заданий пользователя по категории - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function displayUserTasksForCategory(tasks, status) {
     let container = null;
     
@@ -7400,9 +7425,12 @@ function displayUserTasksForCategory(tasks, status) {
         }
         
         container.innerHTML = `
-            <div class="no-tasks">
-                <div class="no-tasks-icon">📝</div>
-                <div>${message}</div>
+            <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
+                <div style="font-size: 18px; margin-bottom: 8px;">${message}</div>
+                <div style="font-size: 14px; color: var(--text-secondary);">
+                    ${status === 'active' ? 'Выполненные задания появятся здесь' : 'Следите за обновлениями'}
+                </div>
             </div>
         `;
         return;
@@ -7410,62 +7438,8 @@ function displayUserTasksForCategory(tasks, status) {
 
     console.log(`🎯 Displaying ${tasks.length} tasks for ${status} category`);
     
-    tasks.forEach(task => {
-        const taskElement = document.createElement('div');
-        taskElement.className = `task-card ${status === 'rejected' ? 'rejected-task' : ''}`;
-        
-        if (status === 'active') {
-            // Задания на подтверждение
-            taskElement.innerHTML = `
-                <div class="task-header">
-                    <div style="flex: 1;">
-                        <div class="task-title">${escapeHtml(task.title)}</div>
-                        <div class="task-category">${task.category || 'Общее'}</div>
-                    </div>
-                    <div class="task-price">${task.price} ⭐</div>
-                </div>
-                <div class="task-description">${escapeHtml(task.description)}</div>
-                <div class="task-footer">
-                    <div class="task-time">Ожидает подтверждения</div>
-                    <button class="task-btn" onclick="event.stopPropagation(); showTaskConfirmation(${task.id}, '${escapeHtml(task.title)}')">
-                        Подтвердить выполнение
-                    </button>
-                </div>
-            `;
-        } else if (status === 'completed') {
-            // Выполненные задания
-            taskElement.innerHTML = `
-                <div class="task-header">
-                    <div style="flex: 1;">
-                        <div class="task-title">${escapeHtml(task.title)}</div>
-                        <div class="task-category">${task.category || 'Общее'}</div>
-                    </div>
-                    <div class="task-price">${task.price} ⭐</div>
-                </div>
-                <div class="task-description">${escapeHtml(task.description)}</div>
-                <div class="task-footer">
-                    <div class="task-time">Выполнено</div>
-                    <div class="task-status completed">✅</div>
-                </div>
-            `;
-        } else if (status === 'rejected') {
-            // Отклоненные задания
-            taskElement.innerHTML = `
-                <div class="task-header">
-                    <div style="flex: 1;">
-                        <div class="task-title">${escapeHtml(task.title)}</div>
-                        <div class="task-category">${task.category || 'Общее'}</div>
-                    </div>
-                    <div class="task-price">${task.price} ⭐</div>
-                </div>
-                <div class="task-description">${escapeHtml(task.description)}</div>
-                <div class="task-footer">
-                    <div class="task-time">Отклонено</div>
-                    <button class="support-btn" onclick="openAdminChat()">Написать в поддержку</button>
-                </div>
-            `;
-        }
-        
+    tasks.forEach((task, index) => {
+        const taskElement = createTaskCardWithImage(task, status, index);
         container.appendChild(taskElement);
     });
 }
@@ -7598,7 +7572,6 @@ function openTaskModal(taskId) {
         showNotification('Ошибка: задание не найдено', 'error');
     }
 }
-// Функция подтверждения выполнения задания - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function showTaskConfirmation(userTaskId, taskName) {
     console.log('🔍 Confirming task:', { userTaskId, taskName });
     
@@ -10969,13 +10942,36 @@ function createTaskCardWithImage(task, category, index) {
     const completedCount = task.completed_count || 0;
     const availableTasks = Math.max(0, peopleRequired - completedCount);
     
+    // Определяем текст кнопки в зависимости от категории
+    let buttonHtml = '';
+    switch(category) {
+        case 'new':
+            buttonHtml = `<button class="task-btn" onclick="event.stopPropagation(); openTaskModal(${task.id})">
+                Начать задание
+            </button>`;
+            break;
+        case 'confirmation':
+            buttonHtml = `<button class="task-btn" onclick="event.stopPropagation(); showTaskConfirmation(${task.id}, '${escapeHtml(task.title)}')">
+                Отправить на проверку
+            </button>`;
+            break;
+        case 'completed':
+            // В выполненных заданиях нет кнопок
+            buttonHtml = `<div class="task-status completed">✅ Выполнено</div>`;
+            break;
+        case 'rejected':
+            // В отклоненных заданиях нет кнопок
+            buttonHtml = `<div class="task-status rejected">❌ Отклонено</div>`;
+            break;
+    }
+    
     taskElement.innerHTML = `
         ${hasImage ? `
             <div class="task-image-container">
                 <img src="${task.image_url}" alt="${escapeHtml(task.title)}" class="task-image"
                      onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\"task-image-placeholder\">🖼️ Изображение задания</div>';">
                 <div class="task-image-overlay"></div>
-                ${availableTasks > 0 ? `<div class="task-badge">${availableTasks} осталось</div>` : ''}
+                ${availableTasks > 0 && category === 'new' ? `<div class="task-badge">${availableTasks} осталось</div>` : ''}
             </div>
         ` : `
             <div class="task-image-placeholder" style="aspect-ratio: 16/9;">
@@ -10983,7 +10979,7 @@ function createTaskCardWithImage(task, category, index) {
                     <div style="font-size: 32px; margin-bottom: 8px;">📋</div>
                     <div style="font-size: 12px;">Описание задания</div>
                 </div>
-                ${availableTasks > 0 ? `<div class="task-availability">${availableTasks} осталось</div>` : ''}
+                ${availableTasks > 0 && category === 'new' ? `<div class="task-availability">${availableTasks} осталось</div>` : ''}
             </div>
         `}
         
@@ -11001,7 +10997,7 @@ function createTaskCardWithImage(task, category, index) {
             ${escapeHtml(task.description.length > 100 ? task.description.substring(0, 100) + '...' : task.description)}
         </div>
         
-        ${peopleRequired > 1 ? `
+        ${peopleRequired > 1 && category === 'new' ? `
             <div class="task-progress">
                 <div class="task-progress-bar" style="width: ${Math.min(100, (completedCount / peopleRequired) * 100)}%"></div>
             </div>
@@ -11011,13 +11007,17 @@ function createTaskCardWithImage(task, category, index) {
         ` : ''}
         
         <div class="task-footer">
-            <div class="task-time">${task.time_to_complete || '5-10 минут'}</div>
-            <button class="task-btn" onclick="event.stopPropagation(); openTaskModal(${task.id})">
-                ${category === 'new' ? 'Начать задание' : 'Подробнее'}
-            </button>
+            <div class="task-time">
+                ${category === 'confirmation' ? 'Ожидает подтверждения' : 
+                  category === 'completed' ? 'Выполнено' :
+                  category === 'rejected' ? 'Отклонено' : 
+                  task.time_to_complete || '5-10 минут'}
+            </div>
+            ${buttonHtml}
         </div>
     `;
     
+    // Добавляем обработчик клика только для новых заданий
     if (category === 'new') {
         taskElement.addEventListener('click', function(e) {
             if (!e.target.classList.contains('task-btn')) {
@@ -11028,7 +11028,6 @@ function createTaskCardWithImage(task, category, index) {
     
     return taskElement;
 }
-
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
     initImageUploadDragDrop();
