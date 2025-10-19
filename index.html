@@ -8317,27 +8317,18 @@ async function loadAdminTasks() {
 
 
 // 🔧 ФУНКЦИЯ ОТОБРАЖЕНИЯ АДМИН-ЗАДАНИЙ
-function displayAdminTasks(tasks) {
+
+   function displayAdminTasks(tasks) {
     const container = document.getElementById('admin-tasks-list');
-    if (!container) {
-        console.error('❌ Admin tasks container not found!');
-        return;
-    }
-    
-    console.log(`🎯 Displaying ${tasks ? tasks.length : 0} admin tasks`);
+    if (!container) return;
     
     container.innerHTML = '';
     
     if (!tasks || tasks.length === 0) {
-        // УБИРАЕМ большой блок и заменяем на компактное сообщение
-        container.innerHTML = `
-            <div style="text-align: center; padding: 20px; color: var(--text-secondary); font-size: 14px;">
-                <div style="margin-bottom: 8px;">📝</div>
-                <div>Нет созданных заданий</div>
-            </div>
-        `;
+        // Просто оставляем пустой контейнер без сообщения
         return;
     }
+    
     
     tasks.forEach(task => {
         const taskElement = document.createElement('div');
