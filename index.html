@@ -4873,22 +4873,22 @@ html, body {
         <h3>➕ Добавить новое задание</h3>
         
         <div class="form-group">
-            <label>🖼️ Изображение задания</label>
-            <div class="image-upload-area" id="image-upload-area" onclick="document.getElementById('task-image-input').click()">
-                <div class="upload-placeholder">
-                    <div style="font-size: 48px; margin-bottom: 10px;">📷</div>
-                    <div>Нажмите для загрузки изображения</div>
-                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 5px;">
-                        Рекомендуется: 800x400px, JPG/PNG
-                    </div>
-                </div>
-                <img id="task-image-preview" class="image-preview" style="display: none;">
+    <label>🖼️ Изображение задания</label>
+    <div class="image-upload-area" id="image-upload-area" onclick="document.getElementById('task-image-input').click()">
+        <div class="upload-placeholder">
+            <div style="font-size: 48px; margin-bottom: 10px;">📷</div>
+            <div>Нажмите для загрузки изображения</div>
+            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 5px;">
+                Рекомендуется: 800x400px, JPG/PNG
             </div>
-            <input type="file" id="task-image-input" accept="image/*" style="display: none;" onchange="previewTaskImage(this)">
-            <button type="button" class="btn btn-secondary" onclick="clearTaskImage()" style="margin-top: 10px; width: 100%;">
-                ❌ Очистить изображение
-            </button>
         </div>
+        <img id="task-image-preview" class="image-preview" style="display: none;">
+    </div>
+    <input type="file" id="task-image-input" accept="image/*" style="display: none;" onchange="previewTaskImage(this)">
+    <button type="button" class="btn btn-secondary" onclick="clearTaskImage()" style="margin-top: 10px; width: 100%;">
+        ❌ Очистить изображение
+    </button>
+</div>
         
 
         
@@ -11313,7 +11313,8 @@ async function loadAdminTasks() {
         console.error('Error loading admin tasks:', error);
     }
 }
-// Drag and drop функциональность
+// Инициализация drag and drop
+initImageUploadDragDrop();
 function initImageUploadDragDrop() {
     const area = document.getElementById('image-upload-area');
     if (!area) return;
@@ -11361,12 +11362,20 @@ function initImageUploadDragDrop() {
         }
     });
 }
-// Функция для добавления задания с изображением
+    
+    // Обработчик клика на область загрузки
+    area.addEventListener('click', function() {
+        const fileInput = document.getElementById('task-image-input');
+        if (fileInput) {
+            fileInput.click();
+        }
+    });
+
 async function addTaskWithImage() {
     console.log('🎯 Starting add task with image...');
     
     try {
-        // Получаем данные формы
+        // Получаем значения из формы
         const taskData = {
             title: document.getElementById('admin-task-title').value.trim(),
             description: document.getElementById('admin-task-description').value.trim(),
@@ -11379,9 +11388,19 @@ async function addTaskWithImage() {
             created_by: currentUser.id
         };
 
+        console.log('📋 Form data collected:', taskData);
+
         // Валидация
-        if (!taskData.title || !taskData.description || !taskData.price) {
-            showNotification('Заполните название, описание и цену задания!', 'error');
+        if (!taskData.title.trim()) {
+            showNotification('Введите название задания!', 'error');
+            return;
+        }
+        if (!taskData.description.trim()) {
+            showNotification('Введите описание задания!', 'error');
+            return;
+        }
+        if (!taskData.price) {
+            showNotification('Введите цену задания!', 'error');
             return;
         }
 
@@ -11413,7 +11432,6 @@ async function addTaskWithImage() {
         const response = await fetch('/api/tasks-with-image', {
             method: 'POST',
             body: formData
-            // Не устанавливаем Content-Type - браузер сам установит с boundary
         });
 
         const result = await response.json();
@@ -11438,10 +11456,9 @@ async function addTaskWithImage() {
 
     } catch (error) {
         console.error('💥 Error in addTaskWithImage:', error);
-        showNotification(`❌ Ошибка: ${error.message}`, 'error');
+        showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
     }
 }
-
 function clearTaskForm() {
     const formFields = [
         'admin-task-title', 
