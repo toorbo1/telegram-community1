@@ -586,7 +586,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                         inline_keyboard: [
                             [
                                 {
-                                    text: '🚀 Перейти в приложение',
+                                    text: '',
                                     url: APP_URL
                                 }
                             ],
