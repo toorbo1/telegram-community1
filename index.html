@@ -438,18 +438,15 @@ body {
     transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* 🔧 ИСПРАВЛЕННЫЕ СТИЛИ ДЛЯ КОНТЕЙНЕРА ИЗОБРАЖЕНИЙ 16:9 */
+/* 🔧 ИСПРАВЛЕНИЕ ДЛЯ ИЗОБРАЖЕНИЙ В ЗАДАНИЯХ */
 .task-image-container {
     width: 100%;
     height: 0;
-    padding-bottom: 56.25%; /* Соотношение 16:9 (9/16 = 0.5625) */
+    padding-bottom: 56.25%; /* Соотношение 16:9 */
+    position: relative;
     border-radius: 12px;
     overflow: hidden;
     margin-bottom: 12px;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     background: var(--bg-secondary);
 }
 
@@ -459,11 +456,9 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    object-fit: contain; /* Важно: contain вместо cover */
-    transition: transform 0.4s ease;
-    border-radius: 12px;
+    object-fit: cover;
+    transition: transform 0.3s ease;
 }
-
 
 .task-card:hover .task-image {
     transform: scale(1.03); /* Уменьшаем масштаб при hover */
@@ -480,9 +475,9 @@ body {
         to bottom,
         transparent 0%,
         transparent 60%,
-        rgba(0, 0, 0, 0.4) 100%
+        rgba(0, 0, 0, 0.3) 100%
     );
-    border-radius: 12px;
+    pointer-events: none;
 }
 
 .task-badge {
@@ -2065,19 +2060,26 @@ body {
             transform: scale(1.05);
         }
 
-/* Плейсхолдер для заданий без изображения */
 .task-image-placeholder {
     width: 100%;
-    height: 120px;
+    height: 0;
+    padding-bottom: 56.25%;
+    position: relative;
+    border-radius: 12px;
+    background: var(--bg-secondary);
+    border: 2px dashed var(--border);
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, var(--bg-secondary), var(--card-bg));
-    border-radius: 12px;
+    margin-bottom: 12px;
+}
+.task-image-placeholder > div {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
     color: var(--text-secondary);
-    font-size: 12px;
-    border: 2px dashed var(--border);
-    flex-shrink: 0;
 }
 /* Для модального окна задания */
 #task-modal-image-container {
@@ -8053,21 +8055,25 @@ function openTaskModal(taskId) {
         document.getElementById('task-modal-price').textContent = `${task.price} ⭐`;
         document.getElementById('task-modal-description').textContent = task.description;
         
-        // Исправленный код для отображения изображения в модальном окне
+        // 🔧 ИСПРАВЛЕНИЕ: Правильное отображение изображения в модальном окне
         const modalImageContainer = document.getElementById('task-modal-image-container');
         if (modalImageContainer) {
             if (task.image_url) {
                 modalImageContainer.innerHTML = `
-                    <div style="margin: 16px 0; text-align: center;">
+                    <div class="task-image-container">
                         <img src="${task.image_url}" alt="${escapeHtml(task.title)}" 
-                             style="max-width: 100%; max-height: 400px; object-fit: contain; border-radius: 12px; border: 1px solid var(--border);"
-                             onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\\'padding: 40px; text-align: center; color: var(--text-secondary);\\'>🖼️ Изображение не загружено</div>';">
+                             class="task-image"
+                             onerror="this.onerror=null; this.style.display='none'; this.parentElement.innerHTML='<div class=\"task-image-placeholder\">🖼️ Изображение не загружено</div>';">
+                        <div class="task-image-overlay"></div>
                     </div>
                 `;
             } else {
                 modalImageContainer.innerHTML = `
-                    <div style="margin: 16px 0; padding: 40px; text-align: center; background: var(--bg-secondary); border-radius: 12px; color: var(--text-secondary);">
-                        📋 Описание задания
+                    <div class="task-image-placeholder" style="aspect-ratio: 16/9;">
+                        <div style="text-align: center; padding: 40px;">
+                            <div style="font-size: 32px; margin-bottom: 8px;">📋</div>
+                            <div>Описание задания</div>
+                        </div>
                     </div>
                 `;
             }
@@ -11493,6 +11499,31 @@ function createTaskCardWithImage(task, category, index) {
     const completedCount = task.completed_count || 0;
     const availableTasks = Math.max(0, peopleRequired - completedCount);
     
+    // 🔧 ИСПРАВЛЕНИЕ: Правильное отображение изображений
+    let imageHtml = '';
+    if (hasImage) {
+        // Используем правильный контейнер для изображения
+        imageHtml = `
+            <div class="task-image-container">
+                <img src="${task.image_url}" alt="${escapeHtml(task.title)}" 
+                     class="task-image"
+                     onerror="this.onerror=null; this.style.display='none'; this.parentElement.innerHTML='<div class=\"task-image-placeholder\">🖼️ Изображение не загружено</div>';">
+                <div class="task-image-overlay"></div>
+                ${availableTasks > 0 && category === 'new' ? `<div class="task-badge">${availableTasks} осталось</div>` : ''}
+            </div>
+        `;
+    } else {
+        imageHtml = `
+            <div class="task-image-placeholder" style="aspect-ratio: 16/9;">
+                <div style="text-align: center;">
+                    <div style="font-size: 32px; margin-bottom: 8px;">📋</div>
+                    <div style="font-size: 12px;">Описание задания</div>
+                </div>
+                ${availableTasks > 0 && category === 'new' ? `<div class="task-availability">${availableTasks} осталось</div>` : ''}
+            </div>
+        `;
+    }
+    
     // Определяем текст кнопки в зависимости от категории
     let buttonHtml = '';
     switch(category) {
@@ -11514,24 +11545,8 @@ function createTaskCardWithImage(task, category, index) {
             break;
     }
     
-    // Исправленный HTML для карточки задания
     taskElement.innerHTML = `
-        ${hasImage ? `
-            <div class="task-image-container">
-                <img src="${task.image_url}" alt="${escapeHtml(task.title)}" class="task-image"
-                     onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\"task-image-placeholder\">🖼️ Изображение задания</div>';">
-                <div class="task-image-overlay"></div>
-                ${availableTasks > 0 && category === 'new' ? `<div class="task-badge">${availableTasks} осталось</div>` : ''}
-            </div>
-        ` : `
-            <div class="task-image-placeholder" style="aspect-ratio: 16/9;">
-                <div style="text-align: center;">
-                    <div style="font-size: 32px; margin-bottom: 8px;">📋</div>
-                    <div style="font-size: 12px;">Описание задания</div>
-                </div>
-                ${availableTasks > 0 && category === 'new' ? `<div class="task-availability">${availableTasks} осталось</div>` : ''}
-            </div>
-        `}
+        ${imageHtml}
         
         <div class="task-header">
             <div class="task-title">${escapeHtml(task.title)}</div>

@@ -1523,11 +1523,15 @@ app.get('/api/tasks', async (req, res) => {
         // Фильтруем задания: показываем только те, которые пользователь еще не начал
         const filteredTasks = result.rows.filter(task => !task.user_has_task);
         
-        // Обеспечиваем правильные URL для изображений
+        // 🔧 ИСПРАВЛЕНИЕ: Обеспечиваем правильные URL для изображений
         const tasksWithCorrectedImages = filteredTasks.map(task => {
-            if (task.image_url && !task.image_url.startsWith('http')) {
+            if (task.image_url) {
                 // Если URL относительный, делаем его абсолютным
-                task.image_url = `${APP_URL}${task.image_url}`;
+                if (!task.image_url.startsWith('http')) {
+                    task.image_url = `${APP_URL}${task.image_url}`;
+                }
+                // Добавляем временную метку для избежания кэширования
+                task.image_url += `${task.image_url.includes('?') ? '&' : '?'}t=${Date.now()}`;
             }
             return task;
         });
@@ -1633,7 +1637,7 @@ app.post('/api/tasks-with-image', upload.single('image'), async (req, res) => {
             });
         }
 
-        // Обрабатываем изображение если есть
+        // 🔧 ИСПРАВЛЕНИЕ: Правильная обработка изображения
         let imageUrl = '';
         if (req.file) {
             // Используем абсолютный URL для изображения
