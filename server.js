@@ -73,7 +73,7 @@ const upload = multer({
 });
 
 
-// 🔧 ИСПРАВЛЕННАЯ функция проверки прав администратора
+// 🔧 УЛУЧШЕННАЯ функция проверки прав администратора
 async function checkAdminAccess(userId) {
     try {
         console.log('🔐 Checking admin access for user:', userId);
@@ -2384,7 +2384,7 @@ app.delete('/api/support/chats/:chatId', async (req, res) => {
 
 // ==================== TASK VERIFICATION ENDPOINTS ====================
 
-// Система проверки заданий для всех админов
+// Система проверки заданий для ВСЕХ админов
 app.get('/api/admin/task-verifications', async (req, res) => {
     const { adminId } = req.query;
     
@@ -2462,10 +2462,21 @@ app.get('/api/admin/debug-rights', async (req, res) => {
         });
     }
 });
-// В server.js - обновите функции подтверждения и отклонения
+// Подтверждение задания для ВСЕХ админов
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
+    
+    console.log('✅ Подтверждение задания админом:', { verificationId, adminId });
+    
+    // Проверка прав администратора - РАЗРЕШАЕМ ВСЕМ АДМИНАМ
+    const isAdmin = await checkAdminAccess(adminId);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен. Только администраторы могут подтверждать задания.'
+        });
+    }
     
     try {
         // Get verification info
@@ -2523,10 +2534,21 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
     }
 });
 
-
+// Отклонение задания для ВСЕХ админов
 app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
+    
+    console.log('❌ Отклонение задания админом:', { verificationId, adminId });
+    
+    // Проверка прав администратора - РАЗРЕШАЕМ ВСЕМ АДМИНАМ
+    const isAdmin = await checkAdminAccess(adminId);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен. Только администраторы могут отклонять задания.'
+        });
+    }
     
     try {
         // Get verification info

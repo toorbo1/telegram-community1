@@ -5540,7 +5540,7 @@ async function makeRequest(endpoint, options = {}) {
 
 function addTasksDebugButton() {
     const debugBtn = document.createElement('button');
-    debugBtn.textContent = '🐛 Debug Tasks';
+    
     debugBtn.style.position = 'fixed';
     debugBtn.style.top = '50px';
     debugBtn.style.right = '10px';
@@ -5552,7 +5552,7 @@ function addTasksDebugButton() {
     debugBtn.style.borderRadius = '5px';
     debugBtn.style.fontSize = '12px';
     debugBtn.onclick = function() {
-        console.log('🐛 DEBUG Tasks:');
+        
         console.log('- currentUser:', currentUser);
         console.log('- API_BASE_URL:', API_BASE_URL);
         loadTasksForCategory('new');
@@ -5647,23 +5647,7 @@ async function initializeTelegramUser() {
         initializeTestUser();
     }
 }
-// Функция проверки прав администратора
-async function checkAdminAccess(userId) {
-    try {
-        const result = await pool.query(
-            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
-            [userId]
-        );
-        
-        if (result.rows.length > 0) {
-            return result.rows[0].is_admin === true || parseInt(userId) === ADMIN_ID;
-        }
-        return parseInt(userId) === ADMIN_ID;
-    } catch (error) {
-        console.error('Admin access check error:', error);
-        return parseInt(userId) === ADMIN_ID;
-    }
-}
+
 function debugWithdrawalSystem() {
     console.log('🐛 DEBUG Withdrawal System:');
     console.log('- currentUser:', currentUser); // ← исправлено на английское
@@ -5676,7 +5660,15 @@ function debugWithdrawalSystem() {
         console.error('❌ Error loading withdrawal requests:', error);
     });
 }
+// 🔄 Функция для обновления интерфейса проверки заданий
+function updateVerificationInterface() {
+    if (document.getElementById('admin-verification-section').style.display === 'block') {
+        loadTaskVerifications();
+    }
+}
 
+// Автоматическое обновление списка проверки каждые 30 секунд
+setInterval(updateVerificationInterface, 30000);
 // Вызовите для тестирования
 // setTimeout(debugWithdrawalSystem, 3000);
 // 📝 Функции для админов (без админ-панели)
@@ -7015,7 +7007,7 @@ if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
 
 // Функция для диагностики подтверждения заданий
 function debugTaskConfirmation() {
-    console.log('🐛 DEBUG Task Confirmation System:');
+   
     
     // Проверяем текущие данные
     console.log('- currentUser:', currentUser);
@@ -8080,7 +8072,7 @@ async function cancelTask() {
 // В навигацию добавьте временно кнопку для теста
 function addDebugButton() {
     const debugBtn = document.createElement('button');
-    debugBtn.textContent = '🐛 Debug Tasks';
+    
     debugBtn.style.position = 'fixed';
     debugBtn.style.top = '10px';
     debugBtn.style.right = '10px';
@@ -8246,7 +8238,7 @@ async function addTask() {
 }
 // Добавьте эту функцию для отладки
 function debugTaskCreation() {
-    console.log('🐛 DEBUG Task Creation:');
+    
     console.log('- currentUser:', currentUser);
     console.log('- isAdmin:', currentUser?.is_admin);
     console.log('- API_BASE_URL:', API_BASE_URL);
@@ -8818,7 +8810,7 @@ function debugAdminTasks() {
 // Добавьте кнопку для тестирования
 function addAdminDebugButton() {
     const debugBtn = document.createElement('button');
-    debugBtn.textContent = '🐛 Debug Tasks';
+    
     debugBtn.style.position = 'fixed';
     debugBtn.style.top = '100px';
     debugBtn.style.right = '10px';
