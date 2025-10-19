@@ -6,14 +6,23 @@
     <title>LinkGold - Платформа для заработка</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
            <style>
-            /* 🔥 СУПЕР-ПЛАВНЫЕ АНИМАЦИИ И ПЕРЕХОДЫ */
+/* Упрощаем анимации для мобильных */
 * {
-    -webkit-overflow-scrolling: touch; /* Плавный скролл на iOS */
-    -webkit-tap-highlight-color: transparent; /* Убираем подсветку при тапе */
-    -webkit-font-smoothing: antialiased; /* Сглаживание шрифтов */
-    -moz-osx-font-smoothing: grayscale;
+    transition: none !important;
+    animation: none !important;
 }
 
+/* Отключаем сложные анимации на мобильных */
+@media (max-width: 768px) {
+    .task-card, .card, .btn {
+        transition: none !important;
+        transform: none !important;
+    }
+    
+    .task-card:hover, .card:hover {
+        transform: none !important;
+    }
+}
 /* 🔧 ОПТИМИЗАЦИЯ ДЛЯ АНИМАЦИЙ */
 .tab-content,
 .page,
@@ -2061,9 +2070,9 @@ body {
             transition: transform 0.3s ease;
         }
 
-        .task-card:hover .task-image img {
-            transform: scale(1.05);
-        }
+      .task-image img {
+    transition: transform 0.2s ease;
+}
 
 /* Плейсхолдер для заданий без изображения */
 .task-image-placeholder {
@@ -4525,6 +4534,24 @@ html, body {
     color: #ef4444;
     border: 1px solid rgba(239, 68, 68, 0.3);
 }
+/* Улучшаем производительность рендеринга */
+.task-card, .card {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000;
+    will-change: transform;
+}
+
+/* Отключаем сложные эффекты на мобильных */
+@media (max-width: 768px) {
+    .card::before, .card::after {
+        display: none;
+    }
+    
+    .task-card::before {
+        display: none;
+    }
+}
     </style>
 </head>
 <body>
@@ -4542,7 +4569,7 @@ html, body {
     <div id="main-tab" class="tab-content active">
         <!-- Герой баннер с видео -->
         <div class="hero-banner fade-in">
-            <video autoplay muted loop playsinline>
+            <video preload="metadata" playsinline muted loop>
                 <source src="unwatermark_Awards Nomination Promo Kit_free.mp4" type="video/mp4">
             </video>
         </div>
@@ -4552,7 +4579,7 @@ html, body {
             <div class="stat-card balance-card" onclick="showBalanceModal()">
                 <div class="stat-icon">
                     <div class="video-container">
-                        <video class="video-icon" autoplay muted loop playsinline>
+                        <video preload="metadata" playsinline muted loop>
                             <source src="From KlickPin CF Деньги пнг _ money png _ Элементы графического дизайна Анимационный дизайн Стикер-арт-Picsart-BackgroundRemover.mp4" type="video/mp4">
                         </video>
                     </div>
@@ -4564,7 +4591,7 @@ html, body {
             <div class="stat-card support-card" onclick="openAdminChat()">
                 <div class="stat-icon">
                     <div class="video-container">
-                        <video class="video-icon" autoplay muted loop playsinline>
+                        <video preload="metadata" playsinline muted loop>
                             <source src="support-video-Picsart-BackgroundRemover.mp4" type="video/mp4">
                         </video>
                     </div>
@@ -4578,7 +4605,7 @@ html, body {
         <div class="exchange-card fade-in" onclick="showHowItWorksPage()">
             <div class="exchange-icon">
                 <div class="video-container">
-                    <video class="video-icon" autoplay muted loop playsinline>
+                    <video preload="metadata" playsinline muted loop>
                         <source src="From KlickPin CF Компютер пнг _ laptop png in 2025 — копия-Picsart-BackgroundRemover (2).mp4" type="video/mp4">
                     </video>
                 </div>
@@ -4591,7 +4618,7 @@ html, body {
         <div class="post-promo fade-in">
             <div class="post-icon">
                 <div class="video-container video-large">
-                    <video class="video-icon" autoplay muted loop playsinline>
+                    <video preload="metadata" playsinline muted loop>
                         <source src="post-video-Picsart-BackgroundRemover.mp4" type="video/mp4">
                     </video>
                 </div>
@@ -10631,6 +10658,25 @@ initTheme();
                 console.log('Audio not supported');
             }
         }
+
+// Дебаунс для частых операций
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Использование
+const optimizedSearch = debounce((query) => {
+    loadTasks(query);
+}, 300);
+
 // Обработчик Enter для поля ввода имени администратора
 function initAdminInputHandlers() {
     const usernameInput = document.getElementById('new-admin-username');
