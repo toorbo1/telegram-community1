@@ -2155,11 +2155,11 @@ body {
             border: 1px solid rgba(239, 68, 68, 0.3);
         }
 
-        .no-tasks {
-            text-align: center;
-            padding: 30px 16px;
-            color: var(--text-secondary);
-        }
+      .no-tasks {
+    padding: 20px !important;
+    margin: 0 !important;
+    min-height: auto !important;
+}
         
         .no-tasks-icon {
             font-size: 36px;
@@ -8467,13 +8467,11 @@ function displayAdminTasks(tasks) {
     container.innerHTML = '';
     
     if (!tasks || tasks.length === 0) {
+        // УБИРАЕМ большой блок и заменяем на компактное сообщение
         container.innerHTML = `
-            <div class="no-tasks" style="text-align: center; padding: 40px 20px; background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border);">
-                <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
-                <div style="font-size: 18px; margin-bottom: 8px;">Нет созданных заданий</div>
-                <div style="font-size: 14px; color: var(--text-secondary);">
-                    Создайте первое задание используя форму выше
-                </div>
+            <div style="text-align: center; padding: 20px; color: var(--text-secondary); font-size: 14px;">
+                <div style="margin-bottom: 8px;">📝</div>
+                <div>Нет созданных заданий</div>
             </div>
         `;
         return;
