@@ -11094,7 +11094,400 @@ setTimeout(() => {
     }
 }, 3000);
 
+// 🔧 СИСТЕМА УРОВНЕЙ ПРОГРЕССА
+const LEVEL_SYSTEM = {
+    1: { tasksRequired: 10, bonus: 0, name: "Новичок" },
+    2: { tasksRequired: 20, bonus: 50, name: "Ученик" },
+    3: { tasksRequired: 30, bonus: 100, name: "Опытный" },
+    4: { tasksRequired: 40, bonus: 150, name: "Профессионал" },
+    5: { tasksRequired: 50, bonus: 200, name: "Эксперт" },
+    6: { tasksRequired: 60, bonus: 250, name: "Мастер" },
+    7: { tasksRequired: 70, bonus: 300, name: "Гуру" },
+    8: { tasksRequired: 80, bonus: 350, name: "Легенда" },
+    9: { tasksRequired: 90, bonus: 400, name: "Император" },
+    10: { tasksRequired: 100, bonus: 500, name: "Бог заданий" }
+};
 
+// 🔧 ФУНКЦИИ ДЛЯ РАБОТЫ С УРОВНЯМИ
+
+// Расчет текущего уровня и прогресса
+function calculateUserLevel(completedTasks) {
+    let currentLevel = 1;
+    let tasksForNextLevel = LEVEL_SYSTEM[1].tasksRequired;
+    let progressPercentage = 0;
+    
+    // Находим текущий уровень
+    for (let level = 1; level <= Object.keys(LEVEL_SYSTEM).length; level++) {
+        if (completedTasks >= LEVEL_SYSTEM[level].tasksRequired) {
+            currentLevel = level;
+        } else {
+            break;
+        }
+    }
+    
+    // Расчет прогресса до следующего уровня
+    if (currentLevel < Object.keys(LEVEL_SYSTEM).length) {
+        const currentLevelTasks = LEVEL_SYSTEM[currentLevel].tasksRequired;
+        const nextLevelTasks = LEVEL_SYSTEM[currentLevel + 1].tasksRequired;
+        const tasksInCurrentLevel = completedTasks - currentLevelTasks;
+        const totalTasksForNextLevel = nextLevelTasks - currentLevelTasks;
+        
+        progressPercentage = Math.min(100, Math.round((tasksInCurrentLevel / totalTasksForNextLevel) * 100));
+        tasksForNextLevel = nextLevelTasks;
+    } else {
+        // Максимальный уровень достигнут
+        progressPercentage = 100;
+        tasksForNextLevel = LEVEL_SYSTEM[currentLevel].tasksRequired;
+    }
+    
+    return {
+        level: currentLevel,
+        levelName: LEVEL_SYSTEM[currentLevel].name,
+        completedTasks: completedTasks,
+        tasksForNextLevel: tasksForNextLevel,
+        progressPercentage: progressPercentage,
+        nextLevelBonus: LEVEL_SYSTEM[currentLevel + 1] ? LEVEL_SYSTEM[currentLevel + 1].bonus : 0,
+        isMaxLevel: currentLevel === Object.keys(LEVEL_SYSTEM).length
+    };
+}
+
+// Обновление отображения прогресса уровня
+function updateLevelProgress() {
+    if (!currentUser) return;
+    
+    const completedTasks = currentUser.tasks_completed || 0;
+    const levelInfo = calculateUserLevel(completedTasks);
+    
+    // Обновляем элементы интерфейса
+    const levelElement = document.getElementById('user-level');
+    const progressBar = document.getElementById('level-progress-bar');
+    const levelCount = document.querySelector('.level-count');
+    const levelInfoText = document.querySelector('.level-info');
+    
+    if (levelElement) {
+        levelElement.textContent = levelInfo.level;
+    }
+    
+    if (progressBar) {
+        progressBar.style.width = `${levelInfo.progressPercentage}%`;
+    }
+    
+    if (levelCount) {
+        if (levelInfo.isMaxLevel) {
+            levelCount.textContent = "Макс. уровень!";
+        } else {
+            levelCount.textContent = `${completedTasks}/${levelInfo.tasksForNextLevel} заданий`;
+        }
+    }
+    
+    if (levelInfoText) {
+        if (levelInfo.isMaxLevel) {
+            levelInfoText.innerHTML = `🎉 Поздравляем! Вы достигли максимального уровня!`;
+        } else {
+            levelInfoText.innerHTML = 
+                `Уровень <strong>${levelInfo.levelName}</strong> • ` +
+                `До следующего уровня: <strong>${levelInfo.tasksForNextLevel - completedTasks}</strong> заданий • ` +
+                `Бонус за уровень: <strong style="color: var(--gold);">+${levelInfo.nextLevelBonus}⭐</strong>`;
+        }
+    }
+    
+    // Обновляем информацию в профиле
+    updateProfileLevelInfo(levelInfo);
+}
+
+// Обновление информации об уровне в профиле
+function updateProfileLevelInfo(levelInfo) {
+    const levelStats = document.querySelectorAll('.profile-stat');
+    if (levelStats.length >= 4) {
+        // Обновляем статистику выполненных заданий
+        levelStats[1].querySelector('.stat-value').textContent = levelInfo.completedTasks;
+        
+        // Добавляем отображение уровня если есть место
+        const levelDisplay = document.getElementById('profile-level-display');
+        if (!levelDisplay) {
+            const levelHtml = `
+                <div class="profile-stat" id="profile-level-display">
+                    <div class="stat-value">${levelInfo.level}</div>
+                    <div class="stat-label">Уровень</div>
+                </div>
+            `;
+            // Вставляем перед статистикой качества
+            if (levelStats[3] && levelStats[3].parentNode) {
+                levelStats[3].insertAdjacentHTML('beforebegin', levelHtml);
+            }
+        } else {
+            levelDisplay.querySelector('.stat-value').textContent = levelInfo.level;
+        }
+    }
+}
+
+// Проверка и начисление бонуса за уровень
+async function checkLevelUpBonus(userId, oldCompletedTasks, newCompletedTasks) {
+    const oldLevelInfo = calculateUserLevel(oldCompletedTasks);
+    const newLevelInfo = calculateUserLevel(newCompletedTasks);
+    
+    // Если уровень повысился
+    if (newLevelInfo.level > oldLevelInfo.level) {
+        const bonusAmount = LEVEL_SYSTEM[newLevelInfo.level].bonus;
+        
+        if (bonusAmount > 0) {
+            try {
+                // Начисляем бонус
+                await pool.query(`
+                    UPDATE user_profiles 
+                    SET balance = COALESCE(balance, 0) + $1
+                    WHERE user_id = $2
+                `, [bonusAmount, userId]);
+                
+                // Показываем уведомление о повышении уровня
+                showLevelUpNotification(newLevelInfo.level, newLevelInfo.levelName, bonusAmount);
+                
+                console.log(`🎉 Level up bonus: User ${userId} reached level ${newLevelInfo.level} and received ${bonusAmount}⭐`);
+                
+                return true;
+            } catch (error) {
+                console.error('Level up bonus error:', error);
+            }
+        }
+    }
+    
+    return false;
+}
+
+// Уведомление о повышении уровня
+function showLevelUpNotification(level, levelName, bonus) {
+    const notificationHTML = `
+        <div class="level-up-notification" style="
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--gold-gradient);
+            color: #000;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 10000;
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.5);
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            animation: levelUpPop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+            max-width: 300px;
+            width: 90%;
+        ">
+            <div style="font-size: 48px; margin-bottom: 15px;">🎉</div>
+            <div style="font-size: 24px; font-weight: 800; margin-bottom: 10px;">
+                Новый уровень!
+            </div>
+            <div style="font-size: 20px; font-weight: 700; margin-bottom: 15px;">
+                ${levelName}
+            </div>
+            <div style="font-size: 16px; margin-bottom: 20px;">
+                Уровень <strong>${level}</strong> достигнут!
+            </div>
+            <div style="
+                background: rgba(255, 255, 255, 0.3);
+                padding: 10px;
+                border-radius: 10px;
+                font-weight: 700;
+                margin-bottom: 15px;
+            ">
+                🎁 Бонус: +${bonus}⭐
+            </div>
+            <button onclick="this.parentElement.remove()" style="
+                background: #000;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 10px;
+                font-weight: 600;
+                cursor: pointer;
+            ">
+                Отлично!
+            </button>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', notificationHTML);
+    
+    // Автоматическое скрытие через 5 секунд
+    setTimeout(() => {
+        const notification = document.querySelector('.level-up-notification');
+        if (notification) {
+            notification.remove();
+        }
+    }, 5000);
+}
+
+// CSS анимация для уведомления
+const levelUpStyles = `
+    <style>
+        @keyframes levelUpPop {
+            0% {
+                transform: translate(-50%, -50%) scale(0.5);
+                opacity: 0;
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.1);
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+        }
+        
+        .level-progress {
+            background: var(--card-bg);
+            border-radius: 14px;
+            padding: 16px;
+            margin: 16px 0;
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .level-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .level-title {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .level-badge {
+            background: var(--purple-gradient);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .progress-container {
+            margin-bottom: 8px;
+        }
+        
+        .progress-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .level-rewards {
+            margin-top: 12px;
+            padding: 10px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            border-left: 3px solid var(--gold);
+        }
+        
+        .reward-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+        
+        .reward-item:last-child {
+            margin-bottom: 0;
+        }
+    </style>
+`;
+
+// Добавляем стили в документ
+document.head.insertAdjacentHTML('beforeend', levelUpStyles);
+
+// 🔧 ОБНОВЛЕННЫЙ HTML ДЛЯ ОТОБРАЖЕНИЯ ПРОГРЕССА УРОВНЯ
+
+function createLevelProgressHTML() {
+    const completedTasks = currentUser?.tasks_completed || 0;
+    const levelInfo = calculateUserLevel(completedTasks);
+    
+    return `
+        <div class="level-progress">
+            <div class="level-header">
+                <div class="level-title">Система уровней</div>
+                <div class="level-badge">Уровень ${levelInfo.level}</div>
+            </div>
+            
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="level-progress-bar" style="width: ${levelInfo.progressPercentage}%"></div>
+                </div>
+                <div class="progress-stats">
+                    <span>${levelInfo.completedTasks} выполнено</span>
+                    <span>${levelInfo.progressPercentage}%</span>
+                    <span>${levelInfo.tasksForNextLevel} до след. уровня</span>
+                </div>
+            </div>
+            
+            <div class="level-info">
+                ${levelInfo.isMaxLevel ? 
+                    '🎉 Поздравляем! Вы достигли максимального уровня!' : 
+                    `Текущий уровень: <strong>${levelInfo.levelName}</strong> • ` +
+                    `До уровня ${levelInfo.level + 1}: <strong>${levelInfo.tasksForNextLevel - completedTasks}</strong> заданий`
+                }
+            </div>
+            
+            ${!levelInfo.isMaxLevel ? `
+                <div class="level-rewards">
+                    <div class="reward-item">
+                        <span>🎁</span>
+                        <span>Бонус за следующий уровень: <strong>+${levelInfo.nextLevelBonus}⭐</strong></span>
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+// 🔧 ИНИЦИАЛИЗАЦИЯ СИСТЕМЫ УРОВНЕЙ
+
+// Обновляем отображение уровня при загрузке профиля
+function initializeLevelSystem() {
+    updateLevelProgress();
+    
+    // Обновляем прогресс каждые 30 секунд
+    setInterval(updateLevelProgress, 30000);
+}
+
+
+// Обновляем функцию при завершении задания
+async function onTaskCompleted(userId, taskPrice) {
+    try {
+        // Получаем текущее количество выполненных заданий
+        const userResult = await pool.query(
+            'SELECT tasks_completed FROM user_profiles WHERE user_id = $1',
+            [userId]
+        );
+        
+        if (userResult.rows.length > 0) {
+            const oldCompletedTasks = userResult.rows[0].tasks_completed || 0;
+            const newCompletedTasks = oldCompletedTasks + 1;
+            
+            // Проверяем повышение уровня
+            await checkLevelUpBonus(userId, oldCompletedTasks, newCompletedTasks);
+            
+            // Обновляем счетчик заданий
+            await pool.query(
+                'UPDATE user_profiles SET tasks_completed = $1 WHERE user_id = $2',
+                [newCompletedTasks, userId]
+            );
+        }
+    } catch (error) {
+        console.error('Task completion level check error:', error);
+    }
+}
+
+// 🔧 ЭКСПОРТ ФУНКЦИЙ
+window.updateLevelProgress = updateLevelProgress;
+window.calculateUserLevel = calculateUserLevel;
+window.initializeLevelSystem = initializeLevelSystem;
 function clearTaskImage() {
     const input = document.getElementById('task-image-input');
     const preview = document.getElementById('task-image-preview');
