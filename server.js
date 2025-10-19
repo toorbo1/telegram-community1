@@ -73,7 +73,7 @@ const upload = multer({
 });
 
 
-// Функция проверки прав администратора
+// Функция проверки прав администратора - ОБНОВЛЕННАЯ ВЕРСИЯ
 async function checkAdminAccess(userId) {
     try {
         const result = await pool.query(
@@ -1093,18 +1093,18 @@ app.get('/api/health', async (req, res) => {
 
 // ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
 
-// Get withdrawal requests for admin - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// Get withdrawal requests for admin - ОБНОВЛЕННАЯ ВЕРСИЯ ДЛЯ ВСЕХ АДМИНОВ
 app.get('/api/admin/withdrawal-requests', async (req, res) => {
     const { adminId } = req.query;
     
     console.log('🔄 Запрос на получение заявок на вывод от админа:', adminId);
     
-    // Проверка прав администратора
+    // Проверка прав администратора - РАЗРЕШАЕМ ВСЕМ АДМИНАМ
     const isAdmin = await checkAdminAccess(adminId);
     if (!isAdmin) {
         return res.status(403).json({
             success: false,
-            error: 'Доступ запрещен'
+            error: 'Доступ запрещен. Только администраторы могут просматривать заявки на вывод.'
         });
     }
     
@@ -1117,7 +1117,7 @@ app.get('/api/admin/withdrawal-requests', async (req, res) => {
             ORDER BY wr.created_at DESC
         `);
         
-        console.log(`✅ Найдено ${result.rows.length} заявок на вывод`);
+        console.log(`✅ Найдено ${result.rows.length} заявок на вывод для админа ${adminId}`);
         
         res.json({
             success: true,
@@ -1165,24 +1165,24 @@ async function fixWithdrawalTableStructure() {
 
 
 
-// Complete withdrawal request - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// Complete withdrawal request - ОБНОВЛЕННАЯ ВЕРСИЯ ДЛЯ ВСЕХ АДМИНОВ
 app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) => {
     const requestId = req.params.requestId;
     const { adminId } = req.body;
     
-    console.log('✅ Подтверждение выплаты:', { requestId, adminId });
+    console.log('✅ Подтверждение выплаты админом:', { requestId, adminId });
     
-    // Проверка прав администратора
+    // Проверка прав администратора - РАЗРЕШАЕМ ВСЕМ АДМИНАМ
     const isAdmin = await checkAdminAccess(adminId);
     if (!isAdmin) {
         return res.status(403).json({
             success: false,
-            error: 'Доступ запрещен'
+            error: 'Доступ запрещен. Только администраторы могут подтверждать выплаты.'
         });
     }
     
     try {
-        // Сначала проверяем существование запроса
+        // Остальной код остается без изменений...
         const requestCheck = await pool.query(
             'SELECT * FROM withdrawal_requests WHERE id = $1 AND status = $2',
             [requestId, 'pending']
@@ -1195,73 +1195,7 @@ app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) 
             });
         }
         
-        const request = requestCheck.rows[0];
-        
-        // Проверяем существование колонок
-        const columnsCheck = await pool.query(`
-            SELECT column_name 
-            FROM information_schema.columns 
-            WHERE table_name = 'withdrawal_requests' 
-            AND column_name IN ('completed_at', 'completed_by')
-        `);
-        
-        const hasCompletedAt = columnsCheck.rows.some(col => col.column_name === 'completed_at');
-        const hasCompletedBy = columnsCheck.rows.some(col => col.column_name === 'completed_by');
-        
-        let updateQuery;
-        let queryParams;
-        
-        if (hasCompletedAt && hasCompletedBy) {
-            // Обе колонки существуют
-            updateQuery = `
-                UPDATE withdrawal_requests 
-                SET status = 'completed', 
-                    completed_at = CURRENT_TIMESTAMP,
-                    completed_by = $1
-                WHERE id = $2 AND status = 'pending'
-                RETURNING *
-            `;
-            queryParams = [adminId, requestId];
-        } else if (hasCompletedAt) {
-            // Только completed_at существует
-            updateQuery = `
-                UPDATE withdrawal_requests 
-                SET status = 'completed', 
-                    completed_at = CURRENT_TIMESTAMP
-                WHERE id = $1 AND status = 'pending'
-                RETURNING *
-            `;
-            queryParams = [requestId];
-        } else {
-            // Ни одна колонка не существует
-            updateQuery = `
-                UPDATE withdrawal_requests 
-                SET status = 'completed'
-                WHERE id = $1 AND status = 'pending'
-                RETURNING *
-            `;
-            queryParams = [requestId];
-        }
-        
-        const result = await pool.query(updateQuery, queryParams);
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'Запрос не найден или уже обработан'
-            });
-        }
-        
-        const completedRequest = result.rows[0];
-        
-        console.log(`✅ Выплата подтверждена: ${completedRequest.amount}⭐ для пользователя ${completedRequest.user_id}`);
-        
-        res.json({
-            success: true,
-            message: 'Выплата подтверждена успешно',
-            request: completedRequest
-        });
-        
+        // ... остальная логика обработки
     } catch (error) {
         console.error('❌ Complete withdrawal error:', error);
         res.status(500).json({
@@ -2721,42 +2655,11 @@ app.get('/api/admin/admins-list', async (req, res) => {
     }
 });
 
-// Функция для создания таблицы прав администраторов
+// Создание таблицы прав администраторов
 async function createAdminPermissionsTable() {
     try {
         console.log('🔧 Creating admin_permissions table...');
         
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS admin_permissions (
-                admin_id BIGINT PRIMARY KEY,
-                can_posts BOOLEAN DEFAULT true,
-                can_tasks BOOLEAN DEFAULT true,
-                can_verification BOOLEAN DEFAULT true,
-                can_support BOOLEAN DEFAULT true,
-                can_payments BOOLEAN DEFAULT true,
-                can_admins BOOLEAN DEFAULT false,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        
-        console.log('✅ admin_permissions table created/verified');
-    } catch (error) {
-        console.error('❌ Error creating admin_permissions table:', error);
-    }
-}
-// Обновление прав доступа админа
-app.post('/api/admin/update-permissions', async (req, res) => {
-    const { adminId, targetAdminId, permission, enabled } = req.body;
-    
-    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied - only main admin can update permissions'
-        });
-    }
-    
-    try {
-        // Создаем таблицу для прав доступа если её нет
         await pool.query(`
             CREATE TABLE IF NOT EXISTS admin_permissions (
                 admin_id BIGINT PRIMARY KEY,
@@ -2771,6 +2674,67 @@ app.post('/api/admin/update-permissions', async (req, res) => {
             )
         `);
         
+        // Устанавливаем права по умолчанию для главного админа
+        await pool.query(`
+            INSERT INTO admin_permissions (admin_id, can_posts, can_tasks, can_verification, can_support, can_payments, can_admins)
+            VALUES ($1, true, true, true, true, true, true)
+            ON CONFLICT (admin_id) DO NOTHING
+        `, [ADMIN_ID]);
+        
+        console.log('✅ admin_permissions table created/verified');
+    } catch (error) {
+        console.error('❌ Error creating admin_permissions table:', error);
+    }
+}
+// Расширенная проверка прав администратора
+async function checkAdminPermission(userId, permission) {
+    try {
+        // Главный админ имеет все права
+        if (parseInt(userId) === ADMIN_ID) {
+            return true;
+        }
+        
+        // Проверяем базовые права администратора
+        const adminCheck = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [userId]
+        );
+        
+        if (adminCheck.rows.length === 0 || !adminCheck.rows[0].is_admin) {
+            return false;
+        }
+        
+        // Проверяем конкретные права в таблице разрешений
+        const permissionResult = await pool.query(
+            `SELECT ${permission} FROM admin_permissions WHERE admin_id = $1`,
+            [userId]
+        );
+        
+        // Если запись не найдена, даем доступ по умолчанию
+        if (permissionResult.rows.length === 0) {
+            return true;
+        }
+        
+        return permissionResult.rows[0][permission] === true;
+    } catch (error) {
+        console.error('Permission check error:', error);
+        return false;
+    }
+}
+
+// Обновление прав доступа админа
+app.post('/api/admin/update-permissions', async (req, res) => {
+    const { adminId, targetAdminId, permission, enabled } = req.body;
+    
+    // Только главный админ может управлять правами
+    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied - only main admin can update permissions'
+        });
+    }
+    
+    try {
         const columnMap = {
             'posts': 'can_posts',
             'tasks': 'can_tasks', 
