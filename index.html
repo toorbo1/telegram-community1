@@ -4740,18 +4740,33 @@ html, body {
 <!-- В админ-панели добавьте кнопку -->
 <button class="admin-btn" onclick="showAdminSection('payments')">💳 Оплаты</button>
 
-<!-- И секцию для управления оплатами -->
+<!-- Секция управления выплатами -->
 <div id="admin-payments-section" class="admin-section" style="display: none;">
     <div class="admin-form">
-        <h3>💳 Запросы на вывод средств</h3>
+        <h3>💳 Управление выплатами</h3>
+        
+        <!-- Диагностическая информация -->
         <div style="margin-bottom: 15px; padding: 10px; background: var(--bg-secondary); border-radius: 10px;">
             <div style="display: flex; justify-content: space-between; font-size: 12px;">
-                <span>Активные: <strong id="active-withdrawals-count">0</strong></span>
+                <span>Активные заявки: <strong id="active-withdrawals-count">0</strong></span>
                 <span>Всего: <strong id="total-withdrawals-count">0</strong></span>
             </div>
+            <div style="margin-top: 8px;">
+                <button class="btn btn-primary" onclick="loadWithdrawalRequests()" style="padding: 6px 12px; font-size: 12px;">
+                    🔄 Обновить
+                </button>
+                <button class="btn btn-warning" onclick="createTestWithdrawal()" style="padding: 6px 12px; font-size: 12px; margin-left: 8px;">
+                    🧪 Тест
+                </button>
+            </div>
         </div>
+        
+        <!-- Список заявок -->
         <div id="withdrawal-requests-list">
-            <!-- Запросы будут загружены здесь -->
+            <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
+                <div style="font-size: 48px; margin-bottom: 16px;">💫</div>
+                <div>Загрузка заявок...</div>
+            </div>
         </div>
     </div>
 </div>
@@ -9210,27 +9225,48 @@ function displayWithdrawHistory(operations) {
         container.appendChild(operationElement);
     });
 }
-// Функция загрузки заявок на вывод
+// 🔧 ИСПРАВЛЕННАЯ функция загрузки заявок на вывод
 async function loadWithdrawalRequests() {
-    if (!currentUser) return;
+    console.log('🔄 Loading withdrawal requests...');
+    
+    if (!currentUser) {
+        console.log('❌ No current user');
+        showNotification('Пользователь не авторизован', 'error');
+        return;
+    }
     
     try {
+        // Сначала проверяем права
+        const rightsResult = await makeRequest(`/admin/debug-rights?userId=${currentUser.id}`);
+        console.log('🔍 Admin rights check:', rightsResult);
+        
+        if (!rightsResult.isAdmin) {
+            showNotification('❌ У вас нет прав администратора!', 'error');
+            return;
+        }
+        
         const result = await makeRequest(`/admin/withdrawal-requests?adminId=${currentUser.id}`);
+        console.log('📨 Withdrawal requests response:', result);
         
         if (result.success) {
             displayWithdrawalRequests(result.requests);
         } else {
-            console.error('❌ Failed to load withdrawal requests:', result.error);
+            console.error('❌ Failed to load requests:', result.error);
+            showNotification('Ошибка загрузки заявок: ' + result.error, 'error');
         }
     } catch (error) {
         console.error('❌ Load withdrawal requests error:', error);
+        showNotification('Ошибка загрузки заявок: ' + error.message, 'error');
     }
 }
 
-// Функция отображения заявок на вывод
+// 🔧 ИСПРАВЛЕННАЯ функция отображения заявок
 function displayWithdrawalRequests(requests) {
     const container = document.getElementById('withdrawal-requests-list');
-    if (!container) return;
+    if (!container) {
+        console.error('❌ Container not found');
+        return;
+    }
     
     container.innerHTML = '';
     
@@ -9251,6 +9287,8 @@ function displayWithdrawalRequests(requests) {
         `;
         return;
     }
+    
+    console.log(`✅ Отображаем ${requests.length} заявок`);
     
     requests.forEach(request => {
         const requestElement = document.createElement('div');
@@ -9286,13 +9324,20 @@ function displayWithdrawalRequests(requests) {
     });
 }
 
-// Функция подтверждения выплаты
+// 🔧 ИСПРАВЛЕННАЯ функция подтверждения выплаты
 async function completeWithdrawal(requestId) {
+    console.log('🔧 completeWithdrawal called:', {
+        requestId,
+        currentUser: currentUser,
+        currentUserId: currentUser?.id
+    });
+    
     if (!confirm('Вы уверены, что перечислили средства пользователю?')) {
         return;
     }
     
     try {
+        console.log('📤 Sending complete request...');
         const result = await makeRequest(`/admin/withdrawal-requests/${requestId}/complete`, {
             method: 'POST',
             body: JSON.stringify({
@@ -9300,9 +9345,11 @@ async function completeWithdrawal(requestId) {
             })
         });
         
+        console.log('📨 Complete response:', result);
+        
         if (result.success) {
             showNotification('✅ Выплата подтверждена!', 'success');
-            loadWithdrawalRequests(); // Обновляем список
+            loadWithdrawalRequests();
         } else {
             showNotification('❌ Ошибка: ' + result.error, 'error');
         }
@@ -9310,6 +9357,31 @@ async function completeWithdrawal(requestId) {
         console.error('❌ Complete withdrawal error:', error);
         showNotification('❌ Ошибка подтверждения выплаты: ' + error.message, 'error');
     }
+}
+
+// Тестовая функция
+async function createTestWithdrawal() {
+    try {
+        const result = await makeRequest('/test-withdrawal', {
+            method: 'POST'
+        });
+        
+        if (result.success) {
+            showNotification('✅ Тестовая заявка создана!', 'success');
+            loadWithdrawalRequests();
+        }
+    } catch (error) {
+        console.error('Test withdrawal error:', error);
+    }
+}
+
+// Обновите функцию показа секции
+function showAdminPaymentsSection() {
+    showAdminSection('payments');
+    // Загружаем с небольшой задержкой чтобы интерфейс успел отобразиться
+    setTimeout(() => {
+        loadWithdrawalRequests();
+    }, 100);
 }
 
 // Обновите функцию показа секции оплат

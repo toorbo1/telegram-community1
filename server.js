@@ -73,20 +73,27 @@ const upload = multer({
 });
 
 
-// Улучшенная функция проверки прав администратора
+// 🔧 ИСПРАВЛЕННАЯ функция проверки прав администратора
 async function checkAdminAccess(userId) {
     try {
+        console.log('🔐 Checking admin access for user:', userId);
+        
         const result = await pool.query(
             'SELECT is_admin FROM user_profiles WHERE user_id = $1',
             [userId]
         );
         
         if (result.rows.length > 0) {
-            return result.rows[0].is_admin === true || parseInt(userId) === ADMIN_ID;
+            const isAdmin = result.rows[0].is_admin === true || parseInt(userId) === ADMIN_ID;
+            console.log(`✅ Admin check result for ${userId}: ${isAdmin}`);
+            return isAdmin;
         }
+        
+        console.log(`❌ User ${userId} not found in database`);
         return parseInt(userId) === ADMIN_ID;
+        
     } catch (error) {
-        console.error('Admin access check error:', error);
+        console.error('❌ Admin access check error:', error);
         return parseInt(userId) === ADMIN_ID;
     }
 }
@@ -283,7 +290,19 @@ async function initDatabase() {
             ADD COLUMN IF NOT EXISTS repost_time TEXT DEFAULT '1 день',
             ADD COLUMN IF NOT EXISTS task_url TEXT
         `);
-
+await pool.query(`
+            CREATE TABLE IF NOT EXISTS withdrawal_requests (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                username TEXT,
+                first_name TEXT,
+                amount REAL NOT NULL,
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP,
+                completed_by BIGINT
+            )
+        `);
         // Добавляем колонку user_username в task_verifications если ее нет
         await pool.query(`
             ALTER TABLE task_verifications 
@@ -332,18 +351,64 @@ async function initDatabase() {
             `, [ADMIN_ID]);
         }
 
-        // Вызываем функцию исправления таблицы
-        await fixWithdrawalTable();
-        await createAdminPermissionsTable();
-        console.log('✅ Simplified database initialized successfully');
+         await createWithdrawalTable();
+        await fixWithdrawalTableStructure();
+        
+        console.log('✅ Database initialized successfully');
     } catch (error) {
         console.error('❌ Database initialization error:', error);
     }
 }
-
+// Создание тестовой заявки на вывод
+app.post('/api/test-withdrawal', async (req, res) => {
+    try {
+        // Создаем тестовую заявку
+        const result = await pool.query(`
+            INSERT INTO withdrawal_requests (user_id, username, first_name, amount, status) 
+            VALUES ($1, $2, $3, $4, 'pending')
+            RETURNING *
+        `, [123456, 'test_user', 'Test User', 150]);
+        
+        res.json({
+            success: true,
+            message: 'Test withdrawal request created',
+            request: result.rows[0]
+        });
+        
+    } catch (error) {
+        console.error('Test withdrawal error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 // Инициализируем базу данных при запуске
 initDatabase();
-
+// Принудительное создание таблицы withdrawal_requests
+async function createWithdrawalTable() {
+    try {
+        console.log('🔧 Creating withdrawal_requests table...');
+        
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS withdrawal_requests (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                username TEXT,
+                first_name TEXT,
+                amount REAL NOT NULL,
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP,
+                completed_by BIGINT
+            )
+        `);
+        
+        console.log('✅ withdrawal_requests table created/verified');
+    } catch (error) {
+        console.error('❌ Error creating withdrawal_requests table:', error);
+    }
+}
 // Функция для принудительного обновления структуры таблицы
 async function fixWithdrawalTable() {
     try {
@@ -2357,7 +2422,46 @@ app.get('/api/admin/task-verifications', async (req, res) => {
         });
     }
 });
-
+// Диагностика прав администратора
+app.get('/api/admin/debug-rights', async (req, res) => {
+    const { userId } = req.query;
+    
+    console.log('🔍 Debug admin rights for user:', userId);
+    
+    try {
+        const userResult = await pool.query(
+            'SELECT user_id, username, is_admin FROM user_profiles WHERE user_id = $1',
+            [userId]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.json({
+                success: false,
+                error: 'User not found',
+                isAdmin: false
+            });
+        }
+        
+        const user = userResult.rows[0];
+        const isMainAdmin = parseInt(userId) === ADMIN_ID;
+        const isAdmin = user.is_admin === true || isMainAdmin;
+        
+        res.json({
+            success: true,
+            user: user,
+            isAdmin: isAdmin,
+            isMainAdmin: isMainAdmin,
+            adminId: ADMIN_ID
+        });
+        
+    } catch (error) {
+        console.error('Debug rights error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 // В server.js - обновите функции подтверждения и отклонения
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const verificationId = req.params.verificationId;
