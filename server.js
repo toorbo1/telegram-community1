@@ -24,12 +24,10 @@ if (BOT_TOKEN) {
     console.log('⚠️ BOT_TOKEN not set - Telegram features disabled');
 }
 
-// PostgreSQL connection для Railway
+// Используйте переменную окружения от Railway
 const pool = new Pool({
-    connectionString: DATABASE_URL,
-    ssl: {
-        rejectUnauthorized: false
-    }
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
 // Middleware
