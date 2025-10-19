@@ -40,7 +40,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static('.'));
 
-// Настройка multer для загрузки файлов
+// Улучшенная настройка multer
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         const uploadsDir = path.join(__dirname, 'uploads');
@@ -51,7 +51,9 @@ const storage = multer.diskStorage({
     },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, 'screenshot-' + uniqueSuffix + path.extname(file.originalname));
+        // Сохраняем оригинальное расширение файла
+        const fileExt = path.extname(file.originalname);
+        cb(null, 'task-' + uniqueSuffix + fileExt);
     }
 });
 
@@ -61,6 +63,7 @@ const upload = multer({
         fileSize: 10 * 1024 * 1024 // 10MB limit
     },
     fileFilter: function (req, file, cb) {
+        // Разрешаем только изображения
         if (file.mimetype.startsWith('image/')) {
             cb(null, true);
         } else {
@@ -68,7 +71,6 @@ const upload = multer({
         }
     }
 });
-
 
 
 // Функция проверки прав администратора
@@ -1476,7 +1478,7 @@ app.delete('/api/posts/:id', async (req, res) => {
 
 // ==================== TASKS ENDPOINTS ====================
 
-// В server.js - обновите endpoint получения заданий
+// Получение заданий с правильной обработкой изображений
 app.get('/api/tasks', async (req, res) => {
     const { search, category, userId } = req.query;
     
@@ -1521,11 +1523,20 @@ app.get('/api/tasks', async (req, res) => {
         // Фильтруем задания: показываем только те, которые пользователь еще не начал
         const filteredTasks = result.rows.filter(task => !task.user_has_task);
         
+        // Обеспечиваем правильные URL для изображений
+        const tasksWithCorrectedImages = filteredTasks.map(task => {
+            if (task.image_url && !task.image_url.startsWith('http')) {
+                // Если URL относительный, делаем его абсолютным
+                task.image_url = `${APP_URL}${task.image_url}`;
+            }
+            return task;
+        });
+        
         console.log(`✅ Найдено заданий: ${result.rows.length}, доступно пользователю: ${filteredTasks.length}`);
         
         res.json({
             success: true,
-            tasks: filteredTasks,
+            tasks: tasksWithCorrectedImages,
             totalCount: result.rows.length,
             availableCount: filteredTasks.length
         });
@@ -1589,6 +1600,7 @@ app.get('/api/debug/tasks-test', async (req, res) => {
         });
     }
 });
+// Создание задания с изображением
 app.post('/api/tasks-with-image', upload.single('image'), async (req, res) => {
     console.log('📥 Received task creation request with image');
     
@@ -1624,8 +1636,9 @@ app.post('/api/tasks-with-image', upload.single('image'), async (req, res) => {
         // Обрабатываем изображение если есть
         let imageUrl = '';
         if (req.file) {
-            imageUrl = `/uploads/${req.file.filename}`;
-            console.log('🖼️ Image uploaded:', imageUrl);
+            // Используем абсолютный URL для изображения
+            imageUrl = `${APP_URL}/uploads/${req.file.filename}`;
+            console.log('🖼️ Image uploaded with absolute URL:', imageUrl);
         }
 
         console.log('💾 Saving task to database with image...');
@@ -1660,43 +1673,6 @@ app.post('/api/tasks-with-image', upload.single('image'), async (req, res) => {
         
     } catch (error) {
         console.error('❌ Create task with image error:', error);
-        
-        // Если ошибка связана с отсутствием колонки, попробуем без изображения
-        if (error.message.includes('image_url')) {
-            console.log('🔄 Trying to save task without image_url...');
-            try {
-                const result = await pool.query(`
-                    INSERT INTO tasks (
-                        title, description, price, created_by, category,
-                        time_to_complete, difficulty, people_required, task_url
-                    ) 
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-                    RETURNING *
-                `, [
-                    title.trim(), 
-                    description.trim(), 
-                    taskPrice, 
-                    created_by,
-                    category || 'general',
-                    time_to_complete || '5-10 минут',
-                    difficulty || 'Легкая',
-                    parseInt(people_required) || 1,
-                    task_url || ''
-                ]);
-                
-                console.log('✅ Task saved without image successfully');
-                
-                return res.json({
-                    success: true,
-                    message: 'Задание успешно создано! (изображение не сохранено)',
-                    task: result.rows[0],
-                    note: 'image_url column missing'
-                });
-            } catch (fallbackError) {
-                console.error('❌ Fallback also failed:', fallbackError);
-            }
-        }
-        
         res.status(500).json({
             success: false,
             error: 'Ошибка базы данных: ' + error.message

@@ -8053,7 +8053,7 @@ function openTaskModal(taskId) {
         document.getElementById('task-modal-price').textContent = `${task.price} ⭐`;
         document.getElementById('task-modal-description').textContent = task.description;
         
-        // Добавляем изображение в модальное окно если есть - ИСПРАВЛЕННАЯ ВЕРСИЯ
+        // Исправленный код для отображения изображения в модальном окне
         const modalImageContainer = document.getElementById('task-modal-image-container');
         if (modalImageContainer) {
             if (task.image_url) {
@@ -8089,6 +8089,41 @@ function openTaskModal(taskId) {
         showNotification('Ошибка: задание не найдено', 'error');
     }
 }
+// Функция для исправления URL изображений в существующих заданиях
+async function fixExistingTaskImages() {
+    try {
+        console.log('🔧 Fixing existing task images...');
+        
+        // Получаем все задания с изображениями
+        const tasks = await pool.query(`
+            SELECT id, image_url FROM tasks 
+            WHERE image_url IS NOT NULL AND image_url != ''
+        `);
+        
+        let fixedCount = 0;
+        
+        for (const task of tasks.rows) {
+            if (task.image_url && !task.image_url.startsWith('http')) {
+                // Исправляем URL
+                const correctedUrl = `${APP_URL}${task.image_url}`;
+                await pool.query(
+                    'UPDATE tasks SET image_url = $1 WHERE id = $2',
+                    [correctedUrl, task.id]
+                );
+                fixedCount++;
+                console.log(`✅ Fixed image URL for task ${task.id}: ${correctedUrl}`);
+            }
+        }
+        
+        console.log(`✅ Fixed ${fixedCount} task images`);
+    } catch (error) {
+        console.error('❌ Error fixing task images:', error);
+    }
+}
+
+// Вызовите эту функцию при запуске сервера
+fixExistingTaskImages();
+
 function showTaskConfirmation(userTaskId, taskName) {
     console.log('🔍 Confirming task:', { userTaskId, taskName });
     
@@ -11448,7 +11483,6 @@ function displayTasksWithImages(tasks, category) {
         container.appendChild(taskElement);
     });
 }
-
 function createTaskCardWithImage(task, category, index) {
     const taskElement = document.createElement('div');
     taskElement.className = 'task-card task-card-with-image';
@@ -11473,15 +11507,14 @@ function createTaskCardWithImage(task, category, index) {
             </button>`;
             break;
         case 'completed':
-            // В выполненных заданиях нет кнопок
             buttonHtml = `<div class="task-status completed">✅ Выполнено</div>`;
             break;
         case 'rejected':
-            // В отклоненных заданиях нет кнопок
             buttonHtml = `<div class="task-status rejected">❌ Отклонено</div>`;
             break;
     }
     
+    // Исправленный HTML для карточки задания
     taskElement.innerHTML = `
         ${hasImage ? `
             <div class="task-image-container">
