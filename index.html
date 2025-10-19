@@ -4702,17 +4702,7 @@ html, body {
             <input type="url" class="admin-input" id="admin-task-url" placeholder="https://...">
         </div>
 
-    <!-- <div style="text-align: center; margin: 20px 0;">
-    <button class="btn btn-warning" onclick="debugAdminForm()" style="padding: 10px; font-size: 12px;">
-        🐛 Debug Form
-    </button>
-    <button class="btn btn-warning" onclick="testAddTask()" style="padding: 10px; font-size: 12px; margin-left: 10px;">
-        🧪 Test Add Task
-    </button>
-    <button class="btn btn-info" onclick="testServerConnection()" style="padding: 10px; font-size: 12px; margin-left: 10px;">
-        🔗 Test Server
-    </button>
-</div> -->
+
         
         <button class="admin-submit" onclick="addTaskWithImage()">
             ✅ Добавить задание с фото
@@ -5398,15 +5388,7 @@ html, body {
         <button class="chat-send" onclick="sendMessageToAdmin()">➤</button>
     </div>
 </div>
-<!-- Добавьте этот div в секцию заданий после формы
-<div style="text-align: center; margin: 20px 0;">
-    <button class="btn btn-warning" onclick="debugAdminForm()" style="padding: 10px; font-size: 12px;">
-        🐛 Debug Form
-    </button>
-    <button class="btn btn-warning" onclick="testAddTask()" style="padding: 10px; font-size: 12px; margin-left: 10px;">
-        🧪 Test Add Task
-    </button>
-</div> -->
+
 
     <script>
         // 🔧 КОНФИГУРАЦИЯ
@@ -6411,46 +6393,9 @@ if (parseInt(currentUser.id) === ADMIN_ID) {
     }
 }
 // Обновите функцию инициализации приложения
-// 🔧 ФУНКЦИЯ ДЛЯ ДИАГНОСТИКИ ФОРМЫ
-function debugAdminForm() {
-    console.log('🐛 DEBUG Admin Form Elements:');
-    
-    const elements = [
-        'admin-task-title',
-        'admin-task-description', 
-        'admin-task-price',
-        'admin-task-category',
-        'admin-task-time',
-        'admin-task-difficulty',
-        'admin-task-people',
-        'admin-task-url'
-    ];
-    
-    elements.forEach(id => {
-        const element = document.getElementById(id);
-        console.log(`- ${id}:`, element ? `FOUND (value: "${element.value}")` : 'NOT FOUND');
-    });
-    
-    // Проверяем видимость секции
-    const tasksSection = document.getElementById('admin-tasks-section');
-    console.log('- admin-tasks-section visible:', tasksSection?.style.display === 'block');
-    console.log('- currentUser:', currentUser);
-}
 
-// 🔧 ТЕСТОВАЯ ФУНКЦИЯ
-function testAddTask() {
-    console.log('🧪 Testing add task function...');
-    
-    // Заполняем форму тестовыми данными
-    document.getElementById('admin-task-title').value = 'Тестовое задание';
-    document.getElementById('admin-task-description').value = 'Это тестовое описание задания';
-    document.getElementById('admin-task-price').value = '50';
-    document.getElementById('admin-task-time').value = '10 минут';
-    document.getElementById('admin-task-people').value = '5';
-    
-    console.log('✅ Form filled with test data');
-    debugAdminForm();
-}
+
+
 function showTaskCategory(category) {
     console.log('🔄 Переключение на категорию:', category);
     
@@ -7223,37 +7168,8 @@ function emergencyFixAdminPanel() {
     console.log('✅ Emergency fixes applied');
 }
 
-// 🔧 ТЕСТОВАЯ ФУНКЦИЯ
-function testAddTask() {
-    alert('✅ Кнопка работает! Админ-панель функционирует.');
-    console.log('✅ Test button clicked - admin panel is working');
-}
-// 🔧 ДИАГНОСТИКА АДМИН-ПАНЕЛИ
-function debugAdminPanel() {
-    console.log('🐛 DEBUG Admin Panel:');
-    
-    // Проверяем все элементы админ-панели
-    const elements = {
-        'admin-tab': document.getElementById('admin-tab'),
-        'admin-tasks-section': document.getElementById('admin-tasks-section'),
-        'admin-task-title': document.getElementById('admin-task-title'),
-        'add-task-button': document.querySelector('#admin-tasks-section .admin-submit')
-    };
-    
-    Object.keys(elements).forEach(key => {
-        console.log(`- ${key}:`, elements[key] ? 'FOUND' : 'NOT FOUND');
-    });
-    
-    // Проверяем видимость
-    console.log('- admin-tab active:', document.getElementById('admin-tab')?.classList.contains('active'));
-    console.log('- admin-tasks-section display:', document.getElementById('admin-tasks-section')?.style.display);
-}
 
-// Вызовем диагностику при загрузке
-setTimeout(debugAdminPanel, 1000);
 
-// Вызовите эту функцию после переключения на админ-панель
-setTimeout(checkAdminPanelLoaded, 500);
 // 🔧 ФУНКЦИЯ ДЛЯ ПРИНУДИТЕЛЬНОГО ИСПРАВЛЕНИЯ LAYOUT
 function fixTasksLayout() {
     const tasksTab = document.getElementById('tasks-tab');
@@ -8354,62 +8270,8 @@ async function testTaskCreation() {
     // Пробуем создать задание
     await addTask();
 }
-// 🔧 ТЕСТИРОВАНИЕ СОЕДИНЕНИЯ С СЕРВЕРОМ
-async function testServerConnection() {
-    console.log('🧪 Testing server connection...');
-    
-    const testData = {
-        title: 'Тестовое задание',
-        description: 'Тестовое описание',
-        price: 50,
-        category: 'subscribe',
-        time_to_complete: '10 минут',
-        difficulty: 'Легкая',
-        people_required: 5,
-        task_url: '',
-        created_by: currentUser.id
-    };
-    
-    try {
-        console.log('📤 Sending test data to server...');
-        const result = await makeRequest('/test-task', {
-            method: 'POST',
-            body: JSON.stringify(testData)
-        });
-        
-        console.log('📨 Test server response:', result);
-        showNotification('✅ Соединение с сервером работает!', 'success');
-        
-    } catch (error) {
-        console.error('❌ Server connection test failed:', error);
-        showNotification('❌ Ошибка соединения с сервером', 'error');
-    }
-}
-// 🔧 ФУНКЦИЯ ДЛЯ ДИАГНОСТИКИ ФОРМЫ
-function debugAdminForm() {
-    console.log('🐛 DEBUG Admin Form Elements:');
-    
-    const elements = [
-        'admin-task-title',
-        'admin-task-description', 
-        'admin-task-price',
-        'admin-task-category',
-        'admin-task-time',
-        'admin-task-difficulty',
-        'admin-task-people',
-        'admin-task-url'
-    ];
-    
-    elements.forEach(id => {
-        const element = document.getElementById(id);
-        console.log(`- ${id}:`, element ? `FOUND (value: "${element.value}")` : 'NOT FOUND');
-    });
-    
-    // Проверяем видимость секции
-    const tasksSection = document.getElementById('admin-tasks-section');
-    console.log('- admin-tasks-section visible:', tasksSection?.style.display === 'block');
-    console.log('- currentUser:', currentUser);
-}
+
+
 
 // Вызовите для тестирования
 setTimeout(debugAdminForm, 2000);
