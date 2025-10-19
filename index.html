@@ -4755,25 +4755,21 @@ html, body {
         </div>
     </div>
 </div>
-    <!-- Управление постами
-    <div id="admin-posts-section" class="admin-section">
-        <h3>Добавить пост для всех пользователей</h3>
-        <div class="admin-form">
-            <input type="text" class="admin-input" id="admin-post-title" placeholder="Заголовок поста">
-            <textarea class="admin-textarea" id="admin-post-content" placeholder="Введите текст поста..."></textarea>
-            <input type="file" class="admin-input" id="admin-post-image" accept="image/*">
-            <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
-        </div>
-        
-        <h3 style="margin-top: 20px;">Существующие посты</h3>
+<div id="admin-posts-section" class="admin-section" style="display: none;">
+    <div class="admin-form">
+        <h3>📝 Добавить новый пост</h3>
+        <input type="text" class="admin-input" id="admin-post-title" placeholder="Заголовок поста">
+        <textarea class="admin-textarea" id="admin-post-content" placeholder="Введите текст поста..."></textarea>
+        <button class="admin-submit" onclick="addNewPost()">Опубликовать</button>
+    </div>
+    
+    <div style="margin-top: 25px;">
+        <h3>📋 Существующие посты</h3>
         <div id="admin-posts-list">
-             Посты будут загружаться динамически -->
-        <!-- </div>
-    </div> --> 
-
-    <!-- Остальные секции остаются без изменений -->
-    <!-- ... -->
-<!-- </div> -->
+            <!-- Посты будут загружены здесь -->
+        </div>
+    </div>
+</div>
 
             <!-- В секции управления заданиями админ-панели -->
 <div id="admin-tasks-section" class="admin-section" style="display: none;">
@@ -8912,6 +8908,10 @@ function showAdminSection(section) {
         
         // Загружаем данные для определенных секций
         switch(section) {
+            case 'posts':
+                console.log('📝 Loading posts management...');
+                loadAdminPosts();
+                break;
             case 'tasks':
                 console.log('📋 Loading tasks management...');
                 setTimeout(() => {
@@ -8923,25 +8923,25 @@ function showAdminSection(section) {
                 loadWithdrawalRequests();
                 break;
             case 'verification':
+                console.log('✅ Loading task verifications...');
                 loadTaskVerifications();
                 break;
             case 'support':
+                console.log('💬 Loading support chats...');
                 loadAdminChats();
                 break;
             case 'admins':
+                console.log('👥 Loading admins list...');
                 loadAdminsList();
-                break;
-            case 'posts':
-                loadAdminPosts();
                 break;
         }
     } else {
         console.error(`❌ Target section not found: admin-${section}-section`);
     }
 }
-       // Функция загрузки постов для админ-панели
 async function loadAdminPosts() {
     try {
+        console.log('📝 Loading admin posts...');
         const result = await makeRequest('/posts');
         if (result.success) {
             displayAdminPosts(result.posts);
@@ -8953,12 +8953,23 @@ async function loadAdminPosts() {
 
 function displayAdminPosts(posts) {
     const container = document.getElementById('admin-posts-list');
-    if (!container) return;
+    if (!container) {
+        console.error('❌ Admin posts container not found');
+        return;
+    }
     
     container.innerHTML = '';
     
     if (!posts || posts.length === 0) {
-        container.innerHTML = '<div class="no-tasks">Нет постов</div>';
+        container.innerHTML = `
+            <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
+                <div>Нет постов</div>
+                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
+                    Создайте первый пост
+                </div>
+            </div>
+        `;
         return;
     }
     
