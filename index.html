@@ -5597,29 +5597,6 @@ function addTasksDebugButton() {
 // Вызовите при загрузке
 setTimeout(addTasksDebugButton, 2000);
 
-// Функция для тестирования endpoint'ов
-async function testEndpoints() {
-    if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) return;
-    
-    try {
-        console.log('🧪 Testing endpoints...');
-        
-        // Тестируем базовый endpoint
-        const health = await makeRequest('/health');
-        console.log('✅ Health endpoint:', health);
-        
-        // Тестируем debug endpoints
-        const debug = await makeRequest('/debug/endpoints');
-        console.log('✅ Debug endpoints:', debug);
-        
-        // Тестируем admins-list endpoint
-        const admins = await makeRequest(`/admin/admins-list?adminId=${currentUser.id}`);
-        console.log('✅ Admins list endpoint:', admins);
-        
-    } catch (error) {
-        console.error('❌ Endpoint test failed:', error);
-    }
-}
 
 // Вызов для тестирования
 setTimeout(() => {
@@ -7153,47 +7130,8 @@ function debugTaskConfirmation() {
     });
 }
 
-// Временно добавьте кнопку для тестирования
-function addConfirmationDebugButton() {
-    const debugBtn = document.createElement('button');
-    debugBtn.textContent = '🐛 Debug Confirmation';
-    debugBtn.style.position = 'fixed';
-    debugBtn.style.top = '200px';
-    debugBtn.style.right = '10px';
-    debugBtn.style.zIndex = '10000';
-    debugBtn.style.padding = '10px';
-    debugBtn.style.background = 'orange';
-    debugBtn.style.color = 'white';
-    debugBtn.style.border = 'none';
-    debugBtn.style.borderRadius = '5px';
-    debugBtn.style.fontSize = '12px';
-    debugBtn.onclick = debugTaskConfirmation;
-    document.body.appendChild(debugBtn);
-}
 
-// Вызовите при загрузке
-setTimeout(addConfirmationDebugButton, 3000);
 
-// Добавьте кнопку для тестирования
-function addConfirmationDebugButton() {
-    const debugBtn = document.createElement('button');
-    debugBtn.textContent = '🐛 Debug Confirmation';
-    debugBtn.style.position = 'fixed';
-    debugBtn.style.top = '200px';
-    debugBtn.style.right = '10px';
-    debugBtn.style.zIndex = '10000';
-    debugBtn.style.padding = '10px';
-    debugBtn.style.background = 'orange';
-    debugBtn.style.color = 'white';
-    debugBtn.style.border = 'none';
-    debugBtn.style.borderRadius = '5px';
-    debugBtn.style.fontSize = '12px';
-    debugBtn.onclick = debugTaskConfirmation;
-    document.body.appendChild(debugBtn);
-}
-
-// Вызовите при загрузке
-setTimeout(addConfirmationDebugButton, 3000);
 
 function checkAdminPanelLoaded() {
     const adminTasksSection = document.getElementById('admin-tasks-section');
@@ -7628,7 +7566,7 @@ async function initializeApp() {
         console.log('🔍 Testing API connection...');
         const health = await makeRequest('/api/health');
         console.log('✅ API connection successful:', health);
-        showNotification('✅ Соединение с сервером установлено!', 'success');
+       
         
         // 🔥 ДИАГНОСТИКА: Проверяем доступность заданий
         console.log('🔍 Проверяем доступность заданий...');
@@ -8937,29 +8875,9 @@ function debugAdminTasks() {
     console.log('- isAdmin:', currentUser?.is_admin);
 }
 
-// Добавьте кнопку для тестирования
-function addAdminDebugButton() {
-    const debugBtn = document.createElement('button');
-    
-    debugBtn.style.position = 'fixed';
-    debugBtn.style.top = '100px';
-    debugBtn.style.right = '10px';
-    debugBtn.style.zIndex = '10000';
-    debugBtn.style.padding = '10px';
-    debugBtn.style.background = 'orange';
-    debugBtn.style.color = 'white';
-    debugBtn.style.border = 'none';
-    debugBtn.style.borderRadius = '5px';
-    debugBtn.style.fontSize = '12px';
-    debugBtn.onclick = function() {
-        debugAdminTasks();
-        loadAdminTasksSection();
-    };
-    document.body.appendChild(debugBtn);
-}
 
-// Вызовите при загрузке
-setTimeout(addAdminDebugButton, 2000);
+
+
         // Функция показа вкладки админа - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function showAdminTab() {
     const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
@@ -9895,44 +9813,6 @@ function debugStartTask() {
     console.log('- task modal visible:', document.getElementById('task-modal')?.classList.contains('active'));
 }
 
-// Временно добавьте кнопку для тестирования
-function addStartTaskDebugButton() {
-    const debugBtn = document.createElement('button');
-    debugBtn.textContent = '🐛 Debug Start Task';
-    debugBtn.style.position = 'fixed';
-    debugBtn.style.top = '250px';
-    debugBtn.style.right = '10px';
-    debugBtn.style.zIndex = '10000';
-    debugBtn.style.padding = '10px';
-    debugBtn.style.background = 'purple';
-    debugBtn.style.color = 'white';
-    debugBtn.style.border = 'none';
-    debugBtn.style.borderRadius = '5px';
-    debugBtn.style.fontSize = '12px';
-    debugBtn.onclick = debugStartTask;
-    document.body.appendChild(debugBtn);
-}
-
-// Вызовите при загрузке
-setTimeout(addStartTaskDebugButton, 3000);
-
-        async function loadAdminChats() {
-    if (!currentUser) return;
-    
-    try {
-        console.log('📥 Loading admin chats...');
-        const result = await makeRequest(`/support/chats`);
-        
-        if (result.success) {
-            console.log(`✅ Loaded ${result.chats?.length || 0} active chats`);
-            displayAdminChatsList(result.chats || []);
-        } else {
-            console.error('❌ Failed to load chats:', result.error);
-        }
-    } catch (error) {
-        console.error('❌ Error loading admin chats:', error);
-    }
-}
 
         // Загрузка всех чатов (включая архивные)
         async function loadAllAdminChats() {
