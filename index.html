@@ -5695,7 +5695,6 @@ function debugWithdrawalSystem() {
     });
 }
 // 🔄 Функция для обновления интерфейса проверки заданий
-// 🔄 Функция для обновления интерфейса проверки заданий
 function updateVerificationInterface() {
     if (document.getElementById('admin-verification-section').style.display === 'block') {
         loadTaskVerifications();
@@ -8083,18 +8082,18 @@ async function cancelTask() {
 }
 
         // Загрузка заданий на проверку для админа
-        async function loadTaskVerifications() {
-            if (!currentUser || !currentUser.isAdmin) return;
+async function loadTaskVerifications() {
+    if (!currentUser) return;
 
-            try {
-                const result = await makeRequest(`/admin/task-verifications?adminId=${ADMIN_ID}`);
-                if (result.success) {
-                    displayTaskVerifications(result.verifications);
-                }
-            } catch (error) {
-                console.error('Error loading task verifications:', error);
-            }
+    try {
+        const result = await makeRequest(`/admin/task-verifications?adminId=${currentUser.id}`);
+        if (result.success) {
+            displayTaskVerifications(result.verifications);
         }
+    } catch (error) {
+        console.error('Error loading task verifications:', error);
+    }
+}
 
         // Отображение заданий на проверку
         function displayTaskVerifications(verifications) {
@@ -8166,40 +8165,40 @@ async function cancelTask() {
         }
 
         // Одобрить задание
-        async function approveVerification() {
-            if (!currentVerificationId) return;
+async function approveVerification() {
+    if (!currentVerificationId) return;
 
-            try {
-                console.log(`🔄 Одобряем верификацию: ${currentVerificationId}`);
-                
-                const result = await makeRequest(`/admin/task-verifications/${currentVerificationId}/approve`, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        adminId: currentUser.id
-                    })
-                });
+    try {
+        console.log(`🔄 Одобряем верификацию: ${currentVerificationId}`);
+        
+        const result = await makeRequest(`/admin/task-verifications/${currentVerificationId}/approve`, {
+            method: 'POST',
+            body: JSON.stringify({
+                adminId: currentUser.id
+            })
+        });
 
-                if (result.success) {
-                    console.log('✅ Одобрение успешно');
-                    showNotification(`✅ Задание одобрено! Пользователь получил ${result.amountAdded}⭐`, 'success');
-                    closeModal('verification-modal');
-                    
-                    // ОБНОВЛЯЕМ ДАННЫЕ ПОЛЬЗОВАТЕЛЯ
-                    await updateUserData();
-                    
-                    // Обновляем списки
-                    loadTaskVerifications();
-                    loadUserTasks();
-                    
-                } else {
-                    console.error('❌ Ошибка одобрения:', result.error);
-                    showNotification('Ошибка одобрения: ' + result.error, 'error');
-                }
-            } catch (error) {
-                console.error('❌ Сетевая ошибка при одобрении:', error);
-                showNotification('Сетевая ошибка при одобрении задания', 'error');
-            }
+        if (result.success) {
+            console.log('✅ Одобрение успешно');
+            showNotification(`✅ Задание одобрено! Пользователь получил ${result.amountAdded}⭐`, 'success');
+            closeModal('verification-modal');
+            
+            // ОБНОВЛЯЕМ ДАННЫЕ ПОЛЬЗОВАТЕЛЯ
+            await updateUserData();
+            
+            // Обновляем списки
+            loadTaskVerifications();
+            loadUserTasks();
+            
+        } else {
+            console.error('❌ Ошибка одобрения:', result.error);
+            showNotification('Ошибка одобрения: ' + result.error, 'error');
         }
+    } catch (error) {
+        console.error('❌ Сетевая ошибка при одобрении:', error);
+        showNotification('Сетевая ошибка при одобрении задания', 'error');
+    }
+}
 // В навигацию добавьте временно кнопку для теста
 function addDebugButton() {
     const debugBtn = document.createElement('button');
