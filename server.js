@@ -38,7 +38,19 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-app.use(express.static('.'));
+// Обслуживание статических файлов из корня проекта
+app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname, '.')));
+
+// Явно разрешаем обслуживание видео файлов
+app.use('/videos', express.static(path.join(__dirname)));
+app.use(express.static(path.join(__dirname), {
+    setHeaders: (res, path) => {
+        if (path.endsWith('.mp4')) {
+            res.setHeader('Content-Type', 'video/mp4');
+        }
+    }
+}));
 
 // Улучшенная настройка multer
 const storage = multer.diskStorage({
@@ -3202,7 +3214,52 @@ app.get('/api/debug/endpoints', async (req, res) => {
         });
     }
 });
+// 🔧 SERVING STATIC FILES - FIX FOR VIDEOS
+app.use(express.static(__dirname, {
+    setHeaders: (res, filePath) => {
+        // Устанавливаем правильные MIME-типы для видео
+        if (filePath.endsWith('.mp4')) {
+            res.setHeader('Content-Type', 'video/mp4');
+        }
+        // Разрешаем CORS для медиа-файлов
+        res.setHeader('Access-Control-Allow-Origin', '*');
+    }
+}));
 
+// Явно обслуживаем файлы из корня
+app.use(express.static('.', {
+    dotfiles: 'allow',
+    index: false
+}));
+
+// Специальный endpoint для проверки доступности видео
+app.get('/api/debug/videos', async (req, res) => {
+    const fs = require('fs').promises;
+    try {
+        const files = await fs.readdir(__dirname);
+        const videoFiles = files.filter(file => 
+            file.endsWith('.mp4') || 
+            file.endsWith('.webm') || 
+            file.endsWith('.ogg')
+        );
+        
+        res.json({
+            success: true,
+            videos: videoFiles,
+            projectRoot: __dirname,
+            available: videoFiles.map(file => ({
+                name: file,
+                path: `/${file}`,
+                url: `${APP_URL}/${file}`
+            }))
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
