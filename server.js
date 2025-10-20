@@ -593,7 +593,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                             [
                                 {
                                     text: '📢 Подписаться на канал',
-                                    url: 'https://t.me/LinkGoldChannel'
+                                    url: 'https://t.me/LinkGoldChannel1'
                                 }
                             ]
                         ]
@@ -647,14 +647,14 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                         inline_keyboard: [
                             [
                                 {
-                                    text: '🚀 Перейти в приложение',
+                                    text: '',
                                     url: APP_URL
                                 }
                             ],
                             [
                                 {
                                     text: '📢 Подписаться на канал',
-                                    url: 'https://t.me/LinkGoldChannel'
+                                    url: 'https://t.me/LinkGoldChannel1'
                                 }
                             ],
                             [
