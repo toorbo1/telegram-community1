@@ -112,7 +112,16 @@
         opacity: 0;
     }
 }
+.tasks-grid {
+    display: block !important;
+    width: 100% !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
 
+.tasks-grid:not(.active) {
+    display: none !important;
+}
 /* 🔧 ОПТИМИЗАЦИЯ СКРОЛЛА */
 .tasks-grid,
 .modal-content,
@@ -706,44 +715,42 @@ body {
             box-shadow: 0 10px 25px rgba(255, 215, 0, 0.4);
         }
 
-        /* 🔥 ЯРКИЕ ВКЛАДКИ */
-        .tasks-tabs {
-            display: flex;
-            margin-bottom: 16px;
-            background: var(--card-bg);
-            border-radius: 14px;
-            padding: 6px;
-            border: 1px solid var(--border);
-            overflow-x: auto;
-            white-space: nowrap;
-            position: relative;
-            z-index: 2;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
-        }
+.tasks-tabs {
+    display: flex;
+    margin-bottom: 16px;
+    background: var(--card-bg);
+    border-radius: 14px;
+    padding: 6px;
+    border: 1px solid var(--border);
+    overflow-x: auto;
+    white-space: nowrap;
+    position: relative;
+    z-index: 2;
+}
+
 
         /* Улучшаем видимость вкладок */
-        .task-tab {
-            flex: 1;
-            text-align: center;
-            padding: 8px 6px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            min-width: 70px;
-            border: 1px solid transparent;
-            background: var(--bg-secondary);
-            color: var(--text-secondary);
-        }
+.task-tab {
+    flex: 1;
+    text-align: center;
+    padding: 8px 6px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    min-width: 70px;
+    border: 1px solid transparent;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+}
 
-        .task-tab.active {
-            background: var(--accent) !important;
-            color: white !important;
-            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3) !important;
-            border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        }
+.task-tab.active {
+    background: var(--accent) !important;
+    color: white !important;
+    box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
 
         /* 🔥 ЯРКИЕ УВЕДОМЛЕНИЯ */
         .notification {
@@ -6492,7 +6499,33 @@ if (parseInt(currentUser.id) === ADMIN_ID) {
 }
 // Обновите функцию инициализации приложения
 
+function initializeTaskTabs() {
+    const taskTabs = document.querySelectorAll('.task-tab');
+    
+    taskTabs.forEach(tab => {
+        // Удаляем старые обработчики
+        tab.removeEventListener('click', handleTabClick);
+        // Добавляем новые
+        tab.addEventListener('click', handleTabClick);
+    });
+    
+    console.log('✅ Task tabs initialized');
+}
 
+function handleTabClick(event) {
+    const tab = event.currentTarget;
+    const tabText = tab.textContent.toLowerCase();
+    
+    let category = '';
+    if (tabText.includes('новые')) category = 'new';
+    else if (tabText.includes('подтверждение')) category = 'confirmation';
+    else if (tabText.includes('выполненные')) category = 'completed';
+    else if (tabText.includes('отклоненные')) category = 'rejected';
+    
+    if (category) {
+        showTaskCategory(category);
+    }
+}
 
 function showTaskCategory(category) {
     console.log('🔄 Переключение на категорию:', category);
@@ -6508,9 +6541,12 @@ function showTaskCategory(category) {
     });
     
     // Активируем выбранную вкладку
-    const activeTab = Array.from(tabs).find(tab => 
-        tab.textContent.toLowerCase().includes(getCategoryName(category))
-    );
+    const activeTab = Array.from(tabs).find(tab => {
+        const tabText = tab.textContent.toLowerCase();
+        const categoryName = getCategoryName(category).toLowerCase();
+        return tabText.includes(categoryName);
+    });
+    
     if (activeTab) {
         activeTab.classList.add('active');
     }
@@ -6528,6 +6564,7 @@ function showTaskCategory(category) {
         console.error(`❌ Контейнер ${category}-tasks не найден`);
     }
 }
+
 function getCategoryName(category) {
     const names = {
         'new': 'новые',
@@ -7404,6 +7441,12 @@ function showTasksTab() {
     // 4. Инициализируем вкладки заданий
     setTimeout(() => {
         initializeTaskTabs();
+        
+        // Активируем вкладку "Новые" по умолчанию
+        const newTab = document.querySelector('.task-tab:nth-child(1)');
+        if (newTab) {
+            newTab.click(); // Имитируем клик для активации
+        }
     }, 50);
 }
 function initializeTaskTabHandlers() {
@@ -7705,11 +7748,10 @@ async function initializeApp() {
     showNotification('🔄 Подключаемся к серверу...', 'info');
      // 🔥 ДОБАВИТЬ ЭТО: Предварительная загрузка заданий
     console.log('🚀 ПРЕДВАРИТЕЛЬНАЯ ЗАГРУЗКА ЗАДАНИЙ ПРИ СТАРТЕ');
+    // Исправляем вкладки заданий
     setTimeout(() => {
-        if (currentUser) {
-            loadTasks();
-        }
-    }, 2000);
+        fixTaskTabs();
+    }, 1000);
     // Проверяем соединение с API
     try {
         console.log('🔍 Testing API connection...');
@@ -7766,6 +7808,51 @@ async function initializeApp() {
     
     console.log('🎉 App initialized successfully');
 }
+function addTabsDebugButton() {
+    const debugBtn = document.createElement('button');
+    debugBtn.textContent = '🐛 Debug Tabs';
+    debugBtn.style.position = 'fixed';
+    debugBtn.style.top = '300px';
+    debugBtn.style.right = '10px';
+    debugBtn.style.zIndex = '10000';
+    debugBtn.style.padding = '10px';
+    debugBtn.style.background = 'blue';
+    debugBtn.style.color = 'white';
+    debugBtn.style.border = 'none';
+    debugBtn.style.borderRadius = '5px';
+    debugBtn.style.fontSize = '12px';
+    debugBtn.onclick = function() {
+        fixTaskTabs();
+        debugTaskTabs();
+    };
+    document.body.appendChild(debugBtn);
+}
+
+function debugTaskTabs() {
+    console.log('🐛 DEBUG Task Tabs:');
+    
+    const tabs = document.querySelectorAll('.task-tab');
+    const grids = document.querySelectorAll('.tasks-grid');
+    
+    tabs.forEach((tab, index) => {
+        console.log(`Tab ${index}:`, {
+            text: tab.textContent,
+            active: tab.classList.contains('active'),
+            onclick: tab.getAttribute('onclick')
+        });
+    });
+    
+    grids.forEach((grid, index) => {
+        console.log(`Grid ${index}:`, {
+            id: grid.id,
+            active: grid.classList.contains('active'),
+            display: grid.style.display
+        });
+    });
+}
+
+// Вызовите при загрузке
+setTimeout(addTabsDebugButton, 2000);
 async function loadUserTasksForCategory(status) {
     if (!currentUser) return;
     
@@ -7804,7 +7891,35 @@ async function loadUserTasksForCategory(status) {
         console.error(`❌ Error loading ${status} tasks:`, error);
     }
 }
-
+function fixTaskTabs() {
+    console.log('🔧 Fixing task tabs...');
+    
+    // Проверяем структуру DOM
+    const tabsContainer = document.querySelector('.tasks-tabs');
+    const taskTabs = document.querySelectorAll('.task-tab');
+    const taskGrids = document.querySelectorAll('.tasks-grid');
+    
+    console.log('Tabs container:', !!tabsContainer);
+    console.log('Task tabs count:', taskTabs.length);
+    console.log('Task grids count:', taskGrids.length);
+    
+    // Переинициализируем обработчики
+    initializeTaskTabs();
+    
+    // Активируем первую вкладку если ничего не активно
+    const activeTab = document.querySelector('.task-tab.active');
+    const activeGrid = document.querySelector('.tasks-grid.active');
+    
+    if (!activeTab || !activeGrid) {
+        console.log('🔄 Activating default tab...');
+        const firstTab = document.querySelector('.task-tab');
+        if (firstTab) {
+            firstTab.click();
+        }
+    }
+    
+    console.log('✅ Task tabs fixed');
+}
 function displayUserTasksForCategory(tasks, status) {
     let container = null;
     
