@@ -5,7 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LinkGold - Платформа для заработка</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
            <style>
+            /* ОТКЛЮЧИТЕ СЛОЖНЫЕ АНИМАЦИИ НА МОБИЛЬНЫХ */
+@media (max-width: 768px) {
+  * {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
+  }
+  
+  .task-card:hover, .card:hover {
+    transform: none !important;
+  }
+  
+  /* Упростите тени */
+  .card, .task-card {
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1) !important;
+  }
+  
+  /* Отключите сложные фоны */
+  body {
+    background-image: none !important;
+    background: var(--bg-primary) !important;
+  }
+}
+
+/* ПРЕДОТВРАЩЕНИЕ БЛОКИРОВКИ РЕНДЕРИНГА */
+.performance-optimized {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
             /* 🔥 СУПЕР-ПЛАВНЫЕ АНИМАЦИИ И ПЕРЕХОДЫ */
 * {
     -webkit-overflow-scrolling: touch; /* Плавный скролл на iOS */
@@ -6161,7 +6192,48 @@ async function addNewPostAsAdmin() {
         showNotification('Ошибка публикации поста', 'error');
     }
 }
+// Ленивая загрузка для изображений
+document.addEventListener('DOMContentLoaded', function() {
+  const lazyImages = [].slice.call(document.querySelectorAll('img[data-src]'));
+  
+  if ('IntersectionObserver' in window) {
+    let lazyImageObserver = new IntersectionObserver(function(entries, observer) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          let lazyImage = entry.target;
+          lazyImage.src = lazyImage.dataset.src;
+          lazyImage.classList.remove('lazy');
+          lazyImageObserver.unobserve(lazyImage);
+        }
+      });
+    });
 
+    lazyImages.forEach(function(lazyImage) {
+      lazyImageObserver.observe(lazyImage);
+    });
+  }
+});
+// Вместо сложной анимации - простая
+function simpleShowTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(tab => {
+    tab.style.display = 'none';
+  });
+  document.getElementById(tabId).style.display = 'block';
+}
+
+// Оптимизированная загрузка данных
+async function loadEssentialData() {
+  // Загружайте только необходимое
+  try {
+    const [userData, tasks] = await Promise.all([
+      fetch('/api/user-data').then(r => r.json()),
+      fetch('/api/essential-tasks').then(r => r.json())
+    ]);
+    return { userData, tasks };
+  } catch (error) {
+    console.error('Load error:', error);
+  }
+}
 // 📋 Функция создания задания (для всех админов)
 async function addTaskAsAdmin() {
     if (!currentUser) {
@@ -8521,7 +8593,22 @@ async function loadAdminTasks() {
         showNotification('Ошибка загрузки заданий', 'error');
     }
 }
+// Определяем медленные устройства
+function isSlowDevice() {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+         && /3G|2G|slow|reduce/i.test(navigator.connection.effectiveType);
+}
 
+if (isSlowDevice()) {
+  // Активируем упрощенный режим
+  document.documentElement.classList.add('simplified-mode');
+  
+  // Отключаем тяжелые функции
+  window.addEventListener('load', function() {
+    const heavyElements = document.querySelectorAll('.hero-banner, .complex-animation');
+    heavyElements.forEach(el => el.remove());
+  });
+}
 
 // 🔧 ФУНКЦИЯ ОТОБРАЖЕНИЯ АДМИН-ЗАДАНИЙ
 
