@@ -4351,6 +4351,51 @@ html, body {
         margin-bottom: 5px !important;
     }
 }
+.tasks-tabs {
+    display: flex;
+    margin-bottom: 16px;
+    background: var(--card-bg);
+    border-radius: 14px;
+    padding: 6px;
+    border: 1px solid var(--border);
+    overflow-x: auto;
+    white-space: nowrap;
+    position: relative;
+    z-index: 2;
+}
+
+.task-tab {
+    flex: 1;
+    text-align: center;
+    padding: 8px 6px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    min-width: 70px;
+    border: 1px solid transparent;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+}
+
+.task-tab.active {
+    background: var(--accent) !important;
+    color: white !important;
+    box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.tasks-grid {
+    display: block !important;
+    width: 100% !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.tasks-grid:not(.active) {
+    display: none !important;
+}
     </style>
 </head>
 <body>
@@ -6479,9 +6524,10 @@ function showTaskCategory(category) {
         
         // Загружаем данные для категории
         loadTasksForCategory(category);
+    } else {
+        console.error(`❌ Контейнер ${category}-tasks не найден`);
     }
 }
-
 function getCategoryName(category) {
     const names = {
         'new': 'новые',
@@ -6493,7 +6539,6 @@ function getCategoryName(category) {
 }
 
 
-// В index.html - обновим функцию загрузки отклоненных заданий
 async function loadTasksForCategory(category) {
     try {
         console.log(`🔄 Загружаем задания для категории: ${category} для пользователя:`, currentUser?.id);
@@ -6518,7 +6563,6 @@ async function loadTasksForCategory(category) {
                 endpoint = `/api/user/${currentUser.id}/tasks?status=completed`;
                 break;
             case 'rejected':
-                // Загружаем отклоненные задания
                 endpoint = `/api/user/${currentUser.id}/tasks?status=rejected`;
                 break;
         }
@@ -7342,6 +7386,48 @@ function fixTasksLayout() {
     console.log('✅ Tasks layout fixed');
 }
 function showTasksTab() {
+    console.log('🎯 ПЕРЕХОД НА ВКЛАДКУ ЗАДАНИЙ');
+    
+    // 1. Скрываем все вкладки
+    hideAllTabs();
+    
+    // 2. Показываем вкладку заданий
+    const tasksTab = document.getElementById('tasks-tab');
+    if (tasksTab) {
+        tasksTab.classList.add('active');
+        console.log('✅ Вкладка заданий активирована');
+    }
+    
+    // 3. Обновляем навигацию
+    updateNavState('tasks');
+    
+    // 4. Инициализируем вкладки заданий
+    setTimeout(() => {
+        initializeTaskTabs();
+    }, 50);
+}
+function initializeTaskTabHandlers() {
+    // Обработчики для кнопок категорий
+    const taskTabs = document.querySelectorAll('.task-tab');
+    taskTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const category = getCategoryFromTab(this.textContent);
+            if (category) {
+                showTaskCategory(category);
+            }
+        });
+    });
+}
+
+function getCategoryFromTab(tabText) {
+    const text = tabText.toLowerCase();
+    if (text.includes('новые')) return 'new';
+    if (text.includes('подтверждение')) return 'confirmation';
+    if (text.includes('выполненные')) return 'completed';
+    if (text.includes('отклоненные')) return 'rejected';
+    return null;
+}
+function showTasksTab() {
     console.log('🎯 ПЕРЕХОД НА ВКЛАДКУ ЗАДАНИЙ - НАЧАЛО');
     
     // 1. Скрываем все вкладки
@@ -7612,7 +7698,8 @@ async function initializeApp() {
     }, 1000);
 
 
-
+    // Инициализация вкладок заданий
+    initializeTaskTabHandlers();
 
     // Показываем загрузку
     showNotification('🔄 Подключаемся к серверу...', 'info');
