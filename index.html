@@ -6922,48 +6922,54 @@ if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
     document.body.style['-webkit-overflow-scrolling'] = 'touch';
 }
 
-        // 🔧 HTML ДЛЯ НОВЫХ ЗАДАНИЙ
-        function createNewTaskHTML(task) {
-            const categoryDisplay = formatCategory(task.category);
-            const shortDescription = task.description.length > 120 
-                ? task.description.substring(0, 120) + '...' 
-                : task.description;
-            
-            const peopleRequired = task.people_required || 1;
-            const completedCount = task.completed_count || 0;
-            const availableTasks = Math.max(0, peopleRequired - completedCount);
-            
-            return `
-                ${availableTasks > 0 ? `<div class="task-availability">${availableTasks} осталось</div>` : ''}
-                
-                <div class="task-header">
-                    <div class="task-title">${escapeHtml(task.title)}</div>
-                    <div class="task-price">${task.price} ⭐</div>
-                </div>
-                
-                <div class="task-meta">
-                    <div class="task-category">${categoryDisplay}</div>
-                    ${task.difficulty ? `<div class="task-difficulty ${task.difficulty.toLowerCase()}">${task.difficulty}</div>` : ''}
-                </div>
-                
-                
-                ${peopleRequired > 1 ? `
-                    <div class="task-progress">
-                        <div class="task-progress-bar" style="width: ${Math.min(100, (completedCount / peopleRequired) * 100)}%"></div>
-                    </div>
-                    <div class="task-progress-text">
-                        Выполнено: ${completedCount}/${peopleRequired}
-                    </div>
-                ` : ''}
-                
-                <div class="task-footer">
-                    <div class="task-time">${task.time_to_complete || '5-10 минут'}</div>
-                    <button class="task-btn" onclick="event.stopPropagation(); openTaskModal(${task.id})">
-                        Начать задание
-                    </button>
-                </div>
-            `;
-        }
+// 🔧 HTML ДЛЯ НОВЫХ ЗАДАНИЙ - ОБНОВЛЕННАЯ ВЕРСИЯ
+function createNewTaskHTML(task) {
+    const categoryDisplay = formatCategory(task.category);
+    const shortDescription = task.description.length > 120 
+        ? task.description.substring(0, 120) + '...' 
+        : task.description;
+    
+    const peopleRequired = task.people_required || 1;
+    const completedCount = task.completed_count || 0;
+    const availableTasks = Math.max(0, peopleRequired - completedCount);
+    
+    // 🔥 ОТОБРАЖАЕМ ПРОГРЕСС ВЫПОЛНЕНИЯ
+    const progressPercentage = Math.min(100, (completedCount / peopleRequired) * 100);
+    
+    return `
+        ${availableTasks > 0 ? `<div class="task-availability">${availableTasks} осталось</div>` : ''}
+        
+        <div class="task-header">
+            <div class="task-title">${escapeHtml(task.title)}</div>
+            <div class="task-price">${task.price} ⭐</div>
+        </div>
+        
+        <div class="task-meta">
+            <div class="task-category">${categoryDisplay}</div>
+            ${task.difficulty ? `<div class="task-difficulty ${task.difficulty.toLowerCase()}">${task.difficulty}</div>` : ''}
+        </div>
+        
+        <div class="task-description">${escapeHtml(shortDescription)}</div>
+        
+        <!-- 🔥 ПРОГРЕСС-БАР ВЫПОЛНЕНИЯ ЗАДАНИЯ -->
+        <div class="task-progress-container" style="margin: 10px 0;">
+            <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">
+                <span>Выполнено: ${completedCount}/${peopleRequired}</span>
+                <span>${Math.round(progressPercentage)}%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: ${progressPercentage}%"></div>
+            </div>
+        </div>
+        
+        <div class="task-footer">
+            <div class="task-time">${task.time_to_complete || '5-10 минут'}</div>
+            <button class="task-btn" onclick="event.stopPropagation(); openTaskModal(${task.id})">
+                Начать задание
+            </button>
+        </div>
+    `;
+}
 
         // 🔧 HTML ДЛЯ ЗАДАНИЙ НА ПОДТВЕРЖДЕНИИ
         function createConfirmationTaskHTML(task) {
@@ -8207,7 +8213,7 @@ async function loadTaskVerifications() {
             document.getElementById('verification-modal').classList.add('active');
         }
 
-        // Одобрить задание
+// Одобрить задание - ОБНОВЛЕННАЯ ВЕРСИЯ
 async function approveVerification() {
     if (!currentVerificationId) return;
 
@@ -8223,7 +8229,15 @@ async function approveVerification() {
 
         if (result.success) {
             console.log('✅ Одобрение успешно');
-            showNotification(`✅ Задание одобрено! Пользователь получил ${result.amountAdded}⭐`, 'success');
+            
+            let message = `✅ Задание одобрено! Пользователь получил ${result.amountAdded}⭐`;
+            
+            // 🔥 ДОБАВЛЯЕМ ИНФОРМАЦИЮ ОБ УДАЛЕНИИ ЗАДАНИЯ
+            if (result.taskRemoved) {
+                message += "\n\n🎯 Задание автоматически удалено - достигнут лимит исполнителей!";
+            }
+            
+            showNotification(message, 'success');
             closeModal('verification-modal');
             
             // ОБНОВЛЯЕМ ДАННЫЕ ПОЛЬЗОВАТЕЛЯ
@@ -8232,6 +8246,7 @@ async function approveVerification() {
             // Обновляем списки
             loadTaskVerifications();
             loadUserTasks();
+            loadTasks(); // 🔥 ОБНОВЛЯЕМ СПИСОК ЗАДАНИЙ
             
         } else {
             console.error('❌ Ошибка одобрения:', result.error);

@@ -1499,7 +1499,7 @@ app.delete('/api/posts/:id', async (req, res) => {
 
 // ==================== TASKS ENDPOINTS ====================
 
-// Получение заданий с правильной обработкой изображений
+// Получение заданий с правильной обработкой изображений - ОБНОВЛЕННАЯ ВЕРСИЯ
 app.get('/api/tasks', async (req, res) => {
     const { search, category, userId } = req.query;
     
@@ -1541,8 +1541,15 @@ app.get('/api/tasks', async (req, res) => {
         
         const result = await pool.query(query, params);
         
+        // 🔥 ФИЛЬТРУЕМ ЗАДАНИЯ: показываем только те, которые не достигли лимита исполнителей
+        const availableTasks = result.rows.filter(task => {
+            const completedCount = task.completed_count || 0;
+            const peopleRequired = task.people_required || 1;
+            return completedCount < peopleRequired;
+        });
+        
         // Фильтруем задания: показываем только те, которые пользователь еще не начал
-        const filteredTasks = result.rows.filter(task => !task.user_has_task);
+        const filteredTasks = availableTasks.filter(task => !task.user_has_task);
         
         // 🔧 ИСПРАВЛЕНИЕ: Обеспечиваем правильные URL для изображений
         const tasksWithCorrectedImages = filteredTasks.map(task => {
@@ -1557,12 +1564,13 @@ app.get('/api/tasks', async (req, res) => {
             return task;
         });
         
-        console.log(`✅ Найдено заданий: ${result.rows.length}, доступно пользователю: ${filteredTasks.length}`);
+        console.log(`✅ Найдено заданий: ${result.rows.length}, доступно по лимиту: ${availableTasks.length}, доступно пользователю: ${filteredTasks.length}`);
         
         res.json({
             success: true,
             tasks: tasksWithCorrectedImages,
             totalCount: result.rows.length,
+            availableByLimit: availableTasks.length,
             availableCount: filteredTasks.length
         });
     } catch (error) {
@@ -1907,8 +1915,10 @@ app.post('/api/user/tasks/start', async (req, res) => {
         
         const task = taskInfo.rows[0];
         const peopleRequired = task.people_required || 1;
+        const completedCount = task.completed_count || 0;
         
-        if (task.completed_count >= peopleRequired) {
+        // 🔥 ПРОВЕРЯЕМ ДОСТИГНУТ ЛИ ЛИМИТ ИСПОЛНИТЕЛЕЙ
+        if (completedCount >= peopleRequired) {
             return res.status(400).json({
                 success: false,
                 error: 'Достигнут лимит выполнения этого задания'
@@ -2462,7 +2472,7 @@ app.get('/api/admin/debug-rights', async (req, res) => {
         });
     }
 });
-// Подтверждение задания для ВСЕХ админов
+// Подтверждение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
@@ -2494,6 +2504,27 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
 
         const verificationData = verification.rows[0];
         
+        // Получаем информацию о задании
+        const taskInfo = await pool.query(`
+            SELECT t.*, 
+                   COUNT(ut.id) as completed_count
+            FROM tasks t
+            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
+            WHERE t.id = $1
+            GROUP BY t.id
+        `, [verificationData.task_id]);
+        
+        if (taskInfo.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Task not found'
+            });
+        }
+        
+        const task = taskInfo.rows[0];
+        const peopleRequired = task.people_required || 1;
+        const currentCompletedCount = parseInt(task.completed_count) || 0;
+        
         // Update verification status
         await pool.query(`
             UPDATE task_verifications 
@@ -2520,10 +2551,29 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             WHERE user_id = $2
         `, [verificationData.task_price, verificationData.user_id]);
         
+        // 🔥 ПРОВЕРЯЕМ ДОСТИГНУТ ЛИ ЛИМИТ ИСПОЛНИТЕЛЕЙ
+        const newCompletedCount = currentCompletedCount + 1;
+        
+        if (newCompletedCount >= peopleRequired) {
+            console.log(`🎯 Лимит исполнителей достигнут для задания ${task.id}. Удаляем задание...`);
+            
+            // Автоматически удаляем задание
+            await pool.query(`
+                UPDATE tasks 
+                SET status = 'completed', 
+                    updated_at = CURRENT_TIMESTAMP 
+                WHERE id = $1
+            `, [task.id]);
+            
+            console.log(`✅ Задание ${task.id} автоматически удалено (достигнут лимит: ${peopleRequired} исполнителей)`);
+        }
+        
         res.json({
             success: true,
             message: 'Task approved successfully',
-            amountAdded: verificationData.task_price
+            amountAdded: verificationData.task_price,
+            taskCompleted: newCompletedCount >= peopleRequired,
+            taskRemoved: newCompletedCount >= peopleRequired
         });
     } catch (error) {
         console.error('Approve verification error:', error);
