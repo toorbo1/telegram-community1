@@ -43,6 +43,53 @@ function lazyLoadImages() {
 
     images.forEach(img => imageObserver.observe(img));
 }
+// В начале файла app.js
+console.log('🔧 Initializing Telegram Web App...');
+
+// Проверяем доступность Telegram Web App
+if (typeof window.Telegram !== 'undefined' && window.Telegram.WebApp) {
+    const tg = window.Telegram.WebApp;
+    console.log('✅ Telegram Web App available');
+    
+    // Инициализируем Web App
+    tg.ready();
+    tg.expand();
+    
+    // Получаем данные пользователя
+    const user = tg.initDataUnsafe?.user;
+    if (user) {
+        console.log('👤 Telegram user data:', user);
+        initializeTelegramUser();
+    } else {
+        console.log('❌ No user data in initDataUnsafe');
+        initializeTestUser();
+    }
+} else {
+    console.log('❌ Telegram Web App not available');
+    initializeTestUser();
+}
+// Слушаем изменения в Telegram Web App
+if (typeof window.Telegram !== 'undefined') {
+    const tg = window.Telegram.WebApp;
+    
+    // Обработчик изменения темы
+    tg.onEvent('themeChanged', () => {
+        console.log('🎨 Theme changed');
+        applyTheme();
+    });
+    
+    // Обработчик изменения размера viewport
+    tg.onEvent('viewportChanged', () => {
+        console.log('📱 Viewport changed');
+        tg.expand(); // Всегда расширяем на полный экран
+    });
+    
+    // Обработчик изменения данных
+    tg.onEvent('initDataChanged', () => {
+        console.log('🔄 Telegram data changed, reinitializing...');
+        initializeTelegramUser();
+    });
+}
 // В server.js добавьте
 app.use((req, res, next) => {
     // Кэширование для статических ресурсов
@@ -110,11 +157,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Улучшенная функция для запросов
-// 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ ДЛЯ ЗАПРОСОВ
 async function makeRequest(endpoint, options = {}) {
+    const tg = window.Telegram?.WebApp;
+    const initData = tg?.initData || '';
+    
     try {
-        // Формируем полный URL
         let url;
         if (endpoint.startsWith('http')) {
             url = endpoint;
@@ -126,11 +173,18 @@ async function makeRequest(endpoint, options = {}) {
         
         console.log(`🚀 Making ${options.method || 'GET'} request to: ${url}`);
         
+        // Добавляем Telegram initData в заголовки
+        const headers = {
+            'Content-Type': 'application/json',
+            ...options.headers
+        };
+        
+        if (initData) {
+            headers['X-Telegram-Init-Data'] = initData;
+        }
+        
         const response = await fetch(url, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            },
+            headers,
             ...options
         });
 
@@ -148,7 +202,72 @@ async function makeRequest(endpoint, options = {}) {
         throw error;
     }
 }
+// Функция для проверки состояния Telegram Web App
+function checkWebAppState() {
+    if (typeof window.Telegram === 'undefined') {
+        console.log('❌ Telegram Web App not loaded');
+        return false;
+    }
+    
+    const tg = window.Telegram.WebApp;
+    
+    console.log('🔍 Web App State:', {
+        version: tg.version,
+        platform: tg.platform,
+        colorScheme: tg.colorScheme,
+        viewportHeight: tg.viewportHeight,
+        viewportStableHeight: tg.viewportStableHeight,
+        isExpanded: tg.isExpanded,
+        initData: tg.initData ? 'present' : 'missing',
+        initDataUnsafe: tg.initDataUnsafe ? 'present' : 'missing'
+    });
+    
+    return true;
+}
 
+// Проверяем при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🎯 DOM Content Loaded');
+    
+    if (checkWebAppState()) {
+        // Telegram Web App доступен
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        
+        // Даем время на инициализацию
+        setTimeout(() => {
+            initializeTelegramUser();
+        }, 1000);
+    } else {
+        // Режим тестирования
+        console.log('🔧 Running in test mode');
+        initializeTestUser();
+    }
+});
+// Функция восстановления сессии
+async function restoreSession() {
+    try {
+        // Проверяем сохраненные данные пользователя
+        const savedUser = localStorage.getItem('tg_user_data');
+        if (savedUser) {
+            const userData = JSON.parse(savedUser);
+            console.log('🔄 Restoring saved user session:', userData);
+            
+            // Временно используем сохраненные данные
+            currentUser = userData;
+            displayUserProfile();
+            
+            // Пытаемся синхронизировать с сервером
+            await syncUserProfile();
+        }
+    } catch (error) {
+        console.error('❌ Session restore failed:', error);
+    }
+}
+
+// Вызываем при инициализации
+restoreSession();
 function addTasksDebugButton() {
     const debugBtn = document.createElement('button');
     
@@ -220,45 +339,85 @@ setTimeout(() => {
 
 async function initializeTelegramUser() {
     try {
+        const tg = window.Telegram.WebApp;
+        
         if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
             const tgUser = tg.initDataUnsafe.user;
             
             currentUser = {
-                id: tgUser.id,
+                id: tgUser.id.toString(),
                 firstName: tgUser.first_name || 'Пользователь',
                 lastName: tgUser.last_name || '',
                 username: tgUser.username || `user_${tgUser.id}`,
                 photoUrl: tgUser.photo_url || '',
-                isAdmin: parseInt(tgUser.id) === ADMIN_ID
+                languageCode: tgUser.language_code || 'ru',
+                isPremium: tgUser.is_premium || false
             };
             
-            // Простая аутентификация без реферального кода (он обрабатывается в боте)
+            console.log('✅ Telegram user initialized:', currentUser);
+            
+            // Аутентификация на сервере
             try {
                 const authResult = await makeRequest('/user/auth', {
                     method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
                     body: JSON.stringify({
-                        user: currentUser
+                        user: currentUser,
+                        initData: tg.initData
                     })
                 });
                 
                 if (authResult.success) {
+                    console.log('✅ User authenticated on server');
                     Object.assign(currentUser, authResult.user);
+                } else {
+                    console.log('⚠️ Auth failed, using basic user data');
                 }
             } catch (authError) {
-                console.log('Auth endpoint not available, continuing with basic user data');
+                console.log('⚠️ Auth endpoint not available:', authError.message);
             }
             
             initializeApp();
+            
         } else {
-            console.log('Telegram user data not available');
+            console.log('❌ No user data in initDataUnsafe');
             initializeTestUser();
         }
     } catch (error) {
-        console.error('Error initializing Telegram user:', error);
+        console.error('💥 Error initializing Telegram user:', error);
         initializeTestUser();
     }
 }
+// Функция для принудительной синхронизации профиля
+async function syncUserProfile() {
+    if (!currentUser) return;
+    
+    try {
+        console.log('🔄 Syncing user profile...');
+        
+        const result = await makeRequest(`/user/${currentUser.id}/sync`, {
+            method: 'POST',
+            body: JSON.stringify({
+                user: currentUser,
+                timestamp: Date.now()
+            })
+        });
+        
+        if (result.success) {
+            console.log('✅ Profile synced successfully');
+            // Обновляем данные пользователя
+            Object.assign(currentUser, result.user);
+            displayUserProfile();
+        }
+    } catch (error) {
+        console.error('❌ Profile sync failed:', error);
+    }
+}
 
+// Периодическая синхронизация каждые 30 секунд
+setInterval(syncUserProfile, 30000);
 function debugWithdrawalSystem() {
     console.log('🐛 DEBUG Withdrawal System:');
     console.log('- currentUser:', currentUser); // ← исправлено на английское
