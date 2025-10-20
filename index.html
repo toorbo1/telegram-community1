@@ -5573,30 +5573,30 @@ async function makeRequest(endpoint, options = {}) {
     }
 }
 
-function addTasksDebugButton() {
-    const debugBtn = document.createElement('button');
+// function addTasksDebugButton() {
+//     const debugBtn = document.createElement('button');
     
-    debugBtn.style.position = 'fixed';
-    debugBtn.style.top = '50px';
-    debugBtn.style.right = '10px';
-    debugBtn.style.zIndex = '10000';
-    debugBtn.style.padding = '10px';
-    debugBtn.style.background = '';
-    debugBtn.style.color = 'white';
-    debugBtn.style.border = 'none';
-    debugBtn.style.borderRadius = '5px';
-    debugBtn.style.fontSize = '12px';
-    debugBtn.onclick = function() {
+//     debugBtn.style.position = 'fixed';
+//     debugBtn.style.top = '50px';
+//     debugBtn.style.right = '10px';
+//     debugBtn.style.zIndex = '10000';
+//     debugBtn.style.padding = '10px';
+//     debugBtn.style.background = 'red';
+//     debugBtn.style.color = 'white';
+//     debugBtn.style.border = 'none';
+//     debugBtn.style.borderRadius = '5px';
+//     debugBtn.style.fontSize = '12px';
+//     debugBtn.onclick = function() {
         
-        console.log('- currentUser:', currentUser);
-        console.log('- API_BASE_URL:', API_BASE_URL);
-        loadTasksForCategory('new');
-    };
-    document.body.appendChild(debugBtn);
-}
+//         console.log('- currentUser:', currentUser);
+//         console.log('- API_BASE_URL:', API_BASE_URL);
+//         loadTasksForCategory('new');
+//     };
+//     document.body.appendChild(debugBtn);
+// }
 
-// Вызовите при загрузке
-setTimeout(addTasksDebugButton, 2000);
+// // Вызовите при загрузке
+// setTimeout(addTasksDebugButton, 2000);
 
 // Функция для тестирования endpoint'ов
 async function testEndpoints() {
@@ -7249,31 +7249,31 @@ function debugAdminPanelFull() {
     console.log('- isMainAdmin:', parseInt(currentUser?.id) === ADMIN_ID);
 }
 
-// Вызовем диагностику сразу
-setTimeout(debugAdminPanelFull, 1000);
-// 🔧 КНОПКА ДЛЯ ПРИНУДИТЕЛЬНОГО ИСПРАВЛЕНИЯ
-function addEmergencyFixButton() {
-    const fixBtn = document.createElement('button');
-    fixBtn.textContent = '🚨 FIX ADMIN PANEL';
-    fixBtn.style.position = 'fixed';
-    fixBtn.style.top = '0px';
-    fixBtn.style.right = '0px';
-    fixBtn.style.zIndex = '10000';
-    fixBtn.style.padding = '0px';
-    fixBtn.style.background = '';
-    fixBtn.style.color = 'white';
-    fixBtn.style.border = 'none';
-    fixBtn.style.borderRadius = '5px';
-    fixBtn.style.fontSize = '14px';
-    fixBtn.style.fontWeight = 'bold';
+// // Вызовем диагностику сразу
+// setTimeout(debugAdminPanelFull, 1000);
+// // 🔧 КНОПКА ДЛЯ ПРИНУДИТЕЛЬНОГО ИСПРАВЛЕНИЯ
+// function addEmergencyFixButton() {
+//     const fixBtn = document.createElement('button');
+//     fixBtn.textContent = '🚨 FIX ADMIN PANEL';
+//     fixBtn.style.position = 'fixed';
+//     fixBtn.style.top = '150px';
+//     fixBtn.style.right = '10px';
+//     fixBtn.style.zIndex = '10000';
+//     fixBtn.style.padding = '12px';
+//     fixBtn.style.background = 'red';
+//     fixBtn.style.color = 'white';
+//     fixBtn.style.border = 'none';
+//     fixBtn.style.borderRadius = '5px';
+//     fixBtn.style.fontSize = '14px';
+//     fixBtn.style.fontWeight = 'bold';
     
-    fixBtn.onclick = function() {
-        console.log('🚨 EMERGENCY FIX ACTIVATED');
-        emergencyFixAdminPanel();
-    };
+//     fixBtn.onclick = function() {
+//         console.log('🚨 EMERGENCY FIX ACTIVATED');
+//         emergencyFixAdminPanel();
+//     };
     
-    document.body.appendChild(fixBtn);
-}
+//     document.body.appendChild(fixBtn);
+// }
 
 // 🔧 АВАРИЙНОЕ ИСПРАВЛЕНИЕ АДМИН-ПАНЕЛИ
 function emergencyFixAdminPanel() {
@@ -8243,21 +8243,21 @@ async function approveVerification() {
     }
 }
 // В навигацию добавьте временно кнопку для теста
-function addDebugButton() {
-    const debugBtn = document.createElement('button');
+// function addDebugButton() {
+//     const debugBtn = document.createElement('button');
     
-    debugBtn.style.position = 'fixed';
-    debugBtn.style.top = '10px';
-    debugBtn.style.right = '10px';
-    debugBtn.style.zIndex = '10000';
-    debugBtn.style.padding = '10px';
-    debugBtn.style.background = '';
-    debugBtn.style.color = 'white';
-    debugBtn.style.border = 'none';
-    debugBtn.style.borderRadius = '5px';
-    debugBtn.onclick = debugTasksLoading;
-    document.body.appendChild(debugBtn);
-}
+//     debugBtn.style.position = 'fixed';
+//     debugBtn.style.top = '10px';
+//     debugBtn.style.right = '10px';
+//     debugBtn.style.zIndex = '10000';
+//     debugBtn.style.padding = '10px';
+//     debugBtn.style.background = 'red';
+//     debugBtn.style.color = 'white';
+//     debugBtn.style.border = 'none';
+//     debugBtn.style.borderRadius = '5px';
+//     debugBtn.onclick = debugTasksLoading;
+//     document.body.appendChild(debugBtn);
+// }
 
 // Вызовите в initializeApp()
 addDebugButton();
