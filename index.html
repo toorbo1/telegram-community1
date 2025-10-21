@@ -4382,7 +4382,95 @@ html, body {
         margin-bottom: 5px !important;
     }
 }
+/* 🔧 СТИЛИ ДЛЯ ФИЛЬТРОВ КАТЕГОРИЙ */
+.filters-container {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent) var(--bg-secondary);
+}
 
+.filters-container::-webkit-scrollbar {
+    height: 4px;
+}
+
+.filters-container::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+    border-radius: 2px;
+}
+
+.filters-container::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    border-radius: 2px;
+}
+
+.filter-btn {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.filter-btn:hover {
+    border-color: var(--accent);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+}
+
+.filter-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+/* Стили для информации о фильтрах */
+#filter-info {
+    margin: 10px 0;
+    padding: 12px;
+    background: var(--bg-secondary);
+    border-radius: 10px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 3px solid var(--accent);
+}
+
+/* Адаптивность для мобильных */
+@media (max-width: 480px) {
+    .filters-container {
+        gap: 6px;
+        margin-bottom: 12px;
+    }
+    
+    .filter-btn {
+        padding: 6px 10px;
+        font-size: 11px;
+    }
+    
+    #filter-info {
+        padding: 10px;
+        font-size: 13px;
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-start;
+    }
+    
+    #filter-info button {
+        align-self: flex-end;
+    }
+}
     </style>
 </head>
 <body>
@@ -4543,13 +4631,14 @@ html, body {
         </div>
         
         <div class="filters-container fade-in">
-            <button class="filter-btn active" data-filter="all">Все</button>
-            <button class="filter-btn" data-filter="social">Соцсети</button>
-            <button class="filter-btn" data-filter="subscribe">Подписки</button>
-            <button class="filter-btn" data-filter="view">Просмотры</button>
-            <button class="filter-btn" data-filter="comment">Комментарии</button>
-            <button class="filter-btn" data-filter="repost">Репосты</button>
-        </div>
+    <button class="filter-btn active" data-filter="all" onclick="filterTasks('all')">Все</button>
+    <button class="filter-btn" data-filter="social" onclick="filterTasks('social')">Соцсети</button>
+    <button class="filter-btn" data-filter="subscribe" onclick="filterTasks('subscribe')">Подписки</button>
+    <button class="filter-btn" data-filter="view" onclick="filterTasks('view')">Просмотры</button>
+    <button class="filter-btn" data-filter="comment" onclick="filterTasks('comment')">Комментарии</button>
+    <button class="filter-btn" data-filter="repost" onclick="filterTasks('repost')">Репосты</button>
+</div>
+
         
           <!-- Новые задания -->
     <div id="new-tasks" class="tasks-grid active" style="display: block;">
@@ -6149,6 +6238,322 @@ async function checkUserIsAdmin(userId) {
         return false;
     }
 }
+// 🔧 ФУНКЦИЯ ФИЛЬТРАЦИИ ЗАДАНИЙ ПО КАТЕГОРИЯМ
+function filterTasks(category) {
+    console.log('🎯 Filtering tasks by category:', category);
+    
+    // Обновляем активную кнопку
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    // Получаем текущий поисковый запрос
+    const searchText = document.getElementById('task-search').value.trim();
+    
+    // Загружаем задания с фильтром
+    loadTasks(searchText, category);
+}
+
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ ЗАДАНИЙ С ФИЛЬТРАЦИЕЙ
+async function loadTasks(search = '', category = 'all') {
+    try {
+        console.log('🎯 START loadTasks with filter:', { 
+            search, 
+            category, 
+            userId: currentUser?.id
+        });
+
+        if (!currentUser) {
+            console.log('❌ No current user, aborting loadTasks');
+            showNotification('Пользователь не авторизован', 'error');
+            return;
+        }
+
+        const newTasksContainer = document.getElementById('new-tasks');
+        if (!newTasksContainer) {
+            console.log('❌ new-tasks container not found');
+            return;
+        }
+
+        // Показываем индикатор загрузки
+        newTasksContainer.innerHTML = `
+            <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                <div class="loading-spinner">⏳</div>
+                <div style="margin-top: 16px;">Загружаем задания...</div>
+                ${category !== 'all' ? `<div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">Фильтр: ${getCategoryDisplayName(category)}</div>` : ''}
+            </div>
+        `;
+
+        // Формируем URL с фильтрами
+        const params = new URLSearchParams();
+        params.append('userId', currentUser.id);
+        if (search) params.append('search', search);
+        if (category && category !== 'all') params.append('category', category);
+        
+        const url = `/api/tasks?${params.toString()}`;
+        console.log('📡 Request URL:', url);
+
+        const response = await fetch(API_BASE_URL + url);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        console.log('📨 Server response:', result);
+
+        if (result.success) {
+            allTasks = result.tasks || [];
+            console.log(`✅ Loaded ${allTasks.length} tasks with filter:`, { category, search });
+            
+            // Отображаем отфильтрованные задания
+            displayFilteredTasks(allTasks, category, search);
+            
+        } else {
+            throw new Error(result.error || 'Unknown server error');
+        }
+
+    } catch (error) {
+        console.error('💥 loadTasks error:', error);
+        
+        const newTasksContainer = document.getElementById('new-tasks');
+        if (newTasksContainer) {
+            newTasksContainer.innerHTML = `
+                <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">❌</div>
+                    <div>Ошибка загрузки заданий</div>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin: 8px 0;">
+                        ${error.message}
+                    </div>
+                    <button class="btn btn-primary" onclick="loadTasks()" style="margin-top: 16px;">
+                        Попробовать снова
+                    </button>
+                </div>
+            `;
+        }
+        
+        showNotification(`Ошибка загрузки заданий: ${error.message}`, 'error');
+    }
+}
+
+// 🔧 ФУНКЦИЯ ОТОБРАЖЕНИЯ ОТФИЛЬТРОВАННЫХ ЗАДАНИЙ
+function displayFilteredTasks(tasks, category, search) {
+    const container = document.getElementById('new-tasks');
+    if (!container) {
+        console.error('❌ Container not found');
+        return;
+    }
+    
+    container.innerHTML = '';
+    
+    // Фильтруем задачи если нужно (на сервере уже отфильтровано, но для надежности)
+    let filteredTasks = tasks;
+    
+    if (search) {
+        const searchLower = search.toLowerCase();
+        filteredTasks = tasks.filter(task => 
+            task.title.toLowerCase().includes(searchLower) ||
+            task.description.toLowerCase().includes(searchLower) ||
+            (task.category && task.category.toLowerCase().includes(searchLower))
+        );
+    }
+    
+    if (!filteredTasks || filteredTasks.length === 0) {
+        let message = 'Заданий не найдено';
+        if (search && category !== 'all') {
+            message = `Нет заданий в категории "${getCategoryDisplayName(category)}" по запросу "${search}"`;
+        } else if (search) {
+            message = `Нет заданий по запросу "${search}"`;
+        } else if (category !== 'all') {
+            message = `Нет заданий в категории "${getCategoryDisplayName(category)}"`;
+        }
+        
+        container.innerHTML = `
+            <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; text-align: center;">
+                <div style="font-size: 48px; margin-bottom: 16px;">🔍</div>
+                <div style="font-size: 18px; margin-bottom: 8px;">${message}</div>
+                <div style="font-size: 14px; color: var(--text-secondary);">
+                    Попробуйте изменить поисковый запрос или выбрать другую категорию
+                </div>
+                <button class="btn btn-primary" onclick="clearFilters()" style="margin-top: 16px;">
+                    Сбросить фильтры
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    console.log(`🎨 Rendering ${filteredTasks.length} filtered tasks...`);
+    
+    filteredTasks.forEach((task, index) => {
+        const taskElement = createTaskCardWithImage(task, 'new', index);
+        container.appendChild(taskElement);
+    });
+    
+    // Показываем информацию о фильтрах
+    showFilterInfo(category, search, filteredTasks.length);
+}
+
+// 🔧 ФУНКЦИЯ ДЛЯ ОТОБРАЖЕНИЯ ИНФОРМАЦИИ О ФИЛЬТРАХ
+function showFilterInfo(category, search, count) {
+    // Создаем или обновляем элемент информации о фильтрах
+    let filterInfo = document.getElementById('filter-info');
+    if (!filterInfo) {
+        filterInfo = document.createElement('div');
+        filterInfo.id = 'filter-info';
+        filterInfo.style.cssText = `
+            margin: 10px 0;
+            padding: 10px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        `;
+        
+        const container = document.getElementById('new-tasks');
+        if (container) {
+            container.parentNode.insertBefore(filterInfo, container);
+        }
+    }
+    
+    let filterText = '';
+    if (category !== 'all' && search) {
+        filterText = `Категория: ${getCategoryDisplayName(category)} • Поиск: "${search}"`;
+    } else if (category !== 'all') {
+        filterText = `Категория: ${getCategoryDisplayName(category)}`;
+    } else if (search) {
+        filterText = `Поиск: "${search}"`;
+    } else {
+        filterText = 'Все задания';
+    }
+    
+    filterInfo.innerHTML = `
+        <span>${filterText} • Найдено: ${count}</span>
+        ${(category !== 'all' || search) ? `
+            <button class="btn btn-secondary" onclick="clearFilters()" style="padding: 4px 8px; font-size: 12px;">
+                ✕ Сбросить
+            </button>
+        ` : ''}
+    `;
+}
+
+// 🔧 ФУНКЦИЯ СБРОСА ФИЛЬТРОВ
+function clearFilters() {
+    console.log('🔄 Clearing all filters');
+    
+    // Сбрасываем поле поиска
+    const searchInput = document.getElementById('task-search');
+    if (searchInput) {
+        searchInput.value = '';
+    }
+    
+    // Сбрасываем кнопки категорий
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector('.filter-btn[data-filter="all"]').classList.add('active');
+    
+    // Удаляем информацию о фильтрах
+    const filterInfo = document.getElementById('filter-info');
+    if (filterInfo) {
+        filterInfo.remove();
+    }
+    
+    // Загружаем все задания
+    loadTasks();
+}
+
+// 🔧 ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ ОТОБРАЖАЕМОГО ИМЕНИ КАТЕГОРИИ
+function getCategoryDisplayName(category) {
+    const categoryMap = {
+        'all': 'Все',
+        'social': 'Соцсети',
+        'subscribe': 'Подписки',
+        'view': 'Просмотры',
+        'comment': 'Комментарии',
+        'repost': 'Репосты',
+        'other': 'Другое'
+    };
+    
+    return categoryMap[category] || category;
+}
+
+// 🔧 ОБНОВЛЕННАЯ ИНИЦИАЛИЗАЦИЯ ПОИСКА
+function initializeSearch() {
+    const searchInput = document.getElementById('task-search');
+    if (searchInput) {
+        let searchTimeout;
+        searchInput.addEventListener('input', function(e) {
+            clearTimeout(searchTimeout);
+            const searchText = e.target.value.trim();
+            
+            searchTimeout = setTimeout(() => {
+                const activeFilter = document.querySelector('.filter-btn.active');
+                const filter = activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
+                
+                loadTasks(searchText, filter);
+            }, 300);
+        });
+    }
+    
+    // Обработчики для кнопок фильтров уже установлены через onclick
+    console.log('✅ Search and filters initialized');
+}
+
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ПОКАЗА КАТЕГОРИИ ЗАДАНИЙ
+function showTaskCategory(category) {
+    console.log('🔄 Switching to category:', category);
+    
+    // Скрываем все вкладки
+    const tabs = document.querySelectorAll('.task-tab');
+    const containers = document.querySelectorAll('.tasks-grid');
+    
+    tabs.forEach(tab => tab.classList.remove('active'));
+    containers.forEach(container => {
+        container.classList.remove('active');
+        container.style.display = 'none';
+    });
+    
+    // Активируем выбранную вкладку
+    const activeTab = Array.from(tabs).find(tab => 
+        tab.textContent.toLowerCase().includes(getCategoryName(category))
+    );
+    if (activeTab) {
+        activeTab.classList.add('active');
+    }
+    
+    // Показываем выбранный контейнер
+    const targetContainer = document.getElementById(`${category}-tasks`);
+    if (targetContainer) {
+        targetContainer.classList.add('active');
+        targetContainer.style.display = 'block';
+        console.log(`✅ Контейнер ${category}-tasks показан`);
+        
+        // Сбрасываем фильтры при переключении категорий
+        if (category === 'new') {
+            // Для новых заданий загружаем с текущими фильтрами
+            const searchText = document.getElementById('task-search').value.trim();
+            const activeFilter = document.querySelector('.filter-btn.active');
+            const filter = activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
+            
+            loadTasks(searchText, filter);
+        } else {
+            // Для других категорий просто загружаем задания
+            loadTasksForCategory(category);
+        }
+    } else {
+        console.error(`❌ Контейнер ${category}-tasks не найден`);
+    }
+}
+
+// 🔧 ЭКСПОРТ ФУНКЦИЙ
+window.filterTasks = filterTasks;
+window.clearFilters = clearFilters;
+window.loadTasks = loadTasks;
 
 // 📝 Функция создания поста (для всех админов)
 async function addNewPostAsAdmin() {
