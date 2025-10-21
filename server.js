@@ -118,25 +118,7 @@ async function checkAdminAccess(userId) {
 async function initDatabase() {
     try {
         console.log('🔄 Initializing simplified database...');
-        // В функции initDatabase() добавьте:
-await pool.query(`
-    ALTER TABLE support_messages 
-    ADD COLUMN IF NOT EXISTS moscow_time TEXT
-`);
-// В initDatabase() добавьте:
-await pool.query(`
-    ALTER TABLE task_verifications 
-    ADD COLUMN IF NOT EXISTS moscow_time TEXT
-`);
-
-// Обновите запрос создания записи проверки:
-const moscowTime = getMoscowTime();
-const verificationResult = await pool.query(`
-    INSERT INTO task_verifications 
-    (user_task_id, user_id, task_id, user_name, user_username, task_title, task_price, screenshot_url, moscow_time) 
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-    RETURNING *
-`, [userTaskId, taskData.user_id, taskData.task_id, userName, taskData.username, taskData.title, taskData.price, screenshotUrl, moscowTime]);
+        
         // Таблица пользователей
         await pool.query(`
             CREATE TABLE IF NOT EXISTS user_profiles (
@@ -1768,41 +1750,6 @@ app.post('/api/test-task', async (req, res) => {
         });
     }
 });
-// Функция для обновления текущего времени в реальном времени
-function updateCurrentTime() {
-    const timeElement = document.getElementById('current-moscow-time');
-    if (timeElement) {
-        timeElement.textContent = getCurrentMoscowTime();
-    }
-}
-
-// Создайте элемент для отображения времени в админ-панели
-function createTimeDisplay() {
-    const adminHeader = document.querySelector('.admin-buttons');
-    if (adminHeader) {
-        const timeElement = document.createElement('div');
-        timeElement.id = 'current-moscow-time';
-        timeElement.style.cssText = `
-            text-align: center;
-            font-size: 14px;
-            color: var(--text-secondary);
-            margin: 10px 0;
-            padding: 8px;
-            background: var(--bg-secondary);
-            border-radius: 8px;
-            font-weight: 600;
-        `;
-        timeElement.textContent = getCurrentMoscowTime();
-        adminHeader.parentNode.insertBefore(timeElement, adminHeader.nextSibling);
-    }
-}
-
-// Инициализация при загрузке
-document.addEventListener('DOMContentLoaded', function() {
-    createTimeDisplay();
-    // Обновляем время каждую минуту
-    setInterval(updateCurrentTime, 60000);
-});
 // Check database structure
 app.get('/api/debug/database', async (req, res) => {
     try {
@@ -2209,19 +2156,7 @@ app.get('/api/support/chats/:chatId/messages', async (req, res) => {
     }
 });
 
-// Функция для получения московского времени
-function getMoscowTime() {
-    const now = new Date();
-    // UTC+3 для Москвы
-    const moscowTime = new Date(now.getTime() + (3 * 60 * 60 * 1000));
-    return moscowTime.toLocaleTimeString('ru-RU', {
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZone: 'Europe/Moscow'
-    }) + ' (МСК)';
-}
-
-// Send message to chat - ОБНОВЛЕННАЯ ВЕРСИЯ С МОСКОВСКИМ ВРЕМЕНЕМ
+// Send message to chat - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.post('/api/support/chats/:chatId/messages', async (req, res) => {
     const chatId = req.params.chatId;
     const { user_id, user_name, user_username, message, is_admin } = req.body;
@@ -2234,14 +2169,12 @@ app.post('/api/support/chats/:chatId/messages', async (req, res) => {
     }
 
     try {
-        const moscowTime = getMoscowTime();
-        
         // Save message
         const result = await pool.query(`
-            INSERT INTO support_messages (chat_id, user_id, user_name, user_username, message, is_admin, moscow_time) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            INSERT INTO support_messages (chat_id, user_id, user_name, user_username, message, is_admin) 
+            VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
-        `, [chatId, user_id, user_name, user_username, message, is_admin || false, moscowTime]);
+        `, [chatId, user_id, user_name, user_username, message, is_admin || false]);
 
         // Update chat last message
         await pool.query(`
@@ -2254,8 +2187,7 @@ app.post('/api/support/chats/:chatId/messages', async (req, res) => {
         res.json({
             success: true,
             message: 'Message sent',
-            messageId: result.rows[0].id,
-            moscowTime: moscowTime
+            messageId: result.rows[0].id
         });
     } catch (error) {
         console.error('Send message error:', error);
