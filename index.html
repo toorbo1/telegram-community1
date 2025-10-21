@@ -7,9 +7,10 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
            <style>
-            /* 🔥 ЭФФЕКТ МАТОВОГО СТЕКЛА ДЛЯ ВСЕХ БЛОКОВ */
+            
+            /* 🔥 ЭФФЕКТ ПАРЯЩИХ МАТОВЫХ СТЕКОЛ С ОТРАЖЕНИЕМ ТЕНИ */
 
-/* Основной эффект для всех карточек */
+/* Базовый эффект парения для всех карточек */
 .card, 
 .task-card, 
 .profile-stat, 
@@ -38,40 +39,99 @@
     border: 1px solid rgba(255, 255, 255, 0.125) !important;
     position: relative;
     z-index: 1;
+    
+    /* Эффект парения с многослойной тенью */
+    box-shadow: 
+        /* Основная тень */
+        0 25px 50px -12px rgba(0, 0, 0, 0.4),
+        /* Внутреннее свечение */
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.2),
+        /* Акцентная тень */
+        0 0 0 1px rgba(255, 255, 255, 0.05),
+        /* Отраженная тень на фон */
+        0 15px 35px -10px rgba(0, 0, 0, 0.3) !important;
+    
+    transform: translateY(0) scale(1);
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-/* Улучшенный эффект для навигации */
+/* Эффект подъема при наведении
+.card:hover, 
+.task-card:hover, 
+.profile-stat:hover, 
+.admin-section:hover,
+.stat-card:hover,
+.post-item:hover,
+.exchange-card:hover,
+.post-promo:hover,
+.verification-item:hover,
+.chat-item:hover,
+.admin-task-item:hover,
+.about-feature:hover,
+.profile-action:hover {
+    transform: translateY(-8px) scale(1.02) !important;
+    box-shadow: 
+        0 35px 60px -15px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(255, 255, 255, 0.08),
+        0 25px 45px -15px rgba(0, 0, 0, 0.4) !important;
+} */
+
+/* Усиленный эффект для навигации */
 .bottom-nav {
     background: rgba(25, 25, 50, 0.8) !important;
     backdrop-filter: blur(25px) saturate(200%) !important;
     -webkit-backdrop-filter: blur(25px) saturate(200%) !important;
     border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    
+    box-shadow: 
+        0 -20px 40px rgba(0, 0, 0, 0.3),
+        0 -5px 15px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        0 0 20px rgba(99, 102, 241, 0.1) !important;
 }
 
-/* Эффект для модальных окон */
+/* Эффект для модальных окон с усиленной тенью */
 .modal {
     background: rgba(5, 5, 16, 0.85) !important;
     backdrop-filter: blur(15px) !important;
     -webkit-backdrop-filter: blur(15px) !important;
 }
 
-/* Эффект для герой-баннера */
+.modal-content {
+    box-shadow: 
+        0 50px 100px -20px rgba(0, 0, 0, 0.6),
+        0 30px 60px -30px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        0 0 0 1px rgba(255, 255, 255, 0.05),
+        0 0 50px rgba(99, 102, 241, 0.1) !important;
+    
+    transform: translateY(20px) scale(0.95);
+    opacity: 0;
+    transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modal.active .modal-content {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+}
+
+/* Эффект для герой-баннера с парящим эффектом */
 .hero-banner {
     background: rgba(26, 26, 58, 0.6) !important;
     backdrop-filter: blur(15px) !important;
     -webkit-backdrop-filter: blur(15px) !important;
+    
+    box-shadow: 
+        0 20px 40px rgba(0, 0, 0, 0.3),
+        0 10px 25px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        0 0 30px rgba(99, 102, 241, 0.15) !important;
 }
 
-/* Эффект для вкладок */
-.tasks-tabs,
-.task-tab.active,
-.filter-btn.active {
-    background: rgba(30, 30, 60, 0.7) !important;
-    backdrop-filter: blur(15px) !important;
-    -webkit-backdrop-filter: blur(15px) !important;
-}
-
-/* Эффект для кнопок */
+/* Эффект для кнопок с парящим состоянием */
 .btn,
 .task-btn,
 .admin-btn,
@@ -89,6 +149,26 @@
     backdrop-filter: blur(10px) !important;
     -webkit-backdrop-filter: blur(10px) !important;
     border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    
+    box-shadow: 
+        0 8px 20px rgba(99, 102, 241, 0.3),
+        0 4px 10px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+        0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+    
+    transform: translateY(0);
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.btn:hover,
+.task-btn:hover,
+.admin-btn:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: 
+        0 12px 25px rgba(99, 102, 241, 0.4),
+        0 6px 15px rgba(0, 0, 0, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.25),
+        0 0 0 1px rgba(255, 255, 255, 0.15) !important;
 }
 
 /* Специальные эффекты для золотых кнопок */
@@ -99,9 +179,15 @@
     ) !important;
     backdrop-filter: blur(15px) !important;
     -webkit-backdrop-filter: blur(15px) !important;
+    
+    box-shadow: 
+        0 8px 20px rgba(255, 215, 0, 0.4),
+        0 4px 10px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3),
+        0 0 0 1px rgba(255, 255, 255, 0.15) !important;
 }
 
-/* Эффект для полей ввода */
+/* Эффект для полей ввода с легким парением */
 .admin-input, 
 .search-input, 
 .chat-input input,
@@ -111,55 +197,74 @@
     backdrop-filter: blur(10px) !important;
     -webkit-backdrop-filter: blur(10px) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    
+    box-shadow: 
+        0 4px 15px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05),
+        0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+    
+    transition: all 0.3s ease;
 }
 
-/* Эффект для уведомлений */
+.admin-input:focus, 
+.search-input:focus, 
+.chat-input input:focus {
+    transform: translateY(-2px);
+    box-shadow: 
+        0 6px 20px rgba(0, 0, 0, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        0 0 0 1px rgba(99, 102, 241, 0.3) !important;
+}
+
+/* Эффект для уведомлений с парящей анимацией */
 .notification {
     background: rgba(99, 102, 241, 0.9) !important;
     backdrop-filter: blur(20px) !important;
     -webkit-backdrop-filter: blur(20px) !important;
     border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    
+    box-shadow: 
+        0 20px 40px rgba(0, 0, 0, 0.3),
+        0 10px 25px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+        0 0 20px rgba(99, 102, 241, 0.3) !important;
+    
+    animation: floatIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
-/* Эффект для прогресс-баров */
-.progress-bar {
-    background: rgba(255, 255, 255, 0.1) !important;
-    backdrop-filter: blur(5px) !important;
-    -webkit-backdrop-filter: blur(5px) !important;
+@keyframes floatIn {
+    from {
+        opacity: 0;
+        transform: translateX(100%) translateY(20px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) translateY(0) scale(1);
+    }
 }
 
-/* Эффект для аватаров */
-.profile-avatar,
-.chat-avatar-small,
-.verification-avatar,
-.admin-chat-avatar {
-    background: rgba(99, 102, 241, 0.8) !important;
-    backdrop-filter: blur(10px) !important;
-    -webkit-backdrop-filter: blur(10px) !important;
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+/* Эффект для статус-карточек с усиленным парением */
+.stat-card {
+    transform: translateY(0) scale(1);
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-/* Эффект для сообщений в чате */
-.message {
-    backdrop-filter: blur(15px) !important;
-    -webkit-backdrop-filter: blur(15px) !important;
+.stat-card:hover {
+    transform: translateY(-10px) scale(1.05) !important;
 }
 
-.message-admin {
-    background: rgba(30, 30, 60, 0.7) !important;
-}
-
-.message-user {
-    background: rgba(99, 102, 241, 0.7) !important;
-}
-
-/* Эффект для статус-карточек */
 .stat-card.balance-card {
     background: linear-gradient(135deg, 
         rgba(139, 92, 246, 0.7), 
         rgba(124, 58, 237, 0.7), 
         rgba(109, 40, 217, 0.7)
     ) !important;
+    
+    box-shadow: 
+        0 20px 40px rgba(139, 92, 246, 0.3),
+        0 10px 25px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+        0 0 20px rgba(139, 92, 246, 0.2) !important;
 }
 
 .stat-card.support-card {
@@ -168,6 +273,12 @@
         rgba(3, 105, 161, 0.7), 
         rgba(7, 89, 133, 0.7)
     ) !important;
+    
+    box-shadow: 
+        0 20px 40px rgba(14, 165, 233, 0.3),
+        0 10px 25px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+        0 0 20px rgba(14, 165, 233, 0.2) !important;
 }
 
 /* Эффект для карточек обмена */
@@ -176,44 +287,88 @@
         rgba(255, 215, 0, 0.7), 
         rgba(255, 183, 0, 0.7)
     ) !important;
-}
-
-/* Эффект для постов */
-.post-promo {
-    background: rgba(30, 30, 60, 0.7) !important;
-}
-
-/* Улучшенные тени для глубины */
-.card, 
-.task-card, 
-.profile-stat, 
-.admin-section,
-.stat-card,
-.modal-content {
+    
     box-shadow: 
-        0 8px 32px rgba(0, 0, 0, 0.3),
-        0 2px 8px rgba(255, 255, 255, 0.05) inset !important;
+        0 20px 40px rgba(255, 215, 0, 0.3),
+        0 10px 25px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3),
+        0 0 20px rgba(255, 215, 0, 0.2) !important;
 }
 
-/* Анимация появления для плавности */
+/* Эффект для сообщений в чате */
+.message {
+    backdrop-filter: blur(15px) !important;
+    -webkit-backdrop-filter: blur(15px) !important;
+    transform: translateY(0);
+    transition: all 0.3s ease;
+}
+
+.message:hover {
+    transform: translateY(-2px);
+}
+
+.message-admin {
+    background: rgba(30, 30, 60, 0.7) !important;
+    box-shadow: 
+        0 8px 20px rgba(0, 0, 0, 0.2),
+        0 4px 10px rgba(0, 0, 0, 0.1) !important;
+}
+
+.message-user {
+    background: rgba(99, 102, 241, 0.7) !important;
+    box-shadow: 
+        0 8px 20px rgba(99, 102, 241, 0.3),
+        0 4px 10px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Анимация появления с эффектом парения */
 .card, 
 .task-card, 
 .profile-stat, 
 .admin-section {
-    animation: glassAppear 0.6s ease-out;
+    animation: glassFloatIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
-@keyframes glassAppear {
+@keyframes glassFloatIn {
     from {
         opacity: 0;
-        transform: translateY(20px) scale(0.95);
+        transform: translateY(30px) scale(0.9);
         backdrop-filter: blur(0px);
+        box-shadow: 0 0 0 rgba(0, 0, 0, 0);
     }
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
         backdrop-filter: blur(20px);
+        box-shadow: 
+            0 25px 50px -12px rgba(0, 0, 0, 0.4),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1),
+            inset 0 -1px 0 rgba(0, 0, 0, 0.2),
+            0 0 0 1px rgba(255, 255, 255, 0.05),
+            0 15px 35px -10px rgba(0, 0, 0, 0.3);
     }
+}
+
+/* Эффект отражения тени на фон */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        radial-gradient(ellipse at 20% 20%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+        radial-gradient(ellipse at 40% 40%, rgba(14, 165, 233, 0.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* Динамические тени при движении мыши */
+body {
+    position: relative;
+    overflow-x: hidden;
 }
 
 /* Оптимизация для мобильных устройств */
@@ -224,12 +379,29 @@
     .admin-section,
     .stat-card {
         backdrop-filter: blur(15px) saturate(160%) !important;
-        -webkit-backpack-filter: blur(15px) saturate(160%) !important;
+        -webkit-backdrop-filter: blur(15px) saturate(160%) !important;
+        
+        box-shadow: 
+            0 15px 30px rgba(0, 0, 0, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1),
+            inset 0 -1px 0 rgba(0, 0, 0, 0.2),
+            0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+    }
+    
+    .card:hover, 
+    .task-card:hover, 
+    .profile-stat:hover {
+        transform: translateY(-4px) scale(1.01) !important;
     }
     
     .bottom-nav {
         backdrop-filter: blur(20px) saturate(180%) !important;
         -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+        
+        box-shadow: 
+            0 -10px 25px rgba(0, 0, 0, 0.25),
+            0 -3px 10px rgba(0, 0, 0, 0.15),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
     }
 }
 
@@ -241,14 +413,9 @@
     .admin-section,
     .stat-card {
         background: rgba(20, 20, 40, 0.95) !important;
-    }
-    
-    .bottom-nav {
-        background: rgba(25, 25, 50, 0.95) !important;
-    }
-    
-    .modal {
-        background: rgba(5, 5, 16, 0.95) !important;
+        box-shadow: 
+            0 20px 40px rgba(0, 0, 0, 0.4),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
     }
 }
             /* ОТКЛЮЧИТЕ СЛОЖНЫЕ АНИМАЦИИ НА МОБИЛЬНЫХ */
