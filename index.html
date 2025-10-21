@@ -6403,11 +6403,10 @@ setTimeout(debugAdminRights, 2000);
             }
         }
 
-// Обновление реферальной системы
 function updateReferralSystem() {
     if (!currentUser) return;
     
-    // Генерируем реферальную ссылку для бота
+    // Генерируем правильную реферальную ссылку
     const referralCode = currentUser.referral_code || `ref_${currentUser.id}`;
     const referralLink = `https://t.me/LinkGoldMoney_bot?start=${referralCode}`;
     
@@ -6424,7 +6423,6 @@ function updateReferralSystem() {
     const referralInfo = document.querySelector('.referral-info');
     if (referralInfo) {
         referralInfo.innerHTML = `
-            
             🎁 Вы получаете: <strong>20⭐</strong> за друга<br>
             🎁 Друг получает: <strong>10⭐</strong> при регистрации<br><br>
             🔗 Просто отправьте другу эту ссылку в Telegram
