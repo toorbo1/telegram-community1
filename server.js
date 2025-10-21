@@ -118,13 +118,7 @@ async function checkAdminAccess(userId) {
 async function initDatabase() {
     try {
         console.log('🔄 Initializing simplified database...');
-        // Добавьте в таблицу user_profiles если нет
-await pool.query(`
-    ALTER TABLE user_profiles 
-    ADD COLUMN IF NOT EXISTS tasks_completed INTEGER DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS experience INTEGER DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1
-`);
+        
         // Таблица пользователей
         await pool.query(`
             CREATE TABLE IF NOT EXISTS user_profiles (
@@ -625,7 +619,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                     inline_keyboard: [
                         [
                             {
-                                text: '🚀 Начать зарабатывать',
+                                text: '',
                                 url: APP_URL
                             }
                         ],
@@ -645,7 +639,6 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         await bot.sendMessage(chatId, '❌ Произошла ошибка при регистрации. Попробуйте позже.');
     }
 });
-
 // Команда для получения реферальной ссылки
 bot.onText(/\/referral/, async (msg) => {
     const chatId = msg.chat.id;
@@ -2456,32 +2449,7 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
                 success: false,
                 error: 'Verification not found'
             });
-        
         }
- // Update user balance and stats - ОБНОВЛЕННАЯ ВЕРСИЯ
-        await pool.query(`
-            UPDATE user_profiles 
-            SET 
-                balance = COALESCE(balance, 0) + $1,
-                tasks_completed = COALESCE(tasks_completed, 0) + 1,
-                active_tasks = GREATEST(COALESCE(active_tasks, 0) - 1, 0),
-                experience = COALESCE(experience, 0) + 10, // Добавляем опыт
-                level = CASE 
-                    WHEN COALESCE(tasks_completed, 0) + 1 >= 100 THEN 10
-                    WHEN COALESCE(tasks_completed, 0) + 1 >= 90 THEN 9
-                    WHEN COALESCE(tasks_completed, 0) + 1 >= 80 THEN 8
-                    WHEN COALESCE(tasks_completed, 0) + 1 >= 70 THEN 7
-                    WHEN COALESCE(tasks_completed, 0) + 1 >= 60 THEN 6
-                    WHEN COALESCE(tasks_completed, 0) + 1 >= 50 THEN 5
-                    WHEN COALESCE(tasks_completed, 0) + 1 >= 40 THEN 4
-                    WHEN COALESCE(tasks_completed, 0) + 1 >= 30 THEN 3
-                    WHEN COALESCE(tasks_completed, 0) + 1 >= 20 THEN 2
-                    WHEN COALESCE(tasks_completed, 0) + 1 >= 10 THEN 1
-                    ELSE 1
-                END,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = $2
-        `, [verificationData.task_price, verificationData.user_id]);
 
         const verificationData = verification.rows[0];
         

@@ -6321,28 +6321,25 @@ setTimeout(debugAdminRights, 2000);
             }, 30000);
         }
 
-        // В функции updateUserData добавьте:
-async function updateUserData() {
-    if (!currentUser) return;
-    
-    try {
-        const result = await makeRequest(`/user/${currentUser.id}`);
-        if (result.success) {
-            // Обновляем текущего пользователя
-            currentUser = { ...currentUser, ...result.profile };
+        // Обновление данных пользователя
+        async function updateUserData() {
+            if (!currentUser) return;
             
-            // Обновляем отображение во всех местах
-            displayUserProfile();
-            
-            // 🔥 ОБНОВЛЯЕМ УРОВЕНЬ
-            updateLevelProgress();
-            
-            console.log('✅ Данные пользователя обновлены:', currentUser.balance);
+            try {
+                const result = await makeRequest(`/user/${currentUser.id}`);
+                if (result.success) {
+                    // Обновляем текущего пользователя
+                    currentUser = { ...currentUser, ...result.profile };
+                    
+                    // Обновляем отображение во всех местах
+                    displayUserProfile();
+                    
+                    console.log('✅ Данные пользователя обновлены:', currentUser.balance);
+                }
+            } catch (error) {
+                console.error('Ошибка обновления данных пользователя:', error);
+            }
         }
-    } catch (error) {
-        console.error('Ошибка обновления данных пользователя:', error);
-    }
-}
 
         // Отображение профиля пользователя
         function displayUserProfile() {
@@ -6388,27 +6385,23 @@ async function updateUserData() {
                 }
             }
             
-    // 🔥 ДОБАВЬТЕ ЭТИ СТРОКИ:
-    updateProfileStats();
-    updateLevelProgress();
-    updateReferralSystem();
-}
+            updateProfileStats();
+            updateReferralSystem();
+            updateLevelProgress();
+        }
 
-// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ СТАТИСТИКИ ПРОФИЛЯ
-function updateProfileStats() {
-    if (!currentUser) return;
-    
-    const stats = document.querySelectorAll('.profile-stat .stat-value');
-    if (stats.length >= 4) {
-        stats[0].textContent = `${currentUser.balance || 0} ⭐`; // Баланс
-        stats[1].textContent = currentUser.tasks_completed || 0; // Выполнено
-        stats[2].textContent = currentUser.active_tasks || 0; // Активных
-        stats[3].textContent = `${currentUser.quality_rate || 0}%`; // Качество
-    }
-    
-    // Обновляем уровень
-    updateLevelProgress();
-}
+        // Обновление статистики профиля
+        function updateProfileStats() {
+            if (!currentUser) return;
+            
+            const stats = document.querySelectorAll('.profile-stat .stat-value');
+            if (stats.length >= 4) {
+                stats[0].textContent = `${currentUser.balance || 0} ⭐`; // Баланс
+                stats[1].textContent = currentUser.tasks_completed || 0; // Выполнено
+                stats[2].textContent = currentUser.active_tasks || 0; // Активных
+                stats[3].textContent = `${currentUser.quality_rate || 0}%`; // Качество
+            }
+        }
 
 function updateReferralSystem() {
     if (!currentUser) return;
@@ -6469,58 +6462,31 @@ app.get('/api/user/:userId/referrals/detailed', async (req, res) => {
         });
     }
 });
-// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ ПРОГРЕССА УРОВНЯ
-function updateLevelProgress() {
-    if (!currentUser) return;
-    
-    const completedTasks = currentUser.tasks_completed || 0;
-    const levelInfo = calculateUserLevel(completedTasks);
-    
-    console.log('📊 Level progress update:', {
-        completedTasks,
-        level: levelInfo.level,
-        currentProgress: levelInfo.currentLevelTasks,
-        nextLevel: levelInfo.tasksForNextLevel,
-        percentage: levelInfo.progressPercentage
-    });
-    
-    // Обновляем элементы интерфейса
-    const levelElement = document.getElementById('user-level');
-    const progressBar = document.getElementById('level-progress-bar');
-    const levelCount = document.querySelector('.level-count');
-    const levelInfoText = document.querySelector('.level-info');
-    
-    if (levelElement) {
-        levelElement.textContent = levelInfo.level;
-    }
-    
-    if (progressBar) {
-        progressBar.style.width = `${levelInfo.progressPercentage}%`;
-    }
-    
-    if (levelCount) {
-        if (levelInfo.isMaxLevel) {
-            levelCount.textContent = "Макс. уровень!";
-        } else {
-            const tasksForThisLevel = levelInfo.tasksForNextLevel - LEVEL_SYSTEM[levelInfo.level].tasksRequired;
-            levelCount.textContent = `${levelInfo.currentLevelTasks}/${tasksForThisLevel} заданий`;
+        // Обновление прогресса уровня
+        function updateLevelProgress() {
+            if (!currentUser) return;
+            
+            const experience = currentUser.experience || 0;
+            const currentLevel = currentUser.level || 0;
+            const experienceForNextLevel = (currentLevel + 1) * 100;
+            const experienceInCurrentLevel = experience % 100;
+            const progressPercent = (experienceInCurrentLevel / 100) * 100;
+            
+            const progressBar = document.getElementById('level-progress-bar');
+            const levelCount = document.querySelector('.level-count');
+            
+            if (progressBar) {
+                progressBar.style.width = `${progressPercent}%`;
+            }
+            
+            if (levelCount) {
+                levelCount.textContent = `${experienceInCurrentLevel}/100 опыта`;
+            }
         }
-    }
-    
-    if (levelInfoText) {
-        if (levelInfo.isMaxLevel) {
-            levelInfoText.innerHTML = `🎉 Поздравляем! Вы достигли максимального уровня!`;
-        } else {
-            const tasksNeeded = levelInfo.tasksForNextLevel - completedTasks;
-            levelInfoText.innerHTML = 
-                `Уровень <strong>${levelInfo.levelName}</strong> • ` +
-                `До следующего уровня: <strong>${tasksNeeded}</strong> заданий`;
-        }
-    }
-    
-    // Обновляем статистику профиля
-    updateProfileStats();
-}
+
+        // Проверка прав администратора
+// Проверка прав администратора
+// Проверка прав администратора - ОБНОВЛЕННАЯ ВЕРСИЯ
 // Проверка прав администратора - ОБНОВЛЕННАЯ ВЕРСИЯ
 function checkAdminRights() {
     const adminNavItem = document.getElementById('admin-nav-item');
@@ -9056,18 +9022,11 @@ function showTasksTab() {
             updateNavState('tasks');
         }
 
-        // Обновите функцию showProfileTab:
-function showProfileTab() {
-    hideAllTabs();
-    document.getElementById('profile-tab').classList.add('active');
-    updateNavState('profile');
-    
-    // 🔥 ПРИНУДИТЕЛЬНОЕ ОБНОВЛЕНИЕ ДАННЫХ ПРОФИЛЯ
-    setTimeout(() => {
-        displayUserProfile();
-        updateUserData();
-    }, 100);
-}
+        function showProfileTab() {
+            hideAllTabs();
+            document.getElementById('profile-tab').classList.add('active');
+            updateNavState('profile');
+        }
 // 🔧 ФУНКЦИЯ УДАЛЕНИЯ ЗАДАНИЯ
 async function deleteTask(taskId) {
     if (!confirm('Удалить это задание?')) return;
@@ -11482,69 +11441,69 @@ function updateProfileLevelInfo(levelInfo) {
 //     return false;
 // }
 
-// // Уведомление о повышении уровня
-// function showLevelUpNotification(level, levelName, bonus) {
-//     const notificationHTML = `
-//         <div class="level-up-notification" style="
-//             position: fixed;
-//             top: 50%;
-//             left: 50%;
-//             transform: translate(-50%, -50%);
-//             background: var(--gold-gradient);
-//             color: #000;
-//             padding: 30px;
-//             border-radius: 20px;
-//             text-align: center;
-//             z-index: 10000;
-//             box-shadow: 0 10px 30px rgba(255, 215, 0, 0.5);
-//             border: 3px solid rgba(255, 255, 255, 0.3);
-//             animation: levelUpPop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
-//             max-width: 300px;
-//             width: 90%;
-//         ">
-//             <div style="font-size: 48px; margin-bottom: 15px;">🎉</div>
-//             <div style="font-size: 24px; font-weight: 800; margin-bottom: 10px;">
-//                 Новый уровень!
-//             </div>
-//             <div style="font-size: 20px; font-weight: 700; margin-bottom: 15px;">
-//                 ${levelName}
-//             </div>
-//             <div style="font-size: 16px; margin-bottom: 20px;">
-//                 Уровень <strong>${level}</strong> достигнут!
-//             </div>
-//             <div style="
-//                 background: rgba(255, 255, 255, 0.3);
-//                 padding: 10px;
-//                 border-radius: 10px;
-//                 font-weight: 700;
-//                 margin-bottom: 15px;
-//             ">
-//                 🎁 Бонус: +${bonus}⭐
-//             </div>
-//             <button onclick="this.parentElement.remove()" style="
-//                 background: #000;
-//                 color: white;
-//                 border: none;
-//                 padding: 10px 20px;
-//                 border-radius: 10px;
-//                 font-weight: 600;
-//                 cursor: pointer;
-//             ">
-//                 Отлично!
-//             </button>
-//         </div>
-//     `;
+// Уведомление о повышении уровня
+function showLevelUpNotification(level, levelName, bonus) {
+    const notificationHTML = `
+        <div class="level-up-notification" style="
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--gold-gradient);
+            color: #000;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 10000;
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.5);
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            animation: levelUpPop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+            max-width: 300px;
+            width: 90%;
+        ">
+            <div style="font-size: 48px; margin-bottom: 15px;">🎉</div>
+            <div style="font-size: 24px; font-weight: 800; margin-bottom: 10px;">
+                Новый уровень!
+            </div>
+            <div style="font-size: 20px; font-weight: 700; margin-bottom: 15px;">
+                ${levelName}
+            </div>
+            <div style="font-size: 16px; margin-bottom: 20px;">
+                Уровень <strong>${level}</strong> достигнут!
+            </div>
+            <div style="
+                background: rgba(255, 255, 255, 0.3);
+                padding: 10px;
+                border-radius: 10px;
+                font-weight: 700;
+                margin-bottom: 15px;
+            ">
+                🎁 Бонус: +${bonus}⭐
+            </div>
+            <button onclick="this.parentElement.remove()" style="
+                background: #000;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 10px;
+                font-weight: 600;
+                cursor: pointer;
+            ">
+                Отлично!
+            </button>
+        </div>
+    `;
     
-//     document.body.insertAdjacentHTML('beforeend', notificationHTML);
+    document.body.insertAdjacentHTML('beforeend', notificationHTML);
     
-//     // Автоматическое скрытие через 5 секунд
-//     setTimeout(() => {
-//         const notification = document.querySelector('.level-up-notification');
-//         if (notification) {
-//             notification.remove();
-//         }
-//     }, 5000);
-// }
+    // Автоматическое скрытие через 5 секунд
+    setTimeout(() => {
+        const notification = document.querySelector('.level-up-notification');
+        if (notification) {
+            notification.remove();
+        }
+    }, 5000);
+}
 
 // CSS анимация для уведомления
 const levelUpStyles = `
