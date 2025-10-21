@@ -4605,19 +4605,19 @@ html, body {
         </div>
         
         <!-- Прогресс уровня -->
-<div class="level-progress fade-in">
-    <div class="level-title">
-        <span class="level-name">Уровень <span id="user-level">0</span></span>
-        <span class="level-count" id="level-count">0/10 заданий</span>
-    </div>
-    <div class="progress-bar">
-        <div class="progress-fill" id="level-progress-bar" style="width: 0%"></div>
-    </div>
-    <div class="level-info" id="level-info">
-        Выполните 10 заданий для достижения 1 уровня
-    </div>
-    
-
+        <div class="level-progress fade-in">
+            <div class="level-title">
+                <span class="level-name">Прогресс уровня</span>
+                <span class="level-count">0/10 заданий</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="level-progress-bar"></div>
+            </div>
+            <div class="level-info">
+                Выполните 10 заданий для достижения 1 уровня
+            </div>
+        </div>
+        
         <!-- Реферальная система -->
         <div class="referral-system fade-in">
             <div class="referral-title">Реферальная система</div>
@@ -6388,28 +6388,20 @@ setTimeout(debugAdminRights, 2000);
             updateProfileStats();
             updateReferralSystem();
             updateLevelProgress();
-              // ОБНОВЛЯЕМ ПРОГРЕСС УРОВНЯ
-    updateLevelProgress();
-    
-    console.log('✅ Profile displayed with level progress');
-}
-        
+        }
 
-       // Обновление статистики профиля - ИСПРАВЛЕННАЯ ВЕРСИЯ
-function updateProfileStats() {
-    if (!currentUser) return;
-    
-    const stats = document.querySelectorAll('.profile-stat .stat-value');
-    if (stats.length >= 4) {
-        stats[0].textContent = `${currentUser.balance || 0} ⭐`; // Баланс
-        stats[1].textContent = currentUser.tasks_completed || 0; // Выполнено
-        stats[2].textContent = currentUser.active_tasks || 0; // Активных
-        stats[3].textContent = `${currentUser.quality_rate || 0}%`; // Качество
-    }
-    
-    // Обновляем прогресс уровня
-    updateLevelProgress();
-}
+        // Обновление статистики профиля
+        function updateProfileStats() {
+            if (!currentUser) return;
+            
+            const stats = document.querySelectorAll('.profile-stat .stat-value');
+            if (stats.length >= 4) {
+                stats[0].textContent = `${currentUser.balance || 0} ⭐`; // Баланс
+                stats[1].textContent = currentUser.tasks_completed || 0; // Выполнено
+                stats[2].textContent = currentUser.active_tasks || 0; // Активных
+                stats[3].textContent = `${currentUser.quality_rate || 0}%`; // Качество
+            }
+        }
 
 // Обновление реферальной системы
 function updateReferralSystem() {
@@ -6472,46 +6464,28 @@ app.get('/api/user/:userId/referrals/detailed', async (req, res) => {
         });
     }
 });
-        // Обновление прогресса уровня - ИСПРАВЛЕННАЯ ВЕРСИЯ
-function updateLevelProgress() {
-    if (!currentUser) return;
-    
-    const completedTasks = currentUser.tasks_completed || 0;
-    
-    // Рассчитываем уровень и прогресс
-    const currentLevel = Math.floor(completedTasks / 10) + 1;
-    const tasksInCurrentLevel = completedTasks % 10;
-    const progressPercentage = (tasksInCurrentLevel / 10) * 100;
-    
-    // Обновляем элементы интерфейса
-    const levelElement = document.getElementById('user-level');
-    const progressBar = document.getElementById('level-progress-bar');
-    const levelCount = document.querySelector('.level-count');
-    const levelInfo = document.querySelector('.level-info');
-    
-    if (levelElement) {
-        levelElement.textContent = currentLevel;
-    }
-    
-    if (progressBar) {
-        progressBar.style.width = `${progressPercentage}%`;
-    }
-    
-    if (levelCount) {
-        levelCount.textContent = `${tasksInCurrentLevel}/10 заданий`;
-    }
-    
-    if (levelInfo) {
-        if (currentLevel >= 10) {
-            levelInfo.textContent = "🎉 Максимальный уровень достигнут!";
-        } else {
-            const tasksNeeded = 10 - tasksInCurrentLevel;
-            levelInfo.textContent = `Выполните ${tasksNeeded} заданий для достижения ${currentLevel + 1} уровня`;
+        // Обновление прогресса уровня
+        function updateLevelProgress() {
+            if (!currentUser) return;
+            
+            const experience = currentUser.experience || 0;
+            const currentLevel = currentUser.level || 0;
+            const experienceForNextLevel = (currentLevel + 1) * 100;
+            const experienceInCurrentLevel = experience % 100;
+            const progressPercent = (experienceInCurrentLevel / 100) * 100;
+            
+            const progressBar = document.getElementById('level-progress-bar');
+            const levelCount = document.querySelector('.level-count');
+            
+            if (progressBar) {
+                progressBar.style.width = `${progressPercent}%`;
+            }
+            
+            if (levelCount) {
+                levelCount.textContent = `${experienceInCurrentLevel}/100 опыта`;
+            }
         }
-    }
-    
-    console.log(`📊 Level progress: ${completedTasks} tasks, level ${currentLevel}, progress ${progressPercentage}%`);
-}
+
         // Проверка прав администратора
 // Проверка прав администратора
 // Проверка прав администратора - ОБНОВЛЕННАЯ ВЕРСИЯ
@@ -8325,13 +8299,8 @@ async function approveVerification() {
             })
         });
 
-            if (result.success) {
-        console.log('✅ Одобрение успешно');
-        
-        // ОБНОВЛЯЕМ СЧЕТЧИК ВЫПОЛНЕННЫХ ЗАДАНИЙ
-        setTimeout(() => {
-            updateCompletedTasksCount();
-        }, 1000);
+        if (result.success) {
+            console.log('✅ Одобрение успешно');
             
             let message = `✅ Задание одобрено! Пользователь получил ${result.amountAdded}⭐`;
             
@@ -9059,11 +9028,6 @@ function showTasksTab() {
             hideAllTabs();
             document.getElementById('profile-tab').classList.add('active');
             updateNavState('profile');
-                // ОБНОВЛЯЕМ ДАННЫЕ ПРИ ОТКРЫТИИ ПРОФИЛЯ
-    setTimeout(() => {
-        updateCompletedTasksCount();
-    }, 500);
-
         }
 // 🔧 ФУНКЦИЯ УДАЛЕНИЯ ЗАДАНИЯ
 async function deleteTask(taskId) {
@@ -10784,28 +10748,7 @@ function showAdminAdminsSection() {
     showAdminSection('admins');
     loadAdminsList();
 }
-// Функция для обновления счетчика выполненных заданий
-async function updateCompletedTasksCount() {
-    if (!currentUser) return;
-    
-    try {
-        const result = await makeRequest(`/user/${currentUser.id}/tasks?status=completed`);
-        if (result.success) {
-            const completedCount = result.tasks?.length || 0;
-            
-            // Обновляем локальные данные пользователя
-            currentUser.tasks_completed = completedCount;
-            
-            // Обновляем отображение
-            updateProfileStats();
-            updateLevelProgress();
-            
-            console.log(`✅ Completed tasks updated: ${completedCount}`);
-        }
-    } catch (error) {
-        console.error('Error updating completed tasks:', error);
-    }
-}
+
 // Загрузка списка админов
 async function loadAdminsList() {
     console.log('🔄 Loading admins list...');
