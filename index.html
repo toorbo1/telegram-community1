@@ -5654,7 +5654,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Улучшенная функция для запросов
 // 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ ДЛЯ ЗАПРОСОВ
 async function makeRequest(endpoint, options = {}) {
     try {
@@ -5670,16 +5669,25 @@ async function makeRequest(endpoint, options = {}) {
         
         console.log(`🚀 Making ${options.method || 'GET'} request to: ${url}`);
         
+        const timeout = 10000; // 10 секунд таймаут
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+
         const response = await fetch(url, {
             headers: {
                 'Content-Type': 'application/json',
                 ...options.headers
             },
+            signal: controller.signal,
             ...options
         });
 
+        clearTimeout(timeoutId);
+
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorText = await response.text();
+            console.error(`❌ HTTP error! status: ${response.status}, response: ${errorText}`);
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
         const data = await response.json();
@@ -5688,8 +5696,14 @@ async function makeRequest(endpoint, options = {}) {
         
     } catch (error) {
         console.error('💥 Request failed:', error);
-        showNotification(`⚠️ Ошибка: ${error.message}`, 'error');
-        throw error;
+        
+        if (error.name === 'AbortError') {
+            throw new Error('Таймаут запроса. Сервер не отвечает.');
+        } else if (error.name === 'TypeError') {
+            throw new Error('Проблема с сетью. Проверьте подключение к интернету.');
+        } else {
+            throw error;
+        }
     }
 }
 
@@ -8688,13 +8702,32 @@ async function loadTaskVerifications() {
             document.getElementById('verification-modal').classList.add('active');
         }
 
-// Одобрить задание - ОБНОВЛЕННАЯ ВЕРСИЯ
+// УЛУЧШЕННАЯ ФУНКЦИЯ ОДОБРЕНИЯ ЗАДАНИЯ
 async function approveVerification() {
-    if (!currentVerificationId) return;
+    if (!currentVerificationId) {
+        showNotification('❌ ID верификации не найден', 'error');
+        return;
+    }
+
+    if (!currentUser) {
+        showNotification('❌ Пользователь не авторизован', 'error');
+        return;
+    }
 
     try {
-        console.log(`🔄 Одобряем верификацию: ${currentVerificationId}`);
-        
+        console.log(`🔄 Начинаем одобрение верификации:`, {
+            verificationId: currentVerificationId,
+            adminId: currentUser.id,
+            apiUrl: `${API_BASE_URL}/api/admin/task-verifications/${currentVerificationId}/approve`
+        });
+
+        // Показываем индикатор загрузки
+        const approveBtn = document.querySelector('.verification-approve');
+        if (approveBtn) {
+            approveBtn.disabled = true;
+            approveBtn.textContent = 'Одобряем...';
+        }
+
         const result = await makeRequest(`/admin/task-verifications/${currentVerificationId}/approve`, {
             method: 'POST',
             body: JSON.stringify({
@@ -8702,12 +8735,11 @@ async function approveVerification() {
             })
         });
 
+        console.log('📨 Ответ сервера при одобрении:', result);
+
         if (result.success) {
-            console.log('✅ Одобрение успешно');
-            
             let message = `✅ Задание одобрено! Пользователь получил ${result.amountAdded}⭐`;
             
-            // 🔥 ДОБАВЛЯЕМ ИНФОРМАЦИЮ ОБ УДАЛЕНИИ ЗАДАНИЯ
             if (result.taskRemoved) {
                 message += "\n\n🎯 Задание автоматически удалено - достигнут лимит исполнителей!";
             }
@@ -8715,21 +8747,36 @@ async function approveVerification() {
             showNotification(message, 'success');
             closeModal('verification-modal');
             
-            // ОБНОВЛЯЕМ ДАННЫЕ ПОЛЬЗОВАТЕЛЯ
+            // ОБНОВЛЯЕМ ВСЕ ДАННЫЕ
             await updateUserData();
-            
-            // Обновляем списки
             loadTaskVerifications();
             loadUserTasks();
-            loadTasks(); // 🔥 ОБНОВЛЯЕМ СПИСОК ЗАДАНИЙ
+            loadTasks();
             
         } else {
-            console.error('❌ Ошибка одобрения:', result.error);
-            showNotification('Ошибка одобрения: ' + result.error, 'error');
+            throw new Error(result.error || 'Неизвестная ошибка сервера');
         }
+
     } catch (error) {
         console.error('❌ Сетевая ошибка при одобрении:', error);
-        showNotification('Сетевая ошибка при одобрении задания', 'error');
+        
+        let errorMessage = 'Сетевая ошибка при одобрении задания';
+        if (error.message.includes('Failed to fetch')) {
+            errorMessage = '❌ Проблема с соединением. Проверьте интернет и попробуйте снова.';
+        } else if (error.message.includes('404')) {
+            errorMessage = '❌ Endpoint не найден. Сообщите администратору.';
+        } else if (error.message.includes('403')) {
+            errorMessage = '❌ Доступ запрещен. У вас нет прав администратора.';
+        }
+        
+        showNotification(errorMessage, 'error');
+        
+        // Восстанавливаем кнопку
+        const approveBtn = document.querySelector('.verification-approve');
+        if (approveBtn) {
+            approveBtn.disabled = false;
+            approveBtn.textContent = '✅ Одобрить';
+        }
     }
 }
 // В навигацию добавьте временно кнопку для теста
