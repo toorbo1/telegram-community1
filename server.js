@@ -1947,7 +1947,7 @@ app.post('/api/user/tasks/start', async (req, res) => {
         });
     }
 });
-// Get user tasks
+// Get user tasks with proper counting
 app.get('/api/user/:userId/tasks', async (req, res) => {
     const userId = req.params.userId;
     const { status } = req.query;
@@ -1970,9 +1970,21 @@ app.get('/api/user/:userId/tasks', async (req, res) => {
         
         const result = await pool.query(query, params);
         
+        // Also get counts for different statuses
+        const counts = await pool.query(`
+            SELECT 
+                COUNT(*) as total,
+                COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
+                COUNT(CASE WHEN status = 'active' THEN 1 END) as active,
+                COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected
+            FROM user_tasks 
+            WHERE user_id = $1
+        `, [userId]);
+        
         res.json({
             success: true,
-            tasks: result.rows
+            tasks: result.rows,
+            counts: counts.rows[0] || {}
         });
     } catch (error) {
         console.error('Get user tasks error:', error);
@@ -1982,6 +1994,7 @@ app.get('/api/user/:userId/tasks', async (req, res) => {
         });
     }
 });
+
 // Get user tasks for confirmation
 app.get('/api/user/:userId/tasks/active', async (req, res) => {
     const userId = req.params.userId;
