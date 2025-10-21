@@ -14,7 +14,24 @@ const BOT_TOKEN = process.env.BOT_TOKEN;
 const DATABASE_URL = process.env.DATABASE_URL;
 const ADMIN_ID = 8036875641;
 const APP_URL = process.env.RAILWAY_STATIC_URL || process.env.APP_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` || 'https://your-app.com';
+// Обработчик для всех навигационных кликов
+document.addEventListener('click', function(e) {
+    // Проверяем, является ли элемент кнопкой навигации
+    if (e.target.closest('.nav-item') || 
+        e.target.closest('.task-tab') || 
+        e.target.closest('.back-button') ||
+        e.target.closest('[onclick*="show"]') ||
+        e.target.closest('[onclick*="open"]')) {
+        
+        // Небольшая задержка для плавности
+        setTimeout(scrollToTop, 50);
+    }
+});
 
+// Также прокручиваем вверх при изменении хэша URL
+window.addEventListener('hashchange', function() {
+    scrollToTop();
+});
 // Инициализация бота только если есть токен
 let bot;
 if (BOT_TOKEN) {
@@ -994,6 +1011,7 @@ async function addTask() {
         showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
     }
 }
+
 app.post('/api/tasks', async (req, res) => {
     const { 
         title, 
@@ -1956,6 +1974,7 @@ app.get('/api/user/:userId/tasks/active', async (req, res) => {
         });
     }
 });
+
 // Submit task for verification (WITH FILE UPLOAD)
 app.post('/api/user/tasks/:userTaskId/submit', upload.single('screenshot'), async (req, res) => {
     const userTaskId = req.params.userTaskId;
