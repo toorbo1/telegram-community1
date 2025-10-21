@@ -7,6 +7,250 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
            <style>
+            /* 🔥 ЭФФЕКТ МАТОВОГО СТЕКЛА ДЛЯ ВСЕХ БЛОКОВ */
+
+/* Основной эффект для всех карточек */
+.card, 
+.task-card, 
+.profile-stat, 
+.admin-section,
+.stat-card,
+.post-item,
+.modal-content,
+.exchange-card,
+.post-promo,
+.verification-item,
+.chat-item,
+.admin-task-item,
+.level-progress,
+.referral-system,
+.about-content,
+.about-feature,
+.profile-action,
+.withdraw-operation,
+.confirmation-modal-content,
+.verification-modal-content,
+.prices-content,
+.task-modal-content {
+    background: rgba(20, 20, 40, 0.7) !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.125) !important;
+    position: relative;
+    z-index: 1;
+}
+
+/* Улучшенный эффект для навигации */
+.bottom-nav {
+    background: rgba(25, 25, 50, 0.8) !important;
+    backdrop-filter: blur(25px) saturate(200%) !important;
+    -webkit-backdrop-filter: blur(25px) saturate(200%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Эффект для модальных окон */
+.modal {
+    background: rgba(5, 5, 16, 0.85) !important;
+    backdrop-filter: blur(15px) !important;
+    -webkit-backdrop-filter: blur(15px) !important;
+}
+
+/* Эффект для герой-баннера */
+.hero-banner {
+    background: rgba(26, 26, 58, 0.6) !important;
+    backdrop-filter: blur(15px) !important;
+    -webkit-backdrop-filter: blur(15px) !important;
+}
+
+/* Эффект для вкладок */
+.tasks-tabs,
+.task-tab.active,
+.filter-btn.active {
+    background: rgba(30, 30, 60, 0.7) !important;
+    backdrop-filter: blur(15px) !important;
+    -webkit-backdrop-filter: blur(15px) !important;
+}
+
+/* Эффект для кнопок */
+.btn,
+.task-btn,
+.admin-btn,
+.profile-btn,
+.withdraw-btn,
+.tasks-btn,
+.prices-btn,
+.copy-btn,
+.support-btn,
+.confirmation-btn,
+.upload-btn,
+.chat-send,
+.admin-chat-send {
+    background: rgba(99, 102, 241, 0.8) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Специальные эффекты для золотых кнопок */
+.btn-primary {
+    background: linear-gradient(135deg, 
+        rgba(255, 215, 0, 0.8), 
+        rgba(255, 183, 0, 0.8)
+    ) !important;
+    backdrop-filter: blur(15px) !important;
+    -webkit-backdrop-filter: blur(15px) !important;
+}
+
+/* Эффект для полей ввода */
+.admin-input, 
+.search-input, 
+.chat-input input,
+.admin-chat-input,
+.admin-textarea {
+    background: rgba(30, 30, 60, 0.6) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Эффект для уведомлений */
+.notification {
+    background: rgba(99, 102, 241, 0.9) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Эффект для прогресс-баров */
+.progress-bar {
+    background: rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(5px) !important;
+    -webkit-backdrop-filter: blur(5px) !important;
+}
+
+/* Эффект для аватаров */
+.profile-avatar,
+.chat-avatar-small,
+.verification-avatar,
+.admin-chat-avatar {
+    background: rgba(99, 102, 241, 0.8) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Эффект для сообщений в чате */
+.message {
+    backdrop-filter: blur(15px) !important;
+    -webkit-backdrop-filter: blur(15px) !important;
+}
+
+.message-admin {
+    background: rgba(30, 30, 60, 0.7) !important;
+}
+
+.message-user {
+    background: rgba(99, 102, 241, 0.7) !important;
+}
+
+/* Эффект для статус-карточек */
+.stat-card.balance-card {
+    background: linear-gradient(135deg, 
+        rgba(139, 92, 246, 0.7), 
+        rgba(124, 58, 237, 0.7), 
+        rgba(109, 40, 217, 0.7)
+    ) !important;
+}
+
+.stat-card.support-card {
+    background: linear-gradient(135deg, 
+        rgba(14, 165, 233, 0.7), 
+        rgba(3, 105, 161, 0.7), 
+        rgba(7, 89, 133, 0.7)
+    ) !important;
+}
+
+/* Эффект для карточек обмена */
+.exchange-card {
+    background: linear-gradient(135deg, 
+        rgba(255, 215, 0, 0.7), 
+        rgba(255, 183, 0, 0.7)
+    ) !important;
+}
+
+/* Эффект для постов */
+.post-promo {
+    background: rgba(30, 30, 60, 0.7) !important;
+}
+
+/* Улучшенные тени для глубины */
+.card, 
+.task-card, 
+.profile-stat, 
+.admin-section,
+.stat-card,
+.modal-content {
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        0 2px 8px rgba(255, 255, 255, 0.05) inset !important;
+}
+
+/* Анимация появления для плавности */
+.card, 
+.task-card, 
+.profile-stat, 
+.admin-section {
+    animation: glassAppear 0.6s ease-out;
+}
+
+@keyframes glassAppear {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+        backdrop-filter: blur(0px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        backdrop-filter: blur(20px);
+    }
+}
+
+/* Оптимизация для мобильных устройств */
+@media (max-width: 768px) {
+    .card, 
+    .task-card, 
+    .profile-stat, 
+    .admin-section,
+    .stat-card {
+        backdrop-filter: blur(15px) saturate(160%) !important;
+        -webkit-backpack-filter: blur(15px) saturate(160%) !important;
+    }
+    
+    .bottom-nav {
+        backdrop-filter: blur(20px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+    }
+}
+
+/* Поддержка для браузеров без backdrop-filter */
+@supports not (backdrop-filter: blur(20px)) {
+    .card, 
+    .task-card, 
+    .profile-stat, 
+    .admin-section,
+    .stat-card {
+        background: rgba(20, 20, 40, 0.95) !important;
+    }
+    
+    .bottom-nav {
+        background: rgba(25, 25, 50, 0.95) !important;
+    }
+    
+    .modal {
+        background: rgba(5, 5, 16, 0.95) !important;
+    }
+}
             /* ОТКЛЮЧИТЕ СЛОЖНЫЕ АНИМАЦИИ НА МОБИЛЬНЫХ */
 @media (max-width: 768px) {
   * {
