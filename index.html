@@ -52,8 +52,8 @@
 }
 
 .nav-icon img {
-    width: 24px; /* Уменьшили размер картинок */
-    height: 24px;
+    width: 40px; /* Увеличил размер картинок */
+    height: 40px;
     object-fit: contain;
     opacity: 0.7;
     transition: all 0.3s ease;
@@ -96,8 +96,8 @@
     }
     
     .nav-icon img {
-        width: 22px;
-        height: 22px;
+        width: 35px;
+        height: 35px;
     }
     
     .nav-label {
@@ -160,6 +160,10 @@ html, body {
         width: 100% !important;
         margin-left: 0 !important;
         margin-right: 0 !important;
+    }
+        .nav-icon img {
+        width: 35px;
+        height: 35px;
     }
 }
 
@@ -2254,16 +2258,14 @@ body {
         }
         
         .action-icon {
-            width: 22px;
-            height: 22px;
-            margin-right: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--blue-gradient);
-            border-radius: 6px;
-            color: white;
-        }
+    width: 22px;
+    height: 22px;
+    margin-right: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+}
         
         .action-text {
             flex: 1;
@@ -3416,7 +3418,12 @@ body {
             flex: 1;
             min-width: 0;
         }
-
+.action-icon img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+  
+}
         .chat-name-small {
             font-weight: 600;
             font-size: 13px;
@@ -4547,18 +4554,7 @@ html, body {
             background: var(--bg-secondary);
         }
 
-        .nav-icon img {
-    width: 20px;
-    height: 20px;
-    object-fit: contain;
-    opacity: 0.7; /* Вместо filter используем opacity */
-    transition: all 0.3s ease;
-}
 
-.nav-item.active .nav-icon img {
-    opacity: 1; /* Полная непрозрачность для активной кнопки */
-    filter: none; /* Убираем все фильтры */
-}
 
         /* Светлая тема */
         [data-theme="light"] {
@@ -5338,38 +5334,54 @@ html, body {
             </div>
         </div>
         
-        <!-- Действия профиля -->
-        <div class="profile-section fade-in">
-            <div class="section-title">Действия</div>
-            <div class="profile-actions">
-                <div class="profile-action" onclick="showWithdrawPage()">
-                    <div class="action-icon">💳</div>
-                    <div class="action-text">Вывод средств</div>
-                    <div class="action-arrow">›</div>
-                </div>
-                <div class="profile-action" onclick="showHowItWorksPage()">
-                    <div class="action-icon">❓</div>
-                    <div class="action-text">Как это работает</div>
-                    <div class="action-arrow">›</div>
-                </div>
-                <div class="profile-action" onclick="showAboutPage()">
-                    <div class="action-icon">ℹ️</div>
-                    <div class="action-text">О приложении</div>
-                    <div class="action-arrow">›</div>
-                </div>
-            </div>
+        <!-- В разделе профиля -->
+<div class="profile-actions">
+    <div class="profile-action" onclick="showWithdrawPage()">
+        <div class="action-icon">
+            <img src="ef59e11f-082a-4760-8d65-4d64b4c2ba7f-no-bg-preview (carve.photos).png" alt="Вывод средств" style="width: 20px; height: 20px;">
         </div>
-        
+        <div class="action-text">Вывод средств</div>
+        <div class="action-arrow">›</div>
+    </div>
+    <div class="profile-action" onclick="showHowItWorksPage()">
+        <div class="action-icon">
+            <img src="57d9e8b8-4fc8-40c8-9716-b60615e7ca71-no-bg-preview (carve.photos).png" alt="Как это работает" style="width: 20px; height: 20px;">
+        </div>
+        <div class="action-text">Как это работает</div>
+        <div class="action-arrow">›</div>
+    </div>
+    <div class="profile-action" onclick="showAboutPage()">
+        <div class="action-icon">
+            <img src="3271ae6c-23a0-498a-ac89-0dedd0127192-no-bg-preview (carve.photos).png" alt="О приложении" style="width: 20px; height: 20px;">
+        </div>
+        <div class="action-text">О приложении</div>
+        <div class="action-arrow">›</div>
+    </div>
+</div>
+
+<!-- В настройках профиля
+<div class="profile-actions">
+    <div class="profile-action" onclick="openAdminChat()">
+        <div class="action-icon">
+            <img src="3d-vizualizacia-hlopausih-v-ladosi-so-zvukovym-eff-no-bg-preview (carve.photos).png" alt="Поддержка" style="width: 20px; height: 20px;">
+        </div>
+        <div class="action-text">Поддержка</div>
+        <div class="action-arrow">›</div>
+    </div>
+</div>
+         -->
         <!-- Настройки -->
         <div class="profile-section fade-in">
             <div class="section-title">Настройки</div>
             <div class="profile-actions">
-                <div class="profile-action" onclick="openAdminChat()">
-                    <div class="action-icon">🛟</div>
-                    <div class="action-text">Поддержка</div>
-                    <div class="action-arrow">›</div>
-                </div>
-            </div>
+              <div class="profile-action" onclick="openAdminChat()">
+        <div class="action-icon">
+            <img src="3d-vizualizacia-hlopausih-v-ladosi-so-zvukovym-eff-no-bg-preview (carve.photos).png" alt="Поддержка" style="width: 20px; height: 20px;">
+        </div>
+        <div class="action-text">Поддержка</div>
+        <div class="action-arrow">›</div>
+    </div>
+</div>
         </div>
     </div>
 
