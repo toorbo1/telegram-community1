@@ -7,32 +7,17 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
            <style>
-     
-/* Только самый необходимый CSS для первоначальной загрузки */
-body {
-    background: #050510;
-    color: white;
-    margin: 0;
-    padding: 0;
-    overflow-x: hidden;
-}
-
-.main-content {
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.loaded .main-content {
-    opacity: 1;
-}
-
-/* Индикатор загрузки */
-.loading-indicator {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 10000;
+            /* Отключите сложные эффекты на мобильных */
+@media (max-width: 768px) {
+    .card, .task-card, .modal-content {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+    
+    * {
+        transition: none !important;
+        animation: none !important;
+    }
 }
             /* 🔥 ЭФФЕКТ ПАРЯЩИХ МАТОВЫХ СТЕКОЛ С ОТРАЖЕНИЕМ ТЕНИ */
 
@@ -397,30 +382,38 @@ body {
     overflow-x: hidden;
 }
 
-/* Упростите сложные анимации для мобильных */
+/* Оптимизация для мобильных устройств */
 @media (max-width: 768px) {
-  * {
-    transition: none !important;
-    animation: none !important;
-    transform: none !important;
-  }
-  
-  .task-card:hover, .card:hover {
-    transform: none !important;
-  }
-  
-  /* Упростите тени */
-  .card, .task-card {
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1) !important;
-  }
-}
-
-/* Оптимизация для анимаций */
-.performance-optimized {
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  perspective: 1000px;
-  will-change: transform, opacity;
+    .card, 
+    .task-card, 
+    .profile-stat, 
+    .admin-section,
+    .stat-card {
+        backdrop-filter: blur(15px) saturate(160%) !important;
+        -webkit-backdrop-filter: blur(15px) saturate(160%) !important;
+        
+        box-shadow: 
+            0 15px 30px rgba(0, 0, 0, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1),
+            inset 0 -1px 0 rgba(0, 0, 0, 0.2),
+            0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+    }
+    
+    .card:hover, 
+    .task-card:hover, 
+    .profile-stat:hover {
+        transform: translateY(-4px) scale(1.01) !important;
+    }
+    
+    .bottom-nav {
+        backdrop-filter: blur(20px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+        
+        box-shadow: 
+            0 -10px 25px rgba(0, 0, 0, 0.25),
+            0 -3px 10px rgba(0, 0, 0, 0.15),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+    }
 }
 
 /* Поддержка для браузеров без backdrop-filter */
@@ -7788,6 +7781,7 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Smooth animations initialized');
 });
 
+// 🔧 ДОПОЛНИТЕЛЬНЫЕ ОПТИМИЗАЦИИ ДЛЯ ПРОИЗВОДИТЕЛЬНОСТИ
 // Дебаунс для частых операций
 function debounce(func, wait, immediate) {
     let timeout;
@@ -7803,73 +7797,6 @@ function debounce(func, wait, immediate) {
     };
 }
 
-// Оптимизированная загрузка данных
-async function loadEssentialData() {
-  try {
-    const [userData, tasks] = await Promise.all([
-      fetch('/api/user-data').then(r => r.json()),
-      fetch('/api/essential-tasks').then(r => r.json())
-    ]);
-    return { userData, tasks };
-  } catch (error) {
-    console.error('Load error:', error);
-  }
-}
-
-// Ленивая загрузка изображений
-function lazyLoadImages() {
-  const lazyImages = [].slice.call(document.querySelectorAll('img[data-src]'));
-  
-  if ('IntersectionObserver' in window) {
-    let lazyImageObserver = new IntersectionObserver(function(entries) {
-      entries.forEach(function(entry) {
-        if (entry.isIntersecting) {
-          let lazyImage = entry.target;
-          lazyImage.src = lazyImage.dataset.src;
-          lazyImage.classList.remove('lazy');
-          lazyImageObserver.unobserve(lazyImage);
-        }
-      });
-    });
-
-    lazyImages.forEach(function(lazyImage) {
-      lazyImageObserver.observe(lazyImage);
-    });
-  }
-}
-
-// Кэширование DOM элементов
-let cachedElements = {};
-function getElement(id) {
-    if (!cachedElements[id]) {
-        cachedElements[id] = document.getElementById(id);
-    }
-    return cachedElements[id];
-}
-
-// Пакетное обновление DOM
-function batchDOMUpdates(callback) {
-    requestAnimationFrame(() => {
-        callback();
-    });
-}
-// Кэширование API запросов
-const apiCache = new Map();
-async function cachedRequest(endpoint, options = {}) {
-    const cacheKey = JSON.stringify({ endpoint, options });
-    
-    if (apiCache.has(cacheKey)) {
-        return apiCache.get(cacheKey);
-    }
-    
-    const result = await makeRequest(endpoint, options);
-    apiCache.set(cacheKey, result);
-    
-    // Очистка кэша через 5 минут
-    setTimeout(() => apiCache.delete(cacheKey), 300000);
-    
-    return result;
-}
 // Троттлинг для скролла и ресайза
 function throttle(func, limit) {
     let inThrottle;
@@ -8094,30 +8021,7 @@ async function openAdminChat() {
         showNotification('Ошибка открытия чата: ' + error.message, 'error');
     }
 }
-// Предзагрузка критических изображений
-function preloadCriticalImages() {
-    const criticalImages = [
-        'awards-nomination-promo-kit-image.jpg',
-        'curved-stack-money-icon-3d-illustration.png'
-    ];
-    
-    criticalImages.forEach(src => {
-        const img = new Image();
-        img.src = src;
-    });
-}
-// Вынос тяжелых вычислений в Web Worker
-if (window.Worker) {
-    const calculationWorker = new Worker('/js/calculations.js');
-    
-    calculationWorker.onmessage = function(e) {
-        // Обработка результата
-        updateUI(e.data);
-    };
-    
-    // Отправка данных в worker
-    calculationWorker.postMessage(largeDataSet);
-}
+
         // 🔧 ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ СТРАНИЦЫ
         document.addEventListener('DOMContentLoaded', function() {
             // Гарантируем, что изначально показаны новые задания
@@ -10548,7 +10452,19 @@ function displayWithdrawalRequests(requests) {
         container.appendChild(requestElement);
     });
 }
+// Замените сложные функции на более простые
+function simpleShowTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.display = 'none';
+    });
+    document.getElementById(tabId).style.display = 'block';
+}
 
+// Отложите не критичные операции
+setTimeout(() => {
+    loadNonCriticalData();
+    initializeAnimations();
+}, 1000);
 // 🔧 ИСПРАВЛЕННАЯ функция подтверждения выплаты
 async function completeWithdrawal(requestId) {
     console.log('🔧 completeWithdrawal called:', {
