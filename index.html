@@ -1661,42 +1661,46 @@ body {
         }
 
         .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 16px;
-            position: relative;
-            flex-shrink: 0;
-        }
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    position: relative;
+    flex-shrink: 0;
+}
 
-        .modal-title {
-            font-size: 18px;
-            font-weight: 700;
-            background: var(--gold-gradient);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-        }
+.modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    background: var(--gold-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
 
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 22px;
-            color: var(--text-secondary);
-            cursor: pointer;
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            background: var(--card-bg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 22px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--card-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
 
+.modal-close:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
         .modal-body {
             margin-bottom: 16px;
             text-align: left;
@@ -5815,7 +5819,12 @@ html, body {
 
 <div class="modal" id="prices-modal">
     <div class="prices-content">
-        <div class="prices-title">💰 Стоимость размещения</div>
+        <!-- Добавляем заголовок с кнопкой закрытия -->
+        <div class="modal-header">
+            <div class="modal-title">💰 Стоимость размещения</div>
+            <button class="modal-close" onclick="closeModal('prices-modal')">×</button>
+        </div>
+        
         <div class="price-grid">
             <div class="price-item">
                 <span class="price-time">1 час</span>
