@@ -7,6 +7,103 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
            <style>
+            .bottom-nav {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    background: rgba(25, 25, 50, 0.95);
+    border-radius: 16px;
+    padding: 6px 8px; /* Уменьшили padding */
+    display: flex;
+    justify-content: space-around;
+    box-shadow: 0 -6px 25px rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--border);
+    z-index: 1000;
+    backdrop-filter: blur(20px);
+    height: 65px; /* Уменьшили высоту */
+}
+
+.nav-item {
+    text-align: center;
+    cursor: pointer;
+    padding: 4px 6px; /* Уменьшили padding */
+    border-radius: 12px;
+    flex: 1;
+    opacity: 0.7;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: auto; /* Убрали фиксированную высоту */
+    border: 1px solid transparent;
+    gap: 2px; /* Уменьшили расстояние между элементами */
+}
+
+.nav-icon {
+    font-size: 18px;
+    margin-bottom: 1px; /* Уменьшили отступ снизу */
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 24px; /* Фиксированная высота для иконок */
+}
+
+.nav-icon img {
+    width: 24px; /* Уменьшили размер картинок */
+    height: 24px;
+    object-fit: contain;
+    opacity: 0.7;
+    transition: all 0.3s ease;
+}
+
+.nav-label {
+    font-size: 10px;
+    color: var(--text-secondary);
+    font-weight: 500;
+    line-height: 2; /* Уменьшили межстрочный интервал */
+}
+
+.nav-item.active {
+    background: var(--accent);
+    opacity: 1;
+    box-shadow: 0 0 16px rgba(99, 102, 241, 0.4);
+    transform: translateY(-2px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.nav-item.active .nav-icon,
+.nav-item.active .nav-label {
+    color: white;
+}
+
+.nav-item.active .nav-icon img {
+    opacity: 1;
+    filter: none;
+}
+
+/* Для очень маленьких экранов */
+@media (max-width: 360px) {
+    .bottom-nav {
+        height: 60px;
+        padding: 4px 6px;
+    }
+    
+    .nav-item {
+        padding: 3px 4px;
+    }
+    
+    .nav-icon img {
+        width: 22px;
+        height: 22px;
+    }
+    
+    .nav-label {
+        font-size: 9px;
+    }
+}
             /* 🔧 ФИКСЫ ДЛЯ ПРЕДОТВРАЩЕНИЯ ВЫХОДА ЗА ПРЕДЕЛЫ ЭКРАНА */
 html, body {
     max-width: 100% !important;
@@ -4451,16 +4548,17 @@ html, body {
         }
 
         .nav-icon img {
-            width: 20px;
-            height: 20px;
-            object-fit: contain;
-            filter: brightness(0) invert(0.7);
-            transition: all 0.3s ease;
-        }
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    opacity: 0.7; /* Вместо filter используем opacity */
+    transition: all 0.3s ease;
+}
 
-        .nav-item.active .nav-icon img {
-            filter: brightness(0) invert(1);
-        }
+.nav-item.active .nav-icon img {
+    opacity: 1; /* Полная непрозрачность для активной кнопки */
+    filter: none; /* Убираем все фильтры */
+}
 
         /* Светлая тема */
         [data-theme="light"] {
@@ -5872,19 +5970,19 @@ html, body {
 <nav class="bottom-nav">
     <div class="nav-item active" onclick="showMainTab()">
         <div class="nav-icon">
-            <img src="10316158-no-bg-preview (carve.photos).png" alt="Главная" style="width: 24px; height: 24px;">
+            <img src="10316158-no-bg-preview (carve.photos).png" alt="Главная" style="width: 40px; height: 40px;">
         </div>
         <div class="nav-label">Главная</div>
     </div>
     <div class="nav-item" onclick="showTasksTab()">
         <div class="nav-icon">
-            <img src="7645190-no-bg-preview (carve.photos).png" alt="Задания" style="width: 24px; height: 24px;">
+            <img src="7645190-no-bg-preview (carve.photos).png" alt="Задания" style="width: 40px; height: 40px;">
         </div>
         <div class="nav-label">Задания</div>
     </div>
     <div class="nav-item" onclick="showProfileTab()">
         <div class="nav-icon">
-            <img src="Снимок экрана 2025-10-22 074950-no-bg-preview (carve.photos).png" alt="Профиль" style="width: 24px; height: 24px;">
+            <img src="Снимок экрана 2025-10-22 074950-no-bg-preview (carve.photos).png" alt="Профиль" style="width: 45px; height: 45px;">
         </div>
         <div class="nav-label">Профиль</div>
     </div>
