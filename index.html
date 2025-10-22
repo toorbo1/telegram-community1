@@ -7,6 +7,97 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
            <style>
+            /* 🔧 ФИКСЫ ДЛЯ ПРЕДОТВРАЩЕНИЯ ВЫХОДА ЗА ПРЕДЕЛЫ ЭКРАНА */
+html, body {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    position: relative;
+    width: 100% !important;
+}
+
+.main-content {
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+.container {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+}
+
+/* 🔧 ФИКС ДЛЯ КОНТЕЙНЕРОВ ЗАДАНИЙ */
+.tasks-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+}
+
+/* 🔧 ФИКС ДЛЯ КАРТОЧЕК ЗАДАНИЙ */
+.task-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    margin: 0 0 12px 0 !important;
+    overflow: hidden !important;
+}
+
+/* 🔧 ФИКС ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ */
+@media (max-width: 480px) {
+    body {
+        padding: 8px !important;
+        padding-bottom: 80px !important;
+    }
+    
+    .main-content {
+        padding: 8px !important;
+        padding-bottom: 80px !important;
+    }
+    
+    .card, .task-card {
+        width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+}
+
+@media (max-width: 360px) {
+    body {
+        padding: 6px !important;
+        padding-bottom: 75px !important;
+    }
+    
+    .main-content {
+        padding: 6px !important;
+        padding-bottom: 75px !important;
+    }
+}
+
+/* 🔧 ПРЕДОТВРАЩЕНИЕ ГОРИЗОНТАЛЬНОЙ ПРОКРУТКИ ДЛЯ ВСЕХ ЭЛЕМЕНТОВ */
+* {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* 🔧 ФИКС ДЛЯ КНОПОК И ИНПУТОВ */
+.task-btn, .btn, .search-input, .admin-input {
+    white-space: nowrap !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* 🔧 ФИКС ДЛЯ ТЕКСТА */
+.task-title, .task-description {
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    hyphens: auto !important;
+    max-width: 100% !important;
+}
             /* Отключите сложные эффекты на мобильных */
 @media (max-width: 768px) {
     .card, .task-card, .modal-content {
@@ -8554,9 +8645,11 @@ function formatCategory(category) {
     
     return categoryMap[category] || category;
 }
-// 🔧 ЗАГРУЗКА ЗАДАНИЙ ПРИ ЗАПУСКЕ ПРИЛОЖЕНИЯ
 async function initializeApp() {
     console.log('🎮 Initializing LinkGold app...');
+
+    // Применяем исправления layout сразу
+    fixLayoutIssues();
 
     // 🔥 ПРИНУДИТЕЛЬНАЯ ЗАГРУЗКА ЗАДАНИЙ ПРИ СТАРТЕ
     console.log('🚀 FORCE loading tasks on app start...');
@@ -8569,30 +8662,16 @@ async function initializeApp() {
         }
     }, 1000);
 
-
-    // Инициализация вкладок заданий
+    // Остальной код инициализации...
     initializeTaskTabHandlers();
-
-    // Показываем загрузку
     showNotification('🔄 Подключаемся к серверу...', 'info');
-     // 🔥 ДОБАВИТЬ ЭТО: Предварительная загрузка заданий
-    console.log('🚀 ПРЕДВАРИТЕЛЬНАЯ ЗАГРУЗКА ЗАДАНИЙ ПРИ СТАРТЕ');
-    setTimeout(() => {
-        if (currentUser) {
-            loadTasks();
-        }
-    }, 2000);
+    
     // Проверяем соединение с API
     try {
         console.log('🔍 Testing API connection...');
         const health = await makeRequest('/api/health');
         console.log('✅ API connection successful:', health);
         showNotification('✅ Соединение с сервером установлено!', 'success');
-        
-        // 🔥 ДИАГНОСТИКА: Проверяем доступность заданий
-        console.log('🔍 Проверяем доступность заданий...');
-        const debugResult = await makeRequest('/api/debug/tasks');
-        console.log('📊 Статус заданий:', debugResult);
         
     } catch (error) {
         console.error('❌ API connection failed:', error);
@@ -8636,6 +8715,9 @@ async function initializeApp() {
         }
     }
     
+    // Повторно применяем исправления после загрузки контента
+    setTimeout(fixLayoutIssues, 2000);
+    
     console.log('🎉 App initialized successfully');
 }
 async function loadUserTasksForCategory(status) {
@@ -8675,6 +8757,73 @@ async function loadUserTasksForCategory(status) {
     } catch (error) {
         console.error(`❌ Error loading ${status} tasks:`, error);
     }
+}
+// 🔧 ФУНКЦИЯ ДЛЯ ПРИНУДИТЕЛЬНОГО ИСПРАВЛЕНИЯ LAYOUT
+function fixLayoutIssues() {
+    console.log('🔧 Applying layout fixes...');
+    
+    // Принудительно устанавливаем правильные размеры
+    const elements = document.querySelectorAll('*');
+    elements.forEach(el => {
+        el.style.maxWidth = '100%';
+        el.style.boxSizing = 'border-box';
+    });
+    
+    // Особое внимание контейнерам заданий
+    const tasksGrid = document.querySelector('.tasks-grid');
+    if (tasksGrid) {
+        tasksGrid.style.width = '100%';
+        tasksGrid.style.margin = '0';
+        tasksGrid.style.padding = '0';
+        tasksGrid.style.overflow = 'hidden';
+    }
+    
+    // Исправляем все карточки заданий
+    const taskCards = document.querySelectorAll('.task-card');
+    taskCards.forEach(card => {
+        card.style.width = '100%';
+        card.style.maxWidth = '100%';
+        card.style.boxSizing = 'border-box';
+        card.style.margin = '0 0 12px 0';
+        card.style.overflow = 'hidden';
+    });
+    
+    // Предотвращаем горизонтальную прокрутку
+    document.body.style.overflowX = 'hidden';
+    document.documentElement.style.overflowX = 'hidden';
+    
+    console.log('✅ Layout fixes applied');
+}
+
+// 🔧 ФУНКЦИЯ ДЛЯ ОБНОВЛЕНИЯ РАЗМЕРОВ ПРИ ИЗМЕНЕНИИ ЭКРАНА
+function updateLayoutOnResize() {
+    fixLayoutIssues();
+}
+
+// Вызываем при загрузке и изменении размера
+document.addEventListener('DOMContentLoaded', fixLayoutIssues);
+window.addEventListener('resize', updateLayoutOnResize);
+window.addEventListener('orientationchange', updateLayoutOnResize);
+
+// Также вызываем при переключении вкладок
+function showTasksTab() {
+    console.log('🎯 ПЕРЕХОД НА ВКЛАДКУ ЗАДАНИЙ');
+    
+    hideAllTabs();
+    const tasksTab = document.getElementById('tasks-tab');
+    if (tasksTab) {
+        tasksTab.classList.add('active');
+    }
+    
+    updateNavState('tasks');
+    
+    // Применяем исправления для мобильных
+    setTimeout(fixLayoutIssues, 100);
+    
+    // Активируем вкладку "Новые"
+    setTimeout(() => {
+        showTaskCategory('new');
+    }, 150);
 }
 
 function displayUserTasksForCategory(tasks, status) {
