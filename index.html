@@ -7471,7 +7471,6 @@ function startUserDataAutoUpdate() {
     }, 30000);
 }
 
-    // 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ ДАННЫХ ПОЛЬЗОВАТЕЛЯ
 async function updateUserData() {
     if (!currentUser) return;
     
@@ -7480,19 +7479,27 @@ async function updateUserData() {
         if (result.success) {
             // Сохраняем старые значения для сравнения
             const oldCompletedTasks = currentUser.tasks_completed || 0;
+            const oldLevel = currentUser.level || 1;
             
-            // Обновляем текущего пользователя
+            // Полностью обновляем пользователя
             currentUser = { ...currentUser, ...result.profile };
             
             const newCompletedTasks = currentUser.tasks_completed || 0;
+            const newLevel = currentUser.level || 1;
             
-            // Если количество выполненных заданий изменилось, обновляем прогресс
-            if (newCompletedTasks !== oldCompletedTasks) {
-                updateLevelProgress();
-                console.log(`📊 Заданий выполнено: ${oldCompletedTasks} → ${newCompletedTasks}`);
-            }
+            console.log('🔄 Данные пользователя обновлены:', {
+                oldTasks: oldCompletedTasks,
+                newTasks: newCompletedTasks,
+                oldLevel: oldLevel,
+                newLevel: newLevel
+            });
             
-            console.log('✅ Данные пользователя обновлены');
+            // Обновляем прогресс уровня
+            updateLevelProgress();
+            
+            // Обновляем отображение во всех местах
+            displayUserProfile();
+            
         }
     } catch (error) {
         console.error('Ошибка обновления данных пользователя:', error);
@@ -9674,7 +9681,6 @@ async function loadTaskVerifications() {
             document.getElementById('verification-modal').classList.add('active');
         }
 
-// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОДОБРЕНИЯ ЗАДАНИЯ С ОБНОВЛЕНИЕМ УРОВНЯ
 async function approveVerification() {
     if (!currentVerificationId) {
         showNotification('❌ ID верификации не найден', 'error');
@@ -9722,14 +9728,14 @@ async function approveVerification() {
             showNotification(message, 'success');
             closeModal('verification-modal');
             
-            // ОБНОВЛЯЕМ ВСЕ ДАННЫЕ
-            await updateUserData(); // Обновляем данные текущего пользователя
-            loadTaskVerifications(); // Обновляем список проверок
-            loadUserTasks(); // Обновляем задания пользователя
-            loadTasks(); // Обновляем общий список заданий
+            // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: ОБНОВЛЯЕМ ПРОГРЕСС УРОВНЯ
+            await updateUserData(); // Сначала обновляем данные пользователя
+            updateLevelProgress(); // Затем обновляем прогресс уровня
             
-            // ОБНОВЛЯЕМ ПРОГРЕСС УРОВНЯ
-            updateLevelProgress();
+            // Обновляем остальные данные
+            loadTaskVerifications();
+            loadUserTasks();
+            loadTasks();
             
         } else {
             throw new Error(result.error || 'Неизвестная ошибка сервера');
@@ -10448,7 +10454,6 @@ function showTasksTab() {
             updateNavState('tasks');
         }
 
-        // 🔧 ОБРАБОТЧИК ПЕРЕКЛЮЧЕНИЯ НА ВКЛАДКУ ПРОФИЛЯ
 function showProfileTab() {
     hideAllTabs();
     document.getElementById('profile-tab').classList.add('active');
@@ -10456,7 +10461,8 @@ function showProfileTab() {
     
     // Синхронизируем данные при каждом открытии профиля
     setTimeout(() => {
-        updateUserData();
+        updateUserData(); // Обновляем данные
+        updateLevelProgress(); // Обновляем прогресс
         syncUserProfile();
     }, 100);
 }
