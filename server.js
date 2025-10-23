@@ -40,7 +40,6 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static('.'));
 
-// Улучшенная настройка multer
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         const uploadsDir = path.join(__dirname, 'uploads');
@@ -51,9 +50,9 @@ const storage = multer.diskStorage({
     },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        // Сохраняем оригинальное расширение файла
         const fileExt = path.extname(file.originalname);
-        cb(null, 'task-' + uniqueSuffix + fileExt);
+        // Добавляем префикс для легкой идентификации
+        cb(null, 'screenshot-' + uniqueSuffix + fileExt);
     }
 });
 
@@ -2421,7 +2420,7 @@ app.get('/api/admin/debug-rights', async (req, res) => {
         });
     }
 });
-// Подтверждение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ
+// Подтверждение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ С УДАЛЕНИЕМ ФАЙЛОВ
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
@@ -2436,6 +2435,8 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             error: 'Доступ запрещен. Только администраторы могут подтверждать задания.'
         });
     }
+    
+    let screenshotPath = '';
     
     try {
         // Get verification info
@@ -2452,6 +2453,9 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
         }
 
         const verificationData = verification.rows[0];
+        
+        // Сохраняем путь к файлу для последующего удаления
+        screenshotPath = verificationData.screenshot_url;
         
         // Получаем информацию о задании
         const taskInfo = await pool.query(`
@@ -2517,6 +2521,11 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             console.log(`✅ Задание ${task.id} автоматически удалено (достигнут лимит: ${peopleRequired} исполнителей)`);
         }
         
+        // 🔥 УДАЛЯЕМ ФАЙЛ СКРИНШОТА ПОСЛЕ УСПЕШНОЙ ПРОВЕРКИ
+        if (screenshotPath) {
+            await deleteScreenshotFile(screenshotPath);
+        }
+        
         res.json({
             success: true,
             message: 'Task approved successfully',
@@ -2526,13 +2535,23 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
         });
     } catch (error) {
         console.error('Approve verification error:', error);
+        
+        // Даже если есть ошибка, пробуем удалить файл
+        if (screenshotPath) {
+            try {
+                await deleteScreenshotFile(screenshotPath);
+            } catch (deleteError) {
+                console.error('Error deleting screenshot after failed approval:', deleteError);
+            }
+        }
+        
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
         });
     }
 });
-// Отклонение задания для ВСЕХ админов
+// Отклонение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ С УДАЛЕНИЕМ ФАЙЛОВ
 app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
@@ -2547,6 +2566,8 @@ app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res
             error: 'Доступ запрещен. Только администраторы могут отклонять задания.'
         });
     }
+    
+    let screenshotPath = '';
     
     try {
         // Get verification info
@@ -2564,6 +2585,9 @@ app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res
 
         const verificationData = verification.rows[0];
         
+        // Сохраняем путь к файлу для удаления
+        screenshotPath = verificationData.screenshot_url;
+        
         // Update verification status
         await pool.query(`
             UPDATE task_verifications 
@@ -2578,18 +2602,66 @@ app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res
             WHERE id = $1
         `, [verificationData.user_task_id]);
         
+        // 🔥 УДАЛЯЕМ ФАЙЛ СКРИНШОТА ПРИ ОТКЛОНЕНИИ
+        if (screenshotPath) {
+            await deleteScreenshotFile(screenshotPath);
+        }
+        
         res.json({
             success: true,
             message: 'Task rejected successfully'
         });
     } catch (error) {
         console.error('Reject verification error:', error);
+        
+        // Пробуем удалить файл даже при ошибке
+        if (screenshotPath) {
+            try {
+                await deleteScreenshotFile(screenshotPath);
+            } catch (deleteError) {
+                console.error('Error deleting screenshot after failed rejection:', deleteError);
+            }
+        }
+        
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
         });
     }
 });
+// 🔧 ФУНКЦИЯ ДЛЯ УДАЛЕНИЯ ФАЙЛОВ СКРИНШОТОВ
+async function deleteScreenshotFile(screenshotUrl) {
+    try {
+        // Извлекаем имя файла из URL
+        const filename = screenshotUrl.split('/').pop();
+        if (!filename) {
+            console.log('❌ Cannot extract filename from URL:', screenshotUrl);
+            return;
+        }
+        
+        const filePath = path.join(__dirname, 'uploads', filename);
+        
+        // Проверяем существование файла
+        if (fs.existsSync(filePath)) {
+            // Удаляем файл
+            fs.unlinkSync(filePath);
+            console.log(`✅ Screenshot file deleted: ${filename}`);
+            
+            // Также удаляем запись из базы данных о скриншоте
+            await pool.query(`
+                UPDATE user_tasks 
+                SET screenshot_url = NULL 
+                WHERE screenshot_url LIKE $1
+            `, [`%${filename}%`]);
+            
+        } else {
+            console.log(`⚠️ File not found, skipping deletion: ${filename}`);
+        }
+    } catch (error) {
+        console.error('❌ Error deleting screenshot file:', error);
+        // Не бросаем ошибку дальше, чтобы не нарушить основной процесс
+    }
+}
 // ==================== WITHDRAWAL ENDPOINTS ====================
 
 // Request withdrawal - ОБНОВЛЕННАЯ ВЕРСИЯ С ПРОВЕРКОЙ МИНИМУМА

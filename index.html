@@ -10000,7 +10000,39 @@ setTimeout(initializeAdminPanel, 500);
     }
 }
         
+// 🔧 ФУНКЦИЯ ДЛЯ ОЧИСТКИ СТАРЫХ ФАЙЛОВ
+async function cleanupOldFiles() {
+    try {
+        const uploadsDir = path.join(__dirname, 'uploads');
+        
+        if (!fs.existsSync(uploadsDir)) {
+            return;
+        }
+        
+        const files = fs.readdirSync(uploadsDir);
+        const now = Date.now();
+        const maxAge = 24 * 60 * 60 * 1000; // 24 часа
+        
+        for (const file of files) {
+            const filePath = path.join(uploadsDir, file);
+            const stats = fs.statSync(filePath);
+            
+            // Удаляем файлы старше 24 часов
+            if (now - stats.mtime.getTime() > maxAge) {
+                fs.unlinkSync(filePath);
+                console.log(`🧹 Deleted old file: ${file}`);
+            }
+        }
+    } catch (error) {
+        console.error('Error cleaning up old files:', error);
+    }
+}
 
+// Запускаем очистку каждые 24 часа
+setInterval(cleanupOldFiles, 24 * 60 * 60 * 1000);
+
+// Запускаем при старте сервера
+cleanupOldFiles();
 // Обновите функцию отправки сообщения в чат
 async function sendMessageToAdmin() {
     if (!currentUser || !currentChatId) {
