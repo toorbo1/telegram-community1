@@ -2890,6 +2890,67 @@ app.get('/api/admin/admins-list', async (req, res) => {
     }
 });
 
+// Диагностический endpoint для заданий
+app.get('/api/debug/tasks-detailed', async (req, res) => {
+    const { userId } = req.query;
+    
+    try {
+        // Получаем все активные задания
+        const tasksResult = await pool.query(`
+            SELECT t.*, 
+                   COUNT(ut.id) as completed_count,
+                   EXISTS(
+                       SELECT 1 FROM user_tasks ut2 
+                       WHERE ut2.task_id = t.id 
+                       AND ut2.user_id = $1 
+                       AND ut2.status IN ('active', 'pending_review', 'completed')
+                   ) as user_has_task
+            FROM tasks t 
+            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
+            WHERE t.status = 'active'
+            GROUP BY t.id 
+            ORDER BY t.created_at DESC
+        `, [userId]);
+        
+        // Получаем задания пользователя
+        const userTasksResult = await pool.query(`
+            SELECT task_id FROM user_tasks 
+            WHERE user_id = $1 AND status IN ('active', 'pending_review', 'completed')
+        `, [userId]);
+        
+        const userTaskIds = userTasksResult.rows.map(row => row.task_id);
+        
+        // Фильтруем доступные задания
+        const availableTasks = tasksResult.rows.filter(task => {
+            const completedCount = task.completed_count || 0;
+            const peopleRequired = task.people_required || 1;
+            const isAvailableByLimit = completedCount < peopleRequired;
+            const isAvailableToUser = !userTaskIds.includes(task.id);
+            
+            return isAvailableByLimit && isAvailableToUser;
+        });
+        
+        res.json({
+            success: true,
+            debug: {
+                total_tasks: tasksResult.rows.length,
+                user_task_ids: userTaskIds,
+                available_tasks_count: availableTasks.length,
+                user_id: userId
+            },
+            all_tasks: tasksResult.rows,
+            available_tasks: availableTasks
+        });
+        
+    } catch (error) {
+        console.error('Debug tasks error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 // Создание таблицы прав администраторов
 async function createAdminPermissionsTable() {
     try {

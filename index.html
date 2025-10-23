@@ -5099,7 +5099,7 @@ html, body {
     <div id="main-tab" class="tab-content active">
         <!-- Герой баннер с изображением -->
         <div class="hero-banner fade-in">
-            <img src="IMG_4383.PNG " alt="LinkGold" style="width: 100%; height: 100%; object-fit: cover;">
+            <img src="IMG_4392.PNG " alt="LinkGold" style="width: 100%; height: 100%; object-fit: cover;">
         </div>
 
         <!-- Компактные параллельные блоки -->
@@ -6891,13 +6891,13 @@ function filterTasks(category) {
     loadTasks(searchText, category);
 }
 
-// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ ЗАДАНИЙ С ФИЛЬТРАЦИЕЙ
 async function loadTasks(search = '', category = 'all') {
     try {
         console.log('🎯 START loadTasks with filter:', { 
             search, 
             category, 
-            userId: currentUser?.id
+            userId: currentUser?.id,
+            hasUser: !!currentUser
         });
 
         if (!currentUser) {
@@ -6917,7 +6917,6 @@ async function loadTasks(search = '', category = 'all') {
             <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
                 <div class="loading-spinner">⏳</div>
                 <div style="margin-top: 16px;">Загружаем задания...</div>
-                ${category !== 'all' ? `<div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">Фильтр: ${getCategoryDisplayName(category)}</div>` : ''}
             </div>
         `;
 
@@ -6941,10 +6940,25 @@ async function loadTasks(search = '', category = 'all') {
 
         if (result.success) {
             allTasks = result.tasks || [];
-            console.log(`✅ Loaded ${allTasks.length} tasks with filter:`, { category, search });
+            console.log(`✅ Loaded ${allTasks.length} tasks:`, allTasks.map(t => ({id: t.id, title: t.title})));
             
-            // Отображаем отфильтрованные задания
-            displayFilteredTasks(allTasks, category, search);
+            // Проверяем, есть ли задания
+            if (allTasks.length === 0) {
+                console.log('📭 No tasks available');
+                newTasksContainer.innerHTML = `
+                    <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; text-align: center;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
+                        <div style="font-size: 18px; margin-bottom: 8px;">Заданий пока нет</div>
+                        <div style="font-size: 14px; color: var(--text-secondary);">
+                            Новые задания появятся позже<br>
+                            <small>Следите за обновлениями</small>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Отображаем отфильтрованные задания
+                displayFilteredTasks(allTasks, category, search);
+            }
             
         } else {
             throw new Error(result.error || 'Unknown server error');
@@ -9153,6 +9167,7 @@ function getTabIndex(category) {
 
 function openTaskModal(taskId) {
     console.log('📖 Opening task modal for task:', taskId);
+    console.log('📋 All available tasks:', allTasks);
     
     selectedTaskId = taskId;
     
@@ -9160,6 +9175,7 @@ function openTaskModal(taskId) {
     if (task) {
         console.log('✅ Task found:', task);
         
+        // Обновляем модальное окно
         document.getElementById('task-modal-title').textContent = task.title;
         document.getElementById('task-modal-category').textContent = task.category || 'Общее';
         document.getElementById('task-modal-price').textContent = `${task.price} ⭐`;
@@ -9189,8 +9205,7 @@ function openTaskModal(taskId) {
             }
         }
         
-        // Остальные данные...
-        document.getElementById('task-modal-time').textContent = task.time_to_complete || '5 минут';
+       document.getElementById('task-modal-time').textContent = task.time_to_complete || '5 минут';
         document.getElementById('task-modal-difficulty').textContent = task.difficulty || 'Легкая';
         
         const peopleRequired = task.people_required || 1;
@@ -9202,7 +9217,13 @@ function openTaskModal(taskId) {
         console.log('✅ Task modal opened successfully');
     } else {
         console.error('❌ Task not found in allTasks array');
-        showNotification('Ошибка: задание не найдено', 'error');
+        console.error('❌ Available task IDs:', allTasks.map(t => t.id));
+        showNotification('Ошибка: задание не найдено. Попробуйте обновить список заданий.', 'error');
+        
+        // Автоматически перезагружаем задания
+        setTimeout(() => {
+            loadTasks();
+        }, 2000);
     }
 }
 // Функция для исправления URL изображений в существующих заданиях
@@ -13246,6 +13267,12 @@ function createTaskCardWithImage(task, category, index) {
         taskElement.classList.add('rejected');
     }
     taskElement.style.animationDelay = `${index * 0.1}s`;
+    
+    // Добавляем data-attribute для отладки
+    taskElement.setAttribute('data-task-id', task.id);
+    taskElement.setAttribute('data-task-title', task.title);
+    
+    console.log(`🎨 Creating task card: ${task.id} - "${task.title}"`);
     
     const hasImage = task.image_url && task.image_url !== '';
     const peopleRequired = task.people_required || 1;
