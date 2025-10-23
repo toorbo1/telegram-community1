@@ -137,7 +137,6 @@ async function initDatabase() {
         // Добавляем реферальные поля
         await pool.query(`
             ALTER TABLE user_profiles 
-            ADD COLUMN IF NOT EXISTS tasks_completed INTEGER DEFAULT 0;
             ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE,
             ADD COLUMN IF NOT EXISTS referred_by BIGINT,
             ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0,
@@ -2422,7 +2421,7 @@ app.get('/api/admin/debug-rights', async (req, res) => {
         });
     }
 });
-// Подтверждение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ С ПРОГРЕССОМ УРОВНЯ
+// Подтверждение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
@@ -2489,12 +2488,12 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             WHERE id = $1
         `, [verificationData.user_task_id]);
         
-        // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Увеличиваем счетчик выполненных заданий
+        // Update user balance and stats
         await pool.query(`
             UPDATE user_profiles 
             SET 
                 balance = COALESCE(balance, 0) + $1,
-                tasks_completed = COALESCE(tasks_completed, 0) + 1, // ← ДОБАВЛЕНО
+                tasks_completed = COALESCE(tasks_completed, 0) + 1,
                 active_tasks = GREATEST(COALESCE(active_tasks, 0) - 1, 0),
                 experience = COALESCE(experience, 0) + 10,
                 updated_at = CURRENT_TIMESTAMP
@@ -2518,24 +2517,12 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             console.log(`✅ Задание ${task.id} автоматически удалено (достигнут лимит: ${peopleRequired} исполнителей)`);
         }
         
-        // Получаем обновленные данные пользователя для прогресса уровня
-        const updatedUser = await pool.query(
-            'SELECT tasks_completed FROM user_profiles WHERE user_id = $1',
-            [verificationData.user_id]
-        );
-        
-        const newTasksCompleted = updatedUser.rows[0].tasks_completed || 0;
-        
         res.json({
             success: true,
             message: 'Task approved successfully',
             amountAdded: verificationData.task_price,
             taskCompleted: newCompletedCount >= peopleRequired,
-            taskRemoved: newCompletedCount >= peopleRequired,
-            levelProgress: {
-                tasksCompleted: newTasksCompleted,
-                // Можно добавить информацию о прогрессе уровня если нужно
-            }
+            taskRemoved: newCompletedCount >= peopleRequired
         });
     } catch (error) {
         console.error('Approve verification error:', error);
