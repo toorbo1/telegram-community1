@@ -7471,26 +7471,44 @@ function startUserDataAutoUpdate() {
     }, 30000);
 }
 
-        // Обновление данных пользователя
-        async function updateUserData() {
-            if (!currentUser) return;
+    // 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ ДАННЫХ ПОЛЬЗОВАТЕЛЯ
+async function updateUserData() {
+    if (!currentUser) return;
+    
+    try {
+        const result = await makeRequest(`/user/${currentUser.id}`);
+        if (result.success) {
+            // Сохраняем старые значения для сравнения
+            const oldCompletedTasks = currentUser.tasks_completed || 0;
             
-            try {
-                const result = await makeRequest(`/user/${currentUser.id}`);
-                if (result.success) {
-                    // Обновляем текущего пользователя
-                    currentUser = { ...currentUser, ...result.profile };
-                    
-                    // Обновляем отображение во всех местах
-                    displayUserProfile();
-                    
-                    console.log('✅ Данные пользователя обновлены:', currentUser.balance);
-                }
-            } catch (error) {
-                console.error('Ошибка обновления данных пользователя:', error);
+            // Обновляем текущего пользователя
+            currentUser = { ...currentUser, ...result.profile };
+            
+            const newCompletedTasks = currentUser.tasks_completed || 0;
+            
+            // Если количество выполненных заданий изменилось, обновляем прогресс
+            if (newCompletedTasks !== oldCompletedTasks) {
+                updateLevelProgress();
+                console.log(`📊 Заданий выполнено: ${oldCompletedTasks} → ${newCompletedTasks}`);
             }
+            
+            console.log('✅ Данные пользователя обновлены');
         }
+    } catch (error) {
+        console.error('Ошибка обновления данных пользователя:', error);
+    }
+}
+// 🔧 АВТОМАТИЧЕСКОЕ ОБНОВЛЕНИЕ ПРОГРЕССА КАЖДЫЕ 30 СЕКУНД
+function startLevelProgressAutoUpdate() {
+    setInterval(() => {
+        if (currentUser) {
+            updateLevelProgress();
+        }
+    }, 30000); // 30 секунд
+}
 
+// Вызовите в initializeApp()
+startLevelProgressAutoUpdate();
         // 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ПРОФИЛЯ
 function displayUserProfile() {
     if (!currentUser) return;
@@ -7620,17 +7638,15 @@ function updateLevelProgress() {
     const currentLevel = currentUser.level || 1;
     
     // Рассчитываем прогресс для текущего уровня
-    // Каждый уровень требует 10 заданий
     const tasksForNextLevel = 10; // 10 заданий на уровень
-    const tasksForCurrentLevel = completedTasks % tasksForNextLevel; // Прогресс в текущем уровне
+    const tasksForCurrentLevel = completedTasks % tasksForNextLevel;
     const progressPercent = (tasksForCurrentLevel / tasksForNextLevel) * 100;
     
     console.log('📊 Level progress calculation:', {
         completedTasks,
         currentLevel,
         tasksForCurrentLevel,
-        progressPercent,
-        tasksForNextLevel
+        progressPercent
     });
     
     const progressBar = document.getElementById('level-progress-bar');

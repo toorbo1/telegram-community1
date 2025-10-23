@@ -1346,7 +1346,7 @@ app.post('/api/user/auth', async (req, res) => {
     }
 });
 
-// Get user profile
+// В server.js - endpoint получения данных пользователя
 app.get('/api/user/:userId', async (req, res) => {
     try {
         const result = await pool.query(
@@ -1361,9 +1361,15 @@ app.get('/api/user/:userId', async (req, res) => {
             });
         }
         
+        // Убедитесь, что tasks_completed есть в ответе
+        const userData = result.rows[0];
         res.json({
             success: true,
-            profile: result.rows[0]
+            profile: {
+                ...userData,
+                tasks_completed: userData.tasks_completed || 0,
+                level: userData.level || 1
+            }
         });
     } catch (error) {
         console.error('Get user error:', error);
