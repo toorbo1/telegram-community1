@@ -133,7 +133,12 @@ async function initDatabase() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-
+// В функции initDatabase() добавьте:
+await pool.query(`
+    ALTER TABLE user_profiles 
+    ADD COLUMN IF NOT EXISTS tasks_completed INTEGER DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1
+`);
         // Добавляем реферальные поля
         await pool.query(`
             ALTER TABLE user_profiles 
@@ -2427,7 +2432,7 @@ app.get('/api/admin/debug-rights', async (req, res) => {
         });
     }
 });
-// Подтверждение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ
+// Подтверждение задания для ВСЕХ админов - ИСПРАВЛЕННАЯ ВЕРСИЯ С ОБНОВЛЕНИЕМ УРОВНЯ
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
@@ -2494,17 +2499,42 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             WHERE id = $1
         `, [verificationData.user_task_id]);
         
-        // Update user balance and stats
+        // Получаем текущее количество выполненных заданий пользователя
+        const userResult = await pool.query(
+            'SELECT tasks_completed, level FROM user_profiles WHERE user_id = $1',
+            [verificationData.user_id]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            });
+        }
+        
+        const currentTasksCompleted = userResult.rows[0].tasks_completed || 0;
+        const currentLevel = userResult.rows[0].level || 1;
+        
+        // Увеличиваем счетчик выполненных заданий
+        const newTasksCompleted = currentTasksCompleted + 1;
+        
+        // Рассчитываем новый уровень (10 заданий на уровень)
+        const newLevel = Math.floor(newTasksCompleted / 10) + 1;
+        
+        console.log(`📊 Обновление прогресса: пользователь ${verificationData.user_id}, задания: ${currentTasksCompleted} → ${newTasksCompleted}, уровень: ${currentLevel} → ${newLevel}`);
+        
+        // Update user balance, stats and level
         await pool.query(`
             UPDATE user_profiles 
             SET 
                 balance = COALESCE(balance, 0) + $1,
-                tasks_completed = COALESCE(tasks_completed, 0) + 1,
+                tasks_completed = $2,
+                level = $3,
                 active_tasks = GREATEST(COALESCE(active_tasks, 0) - 1, 0),
                 experience = COALESCE(experience, 0) + 10,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = $2
-        `, [verificationData.task_price, verificationData.user_id]);
+            WHERE user_id = $4
+        `, [verificationData.task_price, newTasksCompleted, newLevel, verificationData.user_id]);
         
         // 🔥 ПРОВЕРЯЕМ ДОСТИГНУТ ЛИ ЛИМИТ ИСПОЛНИТЕЛЕЙ
         const newCompletedCount = currentCompletedCount + 1;
@@ -2523,10 +2553,27 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             console.log(`✅ Задание ${task.id} автоматически удалено (достигнут лимит: ${peopleRequired} исполнителей)`);
         }
         
+        // Отправляем уведомление пользователю через бота (если бот активен)
+        if (bot && newLevel > currentLevel) {
+            try {
+                await bot.sendMessage(
+                    verificationData.user_id,
+                    `🎉 Поздравляем! Вы достигли ${newLevel} уровня! 🚀\n\n` +
+                    `Выполнено заданий: ${newTasksCompleted}\n` +
+                    `Продолжайте в том же духе!`
+                );
+            } catch (botError) {
+                console.log('Не удалось отправить уведомление о повышении уровня:', botError.message);
+            }
+        }
+        
         res.json({
             success: true,
             message: 'Task approved successfully',
             amountAdded: verificationData.task_price,
+            tasksCompleted: newTasksCompleted,
+            level: newLevel,
+            levelIncreased: newLevel > currentLevel,
             taskCompleted: newCompletedCount >= peopleRequired,
             taskRemoved: newCompletedCount >= peopleRequired
         });
@@ -2538,6 +2585,7 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
         });
     }
 });
+
 // Отклонение задания для ВСЕХ админов
 app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res) => {
     const verificationId = req.params.verificationId;

@@ -7558,7 +7558,25 @@ function displayUserProfile() {
     
     console.log('✅ User profile displayed with level progress');
 }
+// 🔧 ФУНКЦИЯ ДЛЯ РАСЧЕТА УРОВНЯ НА ОСНОВЕ ВЫПОЛНЕННЫХ ЗАДАНИЙ
+function calculateLevel(tasksCompleted) {
+    // 10 заданий на уровень
+    return Math.floor(tasksCompleted / 10) + 1;
+}
 
+// 🔧 ФУНКЦИЯ ДЛЯ РАСЧЕТА ПРОГРЕССА ТЕКУЩЕГО УРОВНЯ
+function calculateLevelProgress(tasksCompleted) {
+    const currentLevel = calculateLevel(tasksCompleted);
+    const tasksForCurrentLevel = tasksCompleted % 10; // Остаток заданий для текущего уровня
+    const progressPercent = (tasksForCurrentLevel / 10) * 100;
+    
+    return {
+        level: currentLevel,
+        tasksForCurrentLevel: tasksForCurrentLevel,
+        progressPercent: progressPercent,
+        tasksForNextLevel: 10 - tasksForCurrentLevel
+    };
+}
         function updateProfileStats() {
     if (!currentUser) return;
     
@@ -7635,43 +7653,42 @@ function updateLevelProgress() {
     if (!currentUser) return;
     
     const completedTasks = currentUser.tasks_completed || 0;
-    const currentLevel = currentUser.level || 1;
-    
-    // Рассчитываем прогресс для текущего уровня
-    const tasksForNextLevel = 10; // 10 заданий на уровень
-    const tasksForCurrentLevel = completedTasks % tasksForNextLevel;
-    const progressPercent = (tasksForCurrentLevel / tasksForNextLevel) * 100;
+    const levelInfo = calculateLevelProgress(completedTasks);
     
     console.log('📊 Level progress calculation:', {
         completedTasks,
-        currentLevel,
-        tasksForCurrentLevel,
-        progressPercent
+        currentLevel: levelInfo.level,
+        tasksForCurrentLevel: levelInfo.tasksForCurrentLevel,
+        progressPercent: levelInfo.progressPercent
     });
     
+    // Обновляем элементы интерфейса
+    const levelElement = document.getElementById('user-level');
     const progressBar = document.getElementById('level-progress-bar');
-    const levelCount = document.querySelector('.level-count');
-    const levelInfo = document.querySelector('.level-info');
+    const levelCount = document.getElementById('level-count');
+    const levelInfoText = document.getElementById('level-info');
+    
+    if (levelElement) {
+        levelElement.textContent = levelInfo.level;
+    }
     
     if (progressBar) {
-        progressBar.style.width = `${progressPercent}%`;
+        progressBar.style.width = `${levelInfo.progressPercent}%`;
     }
     
     if (levelCount) {
-        levelCount.textContent = `${tasksForCurrentLevel}/${tasksForNextLevel} заданий`;
+        levelCount.textContent = `${levelInfo.tasksForCurrentLevel}/10 заданий`;
     }
     
-    if (levelInfo) {
-        const nextLevel = currentLevel + 1;
-        const tasksNeeded = tasksForNextLevel - tasksForCurrentLevel;
-        levelInfo.textContent = `Выполните ${tasksNeeded} заданий для достижения ${nextLevel} уровня`;
+    if (levelInfoText) {
+        if (levelInfo.tasksForCurrentLevel === 0 && completedTasks > 0) {
+            levelInfoText.textContent = `🎉 Уровень ${levelInfo.level} достигнут!`;
+        } else {
+            levelInfoText.textContent = `Выполните ${levelInfo.tasksForNextLevel} заданий для достижения ${levelInfo.level + 1} уровня`;
+        }
     }
     
-    // Обновляем отображение уровня
-    const levelElement = document.getElementById('user-level');
-    if (levelElement) {
-        levelElement.textContent = currentLevel;
-    }
+    console.log('✅ Level progress updated');
 }
 
 // 🔧 ДОПОЛНИТЕЛЬНО: ФУНКЦИЯ ДЛЯ ПРОВЕРКИ ПОВЫШЕНИЯ УРОВНЯ
@@ -9657,7 +9674,7 @@ async function loadTaskVerifications() {
             document.getElementById('verification-modal').classList.add('active');
         }
 
-// УЛУЧШЕННАЯ ФУНКЦИЯ ОДОБРЕНИЯ ЗАДАНИЯ
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОДОБРЕНИЯ ЗАДАНИЯ С ОБНОВЛЕНИЕМ УРОВНЯ
 async function approveVerification() {
     if (!currentVerificationId) {
         showNotification('❌ ID верификации не найден', 'error');
@@ -9672,8 +9689,7 @@ async function approveVerification() {
     try {
         console.log(`🔄 Начинаем одобрение верификации:`, {
             verificationId: currentVerificationId,
-            adminId: currentUser.id,
-            apiUrl: `${API_BASE_URL}/api/admin/task-verifications/${currentVerificationId}/approve`
+            adminId: currentUser.id
         });
 
         // Показываем индикатор загрузки
@@ -9695,6 +9711,10 @@ async function approveVerification() {
         if (result.success) {
             let message = `✅ Задание одобрено! Пользователь получил ${result.amountAdded}⭐`;
             
+            if (result.levelIncreased) {
+                message += `\n\n🎉 Пользователь достиг ${result.level} уровня!`;
+            }
+            
             if (result.taskRemoved) {
                 message += "\n\n🎯 Задание автоматически удалено - достигнут лимит исполнителей!";
             }
@@ -9703,10 +9723,13 @@ async function approveVerification() {
             closeModal('verification-modal');
             
             // ОБНОВЛЯЕМ ВСЕ ДАННЫЕ
-            await updateUserData();
-            loadTaskVerifications();
-            loadUserTasks();
-            loadTasks();
+            await updateUserData(); // Обновляем данные текущего пользователя
+            loadTaskVerifications(); // Обновляем список проверок
+            loadUserTasks(); // Обновляем задания пользователя
+            loadTasks(); // Обновляем общий список заданий
+            
+            // ОБНОВЛЯЕМ ПРОГРЕСС УРОВНЯ
+            updateLevelProgress();
             
         } else {
             throw new Error(result.error || 'Неизвестная ошибка сервера');
@@ -9718,10 +9741,6 @@ async function approveVerification() {
         let errorMessage = 'Сетевая ошибка при одобрении задания';
         if (error.message.includes('Failed to fetch')) {
             errorMessage = '❌ Проблема с соединением. Проверьте интернет и попробуйте снова.';
-        } else if (error.message.includes('404')) {
-            errorMessage = '❌ Endpoint не найден. Сообщите администратору.';
-        } else if (error.message.includes('403')) {
-            errorMessage = '❌ Доступ запрещен. У вас нет прав администратора.';
         }
         
         showNotification(errorMessage, 'error');
