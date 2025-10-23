@@ -7450,24 +7450,25 @@ function displayUserProfile() {
         userPhotoElement.textContent = currentUser.firstName ? currentUser.firstName.charAt(0).toUpperCase() : 'U';
     }
     
-    // Обновляем статистику и прогресс
+       // Обновляем статистику и прогресс
     updateProfileStats();
     updateReferralSystem();
     updateLevelProgress(); // ← ВАЖНО: вызываем обновление прогресса уровня
+    
+    console.log('✅ User profile displayed with level progress');
 }
 
-        // Обновление статистики профиля
         function updateProfileStats() {
-            if (!currentUser) return;
-            
-            const stats = document.querySelectorAll('.profile-stat .stat-value');
-            if (stats.length >= 4) {
-                stats[0].textContent = `${currentUser.balance || 0} ⭐`; // Баланс
-                stats[1].textContent = currentUser.tasks_completed || 0; // Выполнено
-                stats[2].textContent = currentUser.active_tasks || 0; // Активных
-                stats[3].textContent = `${currentUser.quality_rate || 0}%`; // Качество
-            }
-        }
+    if (!currentUser) return;
+    
+    const stats = document.querySelectorAll('.profile-stat .stat-value');
+    if (stats.length >= 4) {
+        stats[0].textContent = `${currentUser.balance || 0} ⭐`; // Баланс
+        stats[1].textContent = currentUser.tasks_completed || 0; // Выполнено
+        stats[2].textContent = currentUser.active_tasks || 0; // Активных
+        stats[3].textContent = `${currentUser.quality_rate || 0}%`; // Качество
+    }
+}
 
 function updateReferralSystem() {
     if (!currentUser) return;
@@ -7528,7 +7529,7 @@ app.get('/api/user/:userId/referrals/detailed', async (req, res) => {
         });
     }
 });
-        // 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ ПРОГРЕССА УРОВНЯ
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ ПРОГРЕССА УРОВНЯ
 function updateLevelProgress() {
     if (!currentUser) return;
     
@@ -7536,8 +7537,10 @@ function updateLevelProgress() {
     const currentLevel = currentUser.level || 1;
     
     // Рассчитываем прогресс для текущего уровня
-    const tasksForCurrentLevel = completedTasks % 10; // 10 заданий на уровень
-    const progressPercent = (tasksForCurrentLevel / 10) * 100;
+    // Каждый уровень требует 10 заданий
+    const tasksForNextLevel = 10; // 10 заданий на уровень
+    const tasksForCurrentLevel = completedTasks % tasksForNextLevel; // Прогресс в текущем уровне
+    const progressPercent = (tasksForCurrentLevel / tasksForNextLevel) * 100;
     
     const progressBar = document.getElementById('level-progress-bar');
     const levelCount = document.querySelector('.level-count');
@@ -7548,12 +7551,12 @@ function updateLevelProgress() {
     }
     
     if (levelCount) {
-        levelCount.textContent = `${tasksForCurrentLevel}/10 заданий`;
+        levelCount.textContent = `${tasksForCurrentLevel}/${tasksForNextLevel} заданий`;
     }
     
     if (levelInfo) {
         const nextLevel = currentLevel + 1;
-        const tasksNeeded = 10 - tasksForCurrentLevel;
+        const tasksNeeded = tasksForNextLevel - tasksForCurrentLevel;
         levelInfo.textContent = `Выполните ${tasksNeeded} заданий для достижения ${nextLevel} уровня`;
     }
     
@@ -7562,6 +7565,14 @@ function updateLevelProgress() {
     if (levelElement) {
         levelElement.textContent = currentLevel;
     }
+    
+    console.log('📊 Level progress updated:', {
+        completedTasks,
+        currentLevel,
+        tasksForCurrentLevel,
+        progressPercent,
+        tasksForNextLevel
+    });
 }
 // 🔧 ФУНКЦИЯ ДЛЯ СИНХРОНИЗАЦИИ ПРОФИЛЯ С TELEGRAM
 async function syncUserProfile() {
@@ -12887,6 +12898,7 @@ async function onTaskCompleted(userId, taskPrice) {
             
             // Обновляем интерфейс
             displayUserProfile();
+            updateLevelProgress(); // ← Добавьте эту строку
             
             console.log('✅ Данные пользователя обновлены после выполнения задания');
         }
