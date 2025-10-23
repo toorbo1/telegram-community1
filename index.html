@@ -6894,21 +6894,18 @@ function filterTasks(category) {
 // 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ ЗАДАНИЙ С ФИЛЬТРАЦИЕЙ
 async function loadTasks(search = '', category = 'all') {
     try {
-        console.log('🎯 START loadTasks with filter:', { 
-            search, 
-            category, 
-            userId: currentUser?.id
-        });
+        console.log('🎯 START loadTasks:', { search, category, userId: currentUser?.id });
 
         if (!currentUser) {
-            console.log('❌ No current user, aborting loadTasks');
+            console.log('❌ No current user');
             showNotification('Пользователь не авторизован', 'error');
             return;
         }
 
+        // Добавьте проверку на существование контейнера
         const newTasksContainer = document.getElementById('new-tasks');
         if (!newTasksContainer) {
-            console.log('❌ new-tasks container not found');
+            console.error('❌ new-tasks container not found');
             return;
         }
 
@@ -9153,17 +9150,28 @@ function getTabIndex(category) {
 
 function openTaskModal(taskId) {
     console.log('📖 Opening task modal for task:', taskId);
+    console.log('📊 Available tasks:', allTasks);
+    
+    if (!taskId) {
+        showNotification('Ошибка: ID задания не указан', 'error');
+        return;
+    }
     
     selectedTaskId = taskId;
     
-    const task = allTasks.find(t => t.id === taskId);
+    const task = allTasks.find(t => {
+        console.log(`Comparing: ${t.id} (${typeof t.id}) with ${taskId} (${typeof taskId})`);
+        return t.id == taskId; // Используем нестрогое сравнение
+    });
+    
     if (task) {
         console.log('✅ Task found:', task);
         
-        document.getElementById('task-modal-title').textContent = task.title;
+        // Заполняем модальное окно
+        document.getElementById('task-modal-title').textContent = task.title || 'Без названия';
         document.getElementById('task-modal-category').textContent = task.category || 'Общее';
-        document.getElementById('task-modal-price').textContent = `${task.price} ⭐`;
-        document.getElementById('task-modal-description').textContent = task.description;
+        document.getElementById('task-modal-price').textContent = `${task.price || 0} ⭐`;
+        document.getElementById('task-modal-description').textContent = task.description || 'Описание отсутствует';
         
         // 🔧 ИСПРАВЛЕНИЕ: Правильное отображение изображения в модальном окне
         const modalImageContainer = document.getElementById('task-modal-image-container');
@@ -9279,6 +9287,36 @@ function showTaskConfirmation(userTaskId, taskName) {
         showNotification('Ошибка: модальное окно не найдено', 'error');
     }
 }
+// Добавьте эту функцию для инициализации обработчиков
+function initializeTaskHandlers() {
+    document.addEventListener('click', function(e) {
+        // Обработка кликов на карточки заданий
+        if (e.target.closest('.task-card')) {
+            const taskCard = e.target.closest('.task-card');
+            const taskId = taskCard.getAttribute('data-task-id');
+            
+            if (taskId) {
+                console.log('🖱️ Task card clicked, ID:', taskId);
+                openTaskModal(parseInt(taskId));
+            }
+        }
+        
+        // Обработка кнопки "Начать задание"
+        if (e.target.classList.contains('task-btn') || e.target.closest('.task-btn')) {
+            const taskId = selectedTaskId;
+            console.log('🚀 Start task button clicked, ID:', taskId);
+            
+            if (taskId) {
+                startTask();
+            } else {
+                showNotification('Ошибка: задание не выбрано', 'error');
+            }
+        }
+    });
+}
+
+// Вызовите при инициализации приложения
+initializeTaskHandlers();
         // Функции для системы проверки заданий
         function showScreenshotUpload() {
             closeModal('confirmation-modal');
@@ -13208,8 +13246,7 @@ function displayTasksWithImages(tasks, category) {
 }
 // В index.html - обновим функцию создания карточки задания для отклоненных
 function createTaskCardWithImage(task, category, index) {
-    const taskElement = document.createElement('div');
-    taskElement.className = 'task-card task-card-with-image';
+
     if (category === 'rejected') {
         taskElement.classList.add('rejected');
     }
@@ -13220,6 +13257,17 @@ function createTaskCardWithImage(task, category, index) {
     const completedCount = task.completed_count || 0;
     const availableTasks = Math.max(0, peopleRequired - completedCount);
     
+        // Проверяем, что задание существует и имеет все необходимые поля
+    if (!task || !task.id) {
+        console.error('❌ Invalid task data:', task);
+        return document.createElement('div'); // Возвращаем пустой элемент
+    }
+
+    console.log(`🎯 Creating card for task: ${task.id}, title: ${task.title}`);
+    
+    const taskElement = document.createElement('div');
+    taskElement.className = 'task-card task-card-with-image';
+
     let imageHtml = '';
     if (hasImage) {
         imageHtml = `
