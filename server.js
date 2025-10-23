@@ -141,7 +141,7 @@ await pool.query(`
 `);
         // Добавляем реферальные поля
         await pool.query(`
-            ALTER TABLE user_profiles 
+            ALTER TABLE user_profiles  
             ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE,
             ADD COLUMN IF NOT EXISTS referred_by BIGINT,
             ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0,
