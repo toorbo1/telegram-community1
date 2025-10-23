@@ -7,6 +7,89 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
            <style>
+            /* 🔧 СТИЛИ ДЛЯ ПРОГРЕССА УРОВНЯ */
+.level-progress {
+    background: var(--card-bg);
+    border-radius: 14px;
+    padding: 16px;
+    margin: 16px 0;
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+}
+
+.level-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.level-name {
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.level-count {
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.progress-bar {
+    height: 8px;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+    position: relative;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--gold-gradient);
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.5s ease-in-out;
+    position: relative;
+}
+
+.progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(255,255,255,0.3) 50%, 
+        transparent 100%);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.level-info {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-top: 8px;
+}
+
+/* Анимация при повышении уровня */
+.level-up-animation {
+    animation: levelUpPulse 0.6s ease-in-out;
+}
+
+@keyframes levelUpPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
             .bottom-nav {
     position: fixed;
     bottom: 10px;
@@ -5294,19 +5377,19 @@ html, body {
             </div>
         </div>
         
-        <!-- Прогресс уровня -->
-        <div class="level-progress fade-in">
-            <div class="level-title">
-                <span class="level-name">Прогресс уровня</span>
-                <span class="level-count">0/10 заданий</span>
-            </div>
-            <div class="progress-bar">
-                <div class="progress-fill" id="level-progress-bar"></div>
-            </div>
-            <div class="level-info">
-                Выполните 10 заданий для достижения 1 уровня
-            </div>
-        </div>
+        <!-- В разделе профиля -->
+<div class="level-progress fade-in">
+    <div class="level-title">
+        <span class="level-name">Прогресс уровня</span>
+        <span class="level-count" id="level-count">0/10 заданий</span>
+    </div>
+    <div class="progress-bar">
+        <div class="progress-fill" id="level-progress-bar"></div>
+    </div>
+    <div class="level-info" id="level-info">
+        Выполните 10 заданий для достижения 1 уровня
+    </div>
+</div>
         
         <!-- Реферальная система -->
         <div class="referral-system fade-in">
@@ -7542,6 +7625,14 @@ function updateLevelProgress() {
     const tasksForCurrentLevel = completedTasks % tasksForNextLevel; // Прогресс в текущем уровне
     const progressPercent = (tasksForCurrentLevel / tasksForNextLevel) * 100;
     
+    console.log('📊 Level progress calculation:', {
+        completedTasks,
+        currentLevel,
+        tasksForCurrentLevel,
+        progressPercent,
+        tasksForNextLevel
+    });
+    
     const progressBar = document.getElementById('level-progress-bar');
     const levelCount = document.querySelector('.level-count');
     const levelInfo = document.querySelector('.level-info');
@@ -7565,15 +7656,91 @@ function updateLevelProgress() {
     if (levelElement) {
         levelElement.textContent = currentLevel;
     }
+}
+
+// 🔧 ДОПОЛНИТЕЛЬНО: ФУНКЦИЯ ДЛЯ ПРОВЕРКИ ПОВЫШЕНИЯ УРОВНЯ
+function checkLevelUp(oldCompletedTasks, newCompletedTasks) {
+    const oldLevel = Math.floor(oldCompletedTasks / 10) + 1;
+    const newLevel = Math.floor(newCompletedTasks / 10) + 1;
     
-    console.log('📊 Level progress updated:', {
-        completedTasks,
-        currentLevel,
-        tasksForCurrentLevel,
-        progressPercent,
-        tasksForNextLevel
+    if (newLevel > oldLevel) {
+        // Уровень повышен!
+        console.log(`🎉 Уровень повышен: ${oldLevel} → ${newLevel}`);
+        
+        // Обновляем уровень пользователя
+        if (currentUser) {
+            currentUser.level = newLevel;
+            currentUser.tasks_completed = newCompletedTasks;
+            
+            // Показываем уведомление о повышении уровня
+            showNotification(`🎉 Поздравляем! Вы достигли ${newLevel} уровня!`, 'success');
+            
+            // Обновляем отображение
+            updateLevelProgress();
+            displayUserProfile();
+        }
+    }
+}
+
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ ДАННЫХ ПОЛЬЗОВАТЕЛЯ
+async function updateUserData() {
+    if (!currentUser) return;
+    
+    try {
+        const result = await makeRequest(`/user/${currentUser.id}`);
+        if (result.success) {
+            // Сохраняем старые значения для сравнения
+            const oldCompletedTasks = currentUser.tasks_completed || 0;
+            const oldLevel = currentUser.level || 1;
+            
+            // Обновляем текущего пользователя
+            currentUser = { ...currentUser, ...result.profile };
+            
+            const newCompletedTasks = currentUser.tasks_completed || 0;
+            const newLevel = currentUser.level || 1;
+            
+            // Проверяем повышение уровня
+            if (newCompletedTasks > oldCompletedTasks) {
+                checkLevelUp(oldCompletedTasks, newCompletedTasks);
+            }
+            
+            // Обновляем отображение во всех местах
+            displayUserProfile();
+            
+            console.log('✅ Данные пользователя обновлены:', {
+                oldTasks: oldCompletedTasks,
+                newTasks: newCompletedTasks,
+                oldLevel: oldLevel,
+                newLevel: newLevel
+            });
+        }
+    } catch (error) {
+        console.error('Ошибка обновления данных пользователя:', error);
+    }
+}
+
+// 🔧 ФУНКЦИЯ ДЛЯ ТЕСТИРОВАНИЯ ПРОГРЕССА (можно удалить после тестирования)
+function testLevelProgress() {
+    console.log('🧪 Testing level progress...');
+    
+    // Тестовые данные
+    const testData = [
+        { completed: 0, expectedLevel: 1, expectedProgress: 0 },
+        { completed: 5, expectedLevel: 1, expectedProgress: 50 },
+        { completed: 10, expectedLevel: 2, expectedProgress: 0 },
+        { completed: 15, expectedLevel: 2, expectedProgress: 50 },
+        { completed: 25, expectedLevel: 3, expectedProgress: 50 }
+    ];
+    
+    testData.forEach(test => {
+        const level = Math.floor(test.completed / 10) + 1;
+        const progress = (test.completed % 10) * 10;
+        console.log(`Заданий: ${test.completed} → Уровень: ${level}, Прогресс: ${progress}%`);
     });
 }
+
+// Вызов теста (можно удалить)
+setTimeout(testLevelProgress, 3000);
 // 🔧 ФУНКЦИЯ ДЛЯ СИНХРОНИЗАЦИИ ПРОФИЛЯ С TELEGRAM
 async function syncUserProfile() {
     if (!currentUser || !window.Telegram?.WebApp) return;
@@ -12899,7 +13066,7 @@ async function onTaskCompleted(userId, taskPrice) {
             // Обновляем интерфейс
             displayUserProfile();
             updateLevelProgress(); // ← Добавьте эту строку
-            
+
             console.log('✅ Данные пользователя обновлены после выполнения задания');
         }
     } catch (error) {
