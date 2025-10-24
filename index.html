@@ -5,7 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LinkGold - Платформа для заработка</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    
+    <!-- 🔥 КРИТИЧЕСКИЕ ОПТИМИЗАЦИИ -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: 'unsafe-inline' 'unsafe-eval'">
+
+<!-- Предзагрузка критических ресурсов -->
+<link rel="preconnect" href="https://telegram.org">
+<link rel="dns-prefetch" href="https://telegram.org">
+
+<!-- Убираем ненужные ресурсы -->
+<!-- УДАЛИТЬ: Сложные CSS анимации, тяжелые изображения -->
            <style>
             .bottom-nav {
     position: fixed;
@@ -5804,6 +5813,62 @@ html, body {
 
 
     <script>
+        // 🚀 ОПТИМИЗАЦИИ ПРОИЗВОДИТЕЛЬНОСТИ
+class PerformanceOptimizer {
+    constructor() {
+        this.lazyLoadObserver = null;
+        this.init();
+    }
+    
+    init() {
+        this.setupLazyLoading();
+        this.debounceScrollEvents();
+        this.optimizeAnimations();
+    }
+    
+    // Ленивая загрузка изображений
+    setupLazyLoading() {
+        if ('IntersectionObserver' in window) {
+            this.lazyLoadObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        img.src = img.dataset.src;
+                        img.classList.remove('lazy');
+                        this.lazyLoadObserver.unobserve(img);
+                    }
+                });
+            });
+            
+            document.querySelectorAll('img[data-src]').forEach(img => {
+                this.lazyLoadObserver.observe(img);
+            });
+        }
+    }
+    
+    // Дебаунс скролла
+    debounceScrollEvents() {
+        let scrollTimeout;
+        window.addEventListener('scroll', () => {
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                // Оптимизированные операции при скролле
+            }, 100);
+        }, { passive: true });
+    }
+    
+    // Оптимизация анимаций
+    optimizeAnimations() {
+        // Принудительное аппаратное ускорение
+        const elements = document.querySelectorAll('.card, .task-card');
+        elements.forEach(el => {
+            el.style.transform = 'translateZ(0)';
+        });
+    }
+}
+
+// Инициализация при загрузке
+new PerformanceOptimizer();
         // 🔧 КОНФИГУРАЦИЯ
         console.log('🌐 Current URL:', window.location.href);
         const API_BASE_URL = window.location.origin;
@@ -6342,7 +6407,143 @@ function showVerificationsModal(verifications) {
     // Добавляем модальное окно в DOM
     document.body.insertAdjacentHTML('beforeend', modalHTML);
 }
+// Оптимизация изображений
+function optimizeImages() {
+    const images = document.querySelectorAll('img');
+    images.forEach(img => {
+        // Добавляем lazy loading
+        img.loading = 'lazy';
+        
+        // Оптимизируем размер
+        if (img.width > 300) {
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+        }
+    });
+}
 
+// Сжатие изображений перед загрузкой
+function compressImage(file, maxSize = 50000) {
+    return new Promise((resolve) => {
+        if (file.size <= maxSize) {
+            resolve(file);
+            return;
+        }
+        
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        
+        img.onload = () => {
+            const scale = Math.sqrt(maxSize / file.size);
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+            
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(resolve, 'image/jpeg', 0.7);
+        };
+        
+        img.src = URL.createObjectURL(file);
+    });
+}
+// Эффективное обновление DOM
+class DOMOptimizer {
+    constructor() {
+        this.updateQueue = [];
+        this.batchTimeout = null;
+    }
+    
+    // Батчинг обновлений
+    batchUpdate(callback) {
+        this.updateQueue.push(callback);
+        
+        if (!this.batchTimeout) {
+            this.batchTimeout = setTimeout(() => {
+                this.flushUpdates();
+            }, 16); // Один кадр
+        }
+    }
+    
+    flushUpdates() {
+        const fragment = document.createDocumentFragment();
+        
+        this.updateQueue.forEach(callback => {
+            callback(fragment);
+        });
+        
+        // Единое обновление DOM
+        document.getElementById('tasks-container').appendChild(fragment);
+        
+        this.updateQueue = [];
+        this.batchTimeout = null;
+    }
+    
+    // Эффективное создание элементов
+    createElement(tag, attributes = {}) {
+        const element = document.createElement(tag);
+        Object.keys(attributes).forEach(key => {
+            element[key] = attributes[key];
+        });
+        return element;
+    }
+}
+// Кэширование запросов
+const apiCache = new Map();
+
+async function cachedRequest(url, options = {}) {
+    const cacheKey = JSON.stringify({ url, options });
+    
+    if (apiCache.has(cacheKey)) {
+        return apiCache.get(cacheKey);
+    }
+    
+    const response = await fetch(url, options);
+    const data = await response.json();
+    
+    // Кэшируем на 30 секунд
+    apiCache.set(cacheKey, data);
+    setTimeout(() => apiCache.delete(cacheKey), 30000);
+    
+    return data;
+}
+
+// Мемоизация тяжелых функций
+function memoize(fn) {
+    const cache = new Map();
+    return function(...args) {
+        const key = JSON.stringify(args);
+        if (cache.has(key)) return cache.get(key);
+        
+        const result = fn.apply(this, args);
+        cache.set(key, result);
+        return result;
+    };
+}
+// Критическая загрузка по приоритету
+class PriorityLoader {
+    constructor() {
+        this.priorityQueue = [];
+    }
+    
+    addCritical(resource, priority = 0) {
+        this.priorityQueue.push({ resource, priority });
+        this.priorityQueue.sort((a, b) => b.priority - a.priority);
+    }
+    
+    async load() {
+        for (const item of this.priorityQueue) {
+            await this.loadResource(item.resource);
+        }
+    }
+    
+    async loadResource(resource) {
+        if (resource.type === 'script') {
+            await this.loadScript(resource.url);
+        } else if (resource.type === 'data') {
+            await this.loadData(resource.url);
+        }
+    }
+}
 // 💬 Админ-чат с пользователями
 async function openAdminSupportChat() {
     if (!currentUser) return;
