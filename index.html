@@ -621,29 +621,6 @@ body {
             inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
     }
 }
-            /* ОТКЛЮЧИТЕ СЛОЖНЫЕ АНИМАЦИИ НА МОБИЛЬНЫХ */
-@media (max-width: 768px) {
-  * {
-    transition: none !important;
-    animation: none !important;
-    transform: none !important;
-  }
-  
-  .task-card:hover, .card:hover {
-    transform: none !important;
-  }
-  
-  /* Упростите тени */
-  .card, .task-card {
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1) !important;
-  }
-  
-  /* Отключите сложные фоны */
-  body {
-    background-image: none !important;
-    background: var(--bg-primary) !important;
-  }
-}
 
 /* ПРЕДОТВРАЩЕНИЕ БЛОКИРОВКИ РЕНДЕРИНГА */
 .performance-optimized {
@@ -813,28 +790,7 @@ body {
     width: 70%;
 }
 
-/* 🎯 ОПТИМИЗАЦИЯ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ */
-@media (max-width: 768px) {
-    /* Уменьшаем длительность анимаций для мобильных */
-    .tab-content,
-    .page,
-    .modal {
-        transition-duration: 0.3s;
-    }
-    
-    /* Оптимизация для тач-устройств */
-    .btn,
-    .task-btn,
-    .nav-item {
-        min-height: 44px; /* Минимальный размер для тач-элементов */
-        min-width: 44px;
-    }
-    
-/* Плавный скролл для body */
-body {
-    -webkit-overflow-scrolling: touch;
-}
-}
+
 
 /* 🔧 ПРЕДОТВРАЩЕНИЕ БЛОКИРОВКИ ГЛАВНОГО ПОТОКА */
 .lazy-load {
@@ -1087,12 +1043,7 @@ body {
     margin-top: 16px;
 }
 
-@media (max-width: 768px) {
-    .tasks-grid-with-images {
-        grid-template-columns: 1fr;
-        gap: 12px;
-    }
-}
+
         .task-card::before {
             content: '';
             position: absolute;
@@ -1175,23 +1126,7 @@ body {
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
         }
 
-        /* 🔥 ЯРКИЙ NAVBAR */
-        .bottom-nav {
-            position: fixed;
-            bottom: 10px;
-            left: 10px;
-            right: 10px;
-            background: rgba(25, 25, 50, 0.95);
-            border-radius: 16px;
-            padding: 8px;
-            display: flex;
-            justify-content: space-around;
-            box-shadow: 0 -6px 25px rgba(0, 0, 0, 0.4);
-            border: 1px solid var(--border);
-            z-index: 1000;
-            backdrop-filter: blur(20px);
-            height: 70px;
-        }
+  
 
         .nav-item {
             text-align: center;
@@ -3646,29 +3581,6 @@ body {
     }
 }
 
-@media (max-width: 360px) {
-    .task-card {
-        padding: 8px !important;
-    }
-    
-    .task-title {
-        font-size: 13px !important;
-    }
-    
-    .task-description {
-        font-size: 11px !important;
-    }
-    
-    body {
-        padding: 4px !important;
-        padding-bottom: 70px !important;
-    }
-    
-    .main-content {
-        padding: 4px !important;
-        padding-bottom: 70px !important;
-    }
-}
 
 /* 🔧 ПРЕДОТВРАЩЕНИЕ ГОРИЗОНТАЛЬНОЙ ПРОКРУТКИ */
 html, body {
@@ -3697,102 +3609,9 @@ html, body {
     padding: 3px 6px !important;
     white-space: nowrap !important;
 }
-        /* Адаптивность */
-        @media (max-width: 768px) {
-            .chat-item {
-                padding: 8px;
-            }
-            
-            .chat-last-message {
-                max-width: 140px;
-            }
-            
-            .notification {
-                right: 10px;
-                left: 10px;
-                max-width: none;
-            }
-            
-            .admin-task-header {
-                flex-direction: column;
-                gap: 6px;
-            }
-            
-            .admin-task-details {
-                flex-wrap: wrap;
-            }
-            
-            .task-tab {
-                font-size: 11px;
-                padding: 6px 4px;
-                min-width: 65px;
-            }
-        }
 
-        @media (max-width: 480px) {
-            .bottom-nav {
-                bottom: 8px;
-                left: 8px;
-                right: 8px;
-                height: 65px;
-                padding: 6px;
-            }
-            
-            .nav-item {
-                padding: 4px 6px;
-            }
-            
-            .nav-icon {
-                font-size: 16px;
-            }
-            
-            .nav-label {
-                font-size: 9px;
-            }
-            
-            .main-content {
-                padding-bottom: 80px;
-            }
 
-            .task-card {
-                min-height: 140px !important;
-                padding: 12px !important;
-            }
-            
-            .task-title {
-                font-size: 14px !important;
-            }
-            
-            .task-description {
-                font-size: 12px !important;
-            }
-            
-            .task-price {
-                font-size: 16px !important;
-            }
-            
-       
-        }
 
-        @media (max-width: 360px) {
-            .task-card {
-                min-height: 130px !important;
-                padding: 10px !important;
-            }
-            
-            .task-title {
-                font-size: 13px !important;
-            }
-            
-            .main-content {
-                padding: 6px !important;
-                padding-bottom: 75px !important;
-            }
-            
-            .bottom-nav {
-                height: 60px !important;
-            }
-        }
 
         /* Стили для окна чата админа */
         .admin-chat-header {
@@ -3828,16 +3647,7 @@ html, body {
             align-items: center;
         }
 
-        /* Адаптивность для чата */
-        @media (max-width: 768px) {
-            .admin-chat-header {
-                padding: 10px;
-            }
-            
-            .admin-chat-input-container {
-                padding: 8px 10px;
-            }
-        }
+
 
         /* Стили для московского времени в постах */
         .post-date {
@@ -3872,20 +3682,7 @@ html, body {
             min-width: 50px;
         }
 
-        /* Адаптивность для чатов */
-        @media (max-width: 768px) {
-            .chat-item {
-                padding: 8px;
-            }
-            
-            .chat-last-message {
-                max-width: 130px;
-            }
-            
-            .chat-meta {
-                min-width: 45px;
-            }
-        }
+
 
         /* Исправление текста в постах */
         .post-content {
@@ -4049,26 +3846,6 @@ html, body {
             margin-left: 4px;
         }
 
-        /* Адаптивность для чатов */
-        @media (max-width: 768px) {
-            .chat-item {
-                padding: 8px;
-            }
-            
-            .chat-last-message {
-                max-width: 120px;
-            }
-            
-            .chat-actions {
-                flex-direction: column;
-                gap: 2px;
-            }
-            
-            .chat-action-btn {
-                padding: 3px;
-                font-size: 9px;
-            }
-        }
 
         /* Стили для системы проверки заданий */
         .confirmation-modal-content {
@@ -4403,25 +4180,7 @@ html, body {
             animation: pulse 2s infinite;
         }
 
-        /* Адаптивность */
-        @media (max-width: 768px) {
-            .confirmation-buttons {
-                flex-direction: column;
-            }
-            
-            .verification-modal-actions {
-                flex-direction: column;
-            }
-            
-            .verification-modal-header {
-                flex-direction: column;
-                text-align: center;
-            }
-            
-            .verification-modal-user {
-                margin-bottom: 12px;
-            }
-        }
+
 
         /* Минималистичный дизайн постов */
         .posts-feed {
@@ -4512,31 +4271,7 @@ html, body {
             100% { transform: rotate(360deg); }
         }
 
-        /* Адаптивность для постов */
-        @media (max-width: 768px) {
-            .post-item {
-                padding: 12px;
-                margin-bottom: 8px;
-            }
-            
-            .post-header {
-                flex-direction: column;
-                gap: 6px;
-            }
-            
-            .post-date {
-                margin-left: 0;
-                align-self: flex-start;
-            }
-            
-            .post-title {
-                font-size: 14px;
-            }
-            
-            .post-content {
-                font-size: 12px;
-            }
-        }
+
 
         .back-button {
             background: none;
@@ -4785,23 +4520,6 @@ html, body {
             overflow: visible !important;
         }
 
-        /* Дополнительный фикс для мобильных устройств */
-        @media (max-width: 768px) {
-            .tasks-tab {
-                min-height: 500px;
-            }
-            
-            .tasks-grid {
-                min-height: 250px;
-            }
-            
-            #new-tasks,
-            #confirmation-tasks,
-            #completed-tasks,
-            #rejected-tasks {
-                min-height: 350px;
-            }
-        }
 
         /* Стиль для индикатора загрузки */
         .loading-spinner {
@@ -4865,80 +4583,9 @@ html, body {
             border-color: var(--accent);
         }
 
-        /* 🔧 ФИНАЛЬНЫЕ ФИКСЫ ДЛЯ МОБИЛЬНЫХ */
-        @media (max-width: 480px) {
-            body {
-                padding: 8px;
-                padding-bottom: 80px;
-            }
-            
-            .main-content {
-                padding: 8px;
-                padding-bottom: 80px;
-            }
-            
-            .card {
-                padding: 12px;
-                margin-bottom: 10px;
-            }
-            
-            .task-card {
-                min-height: 140px;
-                padding: 12px;
-            }
-            
-            .hero-banner {
-                height: 130px;
-            }
-            
-            .stat-card {
-                min-height: 90px;
-                padding: 12px;
-            }
-            
-            .stat-value {
-                font-size: 16px;
-            }
-        }
-
-        @media (max-width: 360px) {
-            body {
-                padding: 6px;
-                padding-bottom: 75px;
-            }
-            
-            .main-content {
-                padding: 6px;
-                padding-bottom: 75px;
-            }
-            
-            .task-card {
-                min-height: 130px;
-                padding: 10px;
-            }
-            
-            .task-title {
-                font-size: 13px;
-            }
-            
-            .task-price {
-                font-size: 15px;
-            }
-        }
-        /* Адаптивность для изображений заданий */
-@media (max-width: 768px) {
- 
 
 
-    
- 
-}
 
-@media (max-width: 480px) {
-  
-
-
-}
 
 
 
@@ -4977,22 +4624,7 @@ html, body {
     color: #ef4444;
     border: 1px solid rgba(239, 68, 68, 0.3);
 }
-@media (max-width: 480px) {
-    .task-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .task-price {
-        margin-left: 0;
-        margin-top: 5px;
-        font-size: 16px !important;
-    }
-    
-    .task-title {
-        margin-bottom: 5px !important;
-    }
-}
+
 /* 🔧 СТИЛИ ДЛЯ ФИЛЬТРОВ КАТЕГОРИЙ */
 .filters-container {
     display: flex;
@@ -5058,30 +4690,7 @@ html, body {
     border-left: 3px solid var(--accent);
 }
 
-/* Адаптивность для мобильных */
-@media (max-width: 480px) {
-    .filters-container {
-        gap: 6px;
-        margin-bottom: 12px;
-    }
-    
-    .filter-btn {
-        padding: 6px 10px;
-        font-size: 11px;
-    }
-    
-    #filter-info {
-        padding: 10px;
-        font-size: 13px;
-        flex-direction: column;
-        gap: 8px;
-        align-items: flex-start;
-    }
-    
-    #filter-info button {
-        align-self: flex-end;
-    }
-}
+
     </style>
 </head>
 <body>
@@ -6327,6 +5936,63 @@ async function makeRequest(endpoint, options = {}) {
             throw error;
         }
     }
+}
+// 🔧 ИСПРАВЛЕННАЯ СИСТЕМА УРОВНЕЙ БЕЗ БОНУСОВ
+const LEVEL_SYSTEM = {
+    1: { tasksRequired: 10, name: "Новичок" },
+    2: { tasksRequired: 20, name: "Ученик" },
+    3: { tasksRequired: 30, name: "Опытный" },
+    4: { tasksRequired: 40, name: "Профессионал" },
+    5: { tasksRequired: 50, name: "Эксперт" },
+    6: { tasksRequired: 60, name: "Мастер" },
+    7: { tasksRequired: 70, name: "Гуру" },
+    8: { tasksRequired: 80, name: "Легенда" },
+    9: { tasksRequired: 90, name: "Император" },
+    10: { tasksRequired: 100, name: "Бог заданий" }
+};
+
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ РАСЧЕТА УРОВНЯ БЕЗ БОНУСОВ
+function calculateUserLevel(completedTasks) {
+    let currentLevel = 1;
+    let tasksForCurrentLevel = 0;
+    let tasksForNextLevel = LEVEL_SYSTEM[1].tasksRequired;
+    let progressPercentage = 0;
+    
+    // Находим текущий уровень
+    for (let level = 1; level <= Object.keys(LEVEL_SYSTEM).length; level++) {
+        if (completedTasks >= LEVEL_SYSTEM[level].tasksRequired) {
+            currentLevel = level;
+        } else {
+            break;
+        }
+    }
+    
+    // Расчет прогресса для текущего уровня
+    const currentLevelRequirement = LEVEL_SYSTEM[currentLevel].tasksRequired;
+    
+    if (currentLevel < Object.keys(LEVEL_SYSTEM).length) {
+        const nextLevelRequirement = LEVEL_SYSTEM[currentLevel + 1].tasksRequired;
+        tasksForCurrentLevel = completedTasks - currentLevelRequirement;
+        const totalTasksForNextLevel = nextLevelRequirement - currentLevelRequirement;
+        
+        progressPercentage = Math.min(100, Math.round((tasksForCurrentLevel / totalTasksForNextLevel) * 100));
+        tasksForNextLevel = nextLevelRequirement;
+    } else {
+        // Максимальный уровень достигнут
+        progressPercentage = 100;
+        tasksForNextLevel = LEVEL_SYSTEM[currentLevel].tasksRequired;
+        tasksForCurrentLevel = completedTasks - currentLevelRequirement;
+    }
+    
+    return {
+        level: currentLevel,
+        levelName: LEVEL_SYSTEM[currentLevel].name,
+        completedTasks: completedTasks,
+        currentLevelTasks: tasksForCurrentLevel,
+        tasksForNextLevel: tasksForNextLevel,
+        progressPercentage: progressPercentage,
+        isMaxLevel: currentLevel === Object.keys(LEVEL_SYSTEM).length
+    };
 }
 
 // function addTasksDebugButton() {
@@ -12521,63 +12187,6 @@ setTimeout(() => {
     }
 }, 3000);
 
-// 🔧 ИСПРАВЛЕННАЯ СИСТЕМА УРОВНЕЙ БЕЗ БОНУСОВ
-const LEVEL_SYSTEM = {
-    1: { tasksRequired: 10, name: "Новичок" },
-    2: { tasksRequired: 20, name: "Ученик" },
-    3: { tasksRequired: 30, name: "Опытный" },
-    4: { tasksRequired: 40, name: "Профессионал" },
-    5: { tasksRequired: 50, name: "Эксперт" },
-    6: { tasksRequired: 60, name: "Мастер" },
-    7: { tasksRequired: 70, name: "Гуру" },
-    8: { tasksRequired: 80, name: "Легенда" },
-    9: { tasksRequired: 90, name: "Император" },
-    10: { tasksRequired: 100, name: "Бог заданий" }
-};
-
-// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ РАСЧЕТА УРОВНЯ БЕЗ БОНУСОВ
-function calculateUserLevel(completedTasks) {
-    let currentLevel = 1;
-    let tasksForCurrentLevel = 0;
-    let tasksForNextLevel = LEVEL_SYSTEM[1].tasksRequired;
-    let progressPercentage = 0;
-    
-    // Находим текущий уровень
-    for (let level = 1; level <= Object.keys(LEVEL_SYSTEM).length; level++) {
-        if (completedTasks >= LEVEL_SYSTEM[level].tasksRequired) {
-            currentLevel = level;
-        } else {
-            break;
-        }
-    }
-    
-    // Расчет прогресса для текущего уровня
-    const currentLevelRequirement = LEVEL_SYSTEM[currentLevel].tasksRequired;
-    
-    if (currentLevel < Object.keys(LEVEL_SYSTEM).length) {
-        const nextLevelRequirement = LEVEL_SYSTEM[currentLevel + 1].tasksRequired;
-        tasksForCurrentLevel = completedTasks - currentLevelRequirement;
-        const totalTasksForNextLevel = nextLevelRequirement - currentLevelRequirement;
-        
-        progressPercentage = Math.min(100, Math.round((tasksForCurrentLevel / totalTasksForNextLevel) * 100));
-        tasksForNextLevel = nextLevelRequirement;
-    } else {
-        // Максимальный уровень достигнут
-        progressPercentage = 100;
-        tasksForNextLevel = LEVEL_SYSTEM[currentLevel].tasksRequired;
-        tasksForCurrentLevel = completedTasks - currentLevelRequirement;
-    }
-    
-    return {
-        level: currentLevel,
-        levelName: LEVEL_SYSTEM[currentLevel].name,
-        completedTasks: completedTasks,
-        currentLevelTasks: tasksForCurrentLevel,
-        tasksForNextLevel: tasksForNextLevel,
-        progressPercentage: progressPercentage,
-        isMaxLevel: currentLevel === Object.keys(LEVEL_SYSTEM).length
-    };
-}
 
 // 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ ПРОГРЕССА УРОВНЯ БЕЗ БОНУСОВ
 function updateLevelProgress() {
