@@ -1,0 +1,206 @@
+/* 🔥 СУПЕР-ПЛАВНЫЕ АНИМАЦИИ И ПЕРЕХОДЫ */
+
+* {
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    -webkit-overflow-scrolling: touch;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* 🔧 ОПТИМИЗАЦИЯ ДЛЯ АНИМАЦИЙ */
+.tab-content,
+.page,
+.modal,
+.task-card,
+.card {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000;
+    will-change: transform, opacity;
+}
+
+/* 🚀 СУПЕР-ПЛАВНЫЕ ПЕРЕХОДЫ */
+.tab-content,
+.page {
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    animation-duration: 0.4s;
+    animation-fill-mode: both;
+}
+
+/* 🔥 ПЛАВНОЕ ПОЯВЛЕНИЕ */
+@keyframes smoothFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes smoothSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes taskCardAppear {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+@keyframes ripple {
+    to {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+/* 🔧 ПРИМЕНЕНИЕ АНИМАЦИЙ */
+.fade-in {
+    animation: smoothFadeIn 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+.slide-in {
+    animation: smoothSlideIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+.task-card {
+    animation: taskCardAppear 0.5s ease-out;
+}
+
+.loading-spinner {
+    animation: spin 1s linear infinite;
+}
+
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+.ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.6);
+    transform: scale(0);
+    animation: ripple 0.6s linear;
+    pointer-events: none;
+}
+
+/* 🔧 ПЛАВНЫЕ КНОПКИ И КАРТОЧКИ */
+.btn,
+.task-btn,
+.nav-item {
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transform: translateZ(0);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn:active,
+.task-btn:active,
+.nav-item:active {
+    transform: scale(0.96);
+    transition: transform 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.task-card:hover,
+.card:hover {
+    transform: translateY(-2px) scale(1.02);
+}
+
+/* 🔧 ПЛАВНАЯ НАВИГАЦИЯ */
+.nav-item::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    width: 0;
+    height: 2px;
+    background: var(--accent);
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transform: translateX(-50%);
+}
+
+.nav-item.active::after {
+    width: 70%;
+}
+
+/* 🔧 МОДАЛЬНЫЕ ОКНА */
+.modal-content {
+    transform: scale(0.9);
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.modal.active .modal-content {
+    transform: scale(1);
+}
+
+/* 🔧 ЛЕНИВАЯ ЗАГРУЗКА */
+.lazy-load {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.lazy-load.loaded {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* 🔧 ПЛАВНЫЙ СКРОЛЛ */
+.smooth-scroll {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+
+.scroll-container {
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+}
