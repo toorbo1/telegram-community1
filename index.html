@@ -9457,18 +9457,8 @@ async function loadTaskVerifications() {
             document.getElementById('verification-modal').classList.add('active');
         }
 
-// УЛУЧШЕННАЯ ФУНКЦИЯ ОДОБРЕНИЯ ЗАДАНИЯ
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОДОБРЕНИЯ ЗАДАНИЯ
 async function approveVerification() {
-    await pool.query(`
-    UPDATE user_profiles 
-    SET 
-        balance = COALESCE(balance, 0) + $1,
-        tasks_completed = COALESCE(tasks_completed, 0) + 1,
-        active_tasks = GREATEST(COALESCE(active_tasks, 0) - 1, 0),
-        experience = COALESCE(experience, 0) + 10,
-        updated_at = CURRENT_TIMESTAMP
-    WHERE user_id = $2
-`, [verificationData.task_price, verificationData.user_id]);
     if (!currentVerificationId) {
         showNotification('❌ ID верификации не найден', 'error');
         return;
@@ -9482,8 +9472,7 @@ async function approveVerification() {
     try {
         console.log(`🔄 Начинаем одобрение верификации:`, {
             verificationId: currentVerificationId,
-            adminId: currentUser.id,
-            apiUrl: `${API_BASE_URL}/api/admin/task-verifications/${currentVerificationId}/approve`
+            adminId: currentUser.id
         });
 
         // Показываем индикатор загрузки
@@ -9507,6 +9496,13 @@ async function approveVerification() {
             
             if (result.taskRemoved) {
                 message += "\n\n🎯 Задание автоматически удалено - достигнут лимит исполнителей!";
+                
+                // 🔥 ВАЖНО: НЕМЕДЛЕННО ОБНОВЛЯЕМ СПИСКИ ЗАДАНИЙ
+                setTimeout(() => {
+                    loadTasks(); // Обновляем новые задания
+                    loadUserTasks(); // Обновляем задания пользователя
+                    loadTaskVerifications(); // Обновляем список проверки
+                }, 500);
             }
             
             showNotification(message, 'success');
@@ -9514,9 +9510,6 @@ async function approveVerification() {
             
             // ОБНОВЛЯЕМ ВСЕ ДАННЫЕ
             await updateUserData();
-            loadTaskVerifications();
-            loadUserTasks();
-            loadTasks();
             
         } else {
             throw new Error(result.error || 'Неизвестная ошибка сервера');

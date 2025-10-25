@@ -2454,14 +2454,14 @@ app.get('/api/admin/debug-rights', async (req, res) => {
         });
     }
 });
-// Подтверждение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ С УДАЛЕНИЕМ ФАЙЛОВ
+// 🔧 ИСПРАВЛЕННЫЙ ENDPOINT ОДОБРЕНИЯ НА СЕРВЕРЕ
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
     
     console.log('✅ Подтверждение задания админом:', { verificationId, adminId });
     
-    // Проверка прав администратора - РАЗРЕШАЕМ ВСЕМ АДМИНАМ
+    // Проверка прав администратора
     const isAdmin = await checkAdminAccess(adminId);
     if (!isAdmin) {
         return res.status(403).json({
@@ -2473,7 +2473,7 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
     let screenshotPath = '';
     
     try {
-        // Get verification info
+        // Получаем информацию о верификации
         const verification = await pool.query(
             'SELECT * FROM task_verifications WHERE id = $1', 
             [verificationId]
@@ -2512,34 +2512,34 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
         const peopleRequired = task.people_required || 1;
         const currentCompletedCount = parseInt(task.completed_count) || 0;
         
-        // Update verification status
+        // Обновляем статус верификации
         await pool.query(`
             UPDATE task_verifications 
             SET status = 'approved', reviewed_at = CURRENT_TIMESTAMP, reviewed_by = $1 
             WHERE id = $2
         `, [adminId, verificationId]);
         
-        // Update user task
+        // Обновляем задание пользователя
         await pool.query(`
             UPDATE user_tasks 
             SET status = 'completed', completed_at = CURRENT_TIMESTAMP 
             WHERE id = $1
         `, [verificationData.user_task_id]);
         
-        // Update user balance and stats
+        // Обновляем баланс и статистику пользователя
         await pool.query(`
             UPDATE user_profiles 
             SET 
                 balance = COALESCE(balance, 0) + $1,
                 tasks_completed = COALESCE(tasks_completed, 0) + 1,
                 active_tasks = GREATEST(COALESCE(active_tasks, 0) - 1, 0),
-                experience = COALESCE(experience, 0) + 10,
                 updated_at = CURRENT_TIMESTAMP
             WHERE user_id = $2
         `, [verificationData.task_price, verificationData.user_id]);
         
         // 🔥 ПРОВЕРЯЕМ ДОСТИГНУТ ЛИ ЛИМИТ ИСПОЛНИТЕЛЕЙ
         const newCompletedCount = currentCompletedCount + 1;
+        let taskRemoved = false;
         
         if (newCompletedCount >= peopleRequired) {
             console.log(`🎯 Лимит исполнителей достигнут для задания ${task.id}. Удаляем задание...`);
@@ -2547,34 +2547,15 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             // Автоматически удаляем задание
             await pool.query(`
                 UPDATE tasks 
-                SET status = 'completed', 
-                    updated_at = CURRENT_TIMESTAMP 
+                SET status = 'completed' 
                 WHERE id = $1
             `, [task.id]);
             
+            taskRemoved = true;
             console.log(`✅ Задание ${task.id} автоматически удалено (достигнут лимит: ${peopleRequired} исполнителей)`);
         }
         
-// Получаем текущее количество выполненных заданий
-const currentStats = await pool.query(
-    'SELECT tasks_completed FROM user_profiles WHERE user_id = $1',
-    [verificationData.user_id]
-);
-
-const currentCompleted = currentStats.rows[0].tasks_completed || 0;
-
-// Обновляем с правильным подсчетом
-await pool.query(`
-    UPDATE user_profiles 
-    SET 
-        balance = COALESCE(balance, 0) + $1,
-        tasks_completed = $2,
-        active_tasks = GREATEST(COALESCE(active_tasks, 0) - 1, 0),
-        updated_at = CURRENT_TIMESTAMP
-    WHERE user_id = $3
-`, [verificationData.task_price, currentCompleted + 1, verificationData.user_id]);
-
-        // 🔥 УДАЛЯЕМ ФАЙЛ СКРИНШОТА ПОСЛЕ УСПЕШНОЙ ПРОВЕРКИ
+        // Удаляем файл скриншота
         if (screenshotPath) {
             await deleteScreenshotFile(screenshotPath);
         }
@@ -2583,13 +2564,13 @@ await pool.query(`
             success: true,
             message: 'Task approved successfully',
             amountAdded: verificationData.task_price,
-            taskCompleted: newCompletedCount >= peopleRequired,
-            taskRemoved: newCompletedCount >= peopleRequired
+            taskRemoved: taskRemoved
         });
+        
     } catch (error) {
         console.error('Approve verification error:', error);
         
-        // Даже если есть ошибка, пробуем удалить файл
+        // Пробуем удалить файл даже при ошибке
         if (screenshotPath) {
             try {
                 await deleteScreenshotFile(screenshotPath);
