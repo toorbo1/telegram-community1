@@ -716,16 +716,11 @@ bot.onText(/\/balance/, async (msg) => {
                 parse_mode: 'HTML',
                 reply_markup: {
                     inline_keyboard: [
-                        [
-                            {
-                                text: '🚀 Перейти в приложение',
-                                url: APP_URL
-                            }
-                        ],
+              
                         [
                             {
                                 text: '📢 Наш канал',
-                                url: 'https://t.me/LinkGoldChannel'
+                                url: 'https://t.me/LinkGoldChannel1'
                             }
                         ],
                         [
@@ -780,13 +775,8 @@ bot.on('callback_query', async (callbackQuery) => {
                                     {
                                         text: '👥 Поделиться с друзьями',
                                         url: shareUrl
-                                    },
-                                           
-                            {
-                                text: '📢 Наш канал',
-                                url: 'https://t.me/LinkGoldChannel1'
-                            }
-                        
+                                    }
+                                    
                                 ]
                             ]
                         }
