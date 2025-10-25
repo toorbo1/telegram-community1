@@ -7673,7 +7673,7 @@ function getCategoryName(category) {
 }
 
 
- {
+async function loadTasksForCategory(category) {
     try {
         console.log(`🔄 Загружаем задания для категории: ${category} для пользователя:`, currentUser?.id);
         
