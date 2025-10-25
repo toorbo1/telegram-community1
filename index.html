@@ -8820,18 +8820,18 @@ async function initializeApp() {
 
     // Остальной код инициализации...
     initializeTaskTabHandlers();
-    showNotification('🔄 Подключаемся к серверу...', 'info');
+
     
     // Проверяем соединение с API
     try {
         console.log('🔍 Testing API connection...');
         const health = await makeRequest('/api/health');
         console.log('✅ API connection successful:', health);
-        showNotification('✅ Соединение с сервером установлено!', 'success');
+
         
     } catch (error) {
         console.error('❌ API connection failed:', error);
-        showNotification('❌ Не удалось подключиться к серверу', 'error');
+        showNotification('❌ Не удалось подключиться', 'error');
         showRetryButton();
         return;
     }
