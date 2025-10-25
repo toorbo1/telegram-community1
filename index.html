@@ -6513,20 +6513,6 @@ function compressImage(file, maxSize = 50000) {
         img.src = URL.createObjectURL(file);
     });
 }
-// В index.html добавьте
-const observer = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      const img = entry.target;
-      img.src = img.dataset.src;
-      observer.unobserve(img);
-    }
-  });
-});
-
-document.querySelectorAll('img[data-src]').forEach(img => {
-  observer.observe(img);
-});
 // Эффективное обновление DOM
 class DOMOptimizer {
     constructor() {
@@ -8051,42 +8037,22 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Smooth animations initialized');
 });
 
-// Замените существующий поиск
-function debounce(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
+// 🔧 ДОПОЛНИТЕЛЬНЫЕ ОПТИМИЗАЦИИ ДЛЯ ПРОИЗВОДИТЕЛЬНОСТИ
+// Дебаунс для частых операций
+function debounce(func, wait, immediate) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            timeout = null;
+            if (!immediate) func(...args);
+        };
+        const callNow = immediate && !timeout;
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+        if (callNow) func(...args);
     };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
 }
 
-// Использование
-const debouncedSearch = debounce((searchText) => {
-  loadTasks(searchText, getActiveFilter());
-}, 300);
-// Используйте Virtual DOM для больших списков
-function renderTasksChunked(tasks, container, chunkSize = 10) {
-  let index = 0;
-  
-  function renderChunk() {
-    const chunk = tasks.slice(index, index + chunkSize);
-    chunk.forEach(task => {
-      const element = createTaskCard(task);
-      container.appendChild(element);
-    });
-    index += chunkSize;
-    
-    if (index < tasks.length) {
-      requestAnimationFrame(renderChunk);
-    }
-  }
-  
-  renderChunk();
-}
 // Троттлинг для скролла и ресайза
 function throttle(func, limit) {
     let inThrottle;

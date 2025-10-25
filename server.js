@@ -71,17 +71,6 @@ const upload = multer({
     }
 });
 
-// Добавьте в server.js
-const compression = require('compression');
-app.use(compression()); // Добавить после express()
-
-// Минифицируйте CSS/JS перед деплоем
-// В server.js добавьте
-app.use(express.static('.', {
-  maxAge: '1d',
-  etag: true,
-  lastModified: true
-}));
 
 // 🔧 УЛУЧШЕННАЯ функция проверки прав администратора
 async function checkAdminAccess(userId) {
@@ -143,12 +132,7 @@ async function initDatabase() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-// Добавьте индексы в initDatabase()
-await pool.query(`
-  CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
-  CREATE INDEX IF NOT EXISTS idx_user_tasks_user_id ON user_tasks(user_id);
-  CREATE INDEX IF NOT EXISTS idx_tasks_category ON tasks(category);
-`);
+
         // Добавляем реферальные поля
         await pool.query(`
             ALTER TABLE user_profiles 
@@ -865,42 +849,8 @@ function previewTaskImage(input) {
     } else {
         preview.style.display = 'none';
     }
-    // В функции previewTaskImage добавьте сжатие
-function compressImage(file, maxWidth = 800, quality = 0.7) {
-  return new Promise((resolve) => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const img = new Image();
-    
-    img.onload = function() {
-      const scale = maxWidth / img.width;
-      canvas.width = maxWidth;
-      canvas.height = img.height * scale;
-      
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob(resolve, 'image/jpeg', quality);
-    };
-    
-    img.src = URL.createObjectURL(file);
-  });
 }
-}
-const queryCache = new Map();
 
-async function cachedQuery(query, params = [], ttl = 60000) {
-  const key = JSON.stringify({query, params});
-  
-  if (queryCache.has(key)) {
-    const { data, timestamp } = queryCache.get(key);
-    if (Date.now() - timestamp < ttl) {
-      return data;
-    }
-  }
-  
-  const result = await pool.query(query, params);
-  queryCache.set(key, { data: result, timestamp: Date.now() });
-  return result;
-}
 // Очистка изображения
 function clearTaskImage() {
     const input = document.getElementById('admin-task-image');
