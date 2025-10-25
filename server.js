@@ -616,10 +616,10 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                 parse_mode: 'HTML',
                 reply_markup: {
                     inline_keyboard: [
-                        [
+                       [
                             {
-                                text: '',
-                                url: APP_URL
+                                text: '📢 Наш канал',
+                                url: 'https://t.me/LinkGoldChannel1'
                             }
                         ],
                         [
