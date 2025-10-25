@@ -989,6 +989,43 @@ async function addTask() {
         showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
     }
 }
+
+// Endpoint для принудительного пересчета статистики
+app.post('/api/user/:userId/recalculate-stats', async (req, res) => {
+    const userId = req.params.userId;
+    
+    try {
+        // Пересчитываем выполненные задания
+        const completedCount = await pool.query(`
+            SELECT COUNT(*) as count FROM user_tasks 
+            WHERE user_id = $1 AND status = 'completed'
+        `, [userId]);
+        
+        const completedTasks = parseInt(completedCount.rows[0].count);
+        
+        // Обновляем статистику пользователя
+        await pool.query(`
+            UPDATE user_profiles 
+            SET tasks_completed = $1,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = $2
+        `, [completedTasks, userId]);
+        
+        res.json({
+            success: true,
+            message: 'Статистика пересчитана',
+            completedTasks: completedTasks
+        });
+        
+    } catch (error) {
+        console.error('Recalculate stats error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
 app.post('/api/tasks', async (req, res) => {
     const { 
         title, 
@@ -1829,9 +1866,10 @@ app.post('/api/user/tasks/start', async (req, res) => {
     try {
         // Проверяем, выполнял ли пользователь это задание
         const existingTask = await pool.query(`
-            SELECT id FROM user_tasks 
-            WHERE user_id = $1 AND task_id = $2 AND status IN ('active', 'pending_review', 'completed')
-        `, [userId, taskId]);
+    SELECT id FROM user_tasks 
+    WHERE user_id = $1 AND task_id = $2 
+    AND status IN ('active', 'pending_review', 'completed', 'rejected')
+`, [userId, taskId]);
         
         if (existingTask.rows.length > 0) {
             return res.status(400).json({
@@ -2517,6 +2555,25 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             console.log(`✅ Задание ${task.id} автоматически удалено (достигнут лимит: ${peopleRequired} исполнителей)`);
         }
         
+// Получаем текущее количество выполненных заданий
+const currentStats = await pool.query(
+    'SELECT tasks_completed FROM user_profiles WHERE user_id = $1',
+    [verificationData.user_id]
+);
+
+const currentCompleted = currentStats.rows[0].tasks_completed || 0;
+
+// Обновляем с правильным подсчетом
+await pool.query(`
+    UPDATE user_profiles 
+    SET 
+        balance = COALESCE(balance, 0) + $1,
+        tasks_completed = $2,
+        active_tasks = GREATEST(COALESCE(active_tasks, 0) - 1, 0),
+        updated_at = CURRENT_TIMESTAMP
+    WHERE user_id = $3
+`, [verificationData.task_price, currentCompleted + 1, verificationData.user_id]);
+
         // 🔥 УДАЛЯЕМ ФАЙЛ СКРИНШОТА ПОСЛЕ УСПЕШНОЙ ПРОВЕРКИ
         if (screenshotPath) {
             await deleteScreenshotFile(screenshotPath);
