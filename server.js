@@ -780,7 +780,13 @@ bot.on('callback_query', async (callbackQuery) => {
                                     {
                                         text: '👥 Поделиться с друзьями',
                                         url: shareUrl
-                                    }
+                                    },
+                                           
+                            {
+                                text: '📢 Наш канал',
+                                url: 'https://t.me/LinkGoldChannel1'
+                            }
+                        
                                 ]
                             ]
                         }
