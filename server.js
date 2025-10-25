@@ -2585,14 +2585,39 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
         });
     }
 });
-// Отклонение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ С УДАЛЕНИЕМ ФАЙЛОВ
+// Получение ID активных заданий пользователя
+app.get('/api/user/:userId/tasks/active-ids', async (req, res) => {
+    const userId = req.params.userId;
+    
+    try {
+        const result = await pool.query(`
+            SELECT task_id FROM user_tasks 
+            WHERE user_id = $1 AND status IN ('active', 'pending_review', 'completed', 'rejected')
+        `, [userId]);
+        
+        const taskIds = result.rows.map(row => row.task_id);
+        
+        res.json({
+            success: true,
+            taskIds: taskIds
+        });
+    } catch (error) {
+        console.error('Get user active task IDs error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message,
+            taskIds: []
+        });
+    }
+});
+// Отклонение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ
 app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
     
     console.log('❌ Отклонение задания админом:', { verificationId, adminId });
     
-    // Проверка прав администратора - РАЗРЕШАЕМ ВСЕМ АДМИНАМ
+    // Проверка прав администратора
     const isAdmin = await checkAdminAccess(adminId);
     if (!isAdmin) {
         return res.status(403).json({
@@ -2604,7 +2629,7 @@ app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res
     let screenshotPath = '';
     
     try {
-        // Get verification info
+        // Получаем информацию о верификации
         const verification = await pool.query(
             'SELECT * FROM task_verifications WHERE id = $1', 
             [verificationId]
@@ -2622,28 +2647,32 @@ app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res
         // Сохраняем путь к файлу для удаления
         screenshotPath = verificationData.screenshot_url;
         
-        // Update verification status
-        await pool.query(`
-            UPDATE task_verifications 
-            SET status = 'rejected', reviewed_at = CURRENT_TIMESTAMP, reviewed_by = $1 
-            WHERE id = $2
-        `, [adminId, verificationId]);
-        
-        // Update user task
+        // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Обновляем статус задания пользователя на "rejected"
         await pool.query(`
             UPDATE user_tasks 
             SET status = 'rejected', completed_at = CURRENT_TIMESTAMP 
             WHERE id = $1
         `, [verificationData.user_task_id]);
         
+        // Обновляем статус верификации
+        await pool.query(`
+            UPDATE task_verifications 
+            SET status = 'rejected', reviewed_at = CURRENT_TIMESTAMP, reviewed_by = $1 
+            WHERE id = $2
+        `, [adminId, verificationId]);
+        
         // 🔥 УДАЛЯЕМ ФАЙЛ СКРИНШОТА ПРИ ОТКЛОНЕНИИ
         if (screenshotPath) {
             await deleteScreenshotFile(screenshotPath);
         }
         
+        console.log(`✅ Задание отклонено. UserTask ID: ${verificationData.user_task_id}, Task ID: ${verificationData.task_id}`);
+        
         res.json({
             success: true,
-            message: 'Task rejected successfully'
+            message: 'Task rejected successfully',
+            userTaskId: verificationData.user_task_id,
+            taskId: verificationData.task_id
         });
     } catch (error) {
         console.error('Reject verification error:', error);
