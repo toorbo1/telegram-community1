@@ -1806,27 +1806,114 @@ app.delete('/api/tasks/:id', async (req, res) => {
     }
 });
 
-// Get tasks for admin (for all admins)
+// Get tasks for admin (show ALL tasks including completed)
 app.get('/api/admin/tasks', async (req, res) => {
+    const { adminId, showCompleted = 'true' } = req.query;
+    
+    console.log('🔄 Admin tasks request:', { adminId, showCompleted });
+    
+    // Проверка прав администратора
+    const isAdmin = await checkAdminAccess(adminId);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен'
+        });
+    }
+    
     try {
-        const result = await pool.query(`
-            SELECT * FROM tasks 
-            ORDER BY created_at DESC
-        `);
+        let query = `
+            SELECT t.*, 
+                   COUNT(ut.id) as completed_count,
+                   COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as actual_completed,
+                   COUNT(CASE WHEN ut.status = 'rejected' THEN 1 END) as rejected_count,
+                   COUNT(CASE WHEN ut.status = 'pending_review' THEN 1 END) as pending_count
+            FROM tasks t 
+            LEFT JOIN user_tasks ut ON t.id = ut.task_id
+        `;
+        
+        // Если нужно показать только активные задания
+        if (showCompleted === 'false') {
+            query += ` WHERE t.status = 'active'`;
+        }
+        
+        query += ` GROUP BY t.id ORDER BY t.created_at DESC`;
+        
+        console.log('📊 Executing admin tasks query:', query);
+        
+        const result = await pool.query(query);
+        
+        console.log(`✅ Found ${result.rows.length} tasks for admin`);
         
         res.json({
             success: true,
-            tasks: result.rows
+            tasks: result.rows,
+            stats: {
+                total: result.rows.length,
+                active: result.rows.filter(t => t.status === 'active').length,
+                completed: result.rows.filter(t => t.status === 'completed').length
+            }
         });
     } catch (error) {
-        console.error('Get admin tasks error:', error);
+        console.error('❌ Get admin tasks error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
         });
     }
 });
-
+// Get ALL tasks for admin (including completed and inactive)
+app.get('/api/admin/all-tasks', async (req, res) => {
+    const { adminId } = req.query;
+    
+    console.log('🔄 Admin ALL tasks request:', adminId);
+    
+    // Проверка прав администратора
+    const isAdmin = await checkAdminAccess(adminId);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен'
+        });
+    }
+    
+    try {
+        const result = await pool.query(`
+            SELECT t.*, 
+                   COUNT(ut.id) as total_attempts,
+                   COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_count,
+                   COUNT(CASE WHEN ut.status = 'rejected' THEN 1 END) as rejected_count,
+                   COUNT(CASE WHEN ut.status = 'pending_review' THEN 1 END) as pending_count,
+                   COUNT(CASE WHEN ut.status = 'active' THEN 1 END) as active_count,
+                   array_agg(DISTINCT ut.user_id) as user_ids,
+                   MAX(ut.completed_at) as last_completed
+            FROM tasks t 
+            LEFT JOIN user_tasks ut ON t.id = ut.task_id
+            GROUP BY t.id 
+            ORDER BY t.created_at DESC
+        `);
+        
+        console.log(`✅ Found ${result.rows.length} total tasks for admin`);
+        
+        res.json({
+            success: true,
+            tasks: result.rows,
+            statistics: {
+                total_tasks: result.rows.length,
+                active_tasks: result.rows.filter(t => t.status === 'active').length,
+                completed_tasks: result.rows.filter(t => t.status === 'completed').length,
+                total_attempts: result.rows.reduce((sum, t) => sum + parseInt(t.total_attempts || 0), 0),
+                total_completed: result.rows.reduce((sum, t) => sum + parseInt(t.completed_count || 0), 0)
+            }
+        });
+    } catch (error) {
+        console.error('❌ Get all admin tasks error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
 // ==================== USER TASKS ENDPOINTS ====================
 
 // В server.js - обновите endpoint начала задания
