@@ -5085,23 +5085,56 @@ html, body {
         <button class="admin-btn" onclick="showAdminSection('admins')">👥 Админы</button>
     </div>
 
-<!-- Управление админами -->
 <div id="admin-admins-section" class="admin-section" style="display: none;">
     <div class="admin-form">
         <h3>👥 Добавление администраторов</h3>
         <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px;">
-            Только главный администратор (ID: 8036875641) может добавлять других админов
+            <strong>Только главный администратор (ID: 8036875641) может добавлять других админов</strong>
         </p>
         
-        <input type="text" class="admin-input" id="new-admin-username" 
-               placeholder="Введите юзернейм пользователя (например: username или @username)">
+        <div style="background: var(--bg-secondary); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+            <h4 style="color: var(--gold); margin-bottom: 10px;">💡 Как добавить администратора:</h4>
+            <ol style="color: var(--text-secondary); font-size: 14px; padding-left: 20px;">
+                <li>Попросите пользователя написать боту: <strong>@LinkGoldMoney_bot</strong></li>
+                <li>Пользователь должен выполнить команду <strong>/start</strong></li>
+                <li>Узнайте его Telegram username (например: <strong>@username</strong>)</li>
+                <li>Введите username ниже без символа @</li>
+            </ol>
+            <div style="margin-top: 10px; padding: 10px; background: rgba(255,215,0,0.1); border-radius: 8px;">
+                <strong>Примеры правильных username:</strong>
+                <div style="font-size: 12px; margin-top: 5px;">
+                    • ivanpetrov (без @)<br>
+                    • maria_ivanova (без @)<br>
+                    • alexsmith123 (без @)
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>Telegram username пользователя *</label>
+            <input type="text" class="admin-input" id="new-admin-username" 
+                   placeholder="Введите username без @ (например: ivanpetrov)"
+                   style="text-align: center; font-weight: 600;">
+            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 5px;">
+                Только пользователи, которые уже зарегистрированы в боте @LinkGoldMoney_bot
+            </div>
+        </div>
         
         <button class="admin-submit" onclick="addNewAdmin()" id="add-admin-btn">
             ➕ Добавить администратора
         </button>
         
-        <div id="admin-form-message" style="margin-top: 12px; min-height: 20px;"></div>
+        <div id="admin-form-message" style="margin-top: 12px; min-height: 20px; font-size: 14px;"></div>
     </div>
+
+    <!-- Список текущих админов -->
+    <div style="margin-top: 25px;">
+        <h4>📋 Текущие администраторы</h4>
+        <div id="admins-list" class="admin-task-list">
+            <!-- Список админов будет загружен здесь -->
+        </div>
+    </div>
+</div>
 
     <!-- Список текущих админов -->
     <div style="margin-top: 25px;">
@@ -8537,7 +8570,103 @@ function emergencyFixAdminPanel() {
     
     console.log('✅ Emergency fixes applied');
 }
+// В секции админ-панели добавьте:
+function addTestButtons() {
+    const testDiv = document.createElement('div');
+    testDiv.innerHTML = `
+        <div style="margin: 20px 0; padding: 15px; background: var(--bg-secondary); border-radius: 10px;">
+            <h4>🧪 Тестирование endpoints</h4>
+            <button onclick="testAdminEndpoints()" class="btn btn-primary" style="margin: 5px;">
+                Тест endpoints
+            </button>
+            <button onclick="testSimpleAdd()" class="btn btn-warning" style="margin: 5px;">
+                Простой тест
+            </button>
+            <button onclick="checkServerHealth()" class="btn btn-success" style="margin: 5px;">
+                Проверить сервер
+            </button>
+        </div>
+    `;
+    
+    const adminSection = document.getElementById('admin-admins-section');
+    if (adminSection) {
+        adminSection.appendChild(testDiv);
+    }
+}
 
+// Функции для тестирования
+async function testAdminEndpoints() {
+    console.log('🧪 Testing admin endpoints...');
+    
+    try {
+        // Проверяем health
+        const health = await makeRequest('/api/health');
+        console.log('✅ Health:', health);
+        
+        // Проверяем debug endpoint
+        const debug = await makeRequest('/api/admin/debug');
+        console.log('✅ Debug:', debug);
+        
+        // Проверяем endpoints check
+        const endpoints = await makeRequest('/api/admin/endpoints-check');
+        console.log('✅ Endpoints:', endpoints);
+        
+        showNotification('Тестирование завершено - проверьте консоль', 'success');
+        
+    } catch (error) {
+        console.error('❌ Test failed:', error);
+        showNotification('Ошибка тестирования: ' + error.message, 'error');
+    }
+}
+
+async function testSimpleAdd() {
+    console.log('🧪 Testing simple add...');
+    
+    try {
+        const result = await makeRequest('/api/admin/test-add', {
+            method: 'POST',
+            body: JSON.stringify({
+                adminId: currentUser.id,
+                username: 'testuser'
+            })
+        });
+        
+        console.log('✅ Simple test result:', result);
+        showNotification('Простой тест пройден!', 'success');
+        
+    } catch (error) {
+        console.error('❌ Simple test failed:', error);
+        showNotification('Простой тест не пройден: ' + error.message, 'error');
+    }
+}
+
+async function checkServerHealth() {
+    console.log('🔍 Checking server health...');
+    
+    try {
+        const response = await fetch(API_BASE_URL + '/api/health');
+        console.log('📊 Server response:', {
+            status: response.status,
+            ok: response.ok,
+            url: response.url
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('✅ Server health:', data);
+            showNotification('Сервер работает нормально', 'success');
+        } else {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+    } catch (error) {
+        console.error('❌ Server health check failed:', error);
+        showNotification('Проблема с сервером: ' + error.message, 'error');
+    }
+}
+
+// Вызовите при инициализации
+setTimeout(addTestButtons, 2000);
 
 
 // 🔧 ФУНКЦИЯ ДЛЯ ПРИНУДИТЕЛЬНОГО ИСПРАВЛЕНИЯ LAYOUT
@@ -12209,7 +12338,7 @@ function displayAdminsList(admins) {
 }
 
 async function addNewAdmin() {
-    console.log('🎯 Starting addNewAdmin function...');
+    console.log('🔍 DEBUG addNewAdmin START');
     
     const usernameInput = document.getElementById('new-admin-username');
     const messageDiv = document.getElementById('admin-form-message');
@@ -12221,21 +12350,38 @@ async function addNewAdmin() {
         return;
     }
     
-    const username = usernameInput.value.trim();
+    let username = usernameInput.value.trim();
+    
+    // 🔧 ОЧИСТКА USERNAME: убираем @ если пользователь его ввел
+    if (username.startsWith('@')) {
+        username = username.substring(1);
+        usernameInput.value = username; // Обновляем поле
+    }
+    
+    console.log('👤 Processing username:', username);
     
     // Валидация
     if (!username) {
-        messageDiv.innerHTML = '<span style="color: var(--error);">Введите юзернейм пользователя</span>';
+        messageDiv.innerHTML = '<span style="color: var(--error);">Введите Telegram username пользователя!</span>';
+        return;
+    }
+    
+    if (username.length < 3) {
+        messageDiv.innerHTML = '<span style="color: var(--error);">Username должен содержать минимум 3 символа</span>';
         return;
     }
     
     // Проверяем права доступа
-    if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) {
-        messageDiv.innerHTML = '<span style="color: var(--error);">Только главный администратор может добавлять админов!</span>';
+    if (!currentUser) {
+        messageDiv.innerHTML = '<span style="color: var(--error);">Пользователь не авторизован</span>';
         return;
     }
     
-    console.log('👤 Attempting to add admin with username:', username);
+    if (parseInt(currentUser.id) !== ADMIN_ID) {
+        messageDiv.innerHTML = '<span style="color: var(--error);">Только главный администратор может добавлять админов!</span>';
+        console.log('❌ Not main admin:', { currentUserId: currentUser.id, ADMIN_ID });
+        return;
+    }
     
     // Показываем загрузку
     submitBtn.disabled = true;
@@ -12243,13 +12389,16 @@ async function addNewAdmin() {
     messageDiv.innerHTML = '<span style="color: var(--warning);">Добавляем администратора...</span>';
     
     try {
-        // 🔧 ИСПРАВЛЕНИЕ: Используем правильный endpoint
+        const requestData = {
+            adminId: currentUser.id,
+            username: username
+        };
+        
+        console.log('📤 Sending request:', requestData);
+        
         const result = await makeRequest('/api/admin/add-admin', {
             method: 'POST',
-            body: JSON.stringify({
-                adminId: currentUser.id,
-                username: username
-            })
+            body: JSON.stringify(requestData)
         });
         
         console.log('📨 Server response:', result);
@@ -12271,13 +12420,24 @@ async function addNewAdmin() {
         }
         
     } catch (error) {
-        console.error('❌ Error adding admin:', error);
-        messageDiv.innerHTML = `<span style="color: var(--error);">Ошибка сети: ${error.message}</span>`;
-        showNotification('Ошибка сети при добавлении админа', 'error');
+        console.error('💥 Error adding admin:', error);
+        
+        let errorMessage = 'Ошибка при добавлении админа';
+        if (error.message.includes('404')) {
+            errorMessage = 'Ошибка: Endpoint не найден. Сервер недоступен.';
+        } else if (error.message.includes('Failed to fetch')) {
+            errorMessage = 'Ошибка сети. Проверьте подключение к интернету.';
+        } else {
+            errorMessage = error.message;
+        }
+        
+        messageDiv.innerHTML = `<span style="color: var(--error);">${errorMessage}</span>`;
+        showNotification(errorMessage, 'error');
     } finally {
         // Восстанавливаем кнопку
         submitBtn.disabled = false;
         submitBtn.textContent = '➕ Добавить администратора';
+        console.log('🔍 DEBUG addNewAdmin END');
     }
 }
 async function checkServerConnection() {

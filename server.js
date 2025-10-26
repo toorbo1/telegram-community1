@@ -3096,6 +3096,8 @@ app.post('/api/admin/update-permissions', async (req, res) => {
 app.post('/api/admin/add-admin', async (req, res) => {
     const { adminId, username } = req.body;
     
+    console.log('🛠️ Add admin request:', { adminId, username });
+    
     try {
         // Проверяем, что запрос от главного админа
         if (parseInt(adminId) !== 8036875641) {
@@ -3105,20 +3107,48 @@ app.post('/api/admin/add-admin', async (req, res) => {
             });
         }
         
+        if (!username || username.trim() === '') {
+            return res.status(400).json({
+                success: false,
+                error: 'Username не может быть пустым!'
+            });
+        }
+        
+        // Очищаем username (убираем @ если есть)
+        const cleanUsername = username.replace('@', '').trim();
+        
+        console.log('🔍 Searching for user with username:', cleanUsername);
+        
         // Ищем пользователя по username
         const userResult = await pool.query(
-            'SELECT user_id, first_name, last_name, username FROM user_profiles WHERE username = $1 OR username = $2',
-            [username, username.replace('@', '')]
+            'SELECT user_id, first_name, last_name, username, is_admin FROM user_profiles WHERE username = $1',
+            [cleanUsername]
         );
         
         if (userResult.rows.length === 0) {
+            console.log('❌ User not found with username:', cleanUsername);
             return res.status(404).json({
                 success: false,
-                error: 'Пользователь с таким юзернеймом не найден!'
+                error: `Пользователь с username "${cleanUsername}" не найден! 
+                
+Убедитесь, что:
+1. Пользователь зарегистрирован в боте @LinkGoldMoney_bot
+2. Вы правильно ввели username (без @)
+3. Пользователь выполнил команду /start в боте`
             });
         }
         
         const targetUser = userResult.rows[0];
+        
+        // Проверяем, не является ли пользователь уже админом
+        if (targetUser.is_admin) {
+            return res.status(400).json({
+                success: false,
+                error: `Пользователь ${targetUser.first_name} (@${targetUser.username}) уже является администратором!`
+            });
+        }
+        
+        console.log('✅ Found user:', targetUser);
         
         // Делаем пользователя админом
         await pool.query(
@@ -3126,17 +3156,98 @@ app.post('/api/admin/add-admin', async (req, res) => {
             [targetUser.user_id]
         );
         
+        // Добавляем права доступа по умолчанию
+        try {
+            await pool.query(`
+                INSERT INTO admin_permissions (admin_id, can_posts, can_tasks, can_verification, can_support, can_payments)
+                VALUES ($1, true, true, true, true, true)
+                ON CONFLICT (admin_id) DO UPDATE SET 
+                    can_posts = true,
+                    can_tasks = true,
+                    can_verification = true,
+                    can_support = true,
+                    can_payments = true,
+                    updated_at = CURRENT_TIMESTAMP
+            `, [targetUser.user_id]);
+        } catch (permsError) {
+            console.log('⚠️ Could not set admin permissions:', permsError.message);
+            // Продолжаем без прав доступа - они установятся по умолчанию
+        }
+        
+        console.log(`✅ User ${targetUser.username} (ID: ${targetUser.user_id}) promoted to admin`);
+        
+        // Отправляем уведомление пользователю через бота (если бот активен)
+        if (bot) {
+            try {
+                await bot.sendMessage(
+                    targetUser.user_id,
+                    `🎉 <b>Поздравляем!</b>\n\n` +
+                    `Вы были назначены администратором в LinkGold!\n\n` +
+                    `Теперь у вас есть доступ к:\n` +
+                    `• 📝 Управлению постами\n` +
+                    `• 📋 Созданию заданий\n` +
+                    `• ✅ Проверке заданий\n` +
+                    `• 💬 Поддержке пользователей\n` +
+                    `• 💳 Управлению выплатами\n\n` +
+                    `Для доступа к панели администратора откройте приложение LinkGold.`,
+                    { parse_mode: 'HTML' }
+                );
+            } catch (botError) {
+                console.log('⚠️ Could not send notification to new admin:', botError.message);
+            }
+        }
+        
         res.json({
             success: true,
-            message: `Пользователь ${targetUser.first_name} (@${targetUser.username}) добавлен как администратор!`,
-            targetUserId: targetUser.user_id
+            message: `Пользователь ${targetUser.first_name} (@${targetUser.username}) успешно добавлен как администратор!`,
+            targetUserId: targetUser.user_id,
+            user: {
+                id: targetUser.user_id,
+                username: targetUser.username,
+                firstName: targetUser.first_name
+            }
         });
         
     } catch (error) {
-        console.error('Add admin error:', error);
+        console.error('❌ Add admin error:', error);
         res.status(500).json({
             success: false,
             error: 'Ошибка базы данных: ' + error.message
+        });
+    }
+});
+// Поиск пользователя по username (для проверки)
+app.get('/api/admin/find-user/:username', async (req, res) => {
+    const username = req.params.username;
+    
+    try {
+        const cleanUsername = username.replace('@', '').trim();
+        
+        const userResult = await pool.query(
+            'SELECT user_id, username, first_name, last_name, is_admin, created_at FROM user_profiles WHERE username = $1',
+            [cleanUsername]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.json({
+                success: false,
+                error: 'Пользователь не найден'
+            });
+        }
+        
+        const user = userResult.rows[0];
+        
+        res.json({
+            success: true,
+            user: user,
+            message: `Найден пользователь: ${user.first_name} (@${user.username})`
+        });
+        
+    } catch (error) {
+        console.error('Find user error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -3159,7 +3270,61 @@ app.post('/api/test-admin', async (req, res) => {
         });
     }
 });
+// Диагностический endpoint для проверки доступности
+app.get('/api/admin/debug', (req, res) => {
+    console.log('🔍 Admin debug endpoint hit');
+    res.json({
+        success: true,
+        message: 'Admin endpoints are working!',
+        timestamp: new Date().toISOString(),
+        endpoints: {
+            'POST /api/admin/add-admin': 'Add new admin',
+            'GET /api/admin/admins-list': 'Get admins list', 
+            'POST /api/admin/remove-admin': 'Remove admin'
+        }
+    });
+});
 
+// Простой тестовый endpoint для добавления админа
+app.post('/api/admin/test-add', (req, res) => {
+    console.log('🧪 Test add admin endpoint called:', req.body);
+    
+    const { adminId, username } = req.body;
+    
+    if (!adminId || !username) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing adminId or username'
+        });
+    }
+    
+    res.json({
+        success: true,
+        message: 'Test endpoint works!',
+        received: {
+            adminId: adminId,
+            username: username
+        },
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Проверка существования всех admin endpoints
+app.get('/api/admin/endpoints-check', (req, res) => {
+    const endpoints = [
+        '/api/admin/add-admin',
+        '/api/admin/admins-list', 
+        '/api/admin/remove-admin',
+        '/api/admin/test-add',
+        '/api/admin/debug'
+    ];
+    
+    res.json({
+        success: true,
+        endpoints: endpoints,
+        serverTime: new Date().toISOString()
+    });
+});
 // Удаление админа (только для главного админа)
 app.post('/api/admin/remove-admin', async (req, res) => {
     const { adminId, targetAdminId } = req.body;
