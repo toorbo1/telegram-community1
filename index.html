@@ -9578,12 +9578,13 @@ async function cancelTask() {
     }
 }
 
-        // Загрузка заданий на проверку для админа
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ ЗАДАНИЙ НА ПРОВЕРКУ
 async function loadTaskVerifications() {
     if (!currentUser) return;
 
     try {
-        const result = await makeRequest(`/admin/task-verifications?adminId=${currentUser.id}`);
+        // 🔧 ИСПРАВЛЕНИЕ: Правильный endpoint с /api/
+        const result = await makeRequest(`/api/admin/task-verifications?adminId=${currentUser.id}`);
         if (result.success) {
             displayTaskVerifications(result.verifications);
         }
@@ -9686,7 +9687,8 @@ async function approveVerification() {
             approveBtn.textContent = 'Одобряем...';
         }
 
-        const result = await makeRequest(`/admin/task-verifications/${currentVerificationId}/approve`, {
+        // 🔧 ИСПРАВЛЕНИЕ: Правильный endpoint с /api/
+        const result = await makeRequest(`/api/admin/task-verifications/${currentVerificationId}/approve`, {
             method: 'POST',
             body: JSON.stringify({
                 adminId: currentUser.id
@@ -9761,11 +9763,13 @@ async function approveVerification() {
 // Вызовите в initializeApp()
 addDebugButton();
 // В функции rejectVerification добавьте обновление списка заданий
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОТКЛОНЕНИЯ ЗАДАНИЯ
 async function rejectVerification() {
     if (!currentVerificationId) return;
 
     try {
-        const result = await makeRequest(`/admin/task-verifications/${currentVerificationId}/reject`, {
+        // 🔧 ИСПРАВЛЕНИЕ: Правильный endpoint с /api/
+        const result = await makeRequest(`/api/admin/task-verifications/${currentVerificationId}/reject`, {
             method: 'POST',
             body: JSON.stringify({
                 adminId: currentUser.id
