@@ -3093,7 +3093,6 @@ app.post('/api/admin/update-permissions', async (req, res) => {
         });
     }
 });
-// На сервере (server.js) добавьте этот маршрут:
 app.post('/api/admin/add-admin', async (req, res) => {
     const { adminId, username } = req.body;
     
@@ -3138,6 +3137,25 @@ app.post('/api/admin/add-admin', async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Ошибка базы данных: ' + error.message
+        });
+    }
+});
+// Тестовый endpoint для проверки
+app.post('/api/test-admin', async (req, res) => {
+    console.log('🧪 Test admin endpoint called:', req.body);
+    
+    try {
+        res.json({
+            success: true,
+            message: 'Test endpoint works!',
+            received_data: req.body,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Test endpoint error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
         });
     }
 });
