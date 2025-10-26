@@ -2796,7 +2796,14 @@ app.get('/api/withdraw/history/:userId', async (req, res) => {
 });
 
 // ==================== ADMIN MANAGEMENT ENDPOINTS ====================
-
+// В server.js
+app.get('/api/health', (req, res) => {
+    res.json({
+        success: true,
+        message: 'Server is running',
+        timestamp: new Date().toISOString()
+    });
+});
 // Получение списка всех админов с расширенной статистикой
 app.get('/api/admin/admins-list', async (req, res) => {
     const { adminId } = req.query;
@@ -3086,85 +3093,51 @@ app.post('/api/admin/update-permissions', async (req, res) => {
         });
     }
 });
-// Добавление нового админа по юзернейму - ТОЛЬКО для главного админа
+// На сервере (server.js) добавьте этот маршрут:
 app.post('/api/admin/add-admin', async (req, res) => {
     const { adminId, username } = req.body;
     
-    console.log('🛠️ Received add-admin request:', { adminId, username });
-    
-    // Проверяем права доступа - только главный админ
-    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied - only main admin can add admins'
-        });
-    }
-    
-    if (!username) {
-        return res.status(400).json({
-            success: false,
-            error: 'Username is required'
-        });
-    }
-    
     try {
-        // Ищем пользователя по юзернейму (убираем @ если есть)
-        const cleanUsername = username.replace('@', '').trim();
+        // Проверяем, что запрос от главного админа
+        if (parseInt(adminId) !== 8036875641) {
+            return res.status(403).json({
+                success: false,
+                error: 'Только главный администратор может добавлять админов!'
+            });
+        }
         
-        console.log('🔍 Searching for user with username:', cleanUsername);
-        
+        // Ищем пользователя по username
         const userResult = await pool.query(
-            'SELECT user_id, username, first_name, is_admin FROM user_profiles WHERE username = $1',
-            [cleanUsername]
+            'SELECT user_id, first_name, last_name, username FROM user_profiles WHERE username = $1 OR username = $2',
+            [username, username.replace('@', '')]
         );
         
         if (userResult.rows.length === 0) {
             return res.status(404).json({
                 success: false,
-                error: 'Пользователь с таким юзернеймом не найден'
+                error: 'Пользователь с таким юзернеймом не найден!'
             });
         }
         
-        const user = userResult.rows[0];
+        const targetUser = userResult.rows[0];
         
-        console.log('👤 Found user:', user);
-        
-        // Проверяем, не является ли пользователь уже админом
-        if (user.is_admin) {
-            return res.status(400).json({
-                success: false,
-                error: 'Этот пользователь уже является администратором'
-            });
-        }
-        
-        // Назначаем пользователя админом
+        // Делаем пользователя админом
         await pool.query(
-            'UPDATE user_profiles SET is_admin = true, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1',
-            [user.user_id]
+            'UPDATE user_profiles SET is_admin = true WHERE user_id = $1',
+            [targetUser.user_id]
         );
-        
-        console.log(`✅ Admin added: ${user.username} (ID: ${user.user_id})`);
-        
-        // Получаем обновленные данные пользователя
-        const updatedUserResult = await pool.query(
-            'SELECT * FROM user_profiles WHERE user_id = $1',
-            [user.user_id]
-        );
-        
-        const updatedUser = updatedUserResult.rows[0];
         
         res.json({
             success: true,
-            message: `Пользователь @${user.username} (${user.first_name}) успешно добавлен как администратор`,
-            user: updatedUser,
-            targetUserId: user.user_id
+            message: `Пользователь ${targetUser.first_name} (@${targetUser.username}) добавлен как администратор!`,
+            targetUserId: targetUser.user_id
         });
         
     } catch (error) {
-        console.error('❌ Add admin error:', error);
+        console.error('Add admin error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error: ' + error.message
+            error: 'Ошибка базы данных: ' + error.message
         });
     }
 });
