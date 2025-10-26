@@ -9907,7 +9907,6 @@ async function loadTaskVerifications() {
             document.getElementById('verification-modal').classList.add('active');
         }
 
-// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОДОБРЕНИЯ ЗАДАНИЯ
 async function approveVerification() {
     if (!currentVerificationId) {
         showNotification('❌ ID верификации не найден', 'error');
@@ -9932,49 +9931,56 @@ async function approveVerification() {
             approveBtn.textContent = 'Одобряем...';
         }
 
-        const result = await makeRequest(`/admin/task-verifications/${currentVerificationId}/approve`, {
+        // Добавляем таймаут для запроса
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 секунд
+
+        const result = await fetch(`${API_BASE_URL}/api/admin/task-verifications/${currentVerificationId}/approve`, {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
             body: JSON.stringify({
                 adminId: currentUser.id
-            })
+            }),
+            signal: controller.signal
         });
 
-        console.log('📨 Ответ сервера при одобрении:', result);
+        clearTimeout(timeoutId);
 
-        if (result.success) {
-            let message = `✅ Задание одобрено! Пользователь получил ${result.amountAdded}⭐`;
-            
-            if (result.taskRemoved) {
-                message += "\n\n🎯 Задание автоматически удалено - достигнут лимит исполнителей!";
-                
-                // 🔥 ВАЖНО: НЕМЕДЛЕННО ОБНОВЛЯЕМ СПИСКИ ЗАДАНИЙ
-                setTimeout(() => {
-                    loadTasks(); // Обновляем новые задания
-                    loadUserTasks(); // Обновляем задания пользователя
-                    loadTaskVerifications(); // Обновляем список проверки
-                }, 500);
-            }
-            
-            showNotification(message, 'success');
+        if (!result.ok) {
+            throw new Error(`HTTP ${result.status}: ${result.statusText}`);
+        }
+
+        const data = await result.json();
+        console.log('📨 Ответ сервера при одобрении:', data);
+
+        if (data.success) {
+            showNotification(`✅ Задание одобрено! Пользователь получил ${data.amountAdded}⭐`, 'success');
             closeModal('verification-modal');
             
-            // ОБНОВЛЯЕМ ВСЕ ДАННЫЕ
+            // Обновляем данные
             await updateUserData();
+            loadTaskVerifications();
             
         } else {
-            throw new Error(result.error || 'Неизвестная ошибка сервера');
+            throw new Error(data.error || 'Неизвестная ошибка сервера');
         }
 
     } catch (error) {
         console.error('❌ Сетевая ошибка при одобрении:', error);
         
-        let errorMessage = 'Сетевая ошибка при одобрении задания';
-        if (error.message.includes('Failed to fetch')) {
+        let errorMessage = 'Ошибка при одобрении задания';
+        if (error.name === 'AbortError') {
+            errorMessage = '❌ Таймаут запроса. Сервер не отвежает. Попробуйте снова.';
+        } else if (error.message.includes('Failed to fetch')) {
             errorMessage = '❌ Проблема с соединением. Проверьте интернет и попробуйте снова.';
         } else if (error.message.includes('404')) {
             errorMessage = '❌ Endpoint не найден. Сообщите администратору.';
         } else if (error.message.includes('403')) {
             errorMessage = '❌ Доступ запрещен. У вас нет прав администратора.';
+        } else {
+            errorMessage = `❌ Ошибка: ${error.message}`;
         }
         
         showNotification(errorMessage, 'error');

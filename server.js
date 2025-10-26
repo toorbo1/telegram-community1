@@ -30,12 +30,16 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-// Middleware
+// В начале server.js
 app.use(cors({
     origin: '*',
-    methods: ['GET', 'POST', 'DELETE', 'PUT'],
-    credentials: true
+    methods: ['GET', 'POST', 'DELETE', 'PUT', 'OPTIONS'],
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Добавьте обработку OPTIONS запросов
+app.options('*', cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static('.'));
@@ -1538,7 +1542,27 @@ async function fixWithdrawalTableStructure() {
     }
 }
 
-
+// Диагностический endpoint для проверки соединения
+app.get('/api/debug/connection-test', async (req, res) => {
+    try {
+        // Проверяем соединение с базой данных
+        await pool.query('SELECT 1');
+        
+        res.json({
+            success: true,
+            message: 'Connection test successful',
+            timestamp: new Date().toISOString(),
+            database: 'Connected',
+            server: 'Running'
+        });
+    } catch (error) {
+        console.error('Connection test error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Connection test failed: ' + error.message
+        });
+    }
+});
 
 // Подтверждение выплаты для всех админов
 app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) => {
@@ -2786,14 +2810,76 @@ app.get('/api/admin/debug-rights', async (req, res) => {
         });
     }
 });
-// Подтверждение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ С УДАЛЕНИЕМ ФАЙЛОВ
+app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
+    const verificationId = req.params.verificationId;
+    const { adminId } = req.body;
+    
+    console.log('🔍 ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ - Начало одобрения задания:');
+    console.log('- verificationId:', verificationId);
+    console.log('- adminId:', adminId);
+    console.log('- Headers:', req.headers);
+    console.log('- Body:', req.body);
+    
+    try {
+        // Проверка прав
+        const isAdmin = await checkAdminAccess(adminId);
+        console.log('- Проверка прав администратора:', isAdmin);
+        
+        if (!isAdmin) {
+            console.log('❌ Доступ запрещен - пользователь не админ');
+            return res.status(403).json({
+                success: false,
+                error: 'Доступ запрещен'
+            });
+        }
+
+        // Получаем информацию о верификации
+        const verification = await pool.query(
+            'SELECT * FROM task_verifications WHERE id = $1', 
+            [verificationId]
+        );
+        
+        console.log('- Найдено записей верификации:', verification.rows.length);
+        
+        if (verification.rows.length === 0) {
+            console.log('❌ Верификация не найдена');
+            return res.status(404).json({
+                success: false,
+                error: 'Verification not found'
+            });
+        }
+
+        const verificationData = verification.rows[0];
+        console.log('- Данные верификации:', verificationData);
+
+        // ... остальная логика одобрения
+
+        console.log('✅ Задание успешно одобрено');
+        res.json({
+            success: true,
+            message: 'Task approved successfully',
+            amountAdded: verificationData.task_price
+        });
+
+    } catch (error) {
+        console.error('❌ КРИТИЧЕСКАЯ ОШИБКА при одобрении задания:');
+        console.error('- Error message:', error.message);
+        console.error('- Error stack:', error.stack);
+        
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+// В server.js - проверьте этот endpoint
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
     
     console.log('✅ Подтверждение задания админом:', { verificationId, adminId });
     
-    // Проверка прав администратора - РАЗРЕШАЕМ ВСЕМ АДМИНАМ
+    // Проверка прав администратора
     const isAdmin = await checkAdminAccess(adminId);
     if (!isAdmin) {
         return res.status(403).json({
@@ -2816,6 +2902,7 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
                 success: false,
                 error: 'Verification not found'
             });
+            
         }
 
         const verificationData = verification.rows[0];
@@ -2885,6 +2972,7 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             `, [task.id]);
             
             console.log(`✅ Задание ${task.id} автоматически удалено (достигнут лимит: ${peopleRequired} исполнителей)`);
+            
         }
         
 // Получаем текущее количество выполненных заданий
