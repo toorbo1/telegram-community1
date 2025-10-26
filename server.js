@@ -30,12 +30,16 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-// Middleware
+// Улучшенная CORS конфигурация
 app.use(cors({
     origin: '*',
-    methods: ['GET', 'POST', 'DELETE', 'PUT'],
+    methods: ['GET', 'POST', 'DELETE', 'PUT', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true
 }));
+
+// Обработка preflight запросов
+app.options('*', cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static('.'));
@@ -71,7 +75,30 @@ const upload = multer({
     }
 });
 
+// Глобальный обработчик неперехваченных ошибок
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+});
 
+process.on('uncaughtException', (error) => {
+    console.error('❌ Uncaught Exception:', error);
+    process.exit(1);
+});
+// Проверка подключения к базе данных
+async function checkDatabaseConnection() {
+    try {
+        const client = await pool.connect();
+        console.log('✅ Database connection successful');
+        client.release();
+        return true;
+    } catch (error) {
+        console.error('❌ Database connection failed:', error);
+        return false;
+    }
+}
+
+// Проверяем при запуске
+checkDatabaseConnection();
 // 🔧 УЛУЧШЕННАЯ функция проверки прав администратора
 async function checkAdminAccess(userId) {
     try {
@@ -796,26 +823,28 @@ bot.on('callback_query', async (callbackQuery) => {
 
 // ... остальные endpoints остаются без изменений ...
 
-// Health check с информацией о конфигурации
 app.get('/api/health', async (req, res) => {
     try {
+        // Проверяем подключение к базе данных
         await pool.query('SELECT 1');
         
         const healthInfo = {
             status: 'OK',
             timestamp: new Date().toISOString(),
-            database: 'PostgreSQL',
+            database: 'PostgreSQL - Connected',
             bot: {
                 enabled: !!BOT_TOKEN,
                 hasToken: !!BOT_TOKEN
             },
             app: {
                 url: APP_URL,
-                adminId: ADMIN_ID
+                adminId: ADMIN_ID,
+                port: PORT
             },
             environment: {
                 node: process.version,
-                platform: process.platform
+                platform: process.platform,
+                memory: process.memoryUsage()
             }
         };
         
@@ -825,7 +854,8 @@ app.get('/api/health', async (req, res) => {
         res.status(500).json({
             status: 'ERROR',
             message: 'Database connection failed',
-            error: error.message
+            error: error.message,
+            timestamp: new Date().toISOString()
         });
     }
 });

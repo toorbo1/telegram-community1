@@ -6079,7 +6079,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ ДЛЯ ЗАПРОСОВ
 async function makeRequest(endpoint, options = {}) {
     try {
         // Формируем полный URL
@@ -6094,17 +6093,29 @@ async function makeRequest(endpoint, options = {}) {
         
         console.log(`🚀 Making ${options.method || 'GET'} request to: ${url}`);
         
-        const timeout = 10000; // 10 секунд таймаут
+        const timeout = 15000; // Увеличиваем таймаут до 15 секунд
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+        // Подготавливаем заголовки
+        const headers = {
+            'Content-Type': 'application/json',
+            ...options.headers
+        };
+
+        // Подготавливаем тело запроса
+        let body = options.body;
+        if (body && typeof body === 'object' && !(body instanceof FormData)) {
+            body = JSON.stringify(body);
+        }
+
         const response = await fetch(url, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            },
+            headers: headers,
+            method: options.method || 'GET',
+            body: body,
             signal: controller.signal,
-            ...options
+            mode: 'cors',
+            credentials: 'omit'
         });
 
         clearTimeout(timeoutId);
@@ -6123,7 +6134,7 @@ async function makeRequest(endpoint, options = {}) {
         console.error('💥 Request failed:', error);
         
         if (error.name === 'AbortError') {
-            throw new Error('Таймаут запроса. Сервер не отвечает.');
+            throw new Error('Таймаут запроса. Сервер не отвежает.');
         } else if (error.name === 'TypeError') {
             throw new Error('Проблема с сетью. Проверьте подключение к интернету.');
         } else {
@@ -9498,7 +9509,6 @@ async function loadTaskVerifications() {
             document.getElementById('verification-modal').classList.add('active');
         }
 
-// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОДОБРЕНИЯ ЗАДАНИЯ
 async function approveVerification() {
     if (!currentVerificationId) {
         showNotification('❌ ID верификации не найден', 'error');
@@ -9518,6 +9528,7 @@ async function approveVerification() {
 
         // Показываем индикатор загрузки
         const approveBtn = document.querySelector('.verification-approve');
+        const originalText = approveBtn.textContent;
         if (approveBtn) {
             approveBtn.disabled = true;
             approveBtn.textContent = 'Одобряем...';
@@ -9525,9 +9536,9 @@ async function approveVerification() {
 
         const result = await makeRequest(`/admin/task-verifications/${currentVerificationId}/approve`, {
             method: 'POST',
-            body: JSON.stringify({
+            body: {
                 adminId: currentUser.id
-            })
+            }
         });
 
         console.log('📨 Ответ сервера при одобрении:', result);
@@ -9538,18 +9549,18 @@ async function approveVerification() {
             if (result.taskRemoved) {
                 message += "\n\n🎯 Задание автоматически удалено - достигнут лимит исполнителей!";
                 
-                // 🔥 ВАЖНО: НЕМЕДЛЕННО ОБНОВЛЯЕМ СПИСКИ ЗАДАНИЙ
+                // Обновляем списки заданий
                 setTimeout(() => {
-                    loadTasks(); // Обновляем новые задания
-                    loadUserTasks(); // Обновляем задания пользователя
-                    loadTaskVerifications(); // Обновляем список проверки
+                    loadTasks();
+                    loadUserTasks();
+                    loadTaskVerifications();
                 }, 500);
             }
             
             showNotification(message, 'success');
             closeModal('verification-modal');
             
-            // ОБНОВЛЯЕМ ВСЕ ДАННЫЕ
+            // Обновляем все данные
             await updateUserData();
             
         } else {
@@ -9574,7 +9585,18 @@ async function approveVerification() {
         const approveBtn = document.querySelector('.verification-approve');
         if (approveBtn) {
             approveBtn.disabled = false;
-            approveBtn.textContent = '✅ Одобрить';
+            approveBtn.textContent = originalText;
+        }
+    }
+}
+async function makeRequestWithRetry(endpoint, options = {}, retries = 3) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            return await makeRequest(endpoint, options);
+        } catch (error) {
+            if (i === retries - 1) throw error;
+            console.log(`🔄 Retry ${i + 1}/${retries} for ${endpoint}`);
+            await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
         }
     }
 }
@@ -12163,29 +12185,37 @@ function displayAdminsList(admins) {
     });
 }
 
-// Добавление нового админа
 async function addNewAdmin() {
+    console.log('🎯 Starting addNewAdmin function...');
+    
     const usernameInput = document.getElementById('new-admin-username');
     const messageDiv = document.getElementById('admin-form-message');
     const submitBtn = document.getElementById('add-admin-btn');
     
     if (!usernameInput || !messageDiv) {
+        console.error('❌ Required elements not found');
         showNotification('Ошибка: элементы формы не найдены', 'error');
         return;
     }
     
     const username = usernameInput.value.trim();
     
+    // Валидация
     if (!username) {
         messageDiv.innerHTML = '<span style="color: var(--error);">Введите юзернейм пользователя</span>';
         return;
     }
     
+    // Проверяем права доступа
     if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) {
         messageDiv.innerHTML = '<span style="color: var(--error);">Только главный администратор может добавлять админов!</span>';
         return;
     }
     
+    console.log('👤 Attempting to add admin with username:', username);
+    
+    // Показываем загрузку
+    const originalText = submitBtn.textContent;
     submitBtn.disabled = true;
     submitBtn.textContent = 'Добавляем...';
     messageDiv.innerHTML = '<span style="color: var(--warning);">Добавляем администратора...</span>';
@@ -12193,32 +12223,42 @@ async function addNewAdmin() {
     try {
         const result = await makeRequest('/admin/add-admin', {
             method: 'POST',
-            body: JSON.stringify({
+            body: {
                 adminId: currentUser.id,
                 username: username
-            })
+            }
         });
+        
+        console.log('📨 Server response:', result);
         
         if (result.success) {
             messageDiv.innerHTML = `<span style="color: var(--success);">${result.message}</span>`;
-            usernameInput.value = '';
+            usernameInput.value = ''; // Очищаем поле ввода
             
+            // Обновляем список админов
             setTimeout(() => {
                 loadAdminsList();
             }, 1000);
             
             showNotification(result.message, 'success');
+            
         } else {
             messageDiv.innerHTML = `<span style="color: var(--error);">Ошибка: ${result.error}</span>`;
             showNotification('Ошибка: ' + result.error, 'error');
         }
+        
     } catch (error) {
         console.error('❌ Error adding admin:', error);
-        messageDiv.innerHTML = `<span style="color: var(--error);">Ошибка сети: ${error.message}</span>`;
-        showNotification('Ошибка сети при добавлении админа', 'error');
+        const errorMessage = error.message.includes('Failed to fetch') 
+            ? 'Проблема с подключением к серверу. Проверьте интернет-соединение.' 
+            : error.message;
+        
+        messageDiv.innerHTML = `<span style="color: var(--error);">Ошибка сети: ${errorMessage}</span>`;
+        showNotification('Ошибка сети при добавлении админа: ' + errorMessage, 'error');
     } finally {
+        // Восстанавливаем кнопку
         submitBtn.disabled = false;
-        submitBtn.textContent = '➕ Добавить администратора';
+        submitBtn.textContent = originalText;
     }
 }
 
