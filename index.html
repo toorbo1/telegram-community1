@@ -10035,6 +10035,7 @@ if (isSlowDevice()) {
 
 // 🔧 ФУНКЦИЯ ОТОБРАЖЕНИЯ АДМИН-ЗАДАНИЙ
 
+// В index.html обновите функцию displayAdminTasks
 function displayAdminTasks(tasks, stats) {
     const container = document.getElementById('admin-tasks-list');
     if (!container) {
@@ -10046,12 +10047,12 @@ function displayAdminTasks(tasks, stats) {
     
     container.innerHTML = '';
     
-    // Показываем статистику
+    // Показываем расширенную статистику
     if (stats) {
         const statsHTML = `
             <div class="admin-stats" style="margin-bottom: 20px; padding: 15px; background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border);">
                 <h4 style="margin-bottom: 10px;">📊 Статистика заданий</h4>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; font-size: 12px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; font-size: 12px;">
                     <div style="text-align: center;">
                         <div style="font-size: 18px; font-weight: bold; color: var(--accent);">${stats.total_tasks || 0}</div>
                         <div>Всего заданий</div>
@@ -10065,8 +10066,8 @@ function displayAdminTasks(tasks, stats) {
                         <div>Завершенных</div>
                     </div>
                     <div style="text-align: center;">
-                        <div style="font-size: 18px; font-weight: bold; color: var(--text-primary);">${stats.total_completed || 0}</div>
-                        <div>Выполнений</div>
+                        <div style="font-size: 18px; font-weight: bold; color: var(--text-primary);">${stats.my_tasks || 0}</div>
+                        <div>Мои задания</div>
                     </div>
                 </div>
             </div>
@@ -10082,22 +10083,29 @@ function displayAdminTasks(tasks, stats) {
                 <div style="font-size: 14px; color: var(--text-secondary);">
                     Создайте первое задание используя форму выше
                 </div>
+                <button class="btn btn-primary" onclick="debugAdminTasks()" style="margin-top: 16px;">
+                    🐛 Диагностика
+                </button>
             </div>
         `;
         return;
     }
     
-    // Добавляем переключатель фильтра
+    // Добавляем фильтры
     const filterHTML = `
-        <div class="task-filter" style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+        <div class="task-filter" style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
             <label style="font-weight: 600; color: var(--text-primary);">Фильтр:</label>
             <select id="admin-task-filter" onchange="filterAdminTasks()" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-primary); color: var(--text-primary);">
                 <option value="all">Все задания</option>
                 <option value="active">Только активные</option>
                 <option value="completed">Только завершенные</option>
+                <option value="my">Мои задания</option>
             </select>
             <button onclick="loadAdminTasks()" class="btn btn-primary" style="padding: 8px 12px; font-size: 12px;">
                 🔄 Обновить
+            </button>
+            <button onclick="debugAdminTasks()" class="btn btn-warning" style="padding: 8px 12px; font-size: 12px;">
+                🐛 Диагностика
             </button>
         </div>
     `;
@@ -10107,10 +10115,46 @@ function displayAdminTasks(tasks, stats) {
     tasksContainer.id = 'admin-tasks-container';
     container.appendChild(tasksContainer);
     
+    // Сохраняем задачи для фильтрации
+    window.currentAdminTasks = tasks;
+    
     // Отображаем все задания
     renderAdminTasks(tasks);
 }
-
+// В index.html добавьте функцию диагностики
+async function debugAdminTasks() {
+    console.log('🐛 DEBUG Admin Tasks System:');
+    
+    if (!currentUser) {
+        console.log('❌ No current user');
+        showNotification('Пользователь не авторизован', 'error');
+        return;
+    }
+    
+    try {
+        // Проверяем endpoint диагностики
+        const debugResult = await makeRequest(`/api/debug/admin-tasks?adminId=${currentUser.id}`);
+        console.log('📊 Debug admin tasks result:', debugResult);
+        
+        // Показываем результаты в уведомлении
+        if (debugResult.success) {
+            let message = `📊 Диагностика заданий:\n`;
+            message += `• Всего заданий: ${debugResult.all_tasks_count}\n`;
+            message += `• Мои задания: ${debugResult.admin_tasks.length}\n`;
+            
+            debugResult.status_stats.forEach(stat => {
+                message += `• ${stat.status}: ${stat.count}\n`;
+            });
+            
+            showNotification(message, 'info');
+        }
+        
+    } catch (error) {
+        console.error('Debug admin tasks error:', error);
+        showNotification('Ошибка диагностики: ' + error.message, 'error');
+    }
+}
+// Обновите функцию renderAdminTasks
 function renderAdminTasks(tasks) {
     const container = document.getElementById('admin-tasks-container');
     if (!container) return;
@@ -10120,9 +10164,16 @@ function renderAdminTasks(tasks) {
     const filter = document.getElementById('admin-task-filter')?.value || 'all';
     
     const filteredTasks = tasks.filter(task => {
-        if (filter === 'active') return task.status === 'active';
-        if (filter === 'completed') return task.status === 'completed';
-        return true; // 'all'
+        switch (filter) {
+            case 'active':
+                return task.status === 'active';
+            case 'completed':
+                return task.status === 'completed';
+            case 'my':
+                return task.created_by === currentUser.id;
+            default:
+                return true; // 'all'
+        }
     });
     
     console.log(`🎯 Rendering ${filteredTasks.length} filtered tasks (filter: ${filter})`);
@@ -10135,6 +10186,9 @@ function renderAdminTasks(tasks) {
                 <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
                     Попробуйте изменить фильтр
                 </div>
+                <button class="btn btn-primary" onclick="loadAdminTasks()" style="margin-top: 16px;">
+                    🔄 Обновить список
+                </button>
             </div>
         `;
         return;

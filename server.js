@@ -408,6 +408,39 @@ async function createWithdrawalTable() {
         console.error('❌ Error creating withdrawal_requests table:', error);
     }
 }
+// В server.js в функцию initDatabase добавьте:
+async function checkTasksTableStructure() {
+    try {
+        console.log('🔍 Checking tasks table structure...');
+        
+        const structure = await pool.query(`
+            SELECT column_name, data_type, is_nullable 
+            FROM information_schema.columns 
+            WHERE table_name = 'tasks' 
+            ORDER BY ordinal_position
+        `);
+        
+        console.log('📊 Tasks table structure:', structure.rows);
+        
+        // Проверяем наличие важных колонок
+        const requiredColumns = ['id', 'title', 'description', 'price', 'created_by', 'status'];
+        const missingColumns = requiredColumns.filter(col => 
+            !structure.rows.find(row => row.column_name === col)
+        );
+        
+        if (missingColumns.length > 0) {
+            console.log('❌ Missing columns in tasks table:', missingColumns);
+            return false;
+        }
+        
+        console.log('✅ Tasks table structure is OK');
+        return true;
+        
+    } catch (error) {
+        console.error('Error checking tasks table structure:', error);
+        return false;
+    }
+}
 // Функция для принудительного обновления структуры таблицы
 async function fixWithdrawalTable() {
     try {
@@ -1862,50 +1895,65 @@ app.get('/api/admin/tasks', async (req, res) => {
         });
     }
 });
-// Get ALL tasks for admin (including completed and inactive)
+// В server.js - обновите endpoint админ-заданий
 app.get('/api/admin/all-tasks', async (req, res) => {
     const { adminId } = req.query;
     
-    console.log('🔄 Admin ALL tasks request:', adminId);
-    
-    // Проверка прав администратора
-    const isAdmin = await checkAdminAccess(adminId);
-    if (!isAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Доступ запрещен'
-        });
-    }
+    console.log('🔄 Admin ALL tasks request from:', adminId);
     
     try {
+        // Проверка прав администратора
+        const isAdmin = await checkAdminAccess(adminId);
+        if (!isAdmin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Доступ запрещен'
+            });
+        }
+        
+        // Получаем ВСЕ задания с детальной статистикой
         const result = await pool.query(`
-            SELECT t.*, 
-                   COUNT(ut.id) as total_attempts,
-                   COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_count,
-                   COUNT(CASE WHEN ut.status = 'rejected' THEN 1 END) as rejected_count,
-                   COUNT(CASE WHEN ut.status = 'pending_review' THEN 1 END) as pending_count,
-                   COUNT(CASE WHEN ut.status = 'active' THEN 1 END) as active_count,
-                   array_agg(DISTINCT ut.user_id) as user_ids,
-                   MAX(ut.completed_at) as last_completed
+            SELECT 
+                t.*, 
+                up.username as creator_username,
+                up.first_name as creator_name,
+                COUNT(ut.id) as total_attempts,
+                COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_count,
+                COUNT(CASE WHEN ut.status = 'rejected' THEN 1 END) as rejected_count,
+                COUNT(CASE WHEN ut.status = 'pending_review' THEN 1 END) as pending_count,
+                COUNT(CASE WHEN ut.status = 'active' THEN 1 END) as active_count,
+                MAX(ut.completed_at) as last_completed,
+                MIN(ut.started_at) as first_started
             FROM tasks t 
             LEFT JOIN user_tasks ut ON t.id = ut.task_id
-            GROUP BY t.id 
+            LEFT JOIN user_profiles up ON t.created_by = up.user_id
+            GROUP BY t.id, up.username, up.first_name
             ORDER BY t.created_at DESC
         `);
         
-        console.log(`✅ Found ${result.rows.length} total tasks for admin`);
+        console.log(`✅ Found ${result.rows.length} total tasks for admin ${adminId}`);
+        
+        // Дополнительная статистика
+        const totalStats = await pool.query(`
+            SELECT 
+                COUNT(*) as total_tasks,
+                COUNT(CASE WHEN status = 'active' THEN 1 END) as active_tasks,
+                COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_tasks,
+                COUNT(CASE WHEN created_by = $1 THEN 1 END) as my_tasks
+            FROM tasks
+        `, [adminId]);
         
         res.json({
             success: true,
             tasks: result.rows,
-            statistics: {
-                total_tasks: result.rows.length,
-                active_tasks: result.rows.filter(t => t.status === 'active').length,
-                completed_tasks: result.rows.filter(t => t.status === 'completed').length,
-                total_attempts: result.rows.reduce((sum, t) => sum + parseInt(t.total_attempts || 0), 0),
-                total_completed: result.rows.reduce((sum, t) => sum + parseInt(t.completed_count || 0), 0)
+            statistics: totalStats.rows[0],
+            debug: {
+                admin_id: adminId,
+                is_admin: isAdmin,
+                timestamp: new Date().toISOString()
             }
         });
+        
     } catch (error) {
         console.error('❌ Get all admin tasks error:', error);
         res.status(500).json({
@@ -1915,6 +1963,43 @@ app.get('/api/admin/all-tasks', async (req, res) => {
     }
 });
 // ==================== USER TASKS ENDPOINTS ====================
+// В server.js добавьте:
+app.get('/api/debug/admin-tasks', async (req, res) => {
+    const { adminId } = req.query;
+    
+    try {
+        // Все задания
+        const allTasks = await pool.query('SELECT * FROM tasks ORDER BY created_at DESC');
+        
+        // Статистика по статусам
+        const statusStats = await pool.query(`
+            SELECT status, COUNT(*) as count 
+            FROM tasks 
+            GROUP BY status
+        `);
+        
+        // Задания созданные админом
+        const adminTasks = await pool.query(`
+            SELECT * FROM tasks 
+            WHERE created_by = $1 
+            ORDER BY created_at DESC
+        `, [adminId]);
+        
+        res.json({
+            success: true,
+            all_tasks_count: allTasks.rows.length,
+            status_stats: statusStats.rows,
+            admin_tasks: adminTasks.rows,
+            admin_id: adminId
+        });
+    } catch (error) {
+        console.error('Debug admin tasks error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 
 // В server.js - обновите endpoint начала задания
 app.post('/api/user/tasks/start', async (req, res) => {
