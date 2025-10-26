@@ -670,7 +670,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         
     } catch (error) {
         console.error('❌ Start command error:', error);
-        await bot.sendMessage(chatId, '❌ Произошла ошибка при регистрации. Попробуйте позже.');
+        await bot.sendMessage(chatId, '❌ Произошла ошибка .Введите еще раз /start');
     }
 });
 // Команда для получения реферальной ссылки
