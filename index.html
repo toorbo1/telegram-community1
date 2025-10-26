@@ -9991,7 +9991,50 @@ function loadAdminTasksSection() {
     // Загружаем задания
     loadAdminTasks();
 }
-
+async function loadAdminTasks() {
+    console.log('🔄 Loading admin tasks for user:', currentUser?.id);
+    
+    if (!currentUser) {
+        console.log('❌ No user - cannot load admin tasks');
+        return;
+    }
+    
+    try {
+        const result = await makeRequest(`/api/admin/all-tasks?adminId=${currentUser.id}`);
+        console.log('📊 Admin tasks loaded:', result);
+        
+        if (result.success) {
+            console.log(`✅ Found ${result.tasks.length} tasks`);
+            displayAdminTasks(result.tasks, result.statistics);
+        } else {
+            console.error('❌ Failed to load admin tasks:', result.error);
+        }
+    } catch (error) {
+        console.error('💥 Error loading admin tasks:', error);
+    }
+}
+async function restoreDeletedTasks() {
+    if (!confirm('Восстановить удаленные задания администратора?')) return;
+    
+    try {
+        const result = await makeRequest('/api/admin/restore-tasks', {
+            method: 'POST',
+            body: JSON.stringify({
+                adminId: currentUser.id
+            })
+        });
+        
+        if (result.success) {
+            showNotification(`Восстановлено ${result.restoredCount} заданий`, 'success');
+            loadAdminTasks();
+        } else {
+            showNotification('Ошибка восстановления: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Restore tasks error:', error);
+        showNotification('Ошибка восстановления заданий', 'error');
+    }
+}
 async function loadAdminTasks() {
     console.log('🎯 SIMPLIFIED loadAdminTasks called');
     
@@ -10927,29 +10970,47 @@ function debugAdminTasks() {
     console.log('- isAdmin:', currentUser?.is_admin);
 }
 
-// Добавьте кнопку для тестирования
 function addAdminDebugButton() {
     const debugBtn = document.createElement('button');
-    
+    debugBtn.textContent = '🐛 Debug Admin Tasks';
     debugBtn.style.position = 'fixed';
-    debugBtn.style.top = '100px';
+    debugBtn.style.top = '80px';
     debugBtn.style.right = '10px';
     debugBtn.style.zIndex = '10000';
     debugBtn.style.padding = '10px';
-    debugBtn.style.background = 'orange';
+    debugBtn.style.background = 'red';
     debugBtn.style.color = 'white';
     debugBtn.style.border = 'none';
     debugBtn.style.borderRadius = '5px';
     debugBtn.style.fontSize = '12px';
-    debugBtn.onclick = function() {
-        debugAdminTasks();
-        loadAdminTasksSection();
+    
+    debugBtn.onclick = async function() {
+        console.log('🔍 DEBUG ADMIN TASKS:');
+        console.log('- Current User:', currentUser);
+        console.log('- isAdmin:', currentUser?.is_admin);
+        console.log('- isMainAdmin:', parseInt(currentUser?.id) === ADMIN_ID);
+        
+        // Проверяем существующие задания
+        try {
+            const result = await makeRequest('/api/admin/all-tasks?adminId=' + currentUser.id);
+            console.log('- Admin tasks result:', result);
+            
+            if (result.success) {
+                showNotification(`Найдено ${result.tasks.length} заданий`, 'success');
+            } else {
+                showNotification('Ошибка загрузки заданий: ' + result.error, 'error');
+            }
+        } catch (error) {
+            console.error('Debug error:', error);
+            showNotification('Ошибка диагностики: ' + error.message, 'error');
+        }
     };
+    
     document.body.appendChild(debugBtn);
 }
 
-// Вызовите при загрузке
-setTimeout(addAdminDebugButton, 2000);
+// Вызовите при инициализации
+setTimeout(addAdminDebugButton, 3000);
         // Функция показа вкладки админа - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function showAdminTab() {
     const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;

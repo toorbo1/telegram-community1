@@ -72,7 +72,6 @@ const upload = multer({
 });
 
 
-// 🔧 УЛУЧШЕННАЯ функция проверки прав администратора
 async function checkAdminAccess(userId) {
     try {
         console.log('🔐 Checking admin access for user:', userId);
@@ -1070,7 +1069,7 @@ app.post('/api/tasks', async (req, res) => {
         time_to_complete, difficulty, people_required, task_url
     });
     
-    // 🔧 ДОБАВЬТЕ ПРОВЕРКУ ПРАВ АДМИНА
+    // 🔧 ПРОВЕРКА ПРАВ АДМИНА
     if (!created_by) {
         return res.status(400).json({
             success: false,
@@ -1085,6 +1084,7 @@ app.post('/api/tasks', async (req, res) => {
             error: 'Только администратор может создавать задания!'
         });
     }
+    
     
     // Базовая валидация
     if (!title || !description || !price) {
