@@ -3131,7 +3131,7 @@ app.post('/api/admin/update-permissions', async (req, res) => {
         });
     }
 });
-// Добавление нового админа по юзернейму - ТОЛЬКО для главного админа
+// Добавление нового админа по юзернейму
 app.post('/api/admin/add-admin', async (req, res) => {
     const { adminId, username } = req.body;
     
@@ -3190,19 +3190,10 @@ app.post('/api/admin/add-admin', async (req, res) => {
         
         console.log(`✅ Admin added: ${user.username} (ID: ${user.user_id})`);
         
-        // Получаем обновленные данные пользователя
-        const updatedUserResult = await pool.query(
-            'SELECT * FROM user_profiles WHERE user_id = $1',
-            [user.user_id]
-        );
-        
-        const updatedUser = updatedUserResult.rows[0];
-        
         res.json({
             success: true,
             message: `Пользователь @${user.username} (${user.first_name}) успешно добавлен как администратор`,
-            user: updatedUser,
-            targetUserId: user.user_id
+            user: user
         });
         
     } catch (error) {

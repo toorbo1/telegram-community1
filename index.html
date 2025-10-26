@@ -6093,7 +6093,7 @@ async function makeRequest(endpoint, options = {}) {
         
         console.log(`🚀 Making ${options.method || 'GET'} request to: ${url}`);
         
-        const timeout = 15000; // Увеличиваем таймаут до 15 секунд
+        const timeout = 15000;
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout);
 
@@ -6123,7 +6123,15 @@ async function makeRequest(endpoint, options = {}) {
         if (!response.ok) {
             const errorText = await response.text();
             console.error(`❌ HTTP error! status: ${response.status}, response: ${errorText}`);
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            
+            // Более информативные сообщения об ошибках
+            if (response.status === 403) {
+                throw new Error('Доступ запрещен. У вас нет прав для этого действия.');
+            } else if (response.status === 404) {
+                throw new Error('Сервер не отвечает. Попробуйте позже.');
+            } else {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
         }
 
         const data = await response.json();
@@ -6134,7 +6142,7 @@ async function makeRequest(endpoint, options = {}) {
         console.error('💥 Request failed:', error);
         
         if (error.name === 'AbortError') {
-            throw new Error('Таймаут запроса. Сервер не отвежает.');
+            throw new Error('Таймаут запроса. Сервер не отвечает.');
         } else if (error.name === 'TypeError') {
             throw new Error('Проблема с сетью. Проверьте подключение к интернету.');
         } else {
@@ -11957,7 +11965,7 @@ function showAdminTab() {
                 console.log('Audio not supported');
             }
         }
-// Обработчик Enter для поля ввода имени администратора
+// Добавьте в конец файла или в функцию инициализации
 function initAdminInputHandlers() {
     const usernameInput = document.getElementById('new-admin-username');
     if (usernameInput) {
@@ -11968,6 +11976,30 @@ function initAdminInputHandlers() {
         });
     }
 }
+
+// Вызовите при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    initAdminInputHandlers();
+});
+// Для отладки добавьте эту функцию
+function debugAdminAddition() {
+    console.log('🐛 DEBUG Admin Addition:');
+    console.log('- currentUser:', currentUser);
+    console.log('- isMainAdmin:', parseInt(currentUser?.id) === ADMIN_ID);
+    console.log('- API_BASE_URL:', API_BASE_URL);
+    
+    // Проверьте доступность endpoint'а
+    fetch(API_BASE_URL + '/api/admin/add-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminId: ADMIN_ID, username: 'test' })
+    })
+    .then(response => console.log('- Endpoint status:', response.status))
+    .catch(error => console.log('- Endpoint error:', error.message));
+}
+
+// Вызовите для тестирования
+// debugAdminAddition();
 
 // Инициализация после загрузки DOM
 if (document.readyState === 'loading') {
@@ -12223,10 +12255,10 @@ async function addNewAdmin() {
     try {
         const result = await makeRequest('/admin/add-admin', {
             method: 'POST',
-            body: {
+            body: JSON.stringify({
                 adminId: currentUser.id,
                 username: username
-            }
+            })
         });
         
         console.log('📨 Server response:', result);
