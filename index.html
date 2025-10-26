@@ -9991,26 +9991,73 @@ function loadAdminTasksSection() {
     // Загружаем задания
     loadAdminTasks();
 }
+// В index.html - исправленная функция загрузки админ-заданий
 async function loadAdminTasks() {
-    console.log('🔄 Loading admin tasks for user:', currentUser?.id);
+    console.log('🎯 UPDATED loadAdminTasks called');
     
     if (!currentUser) {
-        console.log('❌ No user - cannot load admin tasks');
+        console.log('❌ No user');
         return;
     }
     
+    const container = document.getElementById('admin-tasks-list');
+    if (!container) {
+        console.log('❌ Container not found');
+        return;
+    }
+    
+    // Показываем загрузку
+    container.innerHTML = `
+        <div style="text-align: center; padding: 40px 20px;">
+            <div class="loading-spinner">⏳</div>
+            <div style="margin-top: 16px;">Загружаем задания админа...</div>
+            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
+                ID: ${currentUser.id} | Admin: ${currentUser.is_admin ? 'YES' : 'NO'}
+            </div>
+        </div>
+    `;
+    
     try {
-        const result = await makeRequest(`/api/admin/all-tasks?adminId=${currentUser.id}`);
-        console.log('📊 Admin tasks loaded:', result);
+        // Используем ПРОСТОЙ endpoint
+        const result = await makeRequest(`/api/admin/simple-tasks?adminId=${currentUser.id}`);
+        
+        console.log('📊 Simple tasks result:', result);
         
         if (result.success) {
-            console.log(`✅ Found ${result.tasks.length} tasks`);
             displayAdminTasks(result.tasks, result.statistics);
         } else {
-            console.error('❌ Failed to load admin tasks:', result.error);
+            throw new Error(result.error || 'Unknown error');
         }
+        
     } catch (error) {
-        console.error('💥 Error loading admin tasks:', error);
+        console.error('💥 Error:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px 20px; color: var(--error);">
+                <div style="font-size: 48px; margin-bottom: 16px;">❌</div>
+                <div>Ошибка загрузки заданий</div>
+                <div style="font-size: 12px; margin-top: 8px;">${error.message}</div>
+                
+                <div style="margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="loadAdminTasks()">
+                        🔄 Попробовать снова
+                    </button>
+                    <button class="btn btn-warning" onclick="createTestTask()" style="margin-left: 10px;">
+                        🧪 Создать тестовое задание
+                    </button>
+                </div>
+                
+                <!-- Диагностическая информация -->
+                <div style="margin-top: 20px; padding: 15px; background: var(--bg-secondary); border-radius: 10px; text-align: left;">
+                    <h4>🐛 Диагностика:</h4>
+                    <div style="font-size: 12px;">
+                        <div>User ID: ${currentUser?.id}</div>
+                        <div>Is Admin: ${currentUser?.is_admin}</div>
+                        <div>API Base: ${API_BASE_URL}</div>
+                        <div>Error: ${error.message}</div>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 }
 async function restoreDeletedTasks() {
@@ -10115,7 +10162,7 @@ async function loadAdminTasks() {
     }
 }
 
-// Функция создания тестового задания
+// Функция для создания тестового задания
 async function createTestTask() {
     if (!currentUser) return;
     
@@ -10136,9 +10183,7 @@ async function createTestTask() {
         if (result.success) {
             showNotification('✅ Тестовое задание создано!', 'success');
             // Перезагружаем список
-            setTimeout(() => {
-                loadAdminTasks();
-            }, 1000);
+            loadAdminTasks();
         } else {
             showNotification('❌ Ошибка создания: ' + result.error, 'error');
         }
@@ -10146,7 +10191,6 @@ async function createTestTask() {
         showNotification('Ошибка: ' + error.message, 'error');
     }
 }
-
 // Fallback контент
 function createFallbackAdminTasks() {
     return `
@@ -11086,7 +11130,6 @@ function showAdminSection(section) {
     const adminSections = document.querySelectorAll('.admin-section');
     adminSections.forEach(sec => {
         sec.style.display = 'none';
-        console.log(`❌ Hiding: ${sec.id}`);
     });
     
     // Скрываем контейнер "Созданные задания" если он виден
@@ -11095,11 +11138,12 @@ function showAdminSection(section) {
         createdTasksContainer.parentElement.style.display = 'none';
     }
     
-    // Показываем выбранную секцию
+       // Показываем выбранную секцию
     const targetSection = document.getElementById('admin-' + section + '-section');
     if (targetSection) {
         targetSection.style.display = 'block';
         console.log(`✅ Showing: admin-${section}-section`);
+
         
         // Загружаем данные для определенных секций
         switch(section) {
@@ -11140,9 +11184,11 @@ case 'payments':
                 loadAdminsList();
                 break;
         }
+        
     } else {
         console.error(`❌ Target section not found: admin-${section}-section`);
     }
+    
 }
 async function loadAdminPosts() {
     try {
