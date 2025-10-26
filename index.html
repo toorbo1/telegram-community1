@@ -5019,17 +5019,6 @@ html, body {
             </div>
         </div>
         
-        <!-- В разделе профиля, после реферальной системы -->
-<div class="promocode-section fade-in" style="margin-top: 20px;">
-    <div class="referral-title">🎫 Активация промокода</div>
-    <button class="btn btn-primary" onclick="activatePromocode()" style="width: 100%; margin-top: 10px;">
-        🎁 Активировать промокод
-    </button>
-    <div style="font-size: 12px; color: var(--text-secondary); text-align: center; margin-top: 8px;">
-        Введите промокод и получите бонусные звезды!
-    </div>
-</div>
-        
         <!-- В разделе профиля -->
 <div class="profile-actions">
     <div class="profile-action" onclick="showWithdrawPage()">
@@ -5094,87 +5083,8 @@ html, body {
         <button class="admin-btn" onclick="showAdminSection('support')">💬 Поддержка</button>
         <button class="admin-btn" onclick="showAdminSection('payments')">💳 Оплаты</button>
         <button class="admin-btn" onclick="showAdminSection('admins')">👥 Админы</button>
-        <!-- В разделе админ-кнопок добавьте: -->
-<button class="admin-btn" onclick="showAdminSection('promocodes')">🎫 Промокоды</button>
-    </div>
-<!-- Секция управления промокодами -->
-<!-- Секция управления промокодами -->
-<div id="admin-promocodes-section" class="admin-section" style="display: none;">
-    <div class="admin-form">
-        <h3>🎫 Создание промокода</h3>
-        <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px;">
-            Только главный администратор может создавать промокоды
-        </p>
-        
-        <div class="form-group">
-            <label>Название промокода *</label>
-            <input type="text" class="admin-input" id="promocode-name" placeholder="Например: SUMMER2024" maxlength="20">
-            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
-                Только латинские буквы и цифры, без пробелов
-            </div>
-        </div>
-        
-        <div class="form-row">
-            <div class="form-group" style="flex: 1;">
-                <label>Количество активаций *</label>
-                <input type="number" class="admin-input" id="promocode-max-uses" placeholder="Сколько человек может активировать" min="1" max="100000">
-            </div>
-            <div class="form-group" style="flex: 1;">
-                <label>Звезд за активацию *</label>
-                <input type="number" class="admin-input" id="promocode-reward" placeholder="Сколько звезд получит 1 человек" min="1" max="10000">
-            </div>
-        </div>
-        
-        <div class="form-group">
-            <label>Срок действия (опционально)</label>
-            <input type="datetime-local" class="admin-input" id="promocode-expires">
-        </div>
-        
-        <button class="admin-submit" onclick="createPromoCode()" id="create-promocode-btn">
-            🎫 Создать промокод
-        </button>
-        
-        <div id="promocode-form-message" style="margin-top: 12px; min-height: 20px;"></div>
     </div>
 
-    <!-- Статистика промокодов -->
-    <div class="promocodes-stats" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 20px 0; padding: 15px; background: var(--bg-secondary); border-radius: 12px;">
-        <div style="text-align: center;">
-            <div style="font-size: 24px; font-weight: 700; color: var(--accent);" id="total-promocodes">0</div>
-            <div style="font-size: 12px; color: var(--text-secondary);">Всего промокодов</div>
-        </div>
-        <div style="text-align: center;">
-            <div style="font-size: 24px; font-weight: 700; color: var(--success);" id="active-promocodes">0</div>
-            <div style="font-size: 12px; color: var(--text-secondary);">Активных</div>
-        </div>
-        <div style="text-align: center;">
-            <div style="font-size: 24px; font-weight: 700; color: var(--gold);" id="total-rewards">0 ⭐</div>
-            <div style="font-size: 12px; color: var(--text-secondary);">Выдано звезд</div>
-        </div>
-    </div>
-
-    <!-- Список активных промокодов -->
-    <div style="margin-top: 25px;">
-        <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 16px;">
-            <h4>📋 Активные промокоды</h4>
-            <button class="btn btn-secondary" onclick="loadPromocodes()" style="padding: 8px 12px; font-size: 12px;">
-                🔄 Обновить
-            </button>
-        </div>
-        <div id="promocodes-list" class="admin-task-list">
-            <!-- Промокоды будут загружены здесь -->
-        </div>
-    </div>
-</div>
-
-    <!-- Список активных промокодов -->
-    <div style="margin-top: 25px;">
-        <h4>📋 Активные промокоды</h4>
-        <div id="promocodes-list" class="admin-task-list">
-            <!-- Промокоды будут загружены здесь -->
-        </div>
-    </div>
-</div>
 <!-- Управление админами -->
 <div id="admin-admins-section" class="admin-section" style="display: none;">
     <div class="admin-form">
@@ -5275,7 +5185,7 @@ html, body {
 
     <!-- Список заданий -->
     <div style="margin-top: 30px;">
-        <!-- <h3>📋 Созданные задания</h3> -->
+        <h3>📋 Созданные задания</h3>
         <div id="admin-tasks-list">
             <!-- Задания будут загружены здесь -->
         </div>
@@ -5779,7 +5689,7 @@ html, body {
     </div>
 </nav>
 
-<!-- Модальные окна
+<!-- Модальные окна -->
 <div class="modal" id="balance-modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -5791,7 +5701,7 @@ html, body {
             <button class="profile-btn" onclick="goToProfile()">Перейти в профиль</button>
         </div>
     </div>
-</div> -->
+</div>
 
 <div class="modal" id="prices-modal">
     <div class="prices-content">
@@ -7411,15 +7321,7 @@ setTimeout(debugAdminRights, 2000);
             
             document.body.appendChild(retryBtn);
         }
-// Автопинг для предотвращения сна сервера
-setInterval(async () => {
-    try {
-        const response = await fetch(`${APP_URL}/api/health`);
-        console.log('🔄 Auto-ping to prevent sleep:', response.status);
-    } catch (error) {
-        console.log('⚠️ Auto-ping failed:', error.message);
-    }
-}, 5 * 60 * 1000); // Пинг каждые 5 минут
+
        // 🔧 ОБНОВЛЕННОЕ АВТООБНОВЛЕНИЕ ДАННЫХ
 function startUserDataAutoUpdate() {
     setInterval(async () => {
@@ -9283,310 +9185,7 @@ function getTabIndex(category) {
 }
 
 
-// 🔧 ФУНКЦИИ ДЛЯ УПРАВЛЕНИЯ ПРОМОКОДАМИ
 
-// Создание промокода
-async function createPromoCode() {
-    const codeInput = document.getElementById('promocode-name');
-    const maxUsesInput = document.getElementById('promocode-max-uses');
-    const rewardInput = document.getElementById('promocode-reward');
-    const expiresInput = document.getElementById('promocode-expires');
-    const messageDiv = document.getElementById('promocode-form-message');
-    const submitBtn = document.getElementById('create-promocode-btn');
-    
-    if (!codeInput || !maxUsesInput || !rewardInput) {
-        showNotification('Ошибка: элементы формы не найдены', 'error');
-        return;
-    }
-    
-    const code = codeInput.value.trim().toUpperCase();
-    const maxUses = parseInt(maxUsesInput.value);
-    const rewardAmount = parseFloat(rewardInput.value);
-    const expiresAt = expiresInput.value ? new Date(expiresInput.value).toISOString() : null;
-    
-    // Валидация
-    if (!code) {
-        messageDiv.innerHTML = '<span style="color: var(--error);">Введите код промокода</span>';
-        return;
-    }
-    
-    if (!maxUses || maxUses < 1) {
-        messageDiv.innerHTML = '<span style="color: var(--error);">Введите корректное количество активаций</span>';
-        return;
-    }
-    
-    if (!rewardAmount || rewardAmount < 1) {
-        messageDiv.innerHTML = '<span style="color: var(--error);">Введите корректную награду</span>';
-        return;
-    }
-    
-    // Проверка формата кода
-    const codeRegex = /^[A-Z0-9]+$/;
-    if (!codeRegex.test(code)) {
-        messageDiv.innerHTML = '<span style="color: var(--error);">Код должен содержать только латинские буквы и цифры</span>';
-        return;
-    }
-    
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Создаем...';
-    messageDiv.innerHTML = '<span style="color: var(--warning);">Создаем промокод...</span>';
-    
-    try {
-        const result = await makeRequest('/api/admin/promocodes', {
-            method: 'POST',
-            body: JSON.stringify({
-                adminId: currentUser.id,
-                code: code,
-                maxUses: maxUses,
-                rewardAmount: rewardAmount,
-                expiresAt: expiresAt
-            })
-        });
-        
-        if (result.success) {
-            messageDiv.innerHTML = `<span style="color: var(--success);">${result.message}</span>`;
-            
-            // Очищаем форму
-            codeInput.value = '';
-            maxUsesInput.value = '';
-            rewardInput.value = '';
-            expiresInput.value = '';
-            
-            // Обновляем список промокодов
-            setTimeout(() => {
-                loadPromocodes();
-            }, 1000);
-            
-            showNotification(result.message, 'success');
-        } else {
-            messageDiv.innerHTML = `<span style="color: var(--error);">Ошибка: ${result.error}</span>`;
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('❌ Create promocode error:', error);
-        messageDiv.innerHTML = `<span style="color: var(--error);">Ошибка сети: ${error.message}</span>`;
-        showNotification('Ошибка сети при создании промокода', 'error');
-    } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = '🎫 Создать промокод';
-    }
-}
-
-// Загрузка списка промокодов
-async function loadPromocodes() {
-    console.log('🔄 Loading promocodes...');
-    
-    if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) {
-        console.log('❌ User is not main admin');
-        return;
-    }
-    
-    try {
-        const result = await makeRequest(`/api/admin/promocodes?adminId=${currentUser.id}`);
-        
-        if (result.success) {
-            displayPromocodesList(result.promocodes, result.stats);
-        } else {
-            showNotification('Ошибка загрузки промокодов: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('❌ Error loading promocodes:', error);
-        showNotification('Ошибка загрузки промокодов', 'error');
-    }
-}
-
-// Отображение списка промокодов
-function displayPromocodesList(promocodes, stats) {
-    const container = document.getElementById('promocodes-list');
-    const totalElement = document.getElementById('total-promocodes');
-    const activeElement = document.getElementById('active-promocodes');
-    const rewardsElement = document.getElementById('total-rewards');
-    
-    if (!container) return;
-    
-    // Обновляем статистику
-    if (stats && totalElement && activeElement && rewardsElement) {
-        totalElement.textContent = stats.total_promocodes || 0;
-        activeElement.textContent = stats.active_promocodes || 0;
-        rewardsElement.textContent = Math.round(stats.total_rewards || 0) + ' ⭐';
-    }
-    
-    container.innerHTML = '';
-    
-    if (!promocodes || promocodes.length === 0) {
-        container.innerHTML = `
-            <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
-                <div style="font-size: 48px; margin-bottom: 16px;">🎫</div>
-                <div>Нет созданных промокодов</div>
-                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
-                    Создайте первый промокод используя форму выше
-                </div>
-            </div>
-        `;
-        return;
-    }
-    
-    promocodes.forEach(promocode => {
-        const promocodeElement = document.createElement('div');
-        promocodeElement.className = 'admin-task-item';
-        
-        const isExpired = promocode.expires_at && new Date(promocode.expires_at) < new Date();
-        const isUsedUp = promocode.used_count >= promocode.max_uses;
-        const isActive = promocode.is_active && !isExpired && !isUsedUp;
-        
-        const statusColor = isActive ? 'var(--success)' : 'var(--error)';
-        const statusText = isActive ? 'Активен' : 
-                          !promocode.is_active ? 'Деактивирован' :
-                          isExpired ? 'Истек' : 'Использован';
-        
-        const usagePercentage = Math.round((promocode.used_count / promocode.max_uses) * 100);
-        
-        promocodeElement.innerHTML = `
-            <div class="admin-task-header">
-                <div class="admin-task-title">
-                    <span style="font-family: monospace; font-weight: 700; font-size: 18px;">${promocode.code}</span>
-                    <span style="color: ${statusColor}; font-size: 12px; margin-left: 8px;">${statusText}</span>
-                </div>
-                <div class="admin-task-price" style="font-size: 20px; color: var(--gold);">
-                    ${promocode.reward_amount} ⭐
-                </div>
-            </div>
-            
-            <div class="admin-task-description">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
-                    <div>
-                        <strong>Активаций:</strong> ${promocode.used_count}/${promocode.max_uses}
-                    </div>
-                    <div>
-                        <strong>Выдано:</strong> ${Math.round(promocode.total_rewards_given || 0)} ⭐
-                    </div>
-                </div>
-                
-                <!-- Прогресс-бар использования -->
-                <div style="margin: 8px 0;">
-                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">
-                        <span>Использовано: ${usagePercentage}%</span>
-                        <span>${promocode.used_count}/${promocode.max_uses}</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${usagePercentage}%"></div>
-                    </div>
-                </div>
-                
-                ${promocode.expires_at ? `
-                    <div style="font-size: 12px; color: var(--text-secondary);">
-                        <strong>Действует до:</strong> ${new Date(promocode.expires_at).toLocaleString('ru-RU')}
-                    </div>
-                ` : '<div style="font-size: 12px; color: var(--text-secondary);"><strong>Без срока действия</strong></div>'}
-                
-                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">
-                    Создан: ${new Date(promocode.created_at).toLocaleString('ru-RU')}
-                </div>
-            </div>
-            
-            <div class="admin-task-actions" style="margin-top: 10px; display: flex; gap: 8px;">
-                ${isActive ? `
-                    <button class="admin-task-delete" onclick="deactivatePromocode(${promocode.id})" 
-                            style="background: var(--error); color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;">
-                        🛑 Деактивировать
-                    </button>
-                ` : ''}
-                
-                <button class="btn btn-secondary" onclick="copyPromocode('${promocode.code}')" 
-                        style="padding: 8px 12px; font-size: 12px;">
-                    📋 Копировать код
-                </button>
-            </div>
-        `;
-        
-        container.appendChild(promocodeElement);
-    });
-}
-
-// Деактивация промокода
-async function deactivatePromocode(promocodeId) {
-    if (!confirm('Вы уверены, что хотите деактивировать этот промокод?')) {
-        return;
-    }
-    
-    try {
-        const result = await makeRequest(`/api/admin/promocodes/${promocodeId}/deactivate`, {
-            method: 'POST',
-            body: JSON.stringify({
-                adminId: currentUser.id
-            })
-        });
-        
-        if (result.success) {
-            showNotification(result.message, 'success');
-            loadPromocodes();
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('❌ Deactivate promocode error:', error);
-        showNotification('Ошибка деактивации промокода: ' + error.message, 'error');
-    }
-}
-
-// Копирование промокода в буфер обмена
-function copyPromocode(code) {
-    navigator.clipboard.writeText(code).then(() => {
-        showNotification(`Промокод ${code} скопирован!`, 'success');
-    }).catch(() => {
-        // Fallback для старых браузеров
-        const textArea = document.createElement('textarea');
-        textArea.value = code;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        showNotification(`Промокод ${code} скопирован!`, 'success');
-    });
-}
-
-// Функция для активации промокода пользователем
-async function activatePromocode() {
-    if (!currentUser) {
-        showNotification('Пользователь не авторизован', 'error');
-        return;
-    }
-    
-    const code = prompt('Введите промокод:');
-    if (!code) return;
-    
-    try {
-        const result = await makeRequest('/api/promocodes/activate', {
-            method: 'POST',
-            body: JSON.stringify({
-                userId: currentUser.id,
-                code: code
-            })
-        });
-        
-        if (result.success) {
-            showNotification(result.message, 'success');
-            
-            // Обновляем баланс пользователя
-            if (currentUser.balance !== undefined) {
-                currentUser.balance = result.newBalance;
-                displayUserProfile();
-            }
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('❌ Activate promocode error:', error);
-        showNotification('Ошибка активации промокода: ' + error.message, 'error');
-    }
-}
-
-// 🔧 ЭКСПОРТ ФУНКЦИЙ ДЛЯ ПРОМОКОДОВ
-window.createPromoCode = createPromoCode;
-window.loadPromocodes = loadPromocodes;
-window.deactivatePromocode = deactivatePromocode;
-window.copyPromocode = copyPromocode;
-window.activatePromocode = activatePromocode;
 
 function openTaskModal(taskId) {
     console.log('📖 Opening task modal for task:', taskId);
@@ -9907,6 +9506,7 @@ async function loadTaskVerifications() {
             document.getElementById('verification-modal').classList.add('active');
         }
 
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОДОБРЕНИЯ ЗАДАНИЯ
 async function approveVerification() {
     if (!currentVerificationId) {
         showNotification('❌ ID верификации не найден', 'error');
@@ -9931,56 +9531,49 @@ async function approveVerification() {
             approveBtn.textContent = 'Одобряем...';
         }
 
-        // Добавляем таймаут для запроса
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 секунд
-
-        const result = await fetch(`${API_BASE_URL}/api/admin/task-verifications/${currentVerificationId}/approve`, {
+        const result = await makeRequest(`/admin/task-verifications/${currentVerificationId}/approve`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
             body: JSON.stringify({
                 adminId: currentUser.id
-            }),
-            signal: controller.signal
+            })
         });
 
-        clearTimeout(timeoutId);
+        console.log('📨 Ответ сервера при одобрении:', result);
 
-        if (!result.ok) {
-            throw new Error(`HTTP ${result.status}: ${result.statusText}`);
-        }
-
-        const data = await result.json();
-        console.log('📨 Ответ сервера при одобрении:', data);
-
-        if (data.success) {
-            showNotification(`✅ Задание одобрено! Пользователь получил ${data.amountAdded}⭐`, 'success');
+        if (result.success) {
+            let message = `✅ Задание одобрено! Пользователь получил ${result.amountAdded}⭐`;
+            
+            if (result.taskRemoved) {
+                message += "\n\n🎯 Задание автоматически удалено - достигнут лимит исполнителей!";
+                
+                // 🔥 ВАЖНО: НЕМЕДЛЕННО ОБНОВЛЯЕМ СПИСКИ ЗАДАНИЙ
+                setTimeout(() => {
+                    loadTasks(); // Обновляем новые задания
+                    loadUserTasks(); // Обновляем задания пользователя
+                    loadTaskVerifications(); // Обновляем список проверки
+                }, 500);
+            }
+            
+            showNotification(message, 'success');
             closeModal('verification-modal');
             
-            // Обновляем данные
+            // ОБНОВЛЯЕМ ВСЕ ДАННЫЕ
             await updateUserData();
-            loadTaskVerifications();
             
         } else {
-            throw new Error(data.error || 'Неизвестная ошибка сервера');
+            throw new Error(result.error || 'Неизвестная ошибка сервера');
         }
 
     } catch (error) {
         console.error('❌ Сетевая ошибка при одобрении:', error);
         
-        let errorMessage = 'Ошибка при одобрении задания';
-        if (error.name === 'AbortError') {
-            errorMessage = '❌ Таймаут запроса. Сервер не отвежает. Попробуйте снова.';
-        } else if (error.message.includes('Failed to fetch')) {
+        let errorMessage = 'Сетевая ошибка при одобрении задания';
+        if (error.message.includes('Failed to fetch')) {
             errorMessage = '❌ Проблема с соединением. Проверьте интернет и попробуйте снова.';
         } else if (error.message.includes('404')) {
             errorMessage = '❌ Endpoint не найден. Сообщите администратору.';
         } else if (error.message.includes('403')) {
             errorMessage = '❌ Доступ запрещен. У вас нет прав администратора.';
-        } else {
-            errorMessage = `❌ Ошибка: ${error.message}`;
         }
         
         showNotification(errorMessage, 'error');
@@ -10885,14 +10478,7 @@ function showAdminSection(section) {
         sec.style.display = 'none';
         console.log(`❌ Hiding: ${sec.id}`);
     });
-        switch(section) {
-        // ... другие секции ...
-        case 'promocodes':
-            console.log('🎫 Loading promocodes management...');
-            loadPromocodes();
-            break;
-    }
-
+    
     // Скрываем контейнер "Созданные задания" если он виден
     const createdTasksContainer = document.getElementById('admin-tasks-list');
     if (createdTasksContainer && createdTasksContainer.parentElement) {
