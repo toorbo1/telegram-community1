@@ -30,16 +30,12 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-// Улучшенная CORS конфигурация
+// Middleware
 app.use(cors({
     origin: '*',
-    methods: ['GET', 'POST', 'DELETE', 'PUT', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    methods: ['GET', 'POST', 'DELETE', 'PUT'],
     credentials: true
 }));
-
-// Обработка preflight запросов
-app.options('*', cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static('.'));
@@ -75,30 +71,7 @@ const upload = multer({
     }
 });
 
-// Глобальный обработчик неперехваченных ошибок
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
-});
 
-process.on('uncaughtException', (error) => {
-    console.error('❌ Uncaught Exception:', error);
-    process.exit(1);
-});
-// Проверка подключения к базе данных
-async function checkDatabaseConnection() {
-    try {
-        const client = await pool.connect();
-        console.log('✅ Database connection successful');
-        client.release();
-        return true;
-    } catch (error) {
-        console.error('❌ Database connection failed:', error);
-        return false;
-    }
-}
-
-// Проверяем при запуске
-checkDatabaseConnection();
 // 🔧 УЛУЧШЕННАЯ функция проверки прав администратора
 async function checkAdminAccess(userId) {
     try {
@@ -384,13 +357,6 @@ await pool.query(`
     } catch (error) {
         console.error('❌ Database initialization error:', error);
     }
-    // Диагностика админ-панели
-setTimeout(() => {
-    if (currentUser && parseInt(currentUser.id) === ADMIN_ID) {
-        addAdminDebugButton();
-        console.log('🔧 Admin debug tools initialized');
-    }
-}, 3000);
 }
 // Создание тестовой заявки на вывод
 app.post('/api/test-withdrawal', async (req, res) => {
@@ -830,28 +796,26 @@ bot.on('callback_query', async (callbackQuery) => {
 
 // ... остальные endpoints остаются без изменений ...
 
+// Health check с информацией о конфигурации
 app.get('/api/health', async (req, res) => {
     try {
-        // Проверяем подключение к базе данных
         await pool.query('SELECT 1');
         
         const healthInfo = {
             status: 'OK',
             timestamp: new Date().toISOString(),
-            database: 'PostgreSQL - Connected',
+            database: 'PostgreSQL',
             bot: {
                 enabled: !!BOT_TOKEN,
                 hasToken: !!BOT_TOKEN
             },
             app: {
                 url: APP_URL,
-                adminId: ADMIN_ID,
-                port: PORT
+                adminId: ADMIN_ID
             },
             environment: {
                 node: process.version,
-                platform: process.platform,
-                memory: process.memoryUsage()
+                platform: process.platform
             }
         };
         
@@ -861,8 +825,7 @@ app.get('/api/health', async (req, res) => {
         res.status(500).json({
             status: 'ERROR',
             message: 'Database connection failed',
-            error: error.message,
-            timestamp: new Date().toISOString()
+            error: error.message
         });
     }
 });
@@ -1482,7 +1445,7 @@ app.delete('/api/posts/:id', async (req, res) => {
 
 // ==================== TASKS ENDPOINTS ====================
 
-// Получение заданий с правильной обработкой отклоненных заданий
+// Получение заданий с правильной обработкой изображений - ОБНОВЛЕННАЯ ВЕРСИЯ
 app.get('/api/tasks', async (req, res) => {
     const { search, category, userId } = req.query;
     
@@ -1497,14 +1460,7 @@ app.get('/api/tasks', async (req, res) => {
                        WHERE ut2.task_id = t.id 
                        AND ut2.user_id = $1 
                        AND ut2.status IN ('active', 'pending_review', 'completed')
-                   ) as user_has_task,
-                   -- Проверяем, было ли задание отклонено для этого пользователя
-                   EXISTS(
-                       SELECT 1 FROM user_tasks ut3 
-                       WHERE ut3.task_id = t.id 
-                       AND ut3.user_id = $1 
-                       AND ut3.status = 'rejected'
-                   ) as user_has_rejected
+                   ) as user_has_task
             FROM tasks t 
             LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
             WHERE t.status = 'active'
@@ -1538,10 +1494,8 @@ app.get('/api/tasks', async (req, res) => {
             return completedCount < peopleRequired;
         });
         
-        // Фильтруем задания: показываем только те, которые пользователь еще не начал И НЕ БЫЛИ ОТКЛОНЕНЫ
-        const filteredTasks = availableTasks.filter(task => 
-            !task.user_has_task && !task.user_has_rejected
-        );
+        // Фильтруем задания: показываем только те, которые пользователь еще не начал
+        const filteredTasks = availableTasks.filter(task => !task.user_has_task);
         
         // 🔧 ИСПРАВЛЕНИЕ: Обеспечиваем правильные URL для изображений
         const tasksWithCorrectedImages = filteredTasks.map(task => {
@@ -1557,7 +1511,6 @@ app.get('/api/tasks', async (req, res) => {
         });
         
         console.log(`✅ Найдено заданий: ${result.rows.length}, доступно по лимиту: ${availableTasks.length}, доступно пользователю: ${filteredTasks.length}`);
-        console.log(`🚫 Отклоненных заданий для пользователя: ${availableTasks.filter(task => task.user_has_rejected).length}`);
         
         res.json({
             success: true,
@@ -1862,6 +1815,7 @@ app.get('/api/admin/tasks', async (req, res) => {
 
 // ==================== USER TASKS ENDPOINTS ====================
 
+// В server.js - обновите endpoint начала задания
 app.post('/api/user/tasks/start', async (req, res) => {
     const { userId, taskId } = req.body;
     
@@ -1875,28 +1829,21 @@ app.post('/api/user/tasks/start', async (req, res) => {
     }
     
     try {
-        // Проверяем, выполнял ли пользователь это задание или оно было отклонено
+        // Проверяем, выполнял ли пользователь это задание
         const existingTask = await pool.query(`
-            SELECT id, status FROM user_tasks 
-            WHERE user_id = $1 AND task_id = $2 
-            AND status IN ('active', 'pending_review', 'completed', 'rejected')
-        `, [userId, taskId]);
+    SELECT id FROM user_tasks 
+    WHERE user_id = $1 AND task_id = $2 
+    AND status IN ('active', 'pending_review', 'completed', 'rejected')
+`, [userId, taskId]);
         
         if (existingTask.rows.length > 0) {
-            const taskStatus = existingTask.rows[0].status;
-            if (taskStatus === 'rejected') {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Это задание было отклонено администратором и больше недоступно'
-                });
-            } else {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Вы уже выполняли это задание'
-                });
-            }
+            return res.status(400).json({
+                success: false,
+                error: 'Вы уже выполняли это задание'
+            });
         }
         
+        // Проверяем лимит выполнений
         const taskInfo = await pool.query(`
             SELECT t.*, 
                    COUNT(ut.id) as completed_count
@@ -1917,6 +1864,7 @@ app.post('/api/user/tasks/start', async (req, res) => {
         const peopleRequired = task.people_required || 1;
         const completedCount = task.completed_count || 0;
         
+        // 🔥 ПРОВЕРЯЕМ ДОСТИГНУТ ЛИ ЛИМИТ ИСПОЛНИТЕЛЕЙ
         if (completedCount >= peopleRequired) {
             return res.status(400).json({
                 success: false,
@@ -3020,19 +2968,7 @@ app.get('/api/debug/tasks-detailed', async (req, res) => {
         });
     }
 });
-// Добавьте перед другими middleware
-app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
-    next();
-});
 
-// Специальный CORS для admin endpoints
-app.use('/api/admin/*', (req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    next();
-});
 // Создание таблицы прав администраторов
 async function createAdminPermissionsTable() {
     try {
@@ -3150,7 +3086,7 @@ app.post('/api/admin/update-permissions', async (req, res) => {
         });
     }
 });
-// Добавление нового админа по юзернейму
+// Добавление нового админа по юзернейму - ТОЛЬКО для главного админа
 app.post('/api/admin/add-admin', async (req, res) => {
     const { adminId, username } = req.body;
     
@@ -3209,106 +3145,19 @@ app.post('/api/admin/add-admin', async (req, res) => {
         
         console.log(`✅ Admin added: ${user.username} (ID: ${user.user_id})`);
         
-        res.json({
-            success: true,
-            message: `Пользователь @${user.username} (${user.first_name}) успешно добавлен как администратор`,
-            user: user
-        });
-        
-    } catch (error) {
-        console.error('❌ Add admin error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
-// Диагностика endpoint'а добавления админа
-app.get('/api/debug/admin-endpoint', async (req, res) => {
-    console.log('🔍 Admin endpoint diagnostic called');
-    res.json({
-        success: true,
-        message: 'Admin endpoint is working',
-        timestamp: new Date().toISOString(),
-        adminId: ADMIN_ID
-    });
-});
-
-// Улучшенный endpoint добавления админа
-app.post('/api/admin/add-admin', async (req, res) => {
-    const { adminId, username } = req.body;
-    
-    console.log('🛠️ Received add-admin request:', { 
-        adminId, 
-        username,
-        timestamp: new Date().toISOString() 
-    });
-    
-    try {
-        // Проверяем права доступа - только главный админ
-        if (!adminId) {
-            return res.status(400).json({
-                success: false,
-                error: 'Admin ID is required'
-            });
-        }
-        
-        if (parseInt(adminId) !== ADMIN_ID) {
-            return res.status(403).json({
-                success: false,
-                error: 'Access denied - only main admin can add admins'
-            });
-        }
-        
-        if (!username) {
-            return res.status(400).json({
-                success: false,
-                error: 'Username is required'
-            });
-        }
-        
-        // Ищем пользователя по юзернейму (убираем @ если есть)
-        const cleanUsername = username.replace('@', '').trim();
-        
-        console.log('🔍 Searching for user with username:', cleanUsername);
-        
-        const userResult = await pool.query(
-            'SELECT user_id, username, first_name, is_admin FROM user_profiles WHERE username = $1',
-            [cleanUsername]
-        );
-        
-        if (userResult.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'Пользователь с таким юзернеймом не найден'
-            });
-        }
-        
-        const user = userResult.rows[0];
-        
-        console.log('👤 Found user:', user);
-        
-        // Проверяем, не является ли пользователь уже админом
-        if (user.is_admin) {
-            return res.status(400).json({
-                success: false,
-                error: 'Этот пользователь уже является администратором'
-            });
-        }
-        
-        // Назначаем пользователя админом
-        await pool.query(
-            'UPDATE user_profiles SET is_admin = true, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1',
+        // Получаем обновленные данные пользователя
+        const updatedUserResult = await pool.query(
+            'SELECT * FROM user_profiles WHERE user_id = $1',
             [user.user_id]
         );
         
-        console.log(`✅ Admin added: ${user.username} (ID: ${user.user_id})`);
+        const updatedUser = updatedUserResult.rows[0];
         
         res.json({
             success: true,
             message: `Пользователь @${user.username} (${user.first_name}) успешно добавлен как администратор`,
-            targetUserId: user.user_id,
-            user: user
+            user: updatedUser,
+            targetUserId: user.user_id
         });
         
     } catch (error) {
@@ -3319,6 +3168,7 @@ app.post('/api/admin/add-admin', async (req, res) => {
         });
     }
 });
+
 // Удаление админа (только для главного админа)
 app.post('/api/admin/remove-admin', async (req, res) => {
     const { adminId, targetAdminId } = req.body;
