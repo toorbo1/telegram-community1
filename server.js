@@ -1776,6 +1776,160 @@ async function fixTasksTable() {
         console.error('❌ Error fixing tasks table:', error);
     }
 }
+// Функция для создания тестовых заданий
+async function createSampleTasks() {
+    try {
+        console.log('📝 Creating sample tasks...');
+        
+        // Проверяем, есть ли уже задания
+        const tasksCount = await pool.query('SELECT COUNT(*) FROM tasks WHERE status = $1', ['active']);
+        
+        if (parseInt(tasksCount.rows[0].count) === 0) {
+            console.log('🔄 No active tasks found, creating sample tasks...');
+            
+            const sampleTasks = [
+                {
+                    title: 'Подписаться на Telegram канал',
+                    description: 'Подпишитесь на наш Telegram канал и оставайтесь подписанным минимум 3 дня. Сделайте скриншот подписки.',
+                    price: 50,
+                    category: 'subscribe',
+                    time_to_complete: '5 минут',
+                    difficulty: 'Легкая',
+                    people_required: 100
+                },
+                {
+                    title: 'Посмотреть видео на YouTube',
+                    description: 'Посмотрите видео до конца и поставьте лайк. Пришлите скриншот с видео и лайком.',
+                    price: 30,
+                    category: 'view',
+                    time_to_complete: '10 минут', 
+                    difficulty: 'Легкая',
+                    people_required: 50
+                },
+                {
+                    title: 'Сделать репост записи',
+                    description: 'Сделайте репост записи в своем Telegram канале или чате. Скриншот репоста обязателен.',
+                    price: 70,
+                    category: 'repost',
+                    time_to_complete: '5 минут',
+                    difficulty: 'Средняя',
+                    people_required: 30
+                },
+                {
+                    title: 'Оставить комментарий под постом',
+                    description: 'Напишите содержательный комментарий под указанным постом. Комментарий должен быть уникальным.',
+                    price: 40,
+                    category: 'comment',
+                    time_to_complete: '7 минут',
+                    difficulty: 'Легкая', 
+                    people_required: 80
+                },
+                {
+                    title: 'Вступить в Telegram группу',
+                    description: 'Вступите в нашу Telegram группу и оставайтесь в ней минимум 7 дней.',
+                    price: 60,
+                    category: 'social',
+                    time_to_complete: '3 минуты',
+                    difficulty: 'Легкая',
+                    people_required: 40
+                }
+            ];
+
+            for (const task of sampleTasks) {
+                await pool.query(`
+                    INSERT INTO tasks (title, description, price, created_by, category, time_to_complete, difficulty, people_required) 
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                `, [
+                    task.title,
+                    task.description, 
+                    task.price,
+                    ADMIN_ID,
+                    task.category,
+                    task.time_to_complete,
+                    task.difficulty,
+                    task.people_required
+                ]);
+            }
+            
+            console.log('✅ Sample tasks created successfully!');
+        } else {
+            console.log(`✅ Tasks already exist: ${tasksCount.rows[0].count} active tasks`);
+        }
+    } catch (error) {
+        console.error('❌ Error creating sample tasks:', error);
+    }
+}
+
+// Вызовите эту функцию после инициализации базы данных
+async function initializeWithTasks() {
+    await initDatabase();
+    await createSampleTasks();
+}
+// Диагностический endpoint для проверки заданий
+app.get('/api/debug/tasks-status', async (req, res) => {
+    try {
+        // Статистика по заданиям
+        const tasksStats = await pool.query(`
+            SELECT 
+                status,
+                COUNT(*) as count,
+                COUNT(CASE WHEN created_by = $1 THEN 1 END) as my_tasks
+            FROM tasks 
+            GROUP BY status
+        `, [ADMIN_ID]);
+        
+        // Все задания
+        const allTasks = await pool.query('SELECT * FROM tasks ORDER BY created_at DESC');
+        
+        // Активные задания
+        const activeTasks = await pool.query('SELECT * FROM tasks WHERE status = $1 ORDER BY created_at DESC', ['active']);
+
+        res.json({
+            success: true,
+            stats: tasksStats.rows,
+            all_tasks_count: allTasks.rows.length,
+            active_tasks_count: activeTasks.rows.length,
+            active_tasks: activeTasks.rows,
+            all_tasks: allTasks.rows
+        });
+    } catch (error) {
+        console.error('Tasks status debug error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// Endpoint для принудительного создания тестовых заданий
+app.post('/api/admin/create-sample-tasks', async (req, res) => {
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+    
+    try {
+        await createSampleTasks();
+        
+        const tasksCount = await pool.query('SELECT COUNT(*) FROM tasks WHERE status = $1', ['active']);
+        
+        res.json({
+            success: true,
+            message: 'Sample tasks created successfully',
+            active_tasks_count: parseInt(tasksCount.rows[0].count)
+        });
+    } catch (error) {
+        console.error('Create sample tasks error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 // Test endpoint for task creation
 app.post('/api/test-task', async (req, res) => {
     console.log('🧪 Test task endpoint called:', req.body);
@@ -3726,13 +3880,14 @@ app.listen(PORT, '0.0.0.0', async () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📊 Health: http://localhost:${PORT}/api/health`);
     console.log(`🔐 Admin ID: ${ADMIN_ID}`);
-    console.log(`🗄️ Database: PostgreSQL`);
-    console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
     
-    // Принудительно исправляем структуру таблиц при запуске
+    // Инициализируем базу данных с заданиями
+    await initializeWithTasks();
+    
+    // Принудительно исправляем структуру таблиц
     try {
         await fixWithdrawalTable();
-        await fixTasksTable(); // ← ДОБАВЬТЕ ЭТУ СТРОКУ
+        await fixTasksTable();
         console.log('✅ Table structures verified');
     } catch (error) {
         console.error('❌ Error fixing table structures:', error);
