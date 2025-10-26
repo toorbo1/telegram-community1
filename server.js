@@ -1445,7 +1445,7 @@ app.delete('/api/posts/:id', async (req, res) => {
 
 // ==================== TASKS ENDPOINTS ====================
 
-// Получение заданий с правильной обработкой изображений - ОБНОВЛЕННАЯ ВЕРСИЯ
+// Получение заданий с правильной фильтрацией отклоненных заданий
 app.get('/api/tasks', async (req, res) => {
     const { search, category, userId } = req.query;
     
@@ -1460,7 +1460,14 @@ app.get('/api/tasks', async (req, res) => {
                        WHERE ut2.task_id = t.id 
                        AND ut2.user_id = $1 
                        AND ut2.status IN ('active', 'pending_review', 'completed')
-                   ) as user_has_task
+                   ) as user_has_task,
+                   -- ДОБАВЛЕНО: проверяем есть ли отклоненные задания у пользователя
+                   EXISTS(
+                       SELECT 1 FROM user_tasks ut3 
+                       WHERE ut3.task_id = t.id 
+                       AND ut3.user_id = $1 
+                       AND ut3.status = 'rejected'
+                   ) as user_has_rejected_task
             FROM tasks t 
             LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
             WHERE t.status = 'active'
@@ -1494,23 +1501,30 @@ app.get('/api/tasks', async (req, res) => {
             return completedCount < peopleRequired;
         });
         
-        // Фильтруем задания: показываем только те, которые пользователь еще не начал
-        const filteredTasks = availableTasks.filter(task => !task.user_has_task);
+        // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Фильтруем задания, которые пользователь уже начал ИЛИ ОТКЛОНЕНЫ
+        const filteredTasks = availableTasks.filter(task => {
+            const hasActiveTask = task.user_has_task;
+            const hasRejectedTask = task.user_has_rejected_task;
+            
+            // Не показываем задание если:
+            // 1. Пользователь уже начал это задание (активное, на проверке или выполненное)
+            // 2. Пользователь уже имеет отклоненную версию этого задания
+            return !hasActiveTask && !hasRejectedTask;
+        });
         
         // 🔧 ИСПРАВЛЕНИЕ: Обеспечиваем правильные URL для изображений
         const tasksWithCorrectedImages = filteredTasks.map(task => {
             if (task.image_url) {
-                // Если URL относительный, делаем его абсолютным
                 if (!task.image_url.startsWith('http')) {
                     task.image_url = `${APP_URL}${task.image_url}`;
                 }
-                // Добавляем временную метку для избежания кэширования
                 task.image_url += `${task.image_url.includes('?') ? '&' : '?'}t=${Date.now()}`;
             }
             return task;
         });
         
         console.log(`✅ Найдено заданий: ${result.rows.length}, доступно по лимиту: ${availableTasks.length}, доступно пользователю: ${filteredTasks.length}`);
+        console.log(`🎯 Отклоненные задания отфильтрованы: ${availableTasks.length - filteredTasks.length} заданий скрыто`);
         
         res.json({
             success: true,
