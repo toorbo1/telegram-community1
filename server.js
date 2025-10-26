@@ -440,33 +440,6 @@ async function checkTasksTableStructure() {
         return false;
     }
 }
-// ЭКСТРЕННАЯ ДИАГНОСТИКА АДМИН-ПАНЕЛИ
-function emergencyAdminDiagnostic() {
-    console.log('🚨 EMERGENCY ADMIN DIAGNOSTIC');
-    
-    // Проверяем базовые элементы
-    const elements = {
-        'admin-tab': document.getElementById('admin-tab'),
-        'admin-tasks-section': document.getElementById('admin-tasks-section'),
-        'admin-tasks-list': document.getElementById('admin-tasks-list'),
-        'currentUser': currentUser,
-        'isAdmin': currentUser?.is_admin,
-        'isMainAdmin': parseInt(currentUser?.id) === ADMIN_ID
-    };
-    
-    console.log('📋 Elements check:', elements);
-    
-    // Принудительно загружаем задания
-    if (currentUser && (currentUser.is_admin || parseInt(currentUser.id) === ADMIN_ID)) {
-        console.log('🔄 FORCE loading admin tasks...');
-        setTimeout(() => {
-            loadAdminTasks();
-        }, 1000);
-    }
-}
-
-// Вызываем диагностику при загрузке
-setTimeout(emergencyAdminDiagnostic, 2000);
 
 // Функция для принудительного обновления структуры таблицы
 async function fixWithdrawalTable() {
