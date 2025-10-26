@@ -657,7 +657,7 @@ app.post('/api/user/promocodes/activate', async (req, res) => {
 
 // Не забудьте вызвать создание таблиц при инициализации
 // Добавьте в функцию initDatabase():
-await createPromocodesTable();
+// await createPromocodesTable();
 // Создание тестовой заявки на вывод
 app.post('/api/test-withdrawal', async (req, res) => {
     try {
