@@ -441,6 +441,34 @@ async function checkTasksTableStructure() {
         return false;
     }
 }
+// ЭКСТРЕННАЯ ДИАГНОСТИКА АДМИН-ПАНЕЛИ
+function emergencyAdminDiagnostic() {
+    console.log('🚨 EMERGENCY ADMIN DIAGNOSTIC');
+    
+    // Проверяем базовые элементы
+    const elements = {
+        'admin-tab': document.getElementById('admin-tab'),
+        'admin-tasks-section': document.getElementById('admin-tasks-section'),
+        'admin-tasks-list': document.getElementById('admin-tasks-list'),
+        'currentUser': currentUser,
+        'isAdmin': currentUser?.is_admin,
+        'isMainAdmin': parseInt(currentUser?.id) === ADMIN_ID
+    };
+    
+    console.log('📋 Elements check:', elements);
+    
+    // Принудительно загружаем задания
+    if (currentUser && (currentUser.is_admin || parseInt(currentUser.id) === ADMIN_ID)) {
+        console.log('🔄 FORCE loading admin tasks...');
+        setTimeout(() => {
+            loadAdminTasks();
+        }, 1000);
+    }
+}
+
+// Вызываем диагностику при загрузке
+setTimeout(emergencyAdminDiagnostic, 2000);
+
 // Функция для принудительного обновления структуры таблицы
 async function fixWithdrawalTable() {
     try {
@@ -1172,6 +1200,116 @@ app.get('/api/admin/withdrawal-requests', async (req, res) => {
         });
     }
 });
+// ПРОСТОЙ И НАДЕЖНЫЙ endpoint для админ-заданий
+app.get('/api/admin/simple-tasks', async (req, res) => {
+    const { adminId } = req.query;
+    
+    console.log('🎯 SIMPLE TASKS ENDPOINT called by:', adminId);
+    
+    try {
+        // ПРОСТАЯ проверка прав - без сложных запросов
+        if (!adminId) {
+            return res.json({
+                success: false,
+                error: 'Требуется adminId'
+            });
+        }
+        
+        // ПРОСТОЙ запрос к базе - получаем ВСЕ задания
+        const tasksResult = await pool.query(`
+            SELECT * FROM tasks 
+            ORDER BY created_at DESC
+        `);
+        
+        console.log(`✅ Found ${tasksResult.rows.length} tasks total`);
+        
+        // ПРОСТАЯ статистика
+        const activeTasks = tasksResult.rows.filter(t => t.status === 'active').length;
+        const completedTasks = tasksResult.rows.filter(t => t.status === 'completed').length;
+        const myTasks = tasksResult.rows.filter(t => t.created_by == adminId).length;
+        
+        res.json({
+            success: true,
+            tasks: tasksResult.rows,
+            statistics: {
+                total_tasks: tasksResult.rows.length,
+                active_tasks: activeTasks,
+                completed_tasks: completedTasks,
+                my_tasks: myTasks
+            },
+            debug: {
+                admin_id: adminId,
+                timestamp: new Date().toISOString(),
+                simple_endpoint: true
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Simple tasks endpoint error:', error);
+        res.json({
+            success: false,
+            error: error.message,
+            tasks: [],
+            statistics: {
+                total_tasks: 0,
+                active_tasks: 0,
+                completed_tasks: 0,
+                my_tasks: 0
+            }
+        });
+    }
+});
+// Функция создания тестовых заданий
+async function createTestTasksIfNeeded() {
+    try {
+        const tasksCount = await pool.query("SELECT COUNT(*) FROM tasks");
+        const count = parseInt(tasksCount.rows[0].count);
+        
+        if (count === 0) {
+            console.log('📝 Creating test tasks...');
+            
+            const testTasks = [
+                {
+                    title: 'Подписаться на Telegram канал',
+                    description: 'Подпишитесь на наш канал и оставайтесь подписанным минимум 3 дня',
+                    price: 50,
+                    category: 'subscribe',
+                    created_by: ADMIN_ID
+                },
+                {
+                    title: 'Посмотреть видео на YouTube',
+                    description: 'Посмотрите видео до конца и поставьте лайк',
+                    price: 30,
+                    category: 'view', 
+                    created_by: ADMIN_ID
+                },
+                {
+                    title: 'Сделать репост записи',
+                    description: 'Сделайте репост записи в своем канале или группе',
+                    price: 70,
+                    category: 'repost',
+                    created_by: ADMIN_ID
+                }
+            ];
+            
+            for (const task of testTasks) {
+                await pool.query(`
+                    INSERT INTO tasks (title, description, price, category, created_by)
+                    VALUES ($1, $2, $3, $4, $5)
+                `, [task.title, task.description, task.price, task.category, task.created_by]);
+            }
+            
+            console.log('✅ Test tasks created successfully');
+        } else {
+            console.log(`✅ Already have ${count} tasks in database`);
+        }
+    } catch (error) {
+        console.error('❌ Error creating test tasks:', error);
+    }
+}
+
+// Вызовите эту функцию после initDatabase()
+createTestTasksIfNeeded();
 // Добавьте эту функцию и вызовите ее в initDatabase()
 async function fixWithdrawalTableStructure() {
     try {
