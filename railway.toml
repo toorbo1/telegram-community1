@@ -1,0 +1,10 @@
+[deploy]
+startCommand = "node server.js"
+
+[build]
+builder = "nixpacks"
+
+[[services]]
+name = "web"
+httpPort = 3000
+restartPolicyType = "always"

@@ -70,7 +70,42 @@ const upload = multer({
         }
     }
 });
+// Health check endpoint с подробной диагностикой
+app.get('/api/health', async (req, res) => {
+    try {
+        // Проверяем соединение с базой данных
+        await pool.query('SELECT 1');
+        
+        const healthInfo = {
+            status: 'OK',
+            timestamp: new Date().toISOString(),
+            uptime: process.uptime(),
+            memory: process.memoryUsage(),
+            database: 'Connected',
+            environment: process.env.NODE_ENV || 'production',
+            platform: 'Railway Paid Tier'
+        };
+        
+        console.log('🏥 Health check - Server is active');
+        res.json(healthInfo);
+    } catch (error) {
+        console.error('Health check error:', error);
+        res.status(500).json({
+            status: 'ERROR',
+            message: 'Database connection failed',
+            error: error.message
+        });
+    }
+});
 
+// Startup probe для Railway
+app.get('/api/ready', (req, res) => {
+    res.json({
+        status: 'READY',
+        timestamp: new Date().toISOString(),
+        message: 'LinkGold server is ready'
+    });
+});
 
 // 🔧 УЛУЧШЕННАЯ функция проверки прав администратора
 async function checkAdminAccess(userId) {
@@ -796,29 +831,21 @@ bot.on('callback_query', async (callbackQuery) => {
 
 // ... остальные endpoints остаются без изменений ...
 
-// Health check с информацией о конфигурации
 app.get('/api/health', async (req, res) => {
     try {
+        // Проверяем соединение с базой данных
         await pool.query('SELECT 1');
         
         const healthInfo = {
             status: 'OK',
             timestamp: new Date().toISOString(),
-            database: 'PostgreSQL',
-            bot: {
-                enabled: !!BOT_TOKEN,
-                hasToken: !!BOT_TOKEN
-            },
-            app: {
-                url: APP_URL,
-                adminId: ADMIN_ID
-            },
-            environment: {
-                node: process.version,
-                platform: process.platform
-            }
+            uptime: process.uptime(),
+            memory: process.memoryUsage(),
+            database: 'Connected',
+            environment: process.env.NODE_ENV || 'development'
         };
         
+        console.log('🏥 Health check - keeping server awake');
         res.json(healthInfo);
     } catch (error) {
         console.error('Health check error:', error);

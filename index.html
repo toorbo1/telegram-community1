@@ -7321,7 +7321,15 @@ setTimeout(debugAdminRights, 2000);
             
             document.body.appendChild(retryBtn);
         }
-
+// Автопинг для предотвращения сна сервера
+setInterval(async () => {
+    try {
+        const response = await fetch(`${APP_URL}/api/health`);
+        console.log('🔄 Auto-ping to prevent sleep:', response.status);
+    } catch (error) {
+        console.log('⚠️ Auto-ping failed:', error.message);
+    }
+}, 5 * 60 * 1000); // Пинг каждые 5 минут
        // 🔧 ОБНОВЛЕННОЕ АВТООБНОВЛЕНИЕ ДАННЫХ
 function startUserDataAutoUpdate() {
     setInterval(async () => {
