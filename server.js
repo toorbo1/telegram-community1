@@ -1445,7 +1445,7 @@ app.delete('/api/posts/:id', async (req, res) => {
 
 // ==================== TASKS ENDPOINTS ====================
 
-// Получение заданий с правильной обработкой изображений - ОБНОВЛЕННАЯ ВЕРСИЯ
+// Получение заданий с правильной обработкой отклоненных заданий
 app.get('/api/tasks', async (req, res) => {
     const { search, category, userId } = req.query;
     
@@ -1460,7 +1460,14 @@ app.get('/api/tasks', async (req, res) => {
                        WHERE ut2.task_id = t.id 
                        AND ut2.user_id = $1 
                        AND ut2.status IN ('active', 'pending_review', 'completed')
-                   ) as user_has_task
+                   ) as user_has_task,
+                   -- Проверяем, было ли задание отклонено для этого пользователя
+                   EXISTS(
+                       SELECT 1 FROM user_tasks ut3 
+                       WHERE ut3.task_id = t.id 
+                       AND ut3.user_id = $1 
+                       AND ut3.status = 'rejected'
+                   ) as user_has_rejected
             FROM tasks t 
             LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
             WHERE t.status = 'active'
@@ -1494,8 +1501,10 @@ app.get('/api/tasks', async (req, res) => {
             return completedCount < peopleRequired;
         });
         
-        // Фильтруем задания: показываем только те, которые пользователь еще не начал
-        const filteredTasks = availableTasks.filter(task => !task.user_has_task);
+        // Фильтруем задания: показываем только те, которые пользователь еще не начал И НЕ БЫЛИ ОТКЛОНЕНЫ
+        const filteredTasks = availableTasks.filter(task => 
+            !task.user_has_task && !task.user_has_rejected
+        );
         
         // 🔧 ИСПРАВЛЕНИЕ: Обеспечиваем правильные URL для изображений
         const tasksWithCorrectedImages = filteredTasks.map(task => {
@@ -1511,6 +1520,7 @@ app.get('/api/tasks', async (req, res) => {
         });
         
         console.log(`✅ Найдено заданий: ${result.rows.length}, доступно по лимиту: ${availableTasks.length}, доступно пользователю: ${filteredTasks.length}`);
+        console.log(`🚫 Отклоненных заданий для пользователя: ${availableTasks.filter(task => task.user_has_rejected).length}`);
         
         res.json({
             success: true,
@@ -1815,7 +1825,6 @@ app.get('/api/admin/tasks', async (req, res) => {
 
 // ==================== USER TASKS ENDPOINTS ====================
 
-// В server.js - обновите endpoint начала задания
 app.post('/api/user/tasks/start', async (req, res) => {
     const { userId, taskId } = req.body;
     
@@ -1829,21 +1838,28 @@ app.post('/api/user/tasks/start', async (req, res) => {
     }
     
     try {
-        // Проверяем, выполнял ли пользователь это задание
+        // Проверяем, выполнял ли пользователь это задание или оно было отклонено
         const existingTask = await pool.query(`
-    SELECT id FROM user_tasks 
-    WHERE user_id = $1 AND task_id = $2 
-    AND status IN ('active', 'pending_review', 'completed', 'rejected')
-`, [userId, taskId]);
+            SELECT id, status FROM user_tasks 
+            WHERE user_id = $1 AND task_id = $2 
+            AND status IN ('active', 'pending_review', 'completed', 'rejected')
+        `, [userId, taskId]);
         
         if (existingTask.rows.length > 0) {
-            return res.status(400).json({
-                success: false,
-                error: 'Вы уже выполняли это задание'
-            });
+            const taskStatus = existingTask.rows[0].status;
+            if (taskStatus === 'rejected') {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Это задание было отклонено администратором и больше недоступно'
+                });
+            } else {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Вы уже выполняли это задание'
+                });
+            }
         }
         
-        // Проверяем лимит выполнений
         const taskInfo = await pool.query(`
             SELECT t.*, 
                    COUNT(ut.id) as completed_count
@@ -1864,7 +1880,6 @@ app.post('/api/user/tasks/start', async (req, res) => {
         const peopleRequired = task.people_required || 1;
         const completedCount = task.completed_count || 0;
         
-        // 🔥 ПРОВЕРЯЕМ ДОСТИГНУТ ЛИ ЛИМИТ ИСПОЛНИТЕЛЕЙ
         if (completedCount >= peopleRequired) {
             return res.status(400).json({
                 success: false,

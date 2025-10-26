@@ -6882,18 +6882,10 @@ async function loadTasks(search = '', category = 'all') {
 
         if (result.success) {
             allTasks = result.tasks || [];
-            console.log(`✅ Loaded ${allTasks.length} tasks:`, allTasks.map(t => ({id: t.id, title: t.title})));
+            console.log(`✅ Loaded ${allTasks.length} tasks after filtering rejected ones`);
             
-            // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Фильтруем задания, которые пользователь уже начал
-            const userActiveTasks = await getUserActiveTasks();
-            const filteredTasks = allTasks.filter(task => 
-                !userActiveTasks.includes(task.id)
-            );
-            
-            console.log(`🎯 После фильтрации: ${filteredTasks.length} доступных заданий`);
-            
-            // Отображаем отфильтрованные задания
-            displayTasks(filteredTasks, 'new');
+            // Отображаем задания
+            displayTasks(allTasks, 'new');
             
         } else {
             throw new Error(result.error || 'Unknown server error');
@@ -6911,7 +6903,7 @@ async function loadTasks(search = '', category = 'all') {
                     <div style="font-size: 12px; color: var(--text-secondary); margin: 8px 0;">
                         ${error.message}
                     </div>
-                    <button class="btn btn-primary" onclick="debugTasksLoading()" style="margin-top: 16px;">
+                    <button class="btn btn-primary" onclick="debugTasksDisplay()" style="margin-top: 16px;">
                         Диагностика
                     </button>
                     <button class="btn btn-secondary" onclick="loadTasks()" style="margin-top: 8px;">
