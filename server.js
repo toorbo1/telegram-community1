@@ -241,8 +241,8 @@ async function initDatabase() {
                 reviewed_by BIGINT
             )
         `);
-// В initDatabase() добавьте:
-await createPromocodesTable();
+         // В initDatabase() добавьте:
+        await createPromocodesTable();
         // Таблица сообщений
         await pool.query(`
             CREATE TABLE IF NOT EXISTS support_messages (
@@ -352,6 +352,9 @@ await pool.query(`
 
          await createWithdrawalTable();
         await fixWithdrawalTableStructure();
+        
+        // Добавьте эту строку после создания других таблиц:
+        await createPromocodesTable();
         
         console.log('✅ Database initialized successfully');
     } catch (error) {
@@ -2680,7 +2683,6 @@ app.put('/api/support/chats/:chatId/restore', async (req, res) => {
 
 // ==================== PROMOCODES ENDPOINTS ====================
 
-// Создание таблицы промокодов
 async function createPromocodesTable() {
     try {
         await pool.query(`
@@ -2717,7 +2719,7 @@ app.post('/api/admin/promocodes/create', async (req, res) => {
     
     console.log('🎫 Create promocode request:', { adminId, code, maxUses, reward, expiresAt });
     
-    // Только главный админ
+    // Проверка прав - только главный админ
     if (!adminId || parseInt(adminId) !== ADMIN_ID) {
         console.log('❌ Access denied - not main admin');
         return res.status(403).json({
@@ -2763,7 +2765,6 @@ app.post('/api/admin/promocodes/create', async (req, res) => {
         });
     }
 });
-
 
 // Получение списка промокодов
 app.get('/api/admin/promocodes/list', async (req, res) => {

@@ -9711,7 +9711,6 @@ function showPromocodesSection() {
     loadPromocodesList();
 }
 
-// Создание промокода
 async function createPromoCode() {
     const codeInput = document.getElementById('promocode-code');
     const maxUsesInput = document.getElementById('promocode-max-uses');
@@ -9725,41 +9724,46 @@ async function createPromoCode() {
     const reward = parseInt(rewardInput.value);
     const expiresAt = expiresInput.value ? new Date(expiresInput.value).toISOString() : null;
     
+    console.log('🎫 Creating promocode:', { code, maxUses, reward, expiresAt });
+    
     // Валидация
     if (!code) {
-        messageDiv.innerHTML = '<span style="color: var(--error);">Введите код промокода!</span>';
+        messageDiv.innerHTML = '<span style="color: var(--error);">❌ Введите код промокода!</span>';
         return;
     }
     
     if (!/^[A-Z0-9]+$/.test(code)) {
-        messageDiv.innerHTML = '<span style="color: var(--error);">Код должен содержать только латинские буквы и цифры!</span>';
+        messageDiv.innerHTML = '<span style="color: var(--error);">❌ Код должен содержать только латинские буквы и цифры!</span>';
         return;
     }
     
-    if (!maxUses || maxUses < 1) {
-        messageDiv.innerHTML = '<span style="color: var(--error);">Введите корректное количество активаций!</span>';
+    if (code.length < 3 || code.length > 20) {
+        messageDiv.innerHTML = '<span style="color: var(--error);">❌ Длина кода должна быть от 3 до 20 символов!</span>';
         return;
     }
     
-    if (!reward || reward < 1) {
-        messageDiv.innerHTML = '<span style="color: var(--error);">Введите корректную награду!</span>';
+    if (!maxUses || maxUses < 1 || maxUses > 10000) {
+        messageDiv.innerHTML = '<span style="color: var(--error);">❌ Введите корректное количество активаций (1-10000)!</span>';
+        return;
+    }
+    
+    if (!reward || reward < 1 || reward > 100000) {
+        messageDiv.innerHTML = '<span style="color: var(--error);">❌ Введите корректную награду (1-100000 звезд)!</span>';
         return;
     }
     
     // Проверка прав - только главный админ
     if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) {
-        messageDiv.innerHTML = '<span style="color: var(--error);">Только главный администратор может создавать промокоды!</span>';
+        messageDiv.innerHTML = '<span style="color: var(--error);">❌ Только главный администратор может создавать промокоды!</span>';
         return;
     }
     
     // Показываем загрузку
     submitBtn.disabled = true;
     submitBtn.textContent = 'Создаем...';
-    messageDiv.innerHTML = '<span style="color: var(--warning);">Создаем промокод...</span>';
+    messageDiv.innerHTML = '<span style="color: var(--warning);">⏳ Создаем промокод...</span>';
     
-  try {
-        console.log('🎫 Sending promocode creation request...');
-        
+    try {
         const result = await makeRequest('/api/admin/promocodes/create', {
             method: 'POST',
             body: JSON.stringify({
@@ -9770,8 +9774,6 @@ async function createPromoCode() {
                 expiresAt: expiresAt
             })
         });
-        
-        console.log('📨 Server response:', result);
         
         if (result.success) {
             messageDiv.innerHTML = `<span style="color: var(--success);">✅ ${result.message}</span>`;
@@ -9788,24 +9790,12 @@ async function createPromoCode() {
             }, 500);
             
         } else {
-            throw new Error(result.error || 'Unknown server error');
+            messageDiv.innerHTML = `<span style="color: var(--error);">❌ Ошибка: ${result.error}</span>`;
         }
         
     } catch (error) {
         console.error('❌ Create promocode error:', error);
-        let errorMessage = 'Ошибка при создании промокода';
-        
-        if (error.message.includes('Failed to fetch')) {
-            errorMessage = '❌ Проблема с подключением к серверу';
-        } else if (error.message.includes('404')) {
-            errorMessage = '❌ Endpoint не найден';
-        } else if (error.message.includes('403')) {
-            errorMessage = '❌ Недостаточно прав';
-        } else {
-            errorMessage = `❌ ${error.message}`;
-        }
-        
-        messageDiv.innerHTML = `<span style="color: var(--error);">${errorMessage}</span>`;
+        messageDiv.innerHTML = `<span style="color: var(--error);">❌ Ошибка: ${error.message}</span>`;
     } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = '🎫 Создать промокод';
