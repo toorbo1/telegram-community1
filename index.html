@@ -7533,12 +7533,12 @@ function updateReferralSystem() {
     if (refInvited) refInvited.textContent = currentUser.referral_count || 0;
     if (refEarned) refEarned.textContent = `${currentUser.referral_earned || 0} ⭐`;
     
-    // Обновляем текст с информацией о бонусах
+    // 🔥 ИСПРАВЛЕНИЕ: Обновляем текст с правильными бонусами
     const referralInfo = document.querySelector('.referral-info');
     if (referralInfo) {
         referralInfo.innerHTML = `
-            🎁 Вы получаете: <strong>20⭐</strong> за друга<br>
-            🎁 Друг получает: <strong>10⭐</strong> при регистрации<br><br>
+            🎁 Вы получаете: <strong>10⭐</strong> за друга<br>
+            🎁 Друг получает: <strong>5⭐</strong> при регистрации<br><br>
             🔗 Просто отправьте другу эту ссылку в Telegram
         `;
     }
