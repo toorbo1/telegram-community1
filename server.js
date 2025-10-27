@@ -366,6 +366,7 @@ await pool.query(`
     }
 }
 
+// В функции initDatabase() добавьте:
 async function createPromocodesTable() {
     try {
         await pool.query(`
@@ -2752,74 +2753,22 @@ app.put('/api/support/chats/:chatId/restore', async (req, res) => {
 
 // ==================== PROMOCODES ENDPOINTS ====================
 
-async function createPromocodesTable() {
-    try {
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS promocodes (
-                id SERIAL PRIMARY KEY,
-                code VARCHAR(20) UNIQUE NOT NULL,
-                max_uses INTEGER NOT NULL,
-                used_count INTEGER DEFAULT 0,
-                reward REAL NOT NULL,
-                expires_at TIMESTAMP,
-                is_active BOOLEAN DEFAULT true,
-                created_by BIGINT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS promocode_activations (
-                id SERIAL PRIMARY KEY,
-                user_id BIGINT NOT NULL,
-                promocode_id INTEGER NOT NULL,
-                activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (promocode_id) REFERENCES promocodes(id)
-            )
-        `);
-        
-        console.log('✅ Таблицы промокодов созданы/проверены');
-    } catch (error) {
-        console.error('❌ Ошибка создания таблиц промокодов:', error);
-        throw error; // Пробрасываем ошибку дальше
-    }
-}
-// В server.js - обновите endpoint создания промокода
+
 app.post('/api/admin/promocodes/create', async (req, res) => {
     const { adminId, code, maxUses, reward, expiresAt } = req.body;
     
-    console.log('🎫 DEBUG: Create promocode request received:', { 
-        adminId, 
-        code, 
-        maxUses, 
-        reward, 
-        expiresAt,
-        body: req.body 
-    });
+    console.log('🎫 Create promocode request:', { adminId, code, maxUses, reward, expiresAt });
     
     // Проверка прав - только главный админ
-    if (!adminId) {
-        console.log('❌ DEBUG: Missing adminId');
-        return res.status(400).json({
-            success: false,
-            error: 'Отсутствует ID администратора'
-        });
-    }
-    
-    if (parseInt(adminId) !== ADMIN_ID) {
-        console.log('❌ DEBUG: Access denied - not main admin', { 
-            requestAdminId: adminId, 
-            requiredAdminId: ADMIN_ID 
-        });
+    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
         return res.status(403).json({
             success: false,
             error: 'Только главный администратор может создавать промокоды!'
         });
     }
     
-    // Валидация входных данных
+    // Валидация
     if (!code || !maxUses || !reward) {
-        console.log('❌ DEBUG: Missing required fields', { code, maxUses, reward });
         return res.status(400).json({
             success: false,
             error: 'Заполните все обязательные поля'
@@ -2828,60 +2777,32 @@ app.post('/api/admin/promocodes/create', async (req, res) => {
     
     try {
         // Проверяем существование промокода
-        console.log('🔍 DEBUG: Checking existing promocode...');
         const existing = await pool.query(
             'SELECT id FROM promocodes WHERE code = $1 AND is_active = true',
-            [code]
+            [code.toUpperCase()]
         );
         
         if (existing.rows.length > 0) {
-            console.log('❌ DEBUG: Promocode already exists');
             return res.status(400).json({
                 success: false,
                 error: 'Промокод с таким кодом уже существует!'
             });
         }
         
-        // Преобразуем типы данных
-        const maxUsesInt = parseInt(maxUses);
-        const rewardNum = parseFloat(reward);
-        
-        if (isNaN(maxUsesInt) || maxUsesInt <= 0) {
-            return res.status(400).json({
-                success: false,
-                error: 'Некорректное количество использований'
-            });
-        }
-        
-        if (isNaN(rewardNum) || rewardNum <= 0) {
-            return res.status(400).json({
-                success: false,
-                error: 'Некорректная награда'
-            });
-        }
-        
-        // Обрабатываем дату истечения
-        let expiresAtValue = null;
-        if (expiresAt) {
-            expiresAtValue = new Date(expiresAt);
-            if (isNaN(expiresAtValue.getTime())) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Некорректная дата истечения'
-                });
-            }
-        }
-        
-        console.log('💾 DEBUG: Creating promocode in database...');
-        
         // Создаем промокод
         const result = await pool.query(`
             INSERT INTO promocodes (code, max_uses, reward, expires_at, created_by) 
             VALUES ($1, $2, $3, $4, $5)
             RETURNING *
-        `, [code.toUpperCase(), maxUsesInt, rewardNum, expiresAtValue, adminId]);
+        `, [
+            code.toUpperCase(), 
+            parseInt(maxUses), 
+            parseFloat(reward), 
+            expiresAt ? new Date(expiresAt) : null, 
+            adminId
+        ]);
         
-        console.log(`✅ DEBUG: Promocode created successfully: ${code}`, result.rows[0]);
+        console.log('✅ Promocode created:', result.rows[0]);
         
         res.json({
             success: true,
@@ -2890,13 +2811,7 @@ app.post('/api/admin/promocodes/create', async (req, res) => {
         });
         
     } catch (error) {
-        console.error('❌ DEBUG: Create promocode error:', error);
-        console.error('❌ DEBUG: Error details:', {
-            message: error.message,
-            stack: error.stack,
-            code: error.code
-        });
-        
+        console.error('❌ Create promocode error:', error);
         res.status(500).json({
             success: false,
             error: 'Ошибка базы данных: ' + error.message
