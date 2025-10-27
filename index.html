@@ -9757,7 +9757,9 @@ async function createPromoCode() {
     submitBtn.textContent = 'Создаем...';
     messageDiv.innerHTML = '<span style="color: var(--warning);">Создаем промокод...</span>';
     
-    try {
+  try {
+        console.log('🎫 Sending promocode creation request...');
+        
         const result = await makeRequest('/api/admin/promocodes/create', {
             method: 'POST',
             body: JSON.stringify({
@@ -9769,8 +9771,10 @@ async function createPromoCode() {
             })
         });
         
+        console.log('📨 Server response:', result);
+        
         if (result.success) {
-            messageDiv.innerHTML = `<span style="color: var(--success);">${result.message}</span>`;
+            messageDiv.innerHTML = `<span style="color: var(--success);">✅ ${result.message}</span>`;
             
             // Очищаем форму
             codeInput.value = '';
@@ -9779,21 +9783,48 @@ async function createPromoCode() {
             expiresInput.value = '';
             
             // Обновляем список промокодов
-            loadPromocodesList();
+            setTimeout(() => {
+                loadPromocodesList();
+            }, 500);
             
         } else {
-            messageDiv.innerHTML = `<span style="color: var(--error);">Ошибка: ${result.error}</span>`;
+            throw new Error(result.error || 'Unknown server error');
         }
         
     } catch (error) {
-        console.error('Create promocode error:', error);
-        messageDiv.innerHTML = `<span style="color: var(--error);">Ошибка: ${error.message}</span>`;
+        console.error('❌ Create promocode error:', error);
+        let errorMessage = 'Ошибка при создании промокода';
+        
+        if (error.message.includes('Failed to fetch')) {
+            errorMessage = '❌ Проблема с подключением к серверу';
+        } else if (error.message.includes('404')) {
+            errorMessage = '❌ Endpoint не найден';
+        } else if (error.message.includes('403')) {
+            errorMessage = '❌ Недостаточно прав';
+        } else {
+            errorMessage = `❌ ${error.message}`;
+        }
+        
+        messageDiv.innerHTML = `<span style="color: var(--error);">${errorMessage}</span>`;
     } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = '🎫 Создать промокод';
     }
 }
-
+app.get('/api/admin/promocodes/test', async (req, res) => {
+    try {
+        res.json({
+            success: true,
+            message: 'Promocodes endpoint is working!',
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 // Загрузка списка промокодов
 async function loadPromocodesList() {
     if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) return;

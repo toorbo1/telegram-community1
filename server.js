@@ -2712,8 +2712,6 @@ async function createPromocodesTable() {
         console.error('❌ Error creating promocodes tables:', error);
     }
 }
-
-// Создание промокода
 app.post('/api/admin/promocodes/create', async (req, res) => {
     const { adminId, code, maxUses, reward, expiresAt } = req.body;
     
@@ -2721,6 +2719,7 @@ app.post('/api/admin/promocodes/create', async (req, res) => {
     
     // Только главный админ
     if (!adminId || parseInt(adminId) !== ADMIN_ID) {
+        console.log('❌ Access denied - not main admin');
         return res.status(403).json({
             success: false,
             error: 'Только главный администратор может создавать промокоды!'
@@ -2748,7 +2747,7 @@ app.post('/api/admin/promocodes/create', async (req, res) => {
             RETURNING *
         `, [code, maxUses, reward, expiresAt, adminId]);
         
-        console.log(`✅ Promocode created: ${code}`);
+        console.log(`✅ Promocode created: ${code}`, result.rows[0]);
         
         res.json({
             success: true,
@@ -2764,6 +2763,7 @@ app.post('/api/admin/promocodes/create', async (req, res) => {
         });
     }
 });
+
 
 // Получение списка промокодов
 app.get('/api/admin/promocodes/list', async (req, res) => {
@@ -4121,7 +4121,17 @@ app.get('/api/debug/tables', async (req, res) => {
         });
     }
 });
-
+// В начале server.js, после инициализации pool
+async function checkDatabaseConnection() {
+    try {
+        const result = await pool.query('SELECT NOW()');
+        console.log('✅ Database connection successful:', result.rows[0]);
+        return true;
+    } catch (error) {
+        console.error('❌ Database connection failed:', error);
+        return false;
+    }
+}
 // Diagnostic endpoint
 app.get('/api/debug/endpoints', async (req, res) => {
     try {
