@@ -5014,12 +5014,10 @@ html, body {
                 </div>
             </div>
             
-            <!-- В секции реферальной системы профиля -->
-<div class="referral-info">
-    🎁 Вы получаете: <strong>10⭐</strong> за каждого друга<br>
-    🎁 Друг получает: <strong>5⭐</strong> при регистрации<br><br>
-    🔗 Просто отправьте другу эту ссылку в Telegram
-</div>
+            <div class="referral-info">
+                Приглашайте друзей и получайте 10% от их заработка!
+            </div>
+        </div>
         
         <!-- В разделе профиля -->
 <div class="profile-actions">
@@ -5212,7 +5210,7 @@ html, body {
 
 
         
-  <button class="admin-submit" onclick="addTaskWithImage()">
+        <button class="admin-submit" onclick="addTaskWithImage()">
             ✅ Добавить задание с фото
         </button>
     </div>
@@ -7539,8 +7537,8 @@ function updateReferralSystem() {
     const referralInfo = document.querySelector('.referral-info');
     if (referralInfo) {
         referralInfo.innerHTML = `
-            🎁 Вы получаете: <strong>10⭐</strong> за каждого друга<br>
-            🎁 Друг получает: <strong>5⭐</strong> при регистрации<br><br>
+            🎁 Вы получаете: <strong>20⭐</strong> за друга<br>
+            🎁 Друг получает: <strong>10⭐</strong> при регистрации<br><br>
             🔗 Просто отправьте другу эту ссылку в Telegram
         `;
     }
