@@ -5880,7 +5880,7 @@ html, body {
         
         <div class="verification-modal-actions">
             <button class="verification-reject" onclick="rejectVerification()">❌ Отклонить</button>
-            <button class="verification-approve" onclick="safeApproveVerification()">✅ Одобрить</button>
+            <button class="verification-approve" onclick="approveVerification()">✅ Одобрить</button>
         </div>
         
         <button class="confirmation-btn confirmation-cancel" onclick="closeModal('verification-modal')" style="margin-top: 16px; width: 100%;">Закрыть</button>
@@ -9661,6 +9661,7 @@ async function loadTaskVerifications() {
             document.getElementById('verification-modal').classList.add('active');
         }
 
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОДОБРЕНИЯ ЗАДАНИЯ
 async function approveVerification() {
     if (!currentVerificationId) {
         showNotification('❌ ID верификации не найден', 'error');
@@ -9680,35 +9681,19 @@ async function approveVerification() {
 
         // Показываем индикатор загрузки
         const approveBtn = document.querySelector('.verification-approve');
-        const originalText = approveBtn?.textContent;
-        
         if (approveBtn) {
             approveBtn.disabled = true;
             approveBtn.textContent = 'Одобряем...';
         }
 
-        // 🔧 ИСПРАВЛЕНИЕ: Добавляем таймаут и обработку ошибок
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 секунд таймаут
-
-        const response = await fetch(`${API_BASE_URL}/api/admin/task-verifications/${currentVerificationId}/approve`, {
+        // 🔧 ИСПРАВЛЕНИЕ: Правильный endpoint с /api/
+        const result = await makeRequest(`/api/admin/task-verifications/${currentVerificationId}/approve`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
             body: JSON.stringify({
                 adminId: currentUser.id
-            }),
-            signal: controller.signal
+            })
         });
 
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const result = await response.json();
         console.log('📨 Ответ сервера при одобрении:', result);
 
         if (result.success) {
@@ -9716,6 +9701,13 @@ async function approveVerification() {
             
             if (result.taskRemoved) {
                 message += "\n\n🎯 Задание автоматически удалено - достигнут лимит исполнителей!";
+                
+                // 🔥 ВАЖНО: НЕМЕДЛЕННО ОБНОВЛЯЕМ СПИСКИ ЗАДАНИЙ
+                setTimeout(() => {
+                    loadTasks(); // Обновляем новые задания
+                    loadUserTasks(); // Обновляем задания пользователя
+                    loadTaskVerifications(); // Обновляем список проверки
+                }, 500);
             }
             
             showNotification(message, 'success');
@@ -9723,7 +9715,6 @@ async function approveVerification() {
             
             // ОБНОВЛЯЕМ ВСЕ ДАННЫЕ
             await updateUserData();
-            loadTaskVerifications();
             
         } else {
             throw new Error(result.error || 'Неизвестная ошибка сервера');
@@ -9733,17 +9724,12 @@ async function approveVerification() {
         console.error('❌ Сетевая ошибка при одобрении:', error);
         
         let errorMessage = 'Сетевая ошибка при одобрении задания';
-        
-        if (error.name === 'AbortError') {
-            errorMessage = '❌ Таймаут запроса. Сервер не отвежает. Попробуйте позже.';
-        } else if (error.message.includes('Failed to fetch')) {
-            errorMessage = '❌ Проблема с подключением к интернету. Проверьте соединение.';
+        if (error.message.includes('Failed to fetch')) {
+            errorMessage = '❌ Проблема с соединением. Проверьте интернет и попробуйте снова.';
         } else if (error.message.includes('404')) {
             errorMessage = '❌ Endpoint не найден. Сообщите администратору.';
         } else if (error.message.includes('403')) {
             errorMessage = '❌ Доступ запрещен. У вас нет прав администратора.';
-        } else if (error.message.includes('500')) {
-            errorMessage = '❌ Ошибка сервера. Попробуйте позже.';
         }
         
         showNotification(errorMessage, 'error');
@@ -12943,30 +12929,18 @@ async function addNewAdmin() {
         console.log('🔍 DEBUG addNewAdmin END');
     }
 }
-// Функция для проверки доступности сервера
 async function checkServerConnection() {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/admin/health-check`);
-        const result = await response.json();
-        
-        console.log('🔍 Server health check:', result);
-        return result.success;
+        const response = await fetch(API_BASE_URL + '/api/health');
+        if (response.ok) {
+            console.log('✅ Сервер доступен');
+            return true;
+        }
     } catch (error) {
-        console.error('❌ Server connection check failed:', error);
+        console.error('❌ Сервер недоступен:', error);
+        showNotification('Сервер недоступен. Проверьте подключение.', 'error');
         return false;
     }
-}
-
-// Проверяем соединение перед одобрением
-async function safeApproveVerification() {
-    const isServerOnline = await checkServerConnection();
-    
-    if (!isServerOnline) {
-        showNotification('❌ Сервер недоступен. Проверьте подключение к интернету.', 'error');
-        return;
-    }
-    
-    await approveVerification();
 }
 
 // Удаление админа

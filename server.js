@@ -2144,38 +2144,6 @@ app.get('/api/admin/simple-tasks', async (req, res) => {
         });
     }
 });
-
-// Диагностический endpoint для проверки доступности API
-app.get('/api/admin/health-check', async (req, res) => {
-    try {
-        // Проверяем подключение к базе данных
-        await pool.query('SELECT 1');
-        
-        // Проверяем существование таблицы task_verifications
-        const verificationsCount = await pool.query(
-            'SELECT COUNT(*) FROM task_verifications WHERE status = $1', 
-            ['pending']
-        );
-        
-        res.json({
-            success: true,
-            database: 'OK',
-            pending_verifications: parseInt(verificationsCount.rows[0].count),
-            timestamp: new Date().toISOString(),
-            endpoints: {
-                'approve': '/api/admin/task-verifications/:id/approve',
-                'reject': '/api/admin/task-verifications/:id/reject'
-            }
-        });
-    } catch (error) {
-        console.error('Health check error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Health check failed: ' + error.message
-        });
-    }
-});
-
 // ==================== USER TASKS ENDPOINTS ====================
 // В server.js добавьте:
 app.get('/api/debug/admin-tasks', async (req, res) => {
