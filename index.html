@@ -9811,25 +9811,30 @@ async function loadPromocodesList() {
     }
 }
 
-// Отображение списка промокодов
 function displayPromocodesList(promocodes) {
     const container = document.getElementById('promocodes-list');
-    if (!container) return;
+    if (!container) {
+        console.error('❌ Promocodes list container not found');
+        return;
+    }
     
     container.innerHTML = '';
     
     if (!promocodes || promocodes.length === 0) {
         container.innerHTML = `
-            <div class="no-tasks" style="text-align: center; padding: 30px;">
+            <div class="no-tasks" style="text-align: center; padding: 40px 20px; margin-top: 20px;">
                 <div style="font-size: 48px; margin-bottom: 16px;">🎫</div>
-                <div>Нет активных промокодов</div>
-                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
-                    Создайте первый промокод
+                <div style="font-size: 18px; margin-bottom: 8px; color: var(--text-secondary);">
+                    Нет активных промокодов
+                </div>
+                <div style="font-size: 14px; color: var(--text-secondary);">
+                    Создайте первый промокод используя форму выше
                 </div>
             </div>
         `;
         return;
     }
+    console.log(`🎨 Displaying ${promocodes.length} promocodes`);
     
     promocodes.forEach(promo => {
         const promoElement = document.createElement('div');
@@ -9876,7 +9881,10 @@ function displayPromocodesList(promocodes) {
             </div>
         `;
         
+            promocodes.forEach(promo => {
+        const promoElement = createPromocodeElement(promo);
         container.appendChild(promoElement);
+    });
     });
 }
 
