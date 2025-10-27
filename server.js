@@ -357,9 +357,45 @@ await pool.query(`
         await createPromocodesTable();
         await verifyPromocodesTable();
         
+          // Таблица промокодов
+        await createPromocodesTable();
+        
         console.log('✅ Database initialized successfully');
     } catch (error) {
         console.error('❌ Database initialization error:', error);
+    }
+}
+
+async function createPromocodesTable() {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS promocodes (
+                id SERIAL PRIMARY KEY,
+                code VARCHAR(20) UNIQUE NOT NULL,
+                max_uses INTEGER NOT NULL,
+                used_count INTEGER DEFAULT 0,
+                reward REAL NOT NULL,
+                expires_at TIMESTAMP,
+                is_active BOOLEAN DEFAULT true,
+                created_by BIGINT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS promocode_activations (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                promocode_id INTEGER NOT NULL,
+                activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (promocode_id) REFERENCES promocodes(id)
+            )
+        `);
+        
+        console.log('✅ Promocodes tables created/verified');
+    } catch (error) {
+        console.error('❌ Error creating promocodes tables:', error);
+        throw error;
     }
 }
 // Создание тестовой заявки на вывод
