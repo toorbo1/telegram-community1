@@ -11628,18 +11628,18 @@ function displayPromocodesList(promocodes) {
     
     container.innerHTML = '';
     
-    if (!promocodes || promocodes.length === 0) {
-        container.innerHTML = `
-            <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
-                <div style="font-size: 48px; margin-bottom: 16px;">🎫</div>
-                <div style="font-size: 18px; margin-bottom: 8px;">Нет активных промокодов</div>
-                <div style="font-size: 14px; color: var(--text-secondary);">
-                    Создайте первый промокод используя форму выше
-                </div>
-            </div>
-        `;
-        return;
-    }
+    // if (!promocodes || promocodes.length === 0) {
+    //     container.innerHTML = `
+    //         <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
+    //             <div style="font-size: 48px; margin-bottom: 16px;">🎫</div>
+    //             <div style="font-size: 18px; margin-bottom: 8px;">Нет активных промокодов</div>
+    //             <div style="font-size: 14px; color: var(--text-secondary);">
+    //                 Создайте первый промокод используя форму выше
+    //             </div>
+    //         </div>
+    //     `;
+    //     return;
+    // }
     
     console.log(`🎨 Displaying ${promocodes.length} promocodes`);
     
