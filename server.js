@@ -241,7 +241,8 @@ async function initDatabase() {
                 reviewed_by BIGINT
             )
         `);
-
+// В initDatabase() добавьте:
+await createPromocodesTable();
         // Таблица сообщений
         await pool.query(`
             CREATE TABLE IF NOT EXISTS support_messages (
@@ -2670,6 +2671,287 @@ app.put('/api/support/chats/:chatId/restore', async (req, res) => {
         });
     } catch (error) {
         console.error('Restore chat error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// ==================== PROMOCODES ENDPOINTS ====================
+
+// Создание таблицы промокодов
+async function createPromocodesTable() {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS promocodes (
+                id SERIAL PRIMARY KEY,
+                code VARCHAR(20) UNIQUE NOT NULL,
+                max_uses INTEGER NOT NULL,
+                used_count INTEGER DEFAULT 0,
+                reward REAL NOT NULL,
+                expires_at TIMESTAMP,
+                is_active BOOLEAN DEFAULT true,
+                created_by BIGINT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS promocode_activations (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                promocode_id INTEGER NOT NULL,
+                activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (promocode_id) REFERENCES promocodes(id)
+            )
+        `);
+        
+        console.log('✅ Promocodes tables created/verified');
+    } catch (error) {
+        console.error('❌ Error creating promocodes tables:', error);
+    }
+}
+
+// Создание промокода
+app.post('/api/admin/promocodes/create', async (req, res) => {
+    const { adminId, code, maxUses, reward, expiresAt } = req.body;
+    
+    console.log('🎫 Create promocode request:', { adminId, code, maxUses, reward, expiresAt });
+    
+    // Только главный админ
+    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Только главный администратор может создавать промокоды!'
+        });
+    }
+    
+    try {
+        // Проверяем существование промокода
+        const existing = await pool.query(
+            'SELECT id FROM promocodes WHERE code = $1 AND is_active = true',
+            [code]
+        );
+        
+        if (existing.rows.length > 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'Промокод с таким кодом уже существует!'
+            });
+        }
+        
+        // Создаем промокод
+        const result = await pool.query(`
+            INSERT INTO promocodes (code, max_uses, reward, expires_at, created_by) 
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING *
+        `, [code, maxUses, reward, expiresAt, adminId]);
+        
+        console.log(`✅ Promocode created: ${code}`);
+        
+        res.json({
+            success: true,
+            message: `Промокод ${code} успешно создан!`,
+            promocode: result.rows[0]
+        });
+        
+    } catch (error) {
+        console.error('❌ Create promocode error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Получение списка промокодов
+app.get('/api/admin/promocodes/list', async (req, res) => {
+    const { adminId } = req.query;
+    
+    // Только главный админ
+    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+    
+    try {
+        const result = await pool.query(`
+            SELECT p.*, 
+                   COUNT(pa.id) as used_count
+            FROM promocodes p
+            LEFT JOIN promocode_activations pa ON p.id = pa.promocode_id
+            WHERE p.is_active = true
+            GROUP BY p.id
+            ORDER BY p.created_at DESC
+        `);
+        
+        res.json({
+            success: true,
+            promocodes: result.rows
+        });
+        
+    } catch (error) {
+        console.error('Get promocodes error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Деактивация промокода
+app.post('/api/admin/promocodes/deactivate', async (req, res) => {
+    const { adminId, code } = req.body;
+    
+    // Только главный админ
+    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access denied'
+        });
+    }
+    
+    try {
+        await pool.query(
+            'UPDATE promocodes SET is_active = false WHERE code = $1',
+            [code]
+        );
+        
+        res.json({
+            success: true,
+            message: `Промокод ${code} успешно удален!`
+        });
+        
+    } catch (error) {
+        console.error('Deactivate promocode error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Активация промокода пользователем
+app.post('/api/promocodes/activate', async (req, res) => {
+    const { userId, code } = req.body;
+    
+    console.log('🎫 Activate promocode request:', { userId, code });
+    
+    if (!userId || !code) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    try {
+        // Проверяем существование пользователя
+        const userResult = await pool.query(
+            'SELECT user_id FROM user_profiles WHERE user_id = $1',
+            [userId]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Пользователь не найден'
+            });
+        }
+        
+        // Проверяем промокод
+        const promocodeResult = await pool.query(`
+            SELECT * FROM promocodes 
+            WHERE code = $1 AND is_active = true
+        `, [code]);
+        
+        if (promocodeResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Промокод не найден или неактивен'
+            });
+        }
+        
+        const promocode = promocodeResult.rows[0];
+        
+        // Проверяем срок действия
+        if (promocode.expires_at && new Date(promocode.expires_at) < new Date()) {
+            return res.status(400).json({
+                success: false,
+                error: 'Срок действия промокода истек'
+            });
+        }
+        
+        // Проверяем лимит использований
+        if (promocode.used_count >= promocode.max_uses) {
+            return res.status(400).json({
+                success: false,
+                error: 'Лимит активаций промокода исчерпан'
+            });
+        }
+        
+        // Проверяем, активировал ли пользователь уже этот промокод
+        const activationCheck = await pool.query(`
+            SELECT pa.id 
+            FROM promocode_activations pa
+            JOIN promocodes p ON pa.promocode_id = p.id
+            WHERE pa.user_id = $1 AND p.code = $2
+        `, [userId, code]);
+        
+        if (activationCheck.rows.length > 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'Вы уже активировали этот промокод'
+            });
+        }
+        
+        // Начинаем транзакцию
+        const client = await pool.connect();
+        
+        try {
+            await client.query('BEGIN');
+            
+            // Добавляем запись об активации
+            await client.query(`
+                INSERT INTO promocode_activations (user_id, promocode_id) 
+                VALUES ($1, $2)
+            `, [userId, promocode.id]);
+            
+            // Обновляем счетчик использований
+            await client.query(`
+                UPDATE promocodes 
+                SET used_count = used_count + 1 
+                WHERE id = $1
+            `, [promocode.id]);
+            
+            // Начисляем награду пользователю
+            await client.query(`
+                UPDATE user_profiles 
+                SET balance = COALESCE(balance, 0) + $1
+                WHERE user_id = $2
+            `, [promocode.reward, userId]);
+            
+            await client.query('COMMIT');
+            
+            console.log(`✅ Promocode activated: user ${userId} got ${promocode.reward} stars`);
+            
+            res.json({
+                success: true,
+                message: `Промокод активирован! Вы получили ${promocode.reward} ⭐`,
+                reward: promocode.reward
+            });
+            
+        } catch (transactionError) {
+            await client.query('ROLLBACK');
+            throw transactionError;
+        } finally {
+            client.release();
+        }
+        
+    } catch (error) {
+        console.error('❌ Activate promocode error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
