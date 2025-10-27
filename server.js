@@ -2788,7 +2788,7 @@ app.get('/api/admin/debug-rights', async (req, res) => {
     }
 });
 // Подтверждение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ С УДАЛЕНИЕМ ФАЙЛОВ
-app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res ) => {
+app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
     
