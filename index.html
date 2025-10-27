@@ -9772,7 +9772,7 @@ async function createPromoCode() {
                 adminId: currentUser.id,
                 code: code,
                 maxUses: maxUses,
-                reward: reward,
+                reward: reward, // Исправлено: было 'награда', теперь 'reward'
                 expiresAt: expiresAt
             })
         });
@@ -9805,7 +9805,6 @@ async function createPromoCode() {
         submitBtn.textContent = '🎫 Создать промокод';
     }
 }
-
 // Вспомогательная функция для отображения сообщений
 function showMessage(text, type, container) {
     const colors = {

@@ -449,6 +449,7 @@ async function createWithdrawalTable() {
         console.error('❌ Error creating withdrawal_requests table:', error);
     }
 }
+
 // В server.js в функцию initDatabase добавьте:
 async function checkTasksTableStructure() {
     try {
@@ -456,9 +457,11 @@ async function checkTasksTableStructure() {
         
         const structure = await pool.query(`
             SELECT column_name, data_type, is_nullable 
-            FROM information_schema.columns 
-            WHERE table_name = 'tasks' 
-            ORDER BY ordinal_position
+FROM information_schema.columns 
+WHERE table_name = 'promocodes' 
+ORDER BY ordinal_position;
+
+ALTER TABLE promocodes ADD COLUMN IF NOT EXISTS reward REAL NOT NULL DEFAULT 0;
         `);
         
         console.log('📊 Tasks table structure:', structure.rows);
