@@ -619,7 +619,7 @@ if (referredBy && userProfile.is_first_login) {
                     referredBy,
                     `🎊 <b>Отличная работа!</b>\n\n` +
                     `Ваш друг ${userData.firstName} зарегистрировался по вашей ссылке!\n\n` +
-                    `💫 <b>Вы получили:</b> 20⭐\n` +
+                    `💫 <b>Вы получили:</b> 10⭐\n` +
                     `👥 <b>Всего приглашено:</b> ${(stats.referral_count || 0)} человек\n` +
                     `💰 <b>Заработано на рефералах:</b> ${(stats.referral_earned || 0)}⭐\n\n` +
                     `🔗 <b>Ваша реферальная ссылка:</b>\nhttps://t.me/LinkGoldMoney_bot?start=ref_${referredBy}`,
@@ -694,8 +694,8 @@ bot.onText(/\/referral/, async (msg) => {
             chatId,
             `📢 <b>Реферальная программа LinkGold</b>\n\n` +
             `🎁 <b>Бонусы за приглашение:</b>\n` +
-            `• Вы получаете: <b>20⭐</b> за друга\n` +
-            `• Друг получает: <b>10⭐</b> при регистрации\n\n` +
+            `• Вы получаете: <b>10⭐</b> за друга\n` +
+            `• Друг получает: <b>5⭐</b> при регистрации\n\n` +
             `📊 <b>Ваша статистика:</b>\n` +
             `• Приглашено: <b>${user.referral_count || 0} чел.</b>\n` +
             `• Заработано: <b>${user.referral_earned || 0}⭐</b>\n\n` +
@@ -797,8 +797,8 @@ bot.on('callback_query', async (callbackQuery) => {
                     chatId,
                     `🔗 <b>Ваша реферальная ссылка:</b>\n<code>${referralLink}</code>\n\n` +
                     `🎁 <b>За каждого приглашенного друга:</b>\n` +
-                    `• Вы получаете: 20⭐\n` +
-                    `• Друг получает: 10⭐`,
+                    `• Вы получаете: 10⭐\n` +
+                    `• Друг получает: 5⭐`,
                     {
                         parse_mode: 'HTML',
                         reply_markup: {
@@ -1353,7 +1353,7 @@ app.post('/api/user/auth', async (req, res) => {
             
             referralBonusGiven = true;
             
-            console.log(`🎉 Реферальный бонус: пользователь ${user.id} получил 5⭐, пригласивший ${referredBy} получил 20⭐`);
+            console.log(`🎉 Реферальный бонус: пользователь ${user.id} получил 5⭐, пригласивший ${referredBy} получил 10⭐`);
         }
         
         // Обновляем данные пользователя после начисления бонусов
@@ -2144,6 +2144,38 @@ app.get('/api/admin/simple-tasks', async (req, res) => {
         });
     }
 });
+
+// Диагностический endpoint для проверки доступности API
+app.get('/api/admin/health-check', async (req, res) => {
+    try {
+        // Проверяем подключение к базе данных
+        await pool.query('SELECT 1');
+        
+        // Проверяем существование таблицы task_verifications
+        const verificationsCount = await pool.query(
+            'SELECT COUNT(*) FROM task_verifications WHERE status = $1', 
+            ['pending']
+        );
+        
+        res.json({
+            success: true,
+            database: 'OK',
+            pending_verifications: parseInt(verificationsCount.rows[0].count),
+            timestamp: new Date().toISOString(),
+            endpoints: {
+                'approve': '/api/admin/task-verifications/:id/approve',
+                'reject': '/api/admin/task-verifications/:id/reject'
+            }
+        });
+    } catch (error) {
+        console.error('Health check error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Health check failed: ' + error.message
+        });
+    }
+});
+
 // ==================== USER TASKS ENDPOINTS ====================
 // В server.js добавьте:
 app.get('/api/debug/admin-tasks', async (req, res) => {
