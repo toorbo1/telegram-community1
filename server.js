@@ -577,27 +577,26 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         
         const userProfile = userResult.rows[0];
         
-        // Если пользователь пришел по реферальной ссылке и это его первый вход
-        if (referredBy && userProfile.is_first_login) {
-            // Даем 10⭐ новому пользователю
-            await pool.query(`
-                UPDATE user_profiles 
-                SET balance = COALESCE(balance, 0) + 10,
-                    is_first_login = false
-                WHERE user_id = $1
-            `, [userId]);
-            
-            // Даем 20⭐ тому, кто пригласил
-            await pool.query(`
-                UPDATE user_profiles 
-                SET balance = COALESCE(balance, 0) + 20,
-                    referral_count = COALESCE(referral_count, 0) + 1,
-                    referral_earned = COALESCE(referral_earned, 0) + 20
-                WHERE user_id = $1
-            `, [referredBy]);
-            
-            console.log(`🎉 Реферальный бонус: пользователь ${userId} получил 10⭐, пригласивший ${referredBy} получил 20⭐`);
-            
+       // В обработчике команды /start, замените часть с начислением бонусов:
+if (referredBy && userProfile.is_first_login) {
+    // Даем 5⭐ новому пользователю (вместо 10)
+    await pool.query(`
+        UPDATE user_profiles 
+        SET balance = COALESCE(balance, 0) + 5,
+            is_first_login = false
+        WHERE user_id = $1
+    `, [userId]);
+    
+    // Даем 10⭐ тому, кто пригласил (вместо 20)
+    await pool.query(`
+        UPDATE user_profiles 
+        SET balance = COALESCE(balance, 0) + 10,
+            referral_count = COALESCE(referral_count, 0) + 1,
+            referral_earned = COALESCE(referral_earned, 0) + 10
+        WHERE user_id = $1
+    `, [referredBy]);
+    
+    console.log(`🎉 Реферальный бонус: пользователь ${userId} получил 5⭐, пригласивший ${referredBy} получил 10⭐`);
             // Отправляем уведомление приглашенному
             await bot.sendMessage(
                 chatId,
@@ -633,14 +632,14 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
             }
         }
         
-        // Отправляем основное сообщение с кнопками
-        const message = `👋 <b>Добро пожаловать в LinkGold, ${userData.firstName}!</b>\n\n` +
-                       `Выполняйте задания и зарабатывайте Telegram Stars! 🚀\n\n` +
-                       `🎁 <b>Реферальная программа:</b>\n` +
-                       `• Приглашайте друзей и получайте бонусы\n` +
-                       `• Друг получает 10⭐ за регистрацию\n` +
-                       `• Вы получаете 20⭐ за каждого приглашенного\n\n` +
-                       `🔗 <b>Ваша реферальная ссылка:</b>\nhttps://t.me/LinkGoldMoney_bot?start=${userReferralCode}`;
+// В обработчике команды /start обновите сообщения:
+const message = `👋 <b>Добро пожаловать в LinkGold, ${userData.firstName}!</b>\n\n` +
+               `Выполняйте задания и зарабатывайте Telegram Stars! 🚀\n\n` +
+               `🎁 <b>Реферальная программа:</b>\n` +
+               `• Приглашайте друзей и получайте бонусы\n` +
+               `• Друг получает 5⭐ за регистрацию\n` +
+               `• Вы получаете 10⭐ за каждого приглашенного\n\n` +
+               `🔗 <b>Ваша реферальная ссылка:</b>\nhttps://t.me/LinkGoldMoney_bot?start=${userReferralCode}`;
         
         await bot.sendMessage(
             chatId,
