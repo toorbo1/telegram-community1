@@ -2794,7 +2794,7 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
     
     console.log('✅ Подтверждение задания админом:', { verificationId, adminId });
     
-    // Проверка прав администратора - РАЗРЕШАЕМ ВСЕМ АДМИНАМ
+    // Проверка прав администратора
     const isAdmin = await checkAdminAccess(adminId);
     if (!isAdmin) {
         return res.status(403).json({
@@ -2802,8 +2802,6 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             error: 'Доступ запрещен. Только администраторы могут подтверждать задания.'
         });
     }
-    
-    let screenshotPath = '';
     
     try {
         // Get verification info
@@ -2886,6 +2884,7 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             `, [task.id]);
             
             console.log(`✅ Задание ${task.id} автоматически удалено (достигнут лимит: ${peopleRequired} исполнителей)`);
+            
         }
         
 // Получаем текущее количество выполненных заданий
