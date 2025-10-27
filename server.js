@@ -518,6 +518,52 @@ async function verifyPromocodesTable() {
         console.error('❌ Ошибка проверки таблицы промокодов:', error);
     }
 }
+// Функция для проверки и исправления структуры таблицы промокодов
+async function verifyPromocodesTableStructure() {
+    try {
+        console.log('🔍 Проверка структуры таблицы promocodes...');
+        
+        // Проверяем существование всех необходимых колонок
+        const columnsToCheck = [
+            { name: 'reward', type: 'REAL', nullable: 'NOT NULL', defaultValue: '0' },
+            { name: 'max_uses', type: 'INTEGER', nullable: 'NOT NULL' },
+            { name: 'used_count', type: 'INTEGER', nullable: 'DEFAULT 0' },
+            { name: 'expires_at', type: 'TIMESTAMP', nullable: 'NULL' },
+            { name: 'is_active', type: 'BOOLEAN', nullable: 'DEFAULT true' },
+            { name: 'created_by', type: 'BIGINT', nullable: 'NOT NULL' }
+        ];
+        
+        for (const column of columnsToCheck) {
+            const columnExists = await pool.query(`
+                SELECT EXISTS (
+                    SELECT FROM information_schema.columns 
+                    WHERE table_name = 'promocodes' AND column_name = $1
+                )
+            `, [column.name]);
+            
+            if (!columnExists.rows[0].exists) {
+                console.log(`❌ Колонка ${column.name} отсутствует, добавляем...`);
+                
+                try {
+                    await pool.query(`
+                        ALTER TABLE promocodes 
+                        ADD COLUMN ${column.name} ${column.type} ${column.nullable}
+                        ${column.defaultValue ? `DEFAULT ${column.defaultValue}` : ''}
+                    `);
+                    console.log(`✅ Колонка ${column.name} добавлена`);
+                } catch (addError) {
+                    console.log(`⚠️ Не удалось добавить колонку ${column.name}:`, addError.message);
+                }
+            } else {
+                console.log(`✅ Колонка ${column.name} существует`);
+            }
+        }
+        
+        console.log('✅ Структура таблицы promocodes проверена');
+    } catch (error) {
+        console.error('❌ Ошибка проверки структуры таблицы:', error);
+    }
+}
 // Функция для принудительного обновления структуры таблицы
 async function fixWithdrawalTable() {
     try {
