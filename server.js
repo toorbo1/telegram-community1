@@ -361,7 +361,7 @@ await pool.query(`
 
         // Гарантируем создание таблиц промокодов
         await createPromocodesTable();
-        await fixPromocodesTable();
+       await fixPromocodesTable(); // Эта функция теперь существует
         
         console.log('✅ Database initialized successfully');
     } catch (error) {
@@ -1050,7 +1050,32 @@ app.get('/api/admin/promocodes/debug-structure', async (req, res) => {
     }
 });
 // ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
-
+// Endpoint для принудительного исправления таблицы промокодов
+app.post('/api/admin/promocodes/fix-table', async (req, res) => {
+    try {
+        await fixPromocodesTable();
+        
+        // Проверяем структуру после исправления
+        const structure = await pool.query(`
+            SELECT column_name, data_type, is_nullable 
+            FROM information_schema.columns 
+            WHERE table_name = 'promocodes' 
+            ORDER BY ordinal_position
+        `);
+        
+        res.json({
+            success: true,
+            message: 'Таблица промокодов исправлена',
+            structure: structure.rows
+        });
+    } catch (error) {
+        console.error('Fix promocodes table error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 // Предпросмотр изображения задания
 function previewTaskImage(input) {
     const preview = document.getElementById('task-image-preview');
@@ -2910,7 +2935,28 @@ app.put('/api/support/chats/:chatId/restore', async (req, res) => {
 });
 
 // ==================== PROMOCODES ENDPOINTS ====================
-
+// Временная функция для полного сброса таблицы промокодов
+app.post('/api/admin/promocodes/reset', async (req, res) => {
+    try {
+        // Удаляем таблицу если существует
+        await pool.query('DROP TABLE IF EXISTS promocodes CASCADE');
+        await pool.query('DROP TABLE IF EXISTS promocode_activations CASCADE');
+        
+        // Создаем заново
+        await createPromocodesTable();
+        
+        res.json({
+            success: true,
+            message: 'Таблицы промокодов полностью пересозданы'
+        });
+    } catch (error) {
+        console.error('Reset promocodes error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 
 app.post('/api/admin/promocodes/create', async (req, res) => {
     const { adminId, code, maxUses, reward, expiresAt } = req.body;
