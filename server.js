@@ -29,6 +29,15 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
+// Автоматические ping-запросы каждые 5 минут
+setInterval(async () => {
+    try {
+        const response = await fetch(`${APP_URL}/api/health`);
+        console.log('🔄 Auto-ping health check:', response.status);
+    } catch (error) {
+        console.log('⚠️ Auto-ping failed:', error.message);
+    }
+}, 5 * 60 * 1000); // 5 минут
 
 // Middleware
 app.use(cors({
@@ -366,21 +375,20 @@ await pool.query(`
     }
 }
 
-// В функции initDatabase() добавьте:
 async function createPromocodesTable() {
     try {
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS promocodes 
-    id SERIAL PRIMARY KEY,
-    code VARCHAR(20) UNIQUE NOT NULL,
-    max_uses INTEGER NOT NULL,
-    used_count INTEGER DEFAULT 0,
-    reward REAL NOT NULL, -- Правильное название столбца
-    expires_at TIMESTAMP,
-    is_active BOOLEAN DEFAULT true,
-    created_by BIGINT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-
+            CREATE TABLE IF NOT EXISTS promocodes (
+                id SERIAL PRIMARY KEY,
+                code VARCHAR(20) UNIQUE NOT NULL,
+                max_uses INTEGER NOT NULL,
+                used_count INTEGER DEFAULT 0,
+                reward REAL NOT NULL,
+                expires_at TIMESTAMP,
+                is_active BOOLEAN DEFAULT true,
+                created_by BIGINT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
         `);
         
         await pool.query(`
@@ -952,31 +960,24 @@ bot.on('callback_query', async (callbackQuery) => {
 // ... остальные endpoints остаются без изменений ...
 
 // Health check с информацией о конфигурации
+// Улучшенный health check
 app.get('/api/health', async (req, res) => {
     try {
+        // Проверяем подключение к БД
         await pool.query('SELECT 1');
         
         const healthInfo = {
             status: 'OK',
             timestamp: new Date().toISOString(),
-            database: 'PostgreSQL',
-            bot: {
-                enabled: !!BOT_TOKEN,
-                hasToken: !!BOT_TOKEN
-            },
-            app: {
-                url: APP_URL,
-                adminId: ADMIN_ID
-            },
-            environment: {
-                node: process.version,
-                platform: process.platform
-            }
+            database: 'Connected',
+            uptime: process.uptime(),
+            memory: process.memoryUsage(),
+            environment: process.env.NODE_ENV || 'development'
         };
         
         res.json(healthInfo);
     } catch (error) {
-        console.error('Health check error:', error);
+        console.error('Health check failed:', error);
         res.status(500).json({
             status: 'ERROR',
             message: 'Database connection failed',
@@ -2514,6 +2515,26 @@ app.post('/api/user/tasks/:userTaskId/submit', upload.single('screenshot'), asyn
         });
     }
 });
+// Обработка ошибок подключения к БД
+pool.on('error', (err, client) => {
+    console.error('❌ Database connection error:', err);
+});
+
+// Функция переподключения к БД
+async function ensureDatabaseConnection() {
+    try {
+        await pool.query('SELECT 1');
+        console.log('✅ Database connection verified');
+        return true;
+    } catch (error) {
+        console.error('❌ Database connection lost:', error);
+        // Можно добавить логику переподключения
+        return false;
+    }
+}
+
+// Проверяем подключение каждые 10 минут
+setInterval(ensureDatabaseConnection, 10 * 60 * 1000);
 
 // В server.js - обновите endpoint отмены задания
 app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
