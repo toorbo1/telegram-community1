@@ -5126,12 +5126,19 @@ html, body {
         </div>
         
         <button class="admin-submit" onclick="createPromoCode()" id="create-promocode-btn">
-            🎫 Создать промокод
-        </button>
+    🎫 Создать промокод
+</button>
         
         <div id="promocode-form-message" style="margin-top: 12px; min-height: 20px; font-size: 14px;"></div>
     </div>
-
+<div style="margin-top: 10px;">
+    <button class="btn btn-warning" onclick="testPromocodeEndpoint()" style="font-size: 12px; padding: 5px 10px;">
+        🧪 Тест endpoint
+    </button>
+    <button class="btn btn-info" onclick="console.log('Current user:', currentUser)" style="font-size: 12px; padding: 5px 10px; margin-left: 5px;">
+        🔍 User Info
+    </button>
+</div>
     <!-- Список активных промокодов -->
     <div style="margin-top: 25px;">
         <h4>📋 Активные промокоды</h4>
@@ -9712,59 +9719,62 @@ function showPromocodesSection() {
 }
 
 async function createPromoCode() {
-    const codeInput = document.getElementById('promocode-code');
-    const maxUsesInput = document.getElementById('promocode-max-uses');
-    const rewardInput = document.getElementById('promocode-reward');
-    const expiresInput = document.getElementById('promocode-expires');
-    const messageDiv = document.getElementById('promocode-form-message');
-    const submitBtn = document.getElementById('create-promocode-btn');
-    
-    const code = codeInput.value.trim().toUpperCase();
-    const maxUses = parseInt(maxUsesInput.value);
-    const reward = parseFloat(rewardInput.value);
-    const expiresAt = expiresInput.value ? new Date(expiresInput.value).toISOString() : null;
-    
-    console.log('🎫 DEBUG: Creating promocode client-side:', { code, maxUses, reward, expiresAt });
-    
-    // Валидация
-    if (!code) {
-        showMessage('❌ Введите код промокода!', 'error', messageDiv);
-        return;
-    }
-    
-    if (!/^[A-Z0-9]+$/.test(code)) {
-        showMessage('❌ Код должен содержать только латинские буквы и цифры!', 'error', messageDiv);
-        return;
-    }
-    
-    if (code.length < 3 || code.length > 20) {
-        showMessage('❌ Длина кода должна быть от 3 до 20 символов!', 'error', messageDiv);
-        return;
-    }
-    
-    if (!maxUses || maxUses < 1 || maxUses > 10000) {
-        showMessage('❌ Введите корректное количество активаций (1-10000)!', 'error', messageDiv);
-        return;
-    }
-    
-    if (!reward || reward < 1 || reward > 100000) {
-        showMessage('❌ Введите корректную награду (1-100000 звезд)!', 'error', messageDiv);
-        return;
-    }
-    
-    // Проверка прав - только главный админ
-    if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) {
-        showMessage('❌ Только главный администратор может создавать промокоды!', 'error', messageDiv);
-        return;
-    }
-    
-    // Показываем загрузку
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Создаем...';
-    showMessage('⏳ Создаем промокод...', 'loading', messageDiv);
-    
     try {
-        console.log('📤 DEBUG: Sending request to server...');
+        console.log('🎫 START: createPromoCode');
+        
+        if (!currentUser) {
+            throw new Error('Пользователь не авторизован');
+        }
+        
+        if (parseInt(currentUser.id) !== ADMIN_ID) {
+            throw new Error('Только главный администратор может создавать промокоды!');
+        }
+        
+        const codeInput = document.getElementById('promocode-code');
+        const maxUsesInput = document.getElementById('promocode-max-uses');
+        const rewardInput = document.getElementById('promocode-reward');
+        const expiresInput = document.getElementById('promocode-expires');
+        const messageDiv = document.getElementById('promocode-form-message');
+        const submitBtn = document.getElementById('create-promocode-btn');
+        
+        if (!codeInput || !maxUsesInput || !rewardInput || !messageDiv || !submitBtn) {
+            throw new Error('Элементы формы не найдены');
+        }
+        
+        const code = codeInput.value.trim().toUpperCase();
+        const maxUses = parseInt(maxUsesInput.value);
+        const reward = parseFloat(rewardInput.value);
+        const expiresAt = expiresInput.value ? new Date(expiresInput.value).toISOString() : null;
+        
+        console.log('📊 Form data:', { code, maxUses, reward, expiresAt });
+        
+        // Валидация
+        if (!code) {
+            throw new Error('Введите код промокода!');
+        }
+        
+        if (!/^[A-Z0-9]+$/.test(code)) {
+            throw new Error('Код должен содержать только латинские буквы и цифры!');
+        }
+        
+        if (code.length < 3 || code.length > 20) {
+            throw new Error('Длина кода должна быть от 3 до 20 символов!');
+        }
+        
+        if (!maxUses || maxUses < 1 || maxUses > 10000) {
+            throw new Error('Введите корректное количество активаций (1-10000)!');
+        }
+        
+        if (!reward || reward < 1 || reward > 100000) {
+            throw new Error('Введите корректную награду (1-100000 звезд)!');
+        }
+        
+        // Показываем загрузку
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Создаем...';
+        showMessage('⏳ Создаем промокод...', 'loading', messageDiv);
+        
+        console.log('📤 Sending request to server...');
         
         const result = await makeRequest('/api/admin/promocodes/create', {
             method: 'POST',
@@ -9772,12 +9782,12 @@ async function createPromoCode() {
                 adminId: currentUser.id,
                 code: code,
                 maxUses: maxUses,
-                reward: reward, // Исправлено: было 'награда', теперь 'reward'
+                reward: reward,
                 expiresAt: expiresAt
             })
         });
         
-        console.log('📨 DEBUG: Server response:', result);
+        console.log('📨 Server response:', result);
         
         if (result.success) {
             showMessage(`✅ ${result.message}`, 'success', messageDiv);
@@ -9789,21 +9799,37 @@ async function createPromoCode() {
             expiresInput.value = '';
             
             // Обновляем список промокодов
-            setTimeout(() => {
-                loadPromocodesList();
-            }, 500);
+            loadPromocodesList();
             
         } else {
-            showMessage(`❌ Ошибка: ${result.error}`, 'error', messageDiv);
+            throw new Error(result.error || 'Неизвестная ошибка сервера');
         }
         
     } catch (error) {
-        console.error('❌ DEBUG: Create promocode error:', error);
+        console.error('❌ createPromoCode error:', error);
+        const messageDiv = document.getElementById('promocode-form-message');
         showMessage(`❌ Ошибка: ${error.message}`, 'error', messageDiv);
+        showNotification(`Ошибка создания промокода: ${error.message}`, 'error');
     } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = '🎫 Создать промокод';
+        // Восстанавливаем кнопку в любом случае
+        const submitBtn = document.getElementById('create-promocode-btn');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = '🎫 Создать промокод';
+        }
     }
+}
+function showMessage(text, type, container) {
+    if (!container) return;
+    
+    const colors = {
+        success: 'var(--success)',
+        error: 'var(--error)',
+        loading: 'var(--warning)',
+        info: 'var(--text-primary)'
+    };
+    
+    container.innerHTML = `<span style="color: ${colors[type] || colors.info};">${text}</span>`;
 }
 // Тестовый endpoint для проверки промокодов
 // Тестовый endpoint для проверки промокодов
@@ -13236,6 +13262,28 @@ setTimeout(addPromocodesTestButton, 2000);
             }
             currentAdminChat = null;
         }
+        // Временно добавьте эту функцию для тестирования
+async function testPromocodeEndpoint() {
+    try {
+        console.log('🧪 Testing promocode endpoint...');
+        const result = await makeRequest('/api/admin/promocodes/create', {
+            method: 'POST',
+            body: JSON.stringify({
+                adminId: currentUser.id,
+                code: 'TEST123',
+                maxUses: 10,
+                reward: 50,
+                expiresAt: null
+            })
+        });
+        console.log('✅ Test result:', result);
+    } catch (error) {
+        console.error('❌ Test failed:', error);
+    }
+}
+
+// Вызовите для тестирования
+// testPromocodeEndpoint();
 // 🔧 ПРОВЕРКА СТРУКТУРЫ БАЗЫ ДАННЫХ
 async function checkDatabaseStructure() {
     try {
