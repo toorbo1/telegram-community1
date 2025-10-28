@@ -370,17 +370,17 @@ await pool.query(`
 async function createPromocodesTable() {
     try {
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS promocodes (
-                id SERIAL PRIMARY KEY,
-                code VARCHAR(20) UNIQUE NOT NULL,
-                max_uses INTEGER NOT NULL,
-                used_count INTEGER DEFAULT 0,
-                reward REAL NOT NULL,
-                expires_at TIMESTAMP,
-                is_active BOOLEAN DEFAULT true,
-                created_by BIGINT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
+            CREATE TABLE IF NOT EXISTS promocodes 
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(20) UNIQUE NOT NULL,
+    max_uses INTEGER NOT NULL,
+    used_count INTEGER DEFAULT 0,
+    reward REAL NOT NULL, -- Правильное название столбца
+    expires_at TIMESTAMP,
+    is_active BOOLEAN DEFAULT true,
+    created_by BIGINT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
         `);
         
         await pool.query(`
