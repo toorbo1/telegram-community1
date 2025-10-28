@@ -359,15 +359,9 @@ await pool.query(`
             `, [ADMIN_ID]);
         }
 
-         await createWithdrawalTable();
-        await fixWithdrawalTableStructure();
-        
         // Гарантируем создание таблиц промокодов
         await createPromocodesTable();
-        await verifyPromocodesTable();
-        
-          // Таблица промокодов
-        await createPromocodesTable();
+        await fixPromocodesTable();
         
         console.log('✅ Database initialized successfully');
     } catch (error) {
@@ -377,13 +371,16 @@ await pool.query(`
 
 async function createPromocodesTable() {
     try {
+        console.log('🔧 Creating/verifying promocodes table...');
+        
+        // Создаем основную таблицу промокодов
         await pool.query(`
             CREATE TABLE IF NOT EXISTS promocodes (
                 id SERIAL PRIMARY KEY,
                 code VARCHAR(20) UNIQUE NOT NULL,
                 max_uses INTEGER NOT NULL,
                 used_count INTEGER DEFAULT 0,
-                reward REAL NOT NULL,
+                reward REAL NOT NULL DEFAULT 0,
                 expires_at TIMESTAMP,
                 is_active BOOLEAN DEFAULT true,
                 created_by BIGINT NOT NULL,
@@ -391,6 +388,7 @@ async function createPromocodesTable() {
             )
         `);
         
+        // Создаем таблицу активаций
         await pool.query(`
             CREATE TABLE IF NOT EXISTS promocode_activations (
                 id SERIAL PRIMARY KEY,
@@ -401,12 +399,46 @@ async function createPromocodesTable() {
             )
         `);
         
+        // Проверяем и добавляем отсутствующие колонки
+        const columnsToCheck = [
+            {name: 'reward', type: 'REAL', nullable: 'NOT NULL', defaultValue: '0'},
+            {name: 'max_uses', type: 'INTEGER', nullable: 'NOT NULL'},
+            {name: 'used_count', type: 'INTEGER', nullable: 'DEFAULT 0'},
+            {name: 'expires_at', type: 'TIMESTAMP', nullable: 'NULL'},
+            {name: 'is_active', type: 'BOOLEAN', nullable: 'DEFAULT true'},
+            {name: 'created_by', type: 'BIGINT', nullable: 'NOT NULL'}
+        ];
+        
+        for (const column of columnsToCheck) {
+            const columnExists = await pool.query(`
+                SELECT EXISTS (
+                    SELECT FROM information_schema.columns 
+                    WHERE table_name = 'promocodes' AND column_name = $1
+                )
+            `, [column.name]);
+            
+            if (!columnExists.rows[0].exists) {
+                console.log(`❌ Column ${column.name} missing, adding...`);
+                try {
+                    await pool.query(`
+                        ALTER TABLE promocodes 
+                        ADD COLUMN ${column.name} ${column.type} ${column.nullable}
+                        ${column.defaultValue ? `DEFAULT ${column.defaultValue}` : ''}
+                    `);
+                    console.log(`✅ Column ${column.name} added`);
+                } catch (addError) {
+                    console.log(`⚠️ Could not add column ${column.name}:`, addError.message);
+                }
+            }
+        }
+        
         console.log('✅ Promocodes tables created/verified');
     } catch (error) {
         console.error('❌ Error creating promocodes tables:', error);
         throw error;
     }
 }
+
 // Создание тестовой заявки на вывод
 app.post('/api/test-withdrawal', async (req, res) => {
     try {
@@ -986,6 +1018,37 @@ app.get('/api/health', async (req, res) => {
     }
 });
 
+// Диагностика таблицы промокодов
+app.get('/api/admin/promocodes/debug-structure', async (req, res) => {
+    try {
+        const structure = await pool.query(`
+            SELECT column_name, data_type, is_nullable 
+            FROM information_schema.columns 
+            WHERE table_name = 'promocodes' 
+            ORDER BY ordinal_position
+        `);
+        
+        const tableExists = await pool.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = 'promocodes'
+            )
+        `);
+        
+        res.json({
+            success: true,
+            table_exists: tableExists.rows[0].exists,
+            columns: structure.rows,
+            current_timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Promocodes structure debug error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 // ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
 
 // Предпросмотр изображения задания
@@ -1145,7 +1208,32 @@ async function addTask() {
         showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
     }
 }
-
+// Принудительное исправление таблицы промокодов
+app.post('/api/admin/promocodes/fix-table', async (req, res) => {
+    try {
+        await fixPromocodesTable();
+        
+        // Проверяем структуру после исправления
+        const structure = await pool.query(`
+            SELECT column_name, data_type, is_nullable 
+            FROM information_schema.columns 
+            WHERE table_name = 'promocodes' 
+            ORDER BY ordinal_position
+        `);
+        
+        res.json({
+            success: true,
+            message: 'Таблица промокодов исправлена',
+            structure: structure.rows
+        });
+    } catch (error) {
+        console.error('Fix promocodes table error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 
 app.post('/api/tasks', async (req, res) => {
     const { 
@@ -2828,6 +2916,9 @@ app.post('/api/admin/promocodes/create', async (req, res) => {
     const { adminId, code, maxUses, reward, expiresAt } = req.body;
     
     console.log('🎫 Create promocode request:', { adminId, code, maxUses, reward, expiresAt });
+    
+    // Сначала проверяем и исправляем структуру таблицы
+    await fixPromocodesTable();
     
     // Проверка прав - только главный админ
     if (!adminId || parseInt(adminId) !== ADMIN_ID) {
