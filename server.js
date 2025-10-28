@@ -119,8 +119,52 @@ async function checkAdminAccess(userId) {
 // }
 // Вызовите для тестирования
 // setTimeout(debugWithdrawalSystem, 3000);
-// Упрощенная инициализация базы данных
-// Упрощенная инициализация базы данных
+// 🔧 ФУНКЦИЯ ДЛЯ ИСПРАВЛЕНИЯ СТРУКТУРЫ ТАБЛИЦЫ ПРОМОКОДОВ
+async function fixPromocodesTable() {
+    try {
+        console.log('🔧 Fixing promocodes table structure...');
+        
+        // Проверяем существование таблицы
+        const tableExists = await pool.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = 'promocodes'
+            )
+        `);
+        
+        if (!tableExists.rows[0].exists) {
+            console.log('❌ Promocodes table does not exist, creating...');
+            await createPromocodesTable();
+            return;
+        }
+        
+        console.log('✅ Promocodes table exists, checking columns...');
+        
+        // Добавляем отсутствующие колонки
+        const alterQueries = [
+            `ALTER TABLE promocodes ADD COLUMN IF NOT EXISTS reward REAL NOT NULL DEFAULT 0`,
+            `ALTER TABLE promocodes ADD COLUMN IF NOT EXISTS max_uses INTEGER NOT NULL DEFAULT 1`,
+            `ALTER TABLE promocodes ADD COLUMN IF NOT EXISTS used_count INTEGER DEFAULT 0`,
+            `ALTER TABLE promocodes ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP`,
+            `ALTER TABLE promocodes ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true`,
+            `ALTER TABLE promocodes ADD COLUMN IF NOT EXISTS created_by BIGINT NOT NULL DEFAULT ${ADMIN_ID}`,
+            `ALTER TABLE promocodes ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`
+        ];
+        
+        for (const query of alterQueries) {
+            try {
+                await pool.query(query);
+                console.log(`✅ Executed: ${query.split('ADD COLUMN IF NOT EXISTS')[1]?.split(' ')[1]}`);
+            } catch (error) {
+                console.log(`⚠️ Could not execute: ${query}`, error.message);
+            }
+        }
+        
+        console.log('✅ Promocodes table structure fixed');
+    } catch (error) {
+        console.error('❌ Error fixing promocodes table:', error);
+    }
+}
 // Упрощенная инициализация базы данных
 async function initDatabase() {
     try {
