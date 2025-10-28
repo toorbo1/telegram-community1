@@ -405,7 +405,37 @@ await pool.query(`
 
         // Гарантируем создание таблиц промокодов
         await createPromocodesTable();
-       await fixPromocodesTable(); // Эта функция теперь существует
+       async function initDatabase() {
+    try {
+        console.log('🔄 Initializing simplified database...');
+        
+        // ВРЕМЕННОЕ РЕШЕНИЕ - вставьте этот код вместо вызова fixPromocodesTable
+        try {
+            console.log('🔧 Checking promocodes table...');
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS promocodes (
+                    id SERIAL PRIMARY KEY,
+                    code VARCHAR(20) UNIQUE NOT NULL,
+                    reward REAL NOT NULL DEFAULT 0,
+                    max_uses INTEGER NOT NULL DEFAULT 1,
+                    used_count INTEGER DEFAULT 0,
+                    expires_at TIMESTAMP,
+                    is_active BOOLEAN DEFAULT true,
+                    created_by BIGINT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log('✅ Promocodes table verified');
+        } catch (error) {
+            console.log('⚠️ Promocodes table check:', error.message);
+        }
+        // КОНЕЦ ВРЕМЕННОГО РЕШЕНИЯ
+        
+        console.log('✅ Database initialized successfully');
+    } catch (error) {
+        console.error('❌ Database initialization error:', error);
+    }
+}
         
         console.log('✅ Database initialized successfully');
     } catch (error) {
