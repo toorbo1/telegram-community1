@@ -3050,7 +3050,7 @@ app.post('/api/admin/promocodes/create', async (req, res) => {
     if (!code || !maxUses || !reward) {
         return res.status(400).json({
             success: false,
-            error: 'Заполните все обязательные поля'
+            error: 'Заполните все обязательные поля '
         });
     }
     
