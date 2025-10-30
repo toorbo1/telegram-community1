@@ -5038,17 +5038,7 @@ html, body {
     </div>
 </div>
 
-<!-- В настройках профиля
-<div class="profile-actions">
-    <div class="profile-action" onclick="openAdminChat()">
-        <div class="action-icon">
-            <img src="3d-vizualizacia-hlopausih-v-ladosi-so-zvukovym-eff-no-bg-preview (carve.photos).png" alt="Поддержка" style="width: 20px; height: 20px;">
-        </div>
-        <div class="action-text">Поддержка</div>
-        <div class="action-arrow">›</div>
-    </div>
-</div>
-         -->
+
         <!-- Настройки -->
         <div class="profile-section fade-in">
             <div class="section-title">Настройки</div>
@@ -5683,41 +5673,9 @@ html, body {
         </div>
     </div>
 
-    <!--  Страница вывода средств
-    <div id="withdraw-page" class="page">
-        <div class="page-header">
-            <button class="back-button" onclick="showProfileTab()">←</button>
-            <div class="page-title">Вывод средств</div>
-        </div>
 
-        <div class="card">
-            <div class="balance-amount" id="withdraw-balance">0 ⭐</div>
-            <p class="about-text" style="text-align: center; margin-bottom: 20px;">Доступно для вывода</p>
-
-            <div class="admin-form">
-                <h3>Запрос на вывод</h3>
-                <input type="number" class="admin-input" id="withdraw-amount" placeholder="Сумма вывода">
-                <select class="admin-input" id="withdraw-method">
-                    <option value="">Выберите способ вывода</option>
-                    <option value="card">Банковская карта</option>
-                    <option value="qiwi">QIWI Кошелек</option>
-                    <option value="yoomoney">ЮMoney</option>
-                    <option value="crypto">Криптовалюта</option>
-                </select>
-                <input type="text" class="admin-input" id="withdraw-details" placeholder="Реквизиты для вывода">
-                <button class="admin-submit" onclick="submitWithdraw()">Заказать выплату</button>
-            </div>
-        </div>
-    </div> -->
 </main> 
-<!-- Секция управления админами -->
-<!-- Управление админами -->
-<!-- Управление админами -->
-<!-- Управление админами -->
-<!-- Управление админами -->
-<!-- Добавьте эту секцию в админ-панель после других секций -->
-<!-- Управление админами -->
-<!-- Управление админами -->
+
 <div id="admin-admins-section" class="admin-section" style="display: none;">
     <div style="margin-bottom: 20px; text-align: center;">
         <button class="admin-btn" onclick="refreshUserData()" style="background: var(--teal-gradient);">
@@ -5780,19 +5738,7 @@ html, body {
     </div>
 </nav>
 
-<!-- Модальные окна
-<div class="modal" id="balance-modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <div class="modal-title">💰 Ваш баланс</div>
-            <button class="modal-close" onclick="closeModal('balance-modal')">×</button>
-        </div>
-        <div class="modal-body">
-            <div class="balance-amount">0 ⭐</div>
-            <button class="profile-btn" onclick="goToProfile()">Перейти в профиль</button>
-        </div>
-    </div>
-</div> -->
+
 
 <div class="modal" id="prices-modal">
     <div class="prices-content">
@@ -6268,32 +6214,7 @@ async function debugAdminEndpoints() {
     }
 }
 
-// Вызовите для тестирования
-// debugAdminEndpoints();
-// function addTasksDebugButton() {
-//     const debugBtn = document.createElement('button');
-    
-//     debugBtn.style.position = 'fixed';
-//     debugBtn.style.top = '50px';
-//     debugBtn.style.right = '10px';
-//     debugBtn.style.zIndex = '10000';
-//     debugBtn.style.padding = '10px';
-//     debugBtn.style.background = 'red';
-//     debugBtn.style.color = 'white';
-//     debugBtn.style.border = 'none';
-//     debugBtn.style.borderRadius = '5px';
-//     debugBtn.style.fontSize = '12px';
-//     debugBtn.onclick = function() {
-        
-//         console.log('- currentUser:', currentUser);
-//         console.log('- API_BASE_URL:', API_BASE_URL);
-//         loadTasksForCategory('new');
-//     };
-//     document.body.appendChild(debugBtn);
-// }
 
-// // Вызовите при загрузке
-// setTimeout(addTasksDebugButton, 2000);
 
 // Функция для тестирования endpoint'ов
 async function testEndpoints() {
@@ -8561,31 +8482,6 @@ function debugAdminPanelFull() {
     console.log('- isMainAdmin:', parseInt(currentUser?.id) === ADMIN_ID);
 }
 
-// // Вызовем диагностику сразу
-// setTimeout(debugAdminPanelFull, 1000);
-// // 🔧 КНОПКА ДЛЯ ПРИНУДИТЕЛЬНОГО ИСПРАВЛЕНИЯ
-// function addEmergencyFixButton() {
-//     const fixBtn = document.createElement('button');
-//     fixBtn.textContent = '🚨 FIX ADMIN PANEL';
-//     fixBtn.style.position = 'fixed';
-//     fixBtn.style.top = '150px';
-//     fixBtn.style.right = '10px';
-//     fixBtn.style.zIndex = '10000';
-//     fixBtn.style.padding = '12px';
-//     fixBtn.style.background = 'red';
-//     fixBtn.style.color = 'white';
-//     fixBtn.style.border = 'none';
-//     fixBtn.style.borderRadius = '5px';
-//     fixBtn.style.fontSize = '14px';
-//     fixBtn.style.fontWeight = 'bold';
-    
-//     fixBtn.onclick = function() {
-//         console.log('🚨 EMERGENCY FIX ACTIVATED');
-//         emergencyFixAdminPanel();
-//     };
-    
-//     document.body.appendChild(fixBtn);
-// }
 
 // 🔧 АВАРИЙНОЕ ИСПРАВЛЕНИЕ АДМИН-ПАНЕЛИ
 function emergencyFixAdminPanel() {
@@ -9722,6 +9618,14 @@ async function createPromoCode() {
     try {
         console.log('🎫 START: createPromoCode');
         
+          const reward = parseFloat(rewardInput.value);
+        
+        // Добавьте валидацию
+        if (!reward || isNaN(reward) || reward <= 0) {
+            throw new Error('Введите корректную награду (положительное число)!');
+        }
+
+
         if (!currentUser) {
             throw new Error('Пользователь не авторизован');
         }
@@ -9743,7 +9647,7 @@ async function createPromoCode() {
         
         const code = codeInput.value.trim().toUpperCase();
         const maxUses = parseInt(maxUsesInput.value);
-        const reward = parseFloat(rewardInput.value);
+        
         const expiresAt = expiresInput.value ? new Date(expiresInput.value).toISOString() : null;
         
         console.log('📊 Form data:', { code, maxUses, reward, expiresAt });
@@ -9892,20 +9796,7 @@ function displayPromocodesList(promocodes) {
     
     container.innerHTML = '';
     
-    // if (!promocodes || promocodes.length === 0) {
-    //     container.innerHTML = `
-    //         <div class="no-tasks" style="text-align: center; padding: 40px 20px; margin-top: 20px;">
-    //             <div style="font-size: 48px; margin-bottom: 16px;">🎫</div>
-    //             <div style="font-size: 18px; margin-bottom: 8px; color: var(--text-secondary);">
-    //                 Нет активных промокодов
-    //             </div>
-    //             <div style="font-size: 14px; color: var(--text-secondary);">
-    //                 Создайте первый промокод используя форму выше
-    //             </div>
-    //         </div>
-    //     `;
-    //     return;
-    // }
+
     console.log(`🎨 Displaying ${promocodes.length} promocodes`);
     
     promocodes.forEach(promo => {
@@ -11679,18 +11570,7 @@ function displayPromocodesList(promocodes) {
     
     container.innerHTML = '';
     
-    // if (!promocodes || promocodes.length === 0) {
-    //     container.innerHTML = `
-    //         <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
-    //             <div style="font-size: 48px; margin-bottom: 16px;">🎫</div>
-    //             <div style="font-size: 18px; margin-bottom: 8px;">Нет активных промокодов</div>
-    //             <div style="font-size: 14px; color: var(--text-secondary);">
-    //                 Создайте первый промокод используя форму выше
-    //             </div>
-    //         </div>
-    //     `;
-    //     return;
-    // }
+
     
     console.log(`🎨 Displaying ${promocodes.length} promocodes`);
     
@@ -14164,38 +14044,7 @@ function updateProfileLevelInfo(levelInfo) {
     }
 }
 
-// // Проверка и начисление бонуса за уровень
-// async function checkLevelUpBonus(userId, oldCompletedTasks, newCompletedTasks) {
-//     const oldLevelInfo = calculateUserLevel(oldCompletedTasks);
-//     const newLevelInfo = calculateUserLevel(newCompletedTasks);
-    
-//     // Если уровень повысился
-//     if (newLevelInfo.level > oldLevelInfo.level) {
-//         const bonusAmount = LEVEL_SYSTEM[newLevelInfo.level].bonus;
-        
-//         if (bonusAmount > 0) {
-//             try {
-//                 // Начисляем бонус
-//                 await pool.query(`
-//                     UPDATE user_profiles 
-//                     SET balance = COALESCE(balance, 0) + $1
-//                     WHERE user_id = $2
-//                 `, [bonusAmount, userId]);
-                
-//                 // Показываем уведомление о повышении уровня
-//                 showLevelUpNotification(newLevelInfo.level, newLevelInfo.levelName, bonusAmount);
-                
-//                 console.log(`🎉 Level up bonus: User ${userId} reached level ${newLevelInfo.level} and received ${bonusAmount}⭐`);
-                
-//                 return true;
-//             } catch (error) {
-//                 console.error('Level up bonus error:', error);
-//             }
-//         }
-//     }
-    
-//     return false;
-// }
+
 
 // Уведомление о повышении уровня
 function showLevelUpNotification(level, levelName, bonus) {

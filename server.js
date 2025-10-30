@@ -3040,13 +3040,14 @@ app.post('/api/admin/promocodes/create', async (req, res) => {
     // Сначала проверяем и исправляем структуру таблицы
     await fixPromocodesTable();
     
-    // Проверка прав - только главный админ
-    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
+    // Добавьте валидацию для reward
+    if (!reward || isNaN(parseFloat(reward)) || parseFloat(reward) <= 0) {
+        return res.status(400).json({
             success: false,
-            error: 'Только главный администратор может создавать промокоды!'
+            error: 'Некорректное значение награды. Награда должна быть положительным числом.'
         });
     }
+    const rewardValue = parseFloat(reward);
     
     // Валидация
     if (!code || !maxUses || !reward) {
