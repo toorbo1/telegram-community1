@@ -5088,39 +5088,31 @@ html, body {
             </div>
         </div>
         
-        <div class="form-row">
-            <div class="form-group" style="flex: 1;">
-                <label>Количество активаций *</label>
-                <input type="number" class="admin-input" id="promocode-max-uses" 
-                       placeholder="10" min="1" max="1000" value="10">
-                <div style="font-size: 12px; color: var(--text-secondary); margin-top: 5px;">
-                    Сколько человек может активировать
-                </div>
-            </div>
-            <div class="form-group" style="flex: 1;">
-                <label>Награда (звезды) *</label>
-                <input type="number" class="admin-input" id="promocode-reward" 
-                       placeholder="50" min="1" max="10000" value="50">
-                <div style="font-size: 12px; color: var(--text-secondary); margin-top: 5px;">
-                    Сколько звезд получит 1 человек
-                </div>
-            </div>
-        </div>
-        
         <div class="form-group">
-            <label>Срок действия (опционально)</label>
-            <input type="datetime-local" class="admin-input" id="promocode-expires">
-            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 5px;">
-                Если не указано, промокод будет бессрочным
-            </div>
-        </div>
-        
-        <button class="admin-submit" onclick="createPromoCode()" id="create-promocode-btn">
+    <label>Код промокода *</label>
+    <input type="text" class="admin-input" id="promocode-code" 
+           placeholder="Например: SUMMER2024" maxlength="20"
+           style="text-align: center; font-weight: 600; text-transform: uppercase;">
+</div>
+
+<div class="form-row">
+    <div class="form-group" style="flex: 1;">
+        <label>Количество активаций *</label>
+        <input type="number" class="admin-input" id="promocode-max-uses" 
+               placeholder="10" min="1" max="1000" value="10">
+    </div>
+    <div class="form-group" style="flex: 1;">
+        <label>Награда (звезды) *</label>
+        <input type="number" class="admin-input" id="promocode-reward" 
+               placeholder="50" min="1" max="10000" value="50">
+    </div>
+</div>
+
+<button class="admin-submit" onclick="createPromoCode()" id="create-promocode-btn">
     🎫 Создать промокод
 </button>
-        
-        <div id="promocode-form-message" style="margin-top: 12px; min-height: 20px; font-size: 14px;"></div>
-    </div>
+
+<div id="promocode-form-message" style="margin-top: 12px; min-height: 20px; font-size: 14px;"></div>
 <div style="margin-top: 10px;">
     <button class="btn btn-warning" onclick="testPromocodeEndpoint()" style="font-size: 12px; padding: 5px 10px;">
         🧪 Тест endpoint
@@ -9615,22 +9607,26 @@ function showPromocodesSection() {
 }
 
 async function createPromoCode() {
+    let submitBtn = null;
+    
     try {
         console.log('🎫 START: createPromoCode');
         
-        // ПЕРЕМЕСТИТЕ получение rewardInput ВНУТРЬ функции
-        const rewardInput = document.getElementById('promocode-reward');
-        if (!rewardInput) {
-            throw new Error('Поле награды не найдено!');
-        }
-        
-        const reward = parseFloat(rewardInput.value);
-        
-        // Добавьте валидацию
-        if (!reward || isNaN(reward) || reward <= 0) {
-            throw new Error('Введите корректную награду (положительное число)!');
-        }
+        // Получаем все элементы формы с проверкой
+        const getElement = (id, name) => {
+            const element = document.getElementById(id);
+            if (!element) {
+                throw new Error(`Элемент "${name}" (${id}) не найден`);
+            }
+            return element;
+        };
 
+        const codeInput = getElement('promocode-code', 'Код промокода');
+        const maxUsesInput = getElement('promocode-max-uses', 'Количество активаций');
+        const rewardInput = getElement('promocode-reward', 'Награда');
+        const expiresInput = document.getElementById('promocode-expires'); // опционально
+        const messageDiv = getElement('promocode-form-message', 'Сообщение');
+        submitBtn = getElement('create-promocode-btn', 'Кнопка создания');
 
         if (!currentUser) {
             throw new Error('Пользователь не авторизован');
@@ -9639,25 +9635,14 @@ async function createPromoCode() {
         if (parseInt(currentUser.id) !== ADMIN_ID) {
             throw new Error('Только главный администратор может создавать промокоды!');
         }
-        
-        const codeInput = document.getElementById('promocode-code');
-        const maxUsesInput = document.getElementById('promocode-max-uses');
-        
-        const expiresInput = document.getElementById('promocode-expires');
-        const messageDiv = document.getElementById('promocode-form-message');
-        const submitBtn = document.getElementById('create-promocode-btn');
-        
-        if (!codeInput || !maxUsesInput || !rewardInput || !messageDiv || !submitBtn) {
-            throw new Error('Элементы формы не найдены');
-        }
-        
+
         const code = codeInput.value.trim().toUpperCase();
         const maxUses = parseInt(maxUsesInput.value);
-        
+        const reward = parseFloat(rewardInput.value);
         const expiresAt = expiresInput.value ? new Date(expiresInput.value).toISOString() : null;
-        
+
         console.log('📊 Form data:', { code, maxUses, reward, expiresAt });
-        
+
         // Валидация
         if (!code) {
             throw new Error('Введите код промокода!');
@@ -9675,17 +9660,17 @@ async function createPromoCode() {
             throw new Error('Введите корректное количество активаций (1-10000)!');
         }
         
-        if (!reward || reward < 1 || reward > 100000) {
+        if (!reward || isNaN(reward) || reward < 1 || reward > 100000) {
             throw new Error('Введите корректную награду (1-100000 звезд)!');
         }
-        
+
         // Показываем загрузку
         submitBtn.disabled = true;
         submitBtn.textContent = 'Создаем...';
         showMessage('⏳ Создаем промокод...', 'loading', messageDiv);
-        
+
         console.log('📤 Sending request to server...');
-        
+
         const result = await makeRequest('/api/admin/promocodes/create', {
             method: 'POST',
             body: JSON.stringify({
@@ -9696,9 +9681,9 @@ async function createPromoCode() {
                 expiresAt: expiresAt
             })
         });
-        
+
         console.log('📨 Server response:', result);
-        
+
         if (result.success) {
             showMessage(`✅ ${result.message}`, 'success', messageDiv);
             
@@ -9706,7 +9691,7 @@ async function createPromoCode() {
             codeInput.value = '';
             maxUsesInput.value = '10';
             rewardInput.value = '50';
-            expiresInput.value = '';
+            if (expiresInput) expiresInput.value = '';
             
             // Обновляем список промокодов
             loadPromocodesList();
@@ -9714,21 +9699,64 @@ async function createPromoCode() {
         } else {
             throw new Error(result.error || 'Неизвестная ошибка сервера');
         }
-        
+
     } catch (error) {
         console.error('❌ createPromoCode error:', error);
         const messageDiv = document.getElementById('promocode-form-message');
-        showMessage(`❌ Ошибка: ${error.message}`, 'error', messageDiv);
+        if (messageDiv) {
+            showMessage(`❌ Ошибка: ${error.message}`, 'error', messageDiv);
+        }
         showNotification(`Ошибка создания промокода: ${error.message}`, 'error');
     } finally {
         // Восстанавливаем кнопку в любом случае
-        const submitBtn = document.getElementById('create-promocode-btn');
         if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.textContent = '🎫 Создать промокод';
         }
     }
 }
+function testPromocodeForm() {
+    console.log('🧪 Testing promocode form elements:');
+    
+    const elements = [
+        'promocode-code',
+        'promocode-max-uses', 
+        'promocode-reward',
+        'promocode-expires',
+        'promocode-form-message',
+        'create-promocode-btn'
+    ];
+    
+    elements.forEach(id => {
+        const element = document.getElementById(id);
+        console.log(`- ${id}:`, element ? 'FOUND' : 'NOT FOUND');
+        if (element) {
+            console.log(`  - value:`, element.value);
+            console.log(`  - type:`, element.type);
+        }
+    });
+    
+    console.log('- currentUser:', currentUser);
+    console.log('- isMainAdmin:', currentUser?.id === ADMIN_ID.toString());
+}
+
+// Вызовите для тестирования
+setTimeout(testPromocodeForm, 2000);
+function initPromocodeForm() {
+    const inputs = document.querySelectorAll('#admin-promocodes-section input');
+    inputs.forEach(input => {
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                createPromoCode();
+            }
+        });
+    });
+}
+
+// Вызовите при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(initPromocodeForm, 1000);
+});
 function showMessage(text, type, container) {
     if (!container) return;
     
