@@ -9607,26 +9607,30 @@ function showPromocodesSection() {
 }
 
 async function createPromoCode() {
-    let submitBtn = null;
+    console.log('🎫 START: createPromoCode');
     
     try {
-        console.log('🎫 START: createPromoCode');
-        
-        // Получаем все элементы формы с проверкой
+        // Безопасное получение элементов
         const getElement = (id, name) => {
             const element = document.getElementById(id);
             if (!element) {
-                throw new Error(`Элемент "${name}" (${id}) не найден`);
+                console.error(`❌ Элемент "${name}" (${id}) не найден`);
+                throw new Error(`Элемент "${name}" не найден`);
             }
             return element;
         };
 
-        const codeInput = getElement('promocode-code', 'Код промокода');
-        const maxUsesInput = getElement('promocode-max-uses', 'Количество активаций');
-        const rewardInput = getElement('promocode-reward', 'Награда');
-        const expiresInput = document.getElementById('promocode-expires'); // опционально
-        const messageDiv = getElement('promocode-form-message', 'Сообщение');
-        submitBtn = getElement('create-promocode-btn', 'Кнопка создания');
+        // Проверяем существование элементов
+        const codeInput = document.getElementById('promocode-code');
+        const maxUsesInput = document.getElementById('promocode-max-uses');
+        const rewardInput = document.getElementById('promocode-reward');
+        const messageDiv = document.getElementById('promocode-form-message');
+        const submitBtn = document.getElementById('create-promocode-btn');
+
+        // Валидация элементов
+        if (!codeInput || !maxUsesInput || !rewardInput || !messageDiv || !submitBtn) {
+            throw new Error('Не все необходимые элементы формы найдены');
+        }
 
         if (!currentUser) {
             throw new Error('Пользователь не авторизован');
@@ -9639,9 +9643,8 @@ async function createPromoCode() {
         const code = codeInput.value.trim().toUpperCase();
         const maxUses = parseInt(maxUsesInput.value);
         const reward = parseFloat(rewardInput.value);
-        const expiresAt = expiresInput.value ? new Date(expiresInput.value).toISOString() : null;
 
-        console.log('📊 Form data:', { code, maxUses, reward, expiresAt });
+        console.log('📊 Form data:', { code, maxUses, reward });
 
         // Валидация
         if (!code) {
@@ -9677,8 +9680,7 @@ async function createPromoCode() {
                 adminId: currentUser.id,
                 code: code,
                 maxUses: maxUses,
-                reward: reward,
-                expiresAt: expiresAt
+                reward: reward
             })
         });
 
@@ -9691,7 +9693,6 @@ async function createPromoCode() {
             codeInput.value = '';
             maxUsesInput.value = '10';
             rewardInput.value = '50';
-            if (expiresInput) expiresInput.value = '';
             
             // Обновляем список промокодов
             loadPromocodesList();
@@ -9709,6 +9710,7 @@ async function createPromoCode() {
         showNotification(`Ошибка создания промокода: ${error.message}`, 'error');
     } finally {
         // Восстанавливаем кнопку в любом случае
+        const submitBtn = document.getElementById('create-promocode-btn');
         if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.textContent = '🎫 Создать промокод';
