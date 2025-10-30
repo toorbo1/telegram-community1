@@ -8,6 +8,19 @@
 
 
            <style>
+            /* ОТКЛЮЧИТЕ сложные эффекты на мобильных */
+@media (max-width: 768px) {
+    * {
+        transition: none !important;
+        animation: none !important;
+        transform: none !important;
+    }
+    
+    .card, .task-card {
+        backdrop-filter: none !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+    }
+}
             /* Исправляем позиционирование элементов в карточке задания */
 .task-card {
     position: relative;
@@ -4784,7 +4797,7 @@ html, body {
     <div id="main-tab" class="tab-content active">
         <!-- Герой баннер с изображением -->
         <div class="hero-banner fade-in">
-            <img src="IMG_4397.webp " alt="LinkGold" style="width: 100%; height: 100%; object-fit: cover;">
+            <img src="IMG_4397.png" alt="LinkGold" style="width: 100%; height: 100%; object-fit: cover;">
         </div>
 
         <!-- Компактные параллельные блоки -->
@@ -4792,7 +4805,7 @@ html, body {
             <div class="stat-card balance-card" onclick="showBalanceModal()">
                 <div class="stat-icon">
                     <div class="video-container">
-                        <img src="curved-stack-money-icon-3d-illustration.webp" alt="Баланс" style="width: 100%; height: 100%; object-fit: contain; ">
+                        <img src="curved-stack-money-icon-3d-illustration.png" alt="Баланс" style="width: 100%; height: 100%; object-fit: contain; ">
                     </div>
                 </div>
                 <div class="stat-label">Баланс</div>
@@ -4802,7 +4815,7 @@ html, body {
             <div class="stat-card support-card" onclick="openAdminChat()">
                 <div class="stat-icon">
                     <div class="video-container">
-                        <img src="3d-rendering-ruk-dausih-biznes-koncepciu-udara-kul-no-bg-preview (carve.photos).webp" alt="Поддержка" style="width: 100%; height: 100%; object-fit: contain;">
+                        <img src="3d-rendering-ruk-dausih-biznes-koncepciu-udara-kul-no-bg-preview (carve.photos).png" alt="Поддержка" style="width: 100%; height: 100%; object-fit: contain;">
                     </div>
                 </div>
                 <div class="stat-label">Поддержка</div>
@@ -4814,7 +4827,7 @@ html, body {
         <div class="exchange-card fade-in" onclick="showHowItWorksPage()">
             <div class="exchange-icon">
                 <div class="video-container">
-                    <img src="m003t0593_a_bag_with_hand_31aug22-edited-free (carve.photos).webp" alt="Как работает" style="width: 100%; height: 100%; object-fit: contain;">
+                    <img src="m003t0593_a_bag_with_hand_31aug22-edited-free (carve.photos).png" alt="Как работает" style="width: 100%; height: 100%; object-fit: contain;">
                 </div>
             </div>
             <div class="exchange-title">Как работает</div>
@@ -4825,7 +4838,7 @@ html, body {
         <div class="post-promo fade-in">
             <div class="post-icon">
                 <div class="video-container video-large">
-                    <img src="m011t0430_a_clipboard_30aug22-edited-free (carve.photos).webp" alt="Разместить пост" style="width: 100%; height: 100%; object-fit: contain;">
+                    <img src="m011t0430_a_clipboard_30aug22-edited-free (carve.photos).png" alt="Разместить пост" style="width: 100%; height: 100%; object-fit: contain;">
                 </div>
             </div>
             <div class="post-title">Разместите пост</div>
@@ -5909,6 +5922,68 @@ html, body {
 
 
     <script>
+        // 🔥 КРИТИЧЕСКИЕ ОПТИМИЗАЦИИ ПРОИЗВОДИТЕЛЬНОСТИ
+
+// 1. Отложенная загрузка не критичных изображений
+function optimizeImages() {
+    const images = document.querySelectorAll('img');
+    images.forEach(img => {
+        img.loading = 'lazy';
+        if (img.width > 300) {
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+        }
+    });
+}
+
+// 2. Дебаунс частых операций
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// 3. Упрощенные анимации
+function simpleShowTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.display = 'none';
+    });
+    document.getElementById(tabId).style.display = 'block';
+}
+
+// 4. Отключите тяжелые эффекты на медленных устройствах
+function isSlowDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
+if (isSlowDevice()) {
+    document.documentElement.classList.add('performance-mode');
+    
+    // Отключаем тяжелые CSS эффекты
+    const style = document.createElement('style');
+    style.textContent = `
+        .performance-mode * {
+            transition: none !important;
+            animation: none !important;
+            transform: none !important;
+            filter: none !important;
+            backdrop-filter: none !important;
+        }
+        
+        .performance-mode .card,
+        .performance-mode .task-card {
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1) !important;
+            background: var(--card-bg) !important;
+        }
+    `;
+    document.head.appendChild(style);
+}
         // 🚀 ОПТИМИЗАЦИИ ПРОИЗВОДИТЕЛЬНОСТИ
 class PerformanceOptimizer {
     constructor() {
@@ -6530,20 +6605,6 @@ function showVerificationsModal(verifications) {
     
     // Добавляем модальное окно в DOM
     document.body.insertAdjacentHTML('beforeend', modalHTML);
-}
-// Оптимизация изображений
-function optimizeImages() {
-    const images = document.querySelectorAll('img');
-    images.forEach(img => {
-        // Добавляем lazy loading
-        img.loading = 'lazy';
-        
-        // Оптимизируем размер
-        if (img.width > 300) {
-            img.style.maxWidth = '100%';
-            img.style.height = 'auto';
-        }
-    });
 }
 
 // Сжатие изображений перед загрузкой
