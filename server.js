@@ -3031,6 +3031,66 @@ app.post('/api/admin/promocodes/reset', async (req, res) => {
         });
     }
 });
+// В server.js ЗАМЕНИТЕ текущий endpoint на этот
+app.post('/api/admin/promocodes/create-simple', async (req, res) => {
+    const { adminId, code, maxUses, reward } = req.body;
+    
+    console.log('🎫 SIMPLE Create promocode:', { adminId, code, maxUses, reward });
+    
+    // Быстрая валидация
+    if (!adminId || !code || !maxUses || !reward) {
+        return res.json({
+            success: false,
+            error: 'Заполните все поля: code, maxUses, reward'
+        });
+    }
+    
+    // Только главный админ
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.json({
+            success: false,
+            error: 'Только главный администратор'
+        });
+    }
+    
+    try {
+        // ПРОСТАЯ вставка без сложных проверок
+        const result = await pool.query(`
+            INSERT INTO promocodes (code, max_uses, reward, created_by) 
+            VALUES ($1, $2, $3, $4)
+            RETURNING id, code, reward, max_uses
+        `, [
+            code.toUpperCase(), 
+            parseInt(maxUses), 
+            parseFloat(reward), 
+            adminId
+        ]);
+        
+        console.log('✅ SIMPLE Promocode created:', result.rows[0]);
+        
+        res.json({
+            success: true,
+            message: `Промокод ${code} создан!`,
+            promocode: result.rows[0]
+        });
+        
+    } catch (error) {
+        console.error('❌ SIMPLE Create promocode error:', error);
+        
+        // Упрощенные ошибки
+        if (error.message.includes('unique')) {
+            return res.json({
+                success: false,
+                error: 'Промокод уже существует'
+            });
+        }
+        
+        res.json({
+            success: false,
+            error: 'Ошибка базы данных: ' + error.message
+        });
+    }
+});
 app.post('/api/admin/promocodes/create', async (req, res) => {
     const { adminId, code, maxUses, reward, expiresAt } = req.body;
     
@@ -3055,6 +3115,101 @@ app.post('/api/admin/promocodes/create', async (req, res) => {
     }
     
     // Продолжаем обычную обработку...
+});
+// В server.js ДОБАВЬТЕ эту функцию для диагностики
+app.get('/api/admin/promocodes/debug-table', async (req, res) => {
+    try {
+        // Проверяем существование таблицы
+        const tableExists = await pool.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = 'promocodes'
+            )
+        `);
+        
+        // Проверяем структуру
+        const structure = await pool.query(`
+            SELECT column_name, data_type, is_nullable 
+            FROM information_schema.columns 
+            WHERE table_name = 'promocodes' 
+            ORDER BY ordinal_position
+        `);
+        
+        // Проверяем данные
+        const data = await pool.query('SELECT * FROM promocodes LIMIT 5');
+        
+        res.json({
+            success: true,
+            table_exists: tableExists.rows[0].exists,
+            structure: structure.rows,
+            sample_data: data.rows,
+            timestamp: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        console.error('Promocodes table debug error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+// В server.js ДОБАВЬТЕ эту функцию
+async function emergencyFixPromocodesTable() {
+    try {
+        console.log('🚨 EMERGENCY FIX: Recreating promocodes table...');
+        
+        // Удаляем таблицу если существует
+        await pool.query('DROP TABLE IF EXISTS promocodes CASCADE');
+        await pool.query('DROP TABLE IF EXISTS promocode_activations CASCADE');
+        
+        // Создаем заново с правильной структурой
+        await pool.query(`
+            CREATE TABLE promocodes (
+                id SERIAL PRIMARY KEY,
+                code VARCHAR(20) UNIQUE NOT NULL,
+                reward REAL NOT NULL DEFAULT 0,
+                max_uses INTEGER NOT NULL DEFAULT 1,
+                used_count INTEGER DEFAULT 0,
+                expires_at TIMESTAMP,
+                is_active BOOLEAN DEFAULT true,
+                created_by BIGINT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        await pool.query(`
+            CREATE TABLE promocode_activations (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                promocode_id INTEGER NOT NULL,
+                activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (promocode_id) REFERENCES promocodes(id)
+            )
+        `);
+        
+        console.log('✅ EMERGENCY FIX: Promocodes tables recreated successfully');
+        
+    } catch (error) {
+        console.error('❌ EMERGENCY FIX failed:', error);
+    }
+}
+
+// Endpoint для экстренного исправления
+app.post('/api/admin/promocodes/emergency-fix', async (req, res) => {
+    try {
+        await emergencyFixPromocodesTable();
+        res.json({
+            success: true,
+            message: 'Таблицы промокодов пересозданы в экстренном режиме'
+        });
+    } catch (error) {
+        console.error('Emergency fix error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
 });
 app.post('/api/admin/promocodes/create', async (req, res) => {
     const { adminId, code, maxUses, reward, expiresAt } = req.body;

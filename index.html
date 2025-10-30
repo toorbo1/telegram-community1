@@ -9606,38 +9606,19 @@ function showPromocodesSection() {
     loadPromocodesList();
 }
 
+// ЗАМЕНИТЕ функцию createPromoCode на эту
 async function createPromoCode() {
-    console.log('🎫 START: createPromoCode');
+    console.log('🎫 START: createPromoCode SIMPLE');
     
     try {
-        // Безопасное получение элементов
-        const getElement = (id, name) => {
-            const element = document.getElementById(id);
-            if (!element) {
-                console.error(`❌ Элемент "${name}" (${id}) не найден`);
-                throw new Error(`Элемент "${name}" не найден`);
-            }
-            return element;
-        };
-
-        // Проверяем существование элементов
         const codeInput = document.getElementById('promocode-code');
         const maxUsesInput = document.getElementById('promocode-max-uses');
         const rewardInput = document.getElementById('promocode-reward');
         const messageDiv = document.getElementById('promocode-form-message');
         const submitBtn = document.getElementById('create-promocode-btn');
 
-        // Валидация элементов
-        if (!codeInput || !maxUsesInput || !rewardInput || !messageDiv || !submitBtn) {
-            throw new Error('Не все необходимые элементы формы найдены');
-        }
-
-        if (!currentUser) {
-            throw new Error('Пользователь не авторизован');
-        }
-        
-        if (parseInt(currentUser.id) !== ADMIN_ID) {
-            throw new Error('Только главный администратор может создавать промокоды!');
+        if (!codeInput || !maxUsesInput || !rewardInput) {
+            throw new Error('Форма не найдена');
         }
 
         const code = codeInput.value.trim().toUpperCase();
@@ -9646,44 +9627,24 @@ async function createPromoCode() {
 
         console.log('📊 Form data:', { code, maxUses, reward });
 
-        // ВАЖНОЕ ИСПРАВЛЕНИЕ: Проверяем что reward не пустой
-        if (!code) {
-            throw new Error('Введите код промокода!');
-        }
-        
-        if (!/^[A-Z0-9]+$/.test(code)) {
-            throw new Error('Код должен содержать только латинские буквы и цифры!');
-        }
-        
-        if (code.length < 3 || code.length > 20) {
-            throw new Error('Длина кода должна быть от 3 до 20 символов!');
-        }
-        
-        if (!maxUses || maxUses < 1 || maxUses > 10000) {
-            throw new Error('Введите корректное количество активаций (1-10000)!');
-        }
-        
-        // ИСПРАВЛЕНИЕ: Проверяем reward более тщательно
-        if (!rewardInput.value || isNaN(reward) || reward < 1 || reward > 100000) {
-            throw new Error('Введите корректную награду (1-100000 звезд)!');
-        }
+        // Быстрая валидация
+        if (!code) throw new Error('Введите код промокода');
+        if (!maxUses || maxUses < 1) throw new Error('Введите количество активаций');
+        if (!reward || reward < 1) throw new Error('Введите награду');
 
         // Показываем загрузку
         submitBtn.disabled = true;
         submitBtn.textContent = 'Создаем...';
         showMessage('⏳ Создаем промокод...', 'loading', messageDiv);
 
-        console.log('📤 Sending request to server...');
-
-        // ИСПРАВЛЕНИЕ: Убеждаемся что reward передается как число
-        const result = await makeRequest('/api/admin/promocodes/create', {
+        // Используем УПРОЩЕННЫЙ endpoint
+        const result = await makeRequest('/api/admin/promocodes/create-simple', {
             method: 'POST',
             body: JSON.stringify({
                 adminId: currentUser.id,
                 code: code,
                 maxUses: maxUses,
-                reward: reward, // Это должно быть числом
-                expiresAt: null
+                reward: reward
             })
         });
 
@@ -9691,17 +9652,12 @@ async function createPromoCode() {
 
         if (result.success) {
             showMessage(`✅ ${result.message}`, 'success', messageDiv);
-            
-            // Очищаем форму
             codeInput.value = '';
             maxUsesInput.value = '10';
             rewardInput.value = '50';
-            
-            // Обновляем список промокодов
             loadPromocodesList();
-            
         } else {
-            throw new Error(result.error || 'Неизвестная ошибка сервера');
+            throw new Error(result.error);
         }
 
     } catch (error) {
@@ -9710,15 +9666,68 @@ async function createPromoCode() {
         if (messageDiv) {
             showMessage(`❌ Ошибка: ${error.message}`, 'error', messageDiv);
         }
-        showNotification(`Ошибка создания промокода: ${error.message}`, 'error');
     } finally {
-        // Восстанавливаем кнопку в любом случае
         const submitBtn = document.getElementById('create-promocode-btn');
         if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.textContent = '🎫 Создать промокод';
         }
     }
+}
+// В index.html в секции промокодов ДОБАВЬТЕ
+function addPromocodesDebugButtons() {
+    const debugHTML = `
+        <div style="margin: 20px 0; padding: 15px; background: var(--bg-secondary); border-radius: 10px;">
+            <h4>🐛 Диагностика промокодов</h4>
+            <button onclick="debugPromocodesTable()" class="btn btn-warning" style="margin: 5px;">
+                Проверить таблицу
+            </button>
+            <button onclick="emergencyFixPromocodes()" class="btn btn-error" style="margin: 5px;">
+                🚨 Экстренное исправление
+            </button>
+            <button onclick="testSimplePromocode()" class="btn btn-success" style="margin: 5px;">
+                🧪 Тестовый промокод
+            </button>
+        </div>
+    `;
+    
+    const promocodesSection = document.getElementById('admin-promocodes-section');
+    if (promocodesSection) {
+        promocodesSection.insertAdjacentHTML('afterbegin', debugHTML);
+    }
+}
+
+async function debugPromocodesTable() {
+    try {
+        const result = await makeRequest('/api/admin/promocodes/debug-table');
+        console.log('📊 Promocodes table debug:', result);
+        showNotification('Проверка таблицы завершена - смотрите консоль', 'info');
+    } catch (error) {
+        console.error('Debug error:', error);
+        showNotification('Ошибка диагностики: ' + error.message, 'error');
+    }
+}
+
+async function emergencyFixPromocodes() {
+    if (!confirm('ЭКСТРЕННОЕ ИСПРАВЛЕНИЕ! Будут удалены все промокоды и таблицы пересозданы. Продолжить?')) return;
+    
+    try {
+        const result = await makeRequest('/api/admin/promocodes/emergency-fix', {
+            method: 'POST'
+        });
+        showNotification(result.message, 'success');
+    } catch (error) {
+        showNotification('Ошибка: ' + error.message, 'error');
+    }
+}
+
+async function testSimplePromocode() {
+    // Автозаполнение формы тестовыми данными
+    document.getElementById('promocode-code').value = 'TEST' + Date.now().toString().slice(-4);
+    document.getElementById('promocode-max-uses').value = '10';
+    document.getElementById('promocode-reward').value = '50';
+    
+    showNotification('Форма заполнена тестовыми данными', 'info');
 }
 function testPromocodeForm() {
     console.log('🧪 Testing promocode form elements:');
