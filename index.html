@@ -9646,7 +9646,7 @@ async function createPromoCode() {
 
         console.log('📊 Form data:', { code, maxUses, reward });
 
-        // Валидация
+        // ВАЖНОЕ ИСПРАВЛЕНИЕ: Проверяем что reward не пустой
         if (!code) {
             throw new Error('Введите код промокода!');
         }
@@ -9663,7 +9663,8 @@ async function createPromoCode() {
             throw new Error('Введите корректное количество активаций (1-10000)!');
         }
         
-        if (!reward || isNaN(reward) || reward < 1 || reward > 100000) {
+        // ИСПРАВЛЕНИЕ: Проверяем reward более тщательно
+        if (!rewardInput.value || isNaN(reward) || reward < 1 || reward > 100000) {
             throw new Error('Введите корректную награду (1-100000 звезд)!');
         }
 
@@ -9674,13 +9675,15 @@ async function createPromoCode() {
 
         console.log('📤 Sending request to server...');
 
+        // ИСПРАВЛЕНИЕ: Убеждаемся что reward передается как число
         const result = await makeRequest('/api/admin/promocodes/create', {
             method: 'POST',
             body: JSON.stringify({
                 adminId: currentUser.id,
                 code: code,
                 maxUses: maxUses,
-                reward: reward
+                reward: reward, // Это должно быть числом
+                expiresAt: null
             })
         });
 

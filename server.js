@@ -3031,7 +3031,31 @@ app.post('/api/admin/promocodes/reset', async (req, res) => {
         });
     }
 });
-
+app.post('/api/admin/promocodes/create', async (req, res) => {
+    const { adminId, code, maxUses, reward, expiresAt } = req.body;
+    
+    console.log('🎫 Create promocode request:', { adminId, code, maxUses, reward, expiresAt });
+    
+    // ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА: Убедимся что reward корректен
+    if (reward === null || reward === undefined || isNaN(parseFloat(reward))) {
+        return res.status(400).json({
+            success: false,
+            error: 'Некорректное значение награды'
+        });
+    }
+    
+    const rewardValue = parseFloat(reward);
+    
+    // Остальной код без изменений...
+    if (!code || !maxUses || !reward) {
+        return res.status(400).json({
+            success: false,
+            error: 'Заполните все обязательные поля'
+        });
+    }
+    
+    // Продолжаем обычную обработку...
+});
 app.post('/api/admin/promocodes/create', async (req, res) => {
     const { adminId, code, maxUses, reward, expiresAt } = req.body;
     
