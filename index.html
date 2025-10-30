@@ -9618,7 +9618,13 @@ async function createPromoCode() {
     try {
         console.log('🎫 START: createPromoCode');
         
-          const reward = parseFloat(rewardInput.value);
+        // ПЕРЕМЕСТИТЕ получение rewardInput ВНУТРЬ функции
+        const rewardInput = document.getElementById('promocode-reward');
+        if (!rewardInput) {
+            throw new Error('Поле награды не найдено!');
+        }
+        
+        const reward = parseFloat(rewardInput.value);
         
         // Добавьте валидацию
         if (!reward || isNaN(reward) || reward <= 0) {
@@ -9636,7 +9642,7 @@ async function createPromoCode() {
         
         const codeInput = document.getElementById('promocode-code');
         const maxUsesInput = document.getElementById('promocode-max-uses');
-        const rewardInput = document.getElementById('promocode-reward');
+        
         const expiresInput = document.getElementById('promocode-expires');
         const messageDiv = document.getElementById('promocode-form-message');
         const submitBtn = document.getElementById('create-promocode-btn');
