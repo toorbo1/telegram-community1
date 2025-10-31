@@ -5181,25 +5181,11 @@ html, body {
         <div id="admin-form-message" style="margin-top: 10px;"></div>
         
         <!-- Список админов -->
-        <div id="admins-list" style="margin-top: 20px;">
-            <!-- Список будет загружен здесь -->
-        </div>
-    </div>
-</div>
-    <!-- Список текущих админов -->
-    <div style="margin-top: 25px;">
-        <h4>📋 Текущие администраторы</h4>
-        <div id="admins-list" class="admin-task-list">
-            <!-- Список админов будет загружен здесь -->
-        </div>
-    </div>
-</div>
-
-    <!-- Список текущих админов -->
-    <div style="margin-top: 25px;">
-        <h4>📋 Текущие администраторы</h4>
-        <div id="admins-list" class="admin-task-list">
-            <!-- Список админов будет загружен здесь -->
+        <div style="margin-top: 25px;">
+            <h4>📋 Текущие администраторы</h4>
+            <div id="admins-list-container" class="admin-task-list">
+                <!-- Список админов будет загружен здесь -->
+            </div>
         </div>
     </div>
 </div>
@@ -13588,7 +13574,7 @@ async function loadAdminsList() {
 
 // Отображение списка админов
 function displayAdminsList(admins) {
-    const container = document.getElementById('admins-list');
+    const container = document.getElementById('admins-list-container'); // ← исправлено
     if (!container) return;
     
     container.innerHTML = '';
