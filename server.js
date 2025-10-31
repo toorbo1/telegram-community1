@@ -445,16 +445,20 @@ await pool.query(`
 
 async function createPromocodesTable() {
     try {
-        console.log('🔧 Creating/verifying promocodes table...');
+        console.log('🔧 Creating promocodes tables...');
         
-        // Создаем основную таблицу промокодов
+        // Удаляем старые таблицы если существуют
+        await pool.query('DROP TABLE IF EXISTS promocode_activations CASCADE');
+        await pool.query('DROP TABLE IF EXISTS promocodes CASCADE');
+        
+        // Создаем таблицу промокодов
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS promocodes (
+            CREATE TABLE promocodes (
                 id SERIAL PRIMARY KEY,
-                code VARCHAR(20) UNIQUE NOT NULL,
-                max_uses INTEGER NOT NULL,
+                code VARCHAR(50) UNIQUE NOT NULL,
+                reward_amount REAL NOT NULL DEFAULT 0,
+                max_uses INTEGER NOT NULL DEFAULT 1,
                 used_count INTEGER DEFAULT 0,
-                reward REAL NOT NULL DEFAULT 0,
                 expires_at TIMESTAMP,
                 is_active BOOLEAN DEFAULT true,
                 created_by BIGINT NOT NULL,
@@ -464,49 +468,16 @@ async function createPromocodesTable() {
         
         // Создаем таблицу активаций
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS promocode_activations (
+            CREATE TABLE promocode_activations (
                 id SERIAL PRIMARY KEY,
                 user_id BIGINT NOT NULL,
                 promocode_id INTEGER NOT NULL,
                 activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (promocode_id) REFERENCES promocodes(id)
+                FOREIGN KEY (promocode_id) REFERENCES promocodes(id) ON DELETE CASCADE
             )
         `);
         
-        // Проверяем и добавляем отсутствующие колонки
-        const columnsToCheck = [
-            {name: 'reward', type: 'REAL', nullable: 'NOT NULL', defaultValue: '0'},
-            {name: 'max_uses', type: 'INTEGER', nullable: 'NOT NULL'},
-            {name: 'used_count', type: 'INTEGER', nullable: 'DEFAULT 0'},
-            {name: 'expires_at', type: 'TIMESTAMP', nullable: 'NULL'},
-            {name: 'is_active', type: 'BOOLEAN', nullable: 'DEFAULT true'},
-            {name: 'created_by', type: 'BIGINT', nullable: 'NOT NULL'}
-        ];
-        
-        for (const column of columnsToCheck) {
-            const columnExists = await pool.query(`
-                SELECT EXISTS (
-                    SELECT FROM information_schema.columns 
-                    WHERE table_name = 'promocodes' AND column_name = $1
-                )
-            `, [column.name]);
-            
-            if (!columnExists.rows[0].exists) {
-                console.log(`❌ Column ${column.name} missing, adding...`);
-                try {
-                    await pool.query(`
-                        ALTER TABLE promocodes 
-                        ADD COLUMN ${column.name} ${column.type} ${column.nullable}
-                        ${column.defaultValue ? `DEFAULT ${column.defaultValue}` : ''}
-                    `);
-                    console.log(`✅ Column ${column.name} added`);
-                } catch (addError) {
-                    console.log(`⚠️ Could not add column ${column.name}:`, addError.message);
-                }
-            }
-        }
-        
-        console.log('✅ Promocodes tables created/verified');
+        console.log('✅ Promocodes tables created successfully');
     } catch (error) {
         console.error('❌ Error creating promocodes tables:', error);
         throw error;
@@ -3339,6 +3310,178 @@ app.post('/api/admin/promocodes/test-create', async (req, res) => {
             promocode: result.rows[0]
         });
     } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+// Полное удаление и пересоздание таблиц промокодов
+app.post('/api/admin/promocodes/nuclear-reset', async (req, res) => {
+    try {
+        console.log('🚨 ПОЛНЫЙ СБРОС таблиц промокодов...');
+        
+        // Удаляем таблицы если существуют
+        await pool.query('DROP TABLE IF EXISTS promocode_activations CASCADE');
+        await pool.query('DROP TABLE IF EXISTS promocodes CASCADE');
+        
+        console.log('✅ Старые таблицы удалены');
+        
+        // Создаем новую таблицу промокодов с правильной структурой
+        await pool.query(`
+            CREATE TABLE promocodes (
+                id SERIAL PRIMARY KEY,
+                code VARCHAR(50) UNIQUE NOT NULL,
+                reward_amount REAL NOT NULL DEFAULT 0,
+                max_uses INTEGER NOT NULL DEFAULT 1,
+                used_count INTEGER DEFAULT 0,
+                expires_at TIMESTAMP,
+                is_active BOOLEAN DEFAULT true,
+                created_by BIGINT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Создаем таблицу активаций
+        await pool.query(`
+            CREATE TABLE promocode_activations (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                promocode_id INTEGER NOT NULL,
+                activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (promocode_id) REFERENCES promocodes(id) ON DELETE CASCADE
+            )
+        `);
+        
+        console.log('✅ Новые таблицы созданы');
+        
+        // Создаем тестовый промокод для проверки
+        await pool.query(`
+            INSERT INTO promocodes (code, reward_amount, max_uses, created_by) 
+            VALUES ($1, $2, $3, $4)
+        `, ['TEST123', 100, 10, ADMIN_ID]);
+        
+        console.log('✅ Тестовый промокод создан');
+        
+        res.json({
+            success: true,
+            message: 'Таблицы промокодов полностью пересозданы!'
+        });
+        
+    } catch (error) {
+        console.error('❌ Nuclear reset error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+// СУПЕР-ПРОСТОЙ endpoint создания промокода
+app.post('/api/admin/promocodes/simple-create', async (req, res) => {
+    console.log('🎫 SIMPLE CREATE called with:', req.body);
+    
+    const { adminId, code, maxUses, reward } = req.body;
+    
+    // Быстрая валидация
+    if (!adminId || !code || !maxUses || !reward) {
+        return res.json({
+            success: false,
+            error: 'Все поля обязательны'
+        });
+    }
+    
+    // Только главный админ
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.json({
+            success: false,
+            error: 'Только главный админ'
+        });
+    }
+    
+    try {
+        // ПРОСТОЙ запрос с явным указанием всех полей
+        const query = `
+            INSERT INTO promocodes 
+            (code, reward_amount, max_uses, created_by) 
+            VALUES ($1, $2, $3, $4)
+            RETURNING *
+        `;
+        
+        const values = [
+            code.toUpperCase().trim(),
+            parseFloat(reward),
+            parseInt(maxUses),
+            adminId
+        ];
+        
+        console.log('📊 Executing query:', query);
+        console.log('📊 With values:', values);
+        
+        const result = await pool.query(query, values);
+        
+        console.log('✅ SUCCESS:', result.rows[0]);
+        
+        res.json({
+            success: true,
+            message: `Промокод ${code} создан!`,
+            promocode: result.rows[0]
+        });
+        
+    } catch (error) {
+        console.error('❌ SIMPLE CREATE error:', error);
+        
+        let errorMessage = 'Ошибка базы данных';
+        if (error.message.includes('unique')) {
+            errorMessage = 'Промокод уже существует';
+        } else if (error.message.includes('null value')) {
+            errorMessage = 'Не заполнены обязательные поля';
+        }
+        
+        res.json({
+            success: false,
+            error: errorMessage
+        });
+    }
+});
+// Проверка структуры таблицы промокодов
+app.get('/api/admin/promocodes/check-structure', async (req, res) => {
+    try {
+        // Проверяем существование таблицы
+        const tableExists = await pool.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = 'promocodes'
+            )
+        `);
+        
+        if (!tableExists.rows[0].exists) {
+            return res.json({
+                success: false,
+                error: 'Таблица promocodes не существует'
+            });
+        }
+        
+        // Получаем структуру таблицы
+        const structure = await pool.query(`
+            SELECT column_name, data_type, is_nullable, column_default
+            FROM information_schema.columns 
+            WHERE table_name = 'promocodes' 
+            ORDER BY ordinal_position
+        `);
+        
+        // Проверяем существующие промокоды
+        const promocodes = await pool.query('SELECT * FROM promocodes');
+        
+        res.json({
+            success: true,
+            table_exists: true,
+            columns: structure.rows,
+            promocodes_count: promocodes.rows.length,
+            promocodes: promocodes.rows
+        });
+        
+    } catch (error) {
+        console.error('Check structure error:', error);
         res.status(500).json({
             success: false,
             error: error.message
