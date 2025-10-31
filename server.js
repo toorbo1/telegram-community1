@@ -1009,6 +1009,56 @@ bot.onText(/\/balance/, async (msg) => {
     }
 });
 
+// Полное пересоздание таблицы промокодов
+app.post('/api/admin/promocodes/recreate-table', async (req, res) => {
+    try {
+        console.log('🔄 Полное пересоздание таблицы промокодов...');
+        
+        // Удаляем старые таблицы
+        await pool.query('DROP TABLE IF EXISTS promocode_activations CASCADE');
+        await pool.query('DROP TABLE IF EXISTS promocodes CASCADE');
+        
+        // Создаем новую таблицу с правильной структурой
+        await pool.query(`
+            CREATE TABLE promocodes (
+                id SERIAL PRIMARY KEY,
+                code VARCHAR(20) UNIQUE NOT NULL,
+                reward_amount REAL NOT NULL DEFAULT 0,
+                max_uses INTEGER NOT NULL DEFAULT 1,
+                used_count INTEGER DEFAULT 0,
+                expires_at TIMESTAMP,
+                is_active BOOLEAN DEFAULT true,
+                created_by BIGINT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Создаем таблицу активаций
+        await pool.query(`
+            CREATE TABLE promocode_activations (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                promocode_id INTEGER NOT NULL,
+                activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (promocode_id) REFERENCES promocodes(id)
+            )
+        `);
+        
+        console.log('✅ Таблицы промокодов полностью пересозданы');
+        
+        res.json({
+            success: true,
+            message: 'Таблицы промокодов успешно пересозданы'
+        });
+        
+    } catch (error) {
+        console.error('❌ Ошибка пересоздания таблиц:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 
 // Обработчик callback кнопок
 bot.on('callback_query', async (callbackQuery) => {
@@ -3060,30 +3110,86 @@ app.post('/api/admin/promocodes/create-simple', async (req, res) => {
         });
     }
 });
-app.post('/api/admin/promocodes/create', async (req, res) => {
-    const { adminId, code, maxUses, reward, expiresAt } = req.body;
-    
-    console.log('🎫 Create promocode request:', { adminId, code, maxUses, reward, expiresAt });
-    
-    // ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА: Убедимся что reward корректен
-    if (reward === null || reward === undefined || isNaN(parseFloat(reward))) {
-        return res.status(400).json({
+app.get('/api/admin/promocodes/debug-structure', async (req, res) => {
+    try {
+        const structure = await pool.query(`
+            SELECT column_name, data_type, is_nullable 
+            FROM information_schema.columns 
+            WHERE table_name = 'promocodes' 
+            ORDER BY ordinal_position
+        `);
+        
+        res.json({
+            success: true,
+            columns: structure.rows,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Promocodes structure debug error:', error);
+        res.status(500).json({
             success: false,
-            error: 'Некорректное значение награды'
+            error: error.message
+        });
+    }
+});
+// Создание промокода (исправленная версия)
+app.post('/api/admin/promocodes/create', async (req, res) => {
+    const { adminId, code, maxUses, reward } = req.body;
+    
+    console.log('🎫 Create promocode request:', { adminId, code, maxUses, reward });
+    
+    // Проверка прав
+    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Только главный администратор'
         });
     }
     
-    const rewardValue = parseFloat(reward);
-    
-    // Остальной код без изменений...
+    // Валидация
     if (!code || !maxUses || !reward) {
         return res.status(400).json({
             success: false,
-            error: 'Заполните все обязательные поля '
+            error: 'Заполните все поля'
         });
     }
     
-    // Продолжаем обычную обработку...
+    try {
+        // Используем reward_amount вместо reward
+        const result = await pool.query(`
+            INSERT INTO promocodes (code, reward_amount, max_uses, created_by) 
+            VALUES ($1, $2, $3, $4)
+            RETURNING *
+        `, [
+            code.toUpperCase(), 
+            parseFloat(reward),
+            parseInt(maxUses), 
+            adminId
+        ]);
+        
+        console.log('✅ Promocode created:', result.rows[0]);
+        
+        res.json({
+            success: true,
+            message: `Промокод ${code} создан!`,
+            promocode: result.rows[0]
+        });
+        
+    } catch (error) {
+        console.error('❌ Create promocode error:', error);
+        
+        if (error.message.includes('unique')) {
+            return res.status(400).json({
+                success: false,
+                error: 'Промокод уже существует'
+            });
+        }
+        
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка базы данных: ' + error.message
+        });
+    }
 });
 // В server.js ДОБАВЬТЕ эту функцию для диагностики
 app.get('/api/admin/promocodes/debug-table', async (req, res) => {
@@ -3180,80 +3286,13 @@ app.post('/api/admin/promocodes/emergency-fix', async (req, res) => {
         });
     }
 });
-app.post('/api/admin/promocodes/create', async (req, res) => {
-    const { adminId, code, maxUses, reward, expiresAt } = req.body;
-    
-    console.log('🎫 Create promocode request:', { adminId, code, maxUses, reward, expiresAt });
-    
-    // Сначала проверяем и исправляем структуру таблицы
-    await fixPromocodesTable();
-    
-    // Добавьте валидацию для reward
-    if (!reward || isNaN(parseFloat(reward)) || parseFloat(reward) <= 0) {
-        return res.status(400).json({
-            success: false,
-            error: 'Некорректное значение награды. Награда должна быть положительным числом.'
-        });
-    }
-    const rewardValue = parseFloat(reward);
-    
-    // Валидация
-    if (!code || !maxUses || !reward) {
-        return res.status(400).json({
-            success: false,
-            error: 'Заполните все обязательные поля'
-        });
-    }
-    
-    try {
-        // Проверяем существование промокода
-        const existing = await pool.query(
-            'SELECT id FROM promocodes WHERE code = $1 AND is_active = true',
-            [code.toUpperCase()]
-        );
-        
-        if (existing.rows.length > 0) {
-            return res.status(400).json({
-                success: false,
-                error: 'Промокод с таким кодом уже существует!'
-            });
-        }
-        
-        // Создаем промокод
-        const result = await pool.query(`
-            INSERT INTO promocodes (code, max_uses, reward, expires_at, created_by) 
-            VALUES ($1, $2, $3, $4, $5)
-            RETURNING *
-        `, [
-            code.toUpperCase(), 
-            parseInt(maxUses), 
-            parseFloat(reward), 
-            expiresAt ? new Date(expiresAt) : null, 
-            adminId
-        ]);
-        
-        console.log('✅ Promocode created:', result.rows[0]);
-        
-        res.json({
-            success: true,
-            message: `Промокод ${code} успешно создан!`,
-            promocode: result.rows[0]
-        });
-        
-    } catch (error) {
-        console.error('❌ Create promocode error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Ошибка базы данных: ' + error.message
-        });
-    }
-});
+
 
 // Получение списка промокодов
+// Получение списка промокодов (исправленная версия)
 app.get('/api/admin/promocodes/list', async (req, res) => {
     const { adminId } = req.query;
     
-    // Только главный админ
     if (!adminId || parseInt(adminId) !== ADMIN_ID) {
         return res.status(403).json({
             success: false,
@@ -3285,7 +3324,27 @@ app.get('/api/admin/promocodes/list', async (req, res) => {
         });
     }
 });
-
+// Тестовый endpoint для создания промокода
+app.post('/api/admin/promocodes/test-create', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            INSERT INTO promocodes (code, reward_amount, max_uses, created_by) 
+            VALUES ($1, $2, $3, $4)
+            RETURNING *
+        `, ['TEST123', 50, 10, ADMIN_ID]);
+        
+        res.json({
+            success: true,
+            message: 'Тестовый промокод создан',
+            promocode: result.rows[0]
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 // Деактивация промокода
 app.post('/api/admin/promocodes/deactivate', async (req, res) => {
     const { adminId, code } = req.body;
@@ -3319,6 +3378,7 @@ app.post('/api/admin/promocodes/deactivate', async (req, res) => {
 });
 
 // Активация промокода пользователем
+// Активация промокода (исправленная версия)
 app.post('/api/promocodes/activate', async (req, res) => {
     const { userId, code } = req.body;
     
@@ -3332,7 +3392,7 @@ app.post('/api/promocodes/activate', async (req, res) => {
     }
     
     try {
-        // Проверяем существование пользователя
+        // Проверяем пользователя
         const userResult = await pool.query(
             'SELECT user_id FROM user_profiles WHERE user_id = $1',
             [userId]
@@ -3345,11 +3405,11 @@ app.post('/api/promocodes/activate', async (req, res) => {
             });
         }
         
-        // Проверяем промокод
+        // Проверяем промокод (используем reward_amount)
         const promocodeResult = await pool.query(`
             SELECT * FROM promocodes 
             WHERE code = $1 AND is_active = true
-        `, [code]);
+        `, [code.toUpperCase()]);
         
         if (promocodeResult.rows.length === 0) {
             return res.status(404).json({
@@ -3382,7 +3442,7 @@ app.post('/api/promocodes/activate', async (req, res) => {
             FROM promocode_activations pa
             JOIN promocodes p ON pa.promocode_id = p.id
             WHERE pa.user_id = $1 AND p.code = $2
-        `, [userId, code]);
+        `, [userId, code.toUpperCase()]);
         
         if (activationCheck.rows.length > 0) {
             return res.status(400).json({
@@ -3410,21 +3470,21 @@ app.post('/api/promocodes/activate', async (req, res) => {
                 WHERE id = $1
             `, [promocode.id]);
             
-            // Начисляем награду пользователю
+            // Начисляем награду пользователю (используем reward_amount)
             await client.query(`
                 UPDATE user_profiles 
                 SET balance = COALESCE(balance, 0) + $1
                 WHERE user_id = $2
-            `, [promocode.reward, userId]);
+            `, [promocode.reward_amount, userId]);
             
             await client.query('COMMIT');
             
-            console.log(`✅ Promocode activated: user ${userId} got ${promocode.reward} stars`);
+            console.log(`✅ Promocode activated: user ${userId} got ${promocode.reward_amount} stars`);
             
             res.json({
                 success: true,
-                message: `Промокод активирован! Вы получили ${promocode.reward} ⭐`,
-                reward: promocode.reward
+                message: `Промокод активирован! Вы получили ${promocode.reward_amount} ⭐`,
+                reward: promocode.reward_amount
             });
             
         } catch (transactionError) {
