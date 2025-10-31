@@ -1102,18 +1102,10 @@ app.get('/api/admin/promocodes/debug-structure', async (req, res) => {
             ORDER BY ordinal_position
         `);
         
-        const tableExists = await pool.query(`
-            SELECT EXISTS (
-                SELECT FROM information_schema.tables 
-                WHERE table_name = 'promocodes'
-            )
-        `);
-        
         res.json({
             success: true,
-            table_exists: tableExists.rows[0].exists,
             columns: structure.rows,
-            current_timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString()
         });
     } catch (error) {
         console.error('Promocodes structure debug error:', error);
@@ -1127,9 +1119,12 @@ app.get('/api/admin/promocodes/debug-structure', async (req, res) => {
 // Endpoint для принудительного исправления таблицы промокодов
 app.post('/api/admin/promocodes/fix-table', async (req, res) => {
     try {
-        await fixPromocodesTable();
+        // Добавляем недостающие колонки
+        await pool.query(`
+            ALTER TABLE promocodes 
+            ADD COLUMN IF NOT EXISTS reward REAL NOT NULL DEFAULT 0
+        `);
         
-        // Проверяем структуру после исправления
         const structure = await pool.query(`
             SELECT column_name, data_type, is_nullable 
             FROM information_schema.columns 
@@ -1307,32 +1302,6 @@ async function addTask() {
         showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
     }
 }
-// Принудительное исправление таблицы промокодов
-app.post('/api/admin/promocodes/fix-table', async (req, res) => {
-    try {
-        await fixPromocodesTable();
-        
-        // Проверяем структуру после исправления
-        const structure = await pool.query(`
-            SELECT column_name, data_type, is_nullable 
-            FROM information_schema.columns 
-            WHERE table_name = 'promocodes' 
-            ORDER BY ordinal_position
-        `);
-        
-        res.json({
-            success: true,
-            message: 'Таблица промокодов исправлена',
-            structure: structure.rows
-        });
-    } catch (error) {
-        console.error('Fix promocodes table error:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
 
 app.post('/api/tasks', async (req, res) => {
     const { 
