@@ -5901,6 +5901,35 @@ html, body {
 
 
     <script>
+        // 🔧 ЭКСТРЕННОЕ ИСПРАВЛЕНИЕ ДЛЯ СЕКЦИИ АДМИНОВ
+function emergencyFixAdminsSection() {
+    console.log('🔧 Applying emergency fix for admins section...');
+    
+    const adminsSection = document.getElementById('admin-admins-section');
+    if (!adminsSection) {
+        console.error('❌ Admins section not found!');
+        return;
+    }
+    
+    // Принудительно показываем секцию
+    adminsSection.style.display = 'block';
+    adminsSection.style.opacity = '1';
+    adminsSection.style.visibility = 'visible';
+    
+    // Загружаем список админов
+    if (currentUser && parseInt(currentUser.id) === ADMIN_ID) {
+        loadAdminsList();
+    }
+    
+    console.log('✅ Emergency fix applied');
+}
+
+// Вызовите через 3 секунды после загрузки
+setTimeout(() => {
+    if (currentUser && parseInt(currentUser.id) === ADMIN_ID) {
+        emergencyFixAdminsSection();
+    }
+}, 3000);
         // 🔥 КРИТИЧЕСКИЕ ОПТИМИЗАЦИИ ПРОИЗВОДИТЕЛЬНОСТИ
 
 // 1. Отложенная загрузка не критичных изображений
@@ -9011,7 +9040,12 @@ async function initializeApp() {
 
     // Применяем исправления layout сразу
     fixLayoutIssues();
-
+    // 🔧 ВАЖНО: Загружаем список админов если пользователь главный админ
+    if (currentUser && parseInt(currentUser.id) === ADMIN_ID) {
+        setTimeout(() => {
+            loadAdminsList();
+        }, 1000);
+    }
     // 🔥 ПРИНУДИТЕЛЬНАЯ ЗАГРУЗКА ЗАДАНИЙ ПРИ СТАРТЕ
     console.log('🚀 FORCE loading tasks on app start...');
     setTimeout(() => {
@@ -11501,8 +11535,16 @@ function showAdminTab() {
     document.getElementById('admin-tab').classList.add('active');
     updateNavState('admin');
     
-    // Сбрасываем панель при каждом открытии
+    // Сбрасываем панель и показываем секцию постов по умолчанию
     resetAdminPanel();
+    showAdminSection('posts');
+    
+    // Если главный админ, загружаем список админов заранее
+    if (isMainAdmin) {
+        setTimeout(() => {
+            loadAdminsList();
+        }, 500);
+    }
 }
 
         function showWithdrawPage() {
@@ -11562,17 +11604,36 @@ function showAdminSection(section) {
     
     // Скрываем ВСЕ админ секции
     const adminSections = document.querySelectorAll('.admin-section');
-    console.log('📋 Found admin sections:', adminSections.length);
-    
     adminSections.forEach(sec => {
-        console.log(`- Hiding: ${sec.id}`);
         sec.style.display = 'none';
     });
     
+    // Специальная обработка для секции админов
+    if (section === 'admins') {
+        const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
+        if (!isMainAdmin) {
+            showNotification('❌ Только главный администратор может управлять админами!', 'error');
+            
+            // Показываем сообщение вместо секции
+            const adminsSection = document.getElementById('admin-admins-section');
+            if (adminsSection) {
+                adminsSection.innerHTML = `
+                    <div style="text-align: center; padding: 40px 20px;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">🔒</div>
+                        <div style="font-size: 18px; margin-bottom: 8px;">Доступ запрещен</div>
+                        <div style="color: var(--text-secondary);">
+                            Только главный администратор может управлять списком админов
+                        </div>
+                    </div>
+                `;
+                adminsSection.style.display = 'block';
+            }
+            return;
+        }
+    }
+    
     // Показываем выбранную секцию
     const targetSection = document.getElementById('admin-' + section + '-section');
-    console.log(`🎯 Target section: admin-${section}-section`, targetSection);
-    
     if (targetSection) {
         targetSection.style.display = 'block';
         console.log(`✅ Showing: admin-${section}-section`);
@@ -11583,12 +11644,25 @@ function showAdminSection(section) {
                 console.log('👥 Loading admins list...');
                 loadAdminsList();
                 break;
-            // ... другие case
+            case 'tasks':
+                loadAdminTasks();
+                break;
+            case 'posts':
+                loadAdminPosts();
+                break;
+            case 'verification':
+                loadTaskVerifications();
+                break;
+            case 'support':
+                loadAdminChats();
+                break;
+            case 'payments':
+                loadWithdrawalRequests();
+                break;
+            case 'promocodes':
+                loadPromocodesList();
+                break;
         }
-        
-    } else {
-        console.error(`❌ Target section not found: admin-${section}-section`);
-        showNotification(`Секция ${section} не найдена`, 'error');
     }
 }
 function debugAdminSections() {
@@ -13555,22 +13629,49 @@ function showAdminAdminsSection() {
 async function loadAdminsList() {
     console.log('🔄 Loading admins list...');
     
-    if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) {
+    if (!currentUser) {
+        console.log('❌ No current user');
+        showNotification('Пользователь не авторизован', 'error');
+        return;
+    }
+    
+    const isMainAdmin = parseInt(currentUser.id) === ADMIN_ID;
+    if (!isMainAdmin) {
         console.log('❌ User is not main admin');
+        showNotification('Только главный администратор может просматривать список админов!', 'error');
         return;
     }
     
     try {
-        const result = await makeRequest(`/admin/admins-list?adminId=${currentUser.id}`);
+        const result = await makeRequest(`/api/admin/admins-list?adminId=${currentUser.id}`);
         
         if (result.success) {
+            console.log(`✅ Loaded ${result.admins?.length || 0} admins`);
             displayAdminsList(result.admins);
         } else {
+            console.error('❌ Error loading admins:', result.error);
             showNotification('Ошибка загрузки списка админов: ' + result.error, 'error');
         }
     } catch (error) {
         console.error('❌ Error loading admins list:', error);
-        showNotification('Ошибка загрузки списка админов', 'error');
+        showNotification('Ошибка загрузки списка админов: ' + error.message, 'error');
+        
+        // Показываем fallback контент
+        const container = document.getElementById('admins-list');
+        if (container) {
+            container.innerHTML = `
+                <div class="no-tasks" style="text-align: center; padding: 30px;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+                    <div>Ошибка загрузки списка админов</div>
+                    <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
+                        ${error.message}
+                    </div>
+                    <button class="btn btn-primary" onclick="loadAdminsList()" style="margin-top: 16px;">
+                        Попробовать снова
+                    </button>
+                </div>
+            `;
+        }
     }
 }
 
