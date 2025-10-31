@@ -5067,11 +5067,13 @@ html, body {
         </div>
     </div>
 
-<div id="admin-tab" class="tab-content">
+
+  <div id="admin-tab" class="tab-content">
     <div class="page-header">
         <button class="back-button" onclick="showMainTab()">←</button>
         <div class="page-title">Панель администратора</div>
     </div>
+
 
     <div class="admin-buttons">
         <button class="admin-btn" onclick="showAdminSection('posts')">📝 Посты</button>
@@ -5082,6 +5084,9 @@ html, body {
         <button class="admin-btn" onclick="showAdminSection('admins')">👥 Админы</button>
         <!-- В блоке admin-buttons добавьте: -->
 <button class="admin-btn" onclick="showAdminSection('promocodes')">🎫 Промокоды</button>
+    </div>
+    <div id="admin-admins-section" class="admin-section" style="display: none;">
+        <!-- содержимое секции админов -->
     </div>
 <!-- Секция управления промокодами -->
 <div id="admin-promocodes-section" class="admin-section" style="display: none;">
@@ -11506,6 +11511,13 @@ function showAdminTab() {
     const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
     const isRegularAdmin = currentUser?.is_admin === true;
     
+    console.log('🔐 Admin access check:', {
+        userId: currentUser?.id,
+        isMainAdmin,
+        isRegularAdmin,
+        ADMIN_ID
+    });
+    
     if (!currentUser || (!isMainAdmin && !isRegularAdmin)) {
         showNotification('Доступ запрещен!', 'error');
         return;
@@ -11514,6 +11526,9 @@ function showAdminTab() {
     hideAllTabs();
     document.getElementById('admin-tab').classList.add('active');
     updateNavState('admin');
+    
+    // Сбрасываем панель при каждом открытии
+    resetAdminPanel();
 }
 
         function showWithdrawPage() {
@@ -11568,81 +11583,64 @@ function showAdminTab() {
                     break;
             }
         }
-// 🔧 ПОЛНАЯ ФУНКЦИЯ ПОКАЗА АДМИН-СЕКЦИЙ С ПРОМОКОДАМИ
 function showAdminSection(section) {
     console.log('🔄 Switching to admin section:', section);
     
     // Скрываем ВСЕ админ секции
     const adminSections = document.querySelectorAll('.admin-section');
+    console.log('📋 Found admin sections:', adminSections.length);
+    
     adminSections.forEach(sec => {
+        console.log(`- Hiding: ${sec.id}`);
         sec.style.display = 'none';
     });
     
-    // Скрываем контейнер "Созданные задания" если он виден
-    const createdTasksContainer = document.getElementById('admin-tasks-list');
-    if (createdTasksContainer && createdTasksContainer.parentElement) {
-        createdTasksContainer.parentElement.style.display = 'none';
-    }
-    
     // Показываем выбранную секцию
     const targetSection = document.getElementById('admin-' + section + '-section');
+    console.log(`🎯 Target section: admin-${section}-section`, targetSection);
+    
     if (targetSection) {
         targetSection.style.display = 'block';
         console.log(`✅ Showing: admin-${section}-section`);
 
         // Загружаем данные для определенных секций
         switch(section) {
-            case 'posts':
-                console.log('📝 Loading posts management...');
-                loadAdminPosts();
-                break;
-                
-            case 'tasks':
-                console.log('📋 Loading tasks management...');
-                // Показываем контейнер "Созданные задания" только для секции tasks
-                const tasksContainer = document.getElementById('admin-tasks-list');
-                if (tasksContainer && tasksContainer.parentElement) {
-                    tasksContainer.parentElement.style.display = 'block';
-                }
-                setTimeout(() => {
-                    loadAdminTasks();
-                }, 100);
-                break;
-                
-            case 'payments':
-                console.log('💳 Loading withdrawal requests...');
-                loadWithdrawalRequests();
-                break;
-                
-            case 'verification':
-                console.log('✅ Loading task verifications...');
-                loadTaskVerifications();
-                break;
-                
-            case 'support':
-                console.log('💬 Loading support chats...');
-                loadAdminChats();
-                break;
-                
             case 'admins':
                 console.log('👥 Loading admins list...');
                 loadAdminsList();
                 break;
-                
-            case 'promocodes':
-                console.log('🎫 Loading promocodes management...');
-                loadPromocodesList();
-                break;
-                
-            default:
-                console.log(`ℹ️ No specific loader for section: ${section}`);
+            // ... другие case
         }
         
     } else {
         console.error(`❌ Target section not found: admin-${section}-section`);
+        showNotification(`Секция ${section} не найдена`, 'error');
     }
 }
+function debugAdminSections() {
+    console.log('🔍 DEBUG Admin Sections:');
+    
+    const sections = ['posts', 'tasks', 'verification', 'support', 'payments', 'admins', 'promocodes'];
+    
+    sections.forEach(section => {
+        const sectionEl = document.getElementById(`admin-${section}-section`);
+        console.log(`- admin-${section}-section:`, sectionEl ? 'FOUND' : 'NOT FOUND');
+        if (sectionEl) {
+            console.log(`  - display: ${sectionEl.style.display}`);
+            console.log(`  - classList:`, sectionEl.classList);
+        }
+    });
+    
+    // Проверяем кнопки
+    const buttons = document.querySelectorAll('.admin-btn');
+    console.log('📋 Admin buttons:', buttons.length);
+    buttons.forEach((btn, index) => {
+        console.log(`- Button ${index}:`, btn.textContent, 'onclick:', btn.getAttribute('onclick'));
+    });
+}
 
+// Вызовите для отладки
+setTimeout(debugAdminSections, 3000);
 // 🔧 ФУНКЦИЯ ЗАГРУЗКИ СПИСКА ПРОМОКОДОВ
 async function loadPromocodesList() {
     console.log('🔄 Loading promocodes list...');
