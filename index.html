@@ -5145,75 +5145,62 @@ html, body {
         </div>
     </div>
 </div>
-<div id="admin-admins-section" class="admin-section" style="display: none;">
-    <div class="admin-form">
-        <h3>👥 Добавление администраторов</h3>
-        <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px;">
-            <strong>Только главный администратор (ID: 8036875641) может добавлять других админов</strong>
-        </p>
-        
-        <div style="background: var(--bg-secondary); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-            <h4 style="color: var(--gold); margin-bottom: 10px;">💡 Как добавить администратора:</h4>
-            <ol style="color: var(--text-secondary); font-size: 14px; padding-left: 20px;">
-                <li>Попросите пользователя написать боту: <strong>@LinkGoldMoney_bot</strong></li>
-                <li>Пользователь должен выполнить команду <strong>/start</strong></li>
-                <li>Узнайте его Telegram username (например: <strong>@username</strong>)</li>
-                <li>Введите username ниже без символа @</li>
-            </ol>
-            <div style="margin-top: 10px; padding: 10px; background: rgba(255,215,0,0.1); border-radius: 8px;">
-                <strong>Примеры правильных username:</strong>
-                <div style="font-size: 12px; margin-top: 5px;">
-                    • ivanpetrov (без @)<br>
-                    • maria_ivanova (без @)<br>
-                    • alexsmith123 (без @)
+
+    <!-- Секция управления админами (ИСПРАВЛЕННАЯ - ТОЛЬКО ОДИН ЭЛЕМЕНТ) -->
+    <div id="admin-admins-section" class="admin-section" style="display: none;">
+        <div class="admin-form">
+            <h3>👥 Добавление администраторов</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px;">
+                <strong>Только главный администратор (ID: 8036875641) может добавлять других админов</strong>
+            </p>
+            
+            <div style="background: var(--bg-secondary); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                <h4 style="color: var(--gold); margin-bottom: 10px;">💡 Как добавить администратора:</h4>
+                <ol style="color: var(--text-secondary); font-size: 14px; padding-left: 20px;">
+                    <li>Попросите пользователя написать боту: <strong>@LinkGoldMoney_bot</strong></li>
+                    <li>Пользователь должен выполнить команду <strong>/start</strong></li>
+                    <li>Узнайте его Telegram username (например: <strong>@username</strong>)</li>
+                    <li>Введите username ниже без символа @</li>
+                </ol>
+                <div style="margin-top: 10px; padding: 10px; background: rgba(255,215,0,0.1); border-radius: 8px;">
+                    <strong>Примеры правильных username:</strong>
+                    <div style="font-size: 12px; margin-top: 5px;">
+                        • ivanpetrov (без @)<br>
+                        • maria_ivanova (без @)<br>
+                        • alexsmith123 (без @)
+                    </div>
                 </div>
             </div>
+            
+            <div class="form-group">
+                <label>Telegram username пользователя *</label>
+                <input type="text" class="admin-input" id="new-admin-username" 
+                       placeholder="Введите username без @ (например: ivanpetrov)"
+                       style="text-align: center; font-weight: 600;">
+                <div style="font-size: 12px; color: var(--text-secondary); margin-top: 5px;">
+                    Только пользователи, которые уже зарегистрированы в боте @LinkGoldMoney_bot
+                </div>
+            </div>
+
+            <button class="admin-submit" onclick="addNewAdmin()" id="add-admin-btn">
+                ➕ Добавить администратора
+            </button>
+            
+            <div id="admin-form-message" style="margin-top: 12px; min-height: 20px; font-size: 14px;"></div>
         </div>
-        
-        <div class="form-group">
-            <label>Telegram username пользователя *</label>
-            <input type="text" class="admin-input" id="new-admin-username" 
-                   placeholder="Введите username без @ (например: ivanpetrov)"
-                   style="text-align: center; font-weight: 600;">
-            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 5px;">
-                Только пользователи, которые уже зарегистрированы в боте @LinkGoldMoney_bot
+
+        <!-- Список текущих админов -->
+        <div style="margin-top: 25px;">
+            <h4>📋 Текущие администраторы</h4>
+            <div id="admins-list" class="admin-task-list">
+                <!-- Список админов будет загружен здесь -->
             </div>
         </div>
-        
-        <button class="admin-submit" onclick="addNewAdmin()" id="add-admin-btn">
-            ➕ Добавить администратора
-        </button>
-        
-        <div id="admin-form-message" style="margin-top: 12px; min-height: 20px; font-size: 14px;"></div>
     </div>
 
-    <!-- Список текущих админов -->
-    <div style="margin-top: 25px;">
-        <h4>📋 Текущие администраторы</h4>
-        <div id="admins-list" class="admin-task-list">
-            <!-- Список админов будет загружен здесь -->
-        </div>
-    </div>
+    <!-- Остальные секции (posts, tasks, verification, support, payments, promocodes) -->
+    <!-- ... -->
 </div>
-
-    <!-- Список текущих админов -->
-    <div style="margin-top: 25px;">
-        <h4>📋 Текущие администраторы</h4>
-        <div id="admins-list" class="admin-task-list">
-            <!-- Список админов будет загружен здесь -->
-        </div>
-    </div>
-</div>
-     <!-- Секция управления заданиями -->
-    <!-- Управление заданиями -->
-<!-- В секции админ-панели для добавления заданий -->
-<div id="admin-tasks-section" class="admin-section" style="display: none;">
-    <div class="admin-form">
-        <h3>➕ Добавить новое задание</h3>
-        
-   
-        
-
         
         <div class="form-group">
             <label>Название задания *</label>
