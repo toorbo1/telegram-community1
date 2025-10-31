@@ -445,18 +445,18 @@ await pool.query(`
 
 async function createPromocodesTable() {
     try {
-        console.log('🔧 Creating promocodes tables...');
+        console.log('🔧 Creating promocodes tables with reward field...');
         
         // Удаляем старые таблицы если существуют
         await pool.query('DROP TABLE IF EXISTS promocode_activations CASCADE');
         await pool.query('DROP TABLE IF EXISTS promocodes CASCADE');
         
-        // Создаем таблицу промокодов
+        // Создаем таблицу промокодов с полем reward
         await pool.query(`
             CREATE TABLE promocodes (
                 id SERIAL PRIMARY KEY,
                 code VARCHAR(50) UNIQUE NOT NULL,
-                reward_amount REAL NOT NULL DEFAULT 0,
+                reward REAL NOT NULL DEFAULT 0,
                 max_uses INTEGER NOT NULL DEFAULT 1,
                 used_count INTEGER DEFAULT 0,
                 expires_at TIMESTAMP,
@@ -477,13 +477,62 @@ async function createPromocodesTable() {
             )
         `);
         
-        console.log('✅ Promocodes tables created successfully');
+        console.log('✅ Promocodes tables created with reward field');
     } catch (error) {
         console.error('❌ Error creating promocodes tables:', error);
         throw error;
     }
 }
-
+// Создаем таблицу с правильным полем reward
+app.post('/api/admin/promocodes/fix-reward-field', async (req, res) => {
+    try {
+        console.log('🔧 Исправляем поле reward...');
+        
+        // Удаляем старые таблицы
+        await pool.query('DROP TABLE IF EXISTS promocode_activations CASCADE');
+        await pool.query('DROP TABLE IF EXISTS promocodes CASCADE');
+        
+        // Создаем новую таблицу с полем reward (а не reward_amount)
+        await pool.query(`
+            CREATE TABLE promocodes (
+                id SERIAL PRIMARY KEY,
+                code VARCHAR(50) UNIQUE NOT NULL,
+                reward REAL NOT NULL DEFAULT 0,
+                max_uses INTEGER NOT NULL DEFAULT 1,
+                used_count INTEGER DEFAULT 0,
+                expires_at TIMESTAMP,
+                is_active BOOLEAN DEFAULT true,
+                created_by BIGINT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Создаем таблицу активаций
+        await pool.query(`
+            CREATE TABLE promocode_activations (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                promocode_id INTEGER NOT NULL,
+                activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (promocode_id) REFERENCES promocodes(id) ON DELETE CASCADE
+            )
+        `);
+        
+        console.log('✅ Таблицы созданы с полем reward');
+        
+        res.json({
+            success: true,
+            message: 'Таблицы созданы с правильным полем reward'
+        });
+        
+    } catch (error) {
+        console.error('❌ Fix reward field error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 // Создание тестовой заявки на вывод
 app.post('/api/test-withdrawal', async (req, res) => {
     try {
@@ -3104,41 +3153,42 @@ app.get('/api/admin/promocodes/debug-structure', async (req, res) => {
     }
 });
 // Создание промокода (исправленная версия)
+// Исправленный endpoint создания промокода с полем reward
 app.post('/api/admin/promocodes/create', async (req, res) => {
+    console.log('🎫 CREATE PROMOCODE called with:', req.body);
+    
     const { adminId, code, maxUses, reward } = req.body;
     
-    console.log('🎫 Create promocode request:', { adminId, code, maxUses, reward });
-    
-    // Проверка прав
-    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Только главный администратор'
-        });
-    }
-    
     // Валидация
-    if (!code || !maxUses || !reward) {
-        return res.status(400).json({
+    if (!adminId || !code || !maxUses || !reward) {
+        return res.json({
             success: false,
             error: 'Заполните все поля'
         });
     }
     
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.json({
+            success: false,
+            error: 'Только главный администратор'
+        });
+    }
+    
     try {
-        // Используем reward_amount вместо reward
+        // Используем поле reward (а не reward_amount)
         const result = await pool.query(`
-            INSERT INTO promocodes (code, reward_amount, max_uses, created_by) 
+            INSERT INTO promocodes 
+            (code, reward, max_uses, created_by) 
             VALUES ($1, $2, $3, $4)
             RETURNING *
         `, [
-            code.toUpperCase(), 
+            code.toUpperCase().trim(),
             parseFloat(reward),
-            parseInt(maxUses), 
+            parseInt(maxUses),
             adminId
         ]);
         
-        console.log('✅ Promocode created:', result.rows[0]);
+        console.log('✅ Promocode created successfully:', result.rows[0]);
         
         res.json({
             success: true,
@@ -3149,16 +3199,18 @@ app.post('/api/admin/promocodes/create', async (req, res) => {
     } catch (error) {
         console.error('❌ Create promocode error:', error);
         
+        let errorMessage = 'Ошибка базы данных';
         if (error.message.includes('unique')) {
-            return res.status(400).json({
-                success: false,
-                error: 'Промокод уже существует'
-            });
+            errorMessage = 'Промокод уже существует';
+        } else if (error.message.includes('null value')) {
+            errorMessage = 'Не заполнены обязательные поля';
+        } else if (error.message.includes('column "reward"')) {
+            errorMessage = 'Неправильная структура таблицы. Нужно пересоздать таблицы.';
         }
         
-        res.status(500).json({
+        res.json({
             success: false,
-            error: 'Ошибка базы данных: ' + error.message
+            error: errorMessage
         });
     }
 });
@@ -3522,10 +3574,11 @@ app.post('/api/admin/promocodes/deactivate', async (req, res) => {
 
 // Активация промокода пользователем
 // Активация промокода (исправленная версия)
+// Активация промокода с полем reward
 app.post('/api/promocodes/activate', async (req, res) => {
     const { userId, code } = req.body;
     
-    console.log('🎫 Activate promocode request:', { userId, code });
+    console.log('🎫 Activate promocode:', { userId, code });
     
     if (!userId || !code) {
         return res.status(400).json({
@@ -3548,7 +3601,7 @@ app.post('/api/promocodes/activate', async (req, res) => {
             });
         }
         
-        // Проверяем промокод (используем reward_amount)
+        // Проверяем промокод (используем поле reward)
         const promocodeResult = await pool.query(`
             SELECT * FROM promocodes 
             WHERE code = $1 AND is_active = true
@@ -3613,21 +3666,21 @@ app.post('/api/promocodes/activate', async (req, res) => {
                 WHERE id = $1
             `, [promocode.id]);
             
-            // Начисляем награду пользователю (используем reward_amount)
+            // Начисляем награду пользователю (используем reward)
             await client.query(`
                 UPDATE user_profiles 
                 SET balance = COALESCE(balance, 0) + $1
                 WHERE user_id = $2
-            `, [promocode.reward_amount, userId]);
+            `, [promocode.reward, userId]);
             
             await client.query('COMMIT');
             
-            console.log(`✅ Promocode activated: user ${userId} got ${promocode.reward_amount} stars`);
+            console.log(`✅ Promocode activated: user ${userId} got ${promocode.reward} stars`);
             
             res.json({
                 success: true,
-                message: `Промокод активирован! Вы получили ${promocode.reward_amount} ⭐`,
-                reward: promocode.reward_amount
+                message: `Промокод активирован! Вы получили ${promocode.reward} ⭐`,
+                reward: promocode.reward
             });
             
         } catch (transactionError) {
