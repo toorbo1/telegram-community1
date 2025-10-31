@@ -5075,77 +5075,19 @@ html, body {
     </div>
 
 
-    <div id="admin-tab" class="tab-content">
-    <div class="page-header">
-        <button class="back-button" onclick="showMainTab()">←</button>
-        <div class="page-title">Панель администратора</div>
-    </div>
     <div class="admin-buttons">
         <button class="admin-btn" onclick="showAdminSection('posts')">📝 Посты</button>
         <button class="admin-btn" onclick="showAdminSection('tasks')">📋 Задания</button>
         <button class="admin-btn" onclick="showAdminSection('verification')">✅ Проверка</button>
         <button class="admin-btn" onclick="showAdminSection('support')">💬 Поддержка</button>
         <button class="admin-btn" onclick="showAdminSection('payments')">💳 Оплаты</button>
-        <!-- Кнопка Админы - только для главного админа -->
-        <button class="admin-btn" id="admins-section-btn" onclick="showAdminSection('admins')" style="display: none;">👥 Админы</button>
-        <button class="admin-btn" onclick="showAdminSection('promocodes')">🎫 Промокоды</button>
+        <button class="admin-btn" onclick="showAdminSection('admins')">👥 Админы</button>
+        <!-- В блоке admin-buttons добавьте: -->
+<button class="admin-btn" onclick="showAdminSection('promocodes')">🎫 Промокоды</button>
     </div>
-
-    <!-- Секция управления админами -->
-    <div id="admin-admins-section" class="admin-section">
-        <div class="admin-form">
-            <h3>👥 Добавление администраторов</h3>
-            <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px;">
-                <strong>Только главный администратор (ID: 8036875641) может добавлять других админов</strong>
-            </p>
-            
-            <div style="background: var(--bg-secondary); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-                <h4 style="color: var(--gold); margin-bottom: 10px;">💡 Как добавить администратора:</h4>
-                <ol style="color: var(--text-secondary); font-size: 14px; padding-left: 20px;">
-                    <li>Попросите пользователя написать боту: <strong>@LinkGoldMoney_bot</strong></li>
-                    <li>Пользователь должен выполнить команду <strong>/start</strong></li>
-                    <li>Узнайте его Telegram username (например: <strong>@username</strong>)</li>
-                    <li>Введите username ниже без символа @</li>
-                </ol>
-                <div style="margin-top: 10px; padding: 10px; background: rgba(255,215,0,0.1); border-radius: 8px;">
-                    <strong>Примеры правильных username:</strong>
-                    <div style="font-size: 12px; margin-top: 5px;">
-                        • ivanpetrov (без @)<br>
-                        • maria_ivanova (без @)<br>
-                        • alexsmith123 (без @)
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>Telegram username пользователя *</label>
-                <input type="text" class="admin-input" id="new-admin-username" 
-                       placeholder="Введите username без @ (например: ivanpetrov)"
-                       style="text-align: center; font-weight: 600;">
-                <div style="font-size: 12px; color: var(--text-secondary); margin-top: 5px;">
-                    Только пользователи, которые уже зарегистрированы в боте @LinkGoldMoney_bot
-                </div>
-            </div>
-
-            <button class="admin-submit" onclick="addNewAdmin()" id="add-admin-btn">
-                ➕ Добавить администратора
-            </button>
-            
-            <div id="admin-form-message" style="margin-top: 12px; min-height: 20px; font-size: 14px;"></div>
-        </div>
-
-        <!-- Список текущих админов -->
-        <div style="margin-top: 25px;">
-            <h4>📋 Текущие администраторы</h4>
-            <div id="admins-list" class="admin-task-list">
-                <!-- Список админов будет загружен здесь -->
-            </div>
-        </div>
+    <div id="admin-admins-section" class="admin-section" style="display: none;">
+        <!-- содержимое секции админов -->
     </div>
-
-    <!-- Остальные секции (posts, tasks, verification, support, payments, promocodes) -->
-    <!-- Убедитесь, что у них тоже убрано style="display: none;" -->
-</div>
 <!-- Секция управления промокодами -->
 <div id="admin-promocodes-section" class="admin-section" style="display: none;">
     <div class="admin-form">
@@ -5205,7 +5147,65 @@ html, body {
         </div>
     </div>
 </div>
+<div id="admin-admins-section" class="admin-section" style="display: none;">
+    <div class="admin-form">
+        <h3>👥 Добавление администраторов</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px;">
+            <strong>Только главный администратор (ID: 8036875641) может добавлять других админов</strong>
+        </p>
+        
+        <div style="background: var(--bg-secondary); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+            <h4 style="color: var(--gold); margin-bottom: 10px;">💡 Как добавить администратора:</h4>
+            <ol style="color: var(--text-secondary); font-size: 14px; padding-left: 20px;">
+                <li>Попросите пользователя написать боту: <strong>@LinkGoldMoney_bot</strong></li>
+                <li>Пользователь должен выполнить команду <strong>/start</strong></li>
+                <li>Узнайте его Telegram username (например: <strong>@username</strong>)</li>
+                <li>Введите username ниже без символа @</li>
+            </ol>
+            <div style="margin-top: 10px; padding: 10px; background: rgba(255,215,0,0.1); border-radius: 8px;">
+                <strong>Примеры правильных username:</strong>
+                <div style="font-size: 12px; margin-top: 5px;">
+                    • ivanpetrov (без @)<br>
+                    • maria_ivanova (без @)<br>
+                    • alexsmith123 (без @)
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>Telegram username пользователя *</label>
+            <input type="text" class="admin-input" id="new-admin-username" 
+                   placeholder="Введите username без @ (например: ivanpetrov)"
+                   style="text-align: center; font-weight: 600;">
+            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 5px;">
+                Только пользователи, которые уже зарегистрированы в боте @LinkGoldMoney_bot
+            </div>
+        </div>
+        
+        <button class="admin-submit" onclick="addNewAdmin()" id="add-admin-btn">
+            ➕ Добавить администратора
+        </button>
+        
+        <div id="admin-form-message" style="margin-top: 12px; min-height: 20px; font-size: 14px;"></div>
+    </div>
 
+    <!-- Список текущих админов -->
+    <div style="margin-top: 25px;">
+        <h4>📋 Текущие администраторы</h4>
+        <div id="admins-list" class="admin-task-list">
+            <!-- Список админов будет загружен здесь -->
+        </div>
+    </div>
+</div>
+
+    <!-- Список текущих админов -->
+    <div style="margin-top: 25px;">
+        <h4>📋 Текущие администраторы</h4>
+        <div id="admins-list" class="admin-task-list">
+            <!-- Список админов будет загружен здесь -->
+        </div>
+    </div>
+</div>
      <!-- Секция управления заданиями -->
     <!-- Управление заданиями -->
 <!-- В секции админ-панели для добавления заданий -->
@@ -5686,6 +5686,40 @@ html, body {
 
 </main> 
 
+<div id="admin-admins-section" class="admin-section" style="display: none;">
+    <div style="margin-bottom: 20px; text-align: center;">
+        <button class="admin-btn" onclick="refreshUserData()" style="background: var(--teal-gradient);">
+            🔄 Обновить мои права
+        </button>
+        <p style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
+            Если вы были добавлены как администратор, нажмите эту кнопку чтобы обновить права
+        </p>
+    </div>
+    
+    <div class="admin-form">
+        <h3>👥 Добавление администраторов</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px;">
+            Только главный администратор (ID: 8036875641) может добавлять других админов
+        </p>
+        
+        <input type="text" class="admin-input" id="new-admin-username" 
+               placeholder="Введите юзернейм пользователя (например: username или @username)">
+        
+        <button class="admin-submit" onclick="addNewAdmin()" id="add-admin-btn">
+            ➕ Добавить администратора
+        </button>
+        
+        <div id="admin-form-message" style="margin-top: 12px; min-height: 20px;"></div>
+    </div>
+
+    <!-- Список текущих админов -->
+    <div style="margin-top: 25px;">
+        <h4>📋 Текущие администраторы</h4>
+        <div id="admins-list" class="admin-task-list">
+            <!-- Список админов будет загружен здесь -->
+        </div>
+    </div>
+</div>
 
 
 <!-- Навигация -->
@@ -9003,8 +9037,7 @@ async function initializeApp() {
 
     // Применяем исправления layout сразу
     fixLayoutIssues();
-    // Настраиваем админ-панель (показываем кнопку админов только главному админу)
-    setupAdminPanel();
+
     // 🔥 ПРИНУДИТЕЛЬНАЯ ЗАГРУЗКА ЗАДАНИЙ ПРИ СТАРТЕ
     console.log('🚀 FORCE loading tasks on app start...');
     setTimeout(() => {
@@ -11550,17 +11583,6 @@ function showAdminTab() {
                     break;
             }
         }
-        function setupAdminPanel() {
-    if (!currentUser) return;
-    
-    const isMainAdmin = parseInt(currentUser.id) === ADMIN_ID;
-    const adminsBtn = document.getElementById('admins-section-btn');
-    
-    if (adminsBtn) {
-        adminsBtn.style.display = isMainAdmin ? 'block' : 'none';
-        console.log('👥 Admin section button:', isMainAdmin ? 'visible' : 'hidden');
-    }
-}
 function showAdminSection(section) {
     console.log('🔄 Switching to admin section:', section);
     
@@ -11587,22 +11609,7 @@ function showAdminSection(section) {
                 console.log('👥 Loading admins list...');
                 loadAdminsList();
                 break;
-            case 'tasks':
-                console.log('📋 Loading admin tasks...');
-                loadAdminTasks();
-                break;
-            case 'verification':
-                console.log('✅ Loading task verifications...');
-                loadTaskVerifications();
-                break;
-            case 'payments':
-                console.log('💳 Loading withdrawal requests...');
-                loadWithdrawalRequests();
-                break;
-            case 'promocodes':
-                console.log('🎫 Loading promocodes...');
-                loadPromocodesList();
-                break;
+            // ... другие case
         }
         
     } else {
@@ -13580,7 +13587,7 @@ async function loadAdminsList() {
     }
     
     try {
-        const result = await makeRequest(`/api/admin/admins-list?adminId=${currentUser.id}`);
+        const result = await makeRequest(`/admin/admins-list?adminId=${currentUser.id}`);
         
         if (result.success) {
             displayAdminsList(result.admins);
