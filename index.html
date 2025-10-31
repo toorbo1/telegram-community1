@@ -5167,23 +5167,25 @@ html, body {
             </div>
         </div>
         
+        <!-- Форма добавления админа -->
         <div class="form-group">
-            <label>Telegram username пользователя *</label>
-            <input type="text" class="admin-input" id="new-admin-username" 
-                   placeholder="Введите username без @ (например: ivanpetrov)"
-                   style="text-align: center; font-weight: 600;">
-            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 5px;">
-                Только пользователи, которые уже зарегистрированы в боте @LinkGoldMoney_bot
-            </div>
+            <label>Telegram username пользователя:</label>
+            <input type="text" id="new-admin-username" class="admin-input" 
+                   placeholder="Введите username (без @)" onkeypress="if(event.key==='Enter') addNewAdmin()">
         </div>
         
-        <button class="admin-submit" onclick="addNewAdmin()" id="add-admin-btn">
+        <button id="add-admin-btn" class="admin-submit" onclick="addNewAdmin()">
             ➕ Добавить администратора
         </button>
         
-        <div id="admin-form-message" style="margin-top: 12px; min-height: 20px; font-size: 14px;"></div>
+        <div id="admin-form-message" style="margin-top: 10px;"></div>
+        
+        <!-- Список админов -->
+        <div id="admins-list" style="margin-top: 20px;">
+            <!-- Список будет загружен здесь -->
+        </div>
     </div>
-
+</div>
     <!-- Список текущих админов -->
     <div style="margin-top: 25px;">
         <h4>📋 Текущие администраторы</h4>
@@ -5681,41 +5683,31 @@ html, body {
 
 </main> 
 
-<div id="admin-admins-section" class="admin-section" style="display: none;">
-    <div style="margin-bottom: 20px; text-align: center;">
-        <button class="admin-btn" onclick="refreshUserData()" style="background: var(--teal-gradient);">
-            🔄 Обновить мои права
-        </button>
-        <p style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
-            Если вы были добавлены как администратор, нажмите эту кнопку чтобы обновить права
-        </p>
-    </div>
+
     
+<div id="admin-admins-section" class="admin-section" style="display: none;">
     <div class="admin-form">
-        <h3>👥 Добавление администраторов</h3>
-        <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px;">
-            Только главный администратор (ID: 8036875641) может добавлять других админов
-        </p>
+        <h3>👥 Управление администраторами</h3>
         
-        <input type="text" class="admin-input" id="new-admin-username" 
-               placeholder="Введите юзернейм пользователя (например: username или @username)">
+        <!-- Форма добавления админа -->
+        <div class="form-group">
+            <label>Telegram username пользователя:</label>
+            <input type="text" id="new-admin-username" class="admin-input" 
+                   placeholder="Введите username (без @)" onkeypress="if(event.key==='Enter') addNewAdmin()">
+        </div>
         
-        <button class="admin-submit" onclick="addNewAdmin()" id="add-admin-btn">
+        <button id="add-admin-btn" class="admin-submit" onclick="addNewAdmin()">
             ➕ Добавить администратора
         </button>
         
-        <div id="admin-form-message" style="margin-top: 12px; min-height: 20px;"></div>
-    </div>
-
-    <!-- Список текущих админов -->
-    <div style="margin-top: 25px;">
-        <h4>📋 Текущие администраторы</h4>
-        <div id="admins-list" class="admin-task-list">
-            <!-- Список админов будет загружен здесь -->
+        <div id="admin-form-message" style="margin-top: 10px;"></div>
+        
+        <!-- Список админов -->
+        <div id="admins-list" style="margin-top: 20px;">
+            <!-- Список будет загружен здесь -->
         </div>
     </div>
 </div>
-
 
 <!-- Навигация -->
 <nav class="bottom-nav">
@@ -11578,12 +11570,6 @@ function showAdminSection(section) {
         sec.style.display = 'none';
     });
     
-    // Скрываем контейнер "Созданные задания" если он виден
-    const createdTasksContainer = document.getElementById('admin-tasks-list');
-    if (createdTasksContainer && createdTasksContainer.parentElement) {
-        createdTasksContainer.parentElement.style.display = 'none';
-    }
-    
     // Показываем выбранную секцию
     const targetSection = document.getElementById('admin-' + section + '-section');
     if (targetSection) {
@@ -11599,14 +11585,7 @@ function showAdminSection(section) {
                 
             case 'tasks':
                 console.log('📋 Loading tasks management...');
-                // Показываем контейнер "Созданные задания" только для секции tasks
-                const tasksContainer = document.getElementById('admin-tasks-list');
-                if (tasksContainer && tasksContainer.parentElement) {
-                    tasksContainer.parentElement.style.display = 'block';
-                }
-                setTimeout(() => {
-                    loadAdminTasks();
-                }, 100);
+                loadAdminTasks();
                 break;
                 
             case 'payments':
@@ -11641,6 +11620,10 @@ function showAdminSection(section) {
     } else {
         console.error(`❌ Target section not found: admin-${section}-section`);
     }
+}
+function showAdminAdminsSection() {
+    showAdminSection('admins');
+    loadAdminsList();
 }
 
 // 🔧 ФУНКЦИЯ ЗАГРУЗКИ СПИСКА ПРОМОКОДОВ
@@ -13584,7 +13567,8 @@ async function loadAdminsList() {
     console.log('🔄 Loading admins list...');
     
     if (!currentUser || parseInt(currentUser.id) !== ADMIN_ID) {
-        console.log('❌ User is not main admin');
+        console.log('❌ User is not main admin, cannot load admins list');
+        showNotification('Только главный администратор может управлять списком админов!', 'error');
         return;
     }
     
