@@ -8,6 +8,36 @@
 
 
            <style>
+            .admin-section {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 20px;
+    border: 1px solid var(--border);
+}
+
+.admin-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.admin-btn {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    padding: 12px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    flex: 1;
+    min-width: 120px;
+    text-align: center;
+}
+
+.admin-btn:hover {
+    background: var(--accent);
+    color: white;
+}
             /* ОТКЛЮЧИТЕ сложные эффекты на мобильных */
 @media (max-width: 768px) {
     * {
