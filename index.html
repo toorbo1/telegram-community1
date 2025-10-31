@@ -13780,7 +13780,7 @@ async function addNewAdmin() {
         
         let errorMessage = 'Ошибка при добавлении админа';
         if (error.message.includes('404')) {
-            errorMessage = 'Ошибка: Endpoint не найден. Сервер недоступен.';
+            errorMessage = 'не найден. Сервер недоступен.';
         } else if (error.message.includes('Failed to fetch')) {
             errorMessage = 'Ошибка сети. Проверьте подключение к интернету.';
         } else {
