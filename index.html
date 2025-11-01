@@ -8,6 +8,15 @@
 
 
            <style>
+            /* Скрываем форму добавления задания по умолчанию */
+#admin-tasks-section .admin-form {
+    display: none;
+}
+
+/* Показываем только в разделе заданий */
+#admin-tasks-section.active .admin-form {
+    display: block;
+}
             /* 🔧 ПЛАВНАЯ ПРОКРУТКА ДЛЯ ВСЕХ ЭЛЕМЕНТОВ */
 html {
     scroll-behavior: smooth;
@@ -11712,10 +11721,10 @@ function showAdminSection(section) {
         sec.style.display = 'none';
     });
     
-    // Скрываем контейнер заданий если он открыт
-    const tasksContainer = document.getElementById('admin-tasks-list-container');
-    if (tasksContainer) {
-        tasksContainer.style.display = 'none';
+    // Скрываем форму добавления задания во всех разделах, кроме tasks
+    const addTaskForm = document.querySelector('#admin-tasks-section .admin-form');
+    if (addTaskForm) {
+        addTaskForm.style.display = section === 'tasks' ? 'block' : 'none';
     }
     
     // Специальная обработка для секции админов
@@ -11740,6 +11749,10 @@ function showAdminSection(section) {
                 loadAdminsList();
                 break;
             case 'tasks':
+                // Показываем форму добавления задания
+                if (addTaskForm) {
+                    addTaskForm.style.display = 'block';
+                }
                 loadAdminTasks();
                 break;
             case 'posts':
