@@ -3678,10 +3678,10 @@ app.post('/api/promocodes/activate', async (req, res) => {
             console.log(`✅ Promocode activated: user ${userId} got ${promocode.reward} stars`);
             
             res.json({
-                success: true,
-                message: `Промокод активирован! Вы получили ${promocode.reward} ⭐`,
-                reward: promocode.reward
-            });
+    success: true,
+    message: `Промокод активирован! Вы получили ${promocode.reward} ⭐`,
+    reward: promocode.reward  // ← Добавьте эту строку
+});
             
         } catch (transactionError) {
             await client.query('ROLLBACK');

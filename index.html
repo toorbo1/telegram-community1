@@ -9992,16 +9992,17 @@ async function activatePromoCode() {
     const code = input.value.trim().toUpperCase();
     
     if (!code) {
-        messageDiv.innerHTML = '<span style="color: var(--error);">Введите промокод!</span>';
+        messageDiv.innerHTML = '<span style="color: var(--error);">❌ Введите промокод!</span>';
         return;
     }
     
     if (!currentUser) {
-        messageDiv.innerHTML = '<span style="color: var(--error);">Пользователь не авторизован!</span>';
+        messageDiv.innerHTML = '<span style="color: var(--error);">❌ Пользователь не авторизован!</span>';
         return;
     }
     
-    messageDiv.innerHTML = '<span style="color: var(--warning);">Активируем промокод...</span>';
+    messageDiv.innerHTML = '<span style="color: var(--warning);">⏳ Активируем промокод...</span>';
+    input.disabled = true;
     
     try {
         const result = await makeRequest('/api/promocodes/activate', {
@@ -10013,19 +10014,24 @@ async function activatePromoCode() {
         });
         
         if (result.success) {
-            messageDiv.innerHTML = `<span style="color: var(--success);">${result.message}</span>`;
+            messageDiv.innerHTML = `<span style="color: var(--success);">✅ ${result.message}</span>`;
             input.value = '';
             
             // Обновляем баланс пользователя
             await updateUserData();
             
+            // 🔥 ИСПРАВЛЕНИЕ: Используем reward из результата
+            showPromocodeSuccessAnimation(result.reward);
+            
         } else {
-            messageDiv.innerHTML = `<span style="color: var(--error);">${result.error}</span>`;
+            messageDiv.innerHTML = `<span style="color: var(--error);">❌ ${result.error}</span>`;
         }
         
     } catch (error) {
-        console.error('Activate promocode error:', error);
-        messageDiv.innerHTML = `<span style="color: var(--error);">Ошибка: ${error.message}</span>`;
+        console.error('❌ Activate promocode error:', error);
+        messageDiv.innerHTML = `<span style="color: var(--error);">❌ Ошибка: ${error.message}</span>`;
+    } finally {
+        input.disabled = false;
     }
 }
 
@@ -11832,55 +11838,7 @@ async function deactivatePromoCode(code) {
 
 
 
-// 🔧 ФУНКЦИЯ АКТИВАЦИИ ПРОМОКОДА ПОЛЬЗОВАТЕЛЕМ
-async function activatePromoCode() {
-    const input = document.getElementById('promocode-input');
-    const messageDiv = document.getElementById('promocode-message');
-    const code = input.value.trim().toUpperCase();
-    
-    if (!code) {
-        messageDiv.innerHTML = '<span style="color: var(--error);">❌ Введите промокод!</span>';
-        return;
-    }
-    
-    if (!currentUser) {
-        messageDiv.innerHTML = '<span style="color: var(--error);">❌ Пользователь не авторизован!</span>';
-        return;
-    }
-    
-    messageDiv.innerHTML = '<span style="color: var(--warning);">⏳ Активируем промокод...</span>';
-    input.disabled = true;
-    
-    try {
-        const result = await makeRequest('/api/promocodes/activate', {
-            method: 'POST',
-            body: JSON.stringify({
-                userId: currentUser.id,
-                code: code
-            })
-        });
-        
-        if (result.success) {
-            messageDiv.innerHTML = `<span style="color: var(--success);">✅ ${result.message}</span>`;
-            input.value = '';
-            
-            // Обновляем баланс пользователя
-            await updateUserData();
-            
-            // Показываем анимацию успеха
-            showPromocodeSuccessAnimation(reward);
-            
-        } else {
-            messageDiv.innerHTML = `<span style="color: var(--error);">❌ ${result.error}</span>`;
-        }
-        
-    } catch (error) {
-        console.error('❌ Activate promocode error:', error);
-        messageDiv.innerHTML = `<span style="color: var(--error);">❌ Ошибка: ${error.message}</span>`;
-    } finally {
-        input.disabled = false;
-    }
-}
+
 // 🔧 ФУНКЦИЯ ДЛЯ ИСПРАВЛЕНИЯ СТРУКТУРЫ ТАБЛИЦЫ ПРОМОКОДОВ
 async function fixPromocodesTable() {
     try {
@@ -11927,6 +11885,9 @@ async function fixPromocodesTable() {
 }
 // 🔧 АНИМАЦИЯ УСПЕШНОЙ АКТИВАЦИИ ПРОМОКОДА
 function showPromocodeSuccessAnimation(reward) {
+    // Проверяем что reward определен
+    const displayReward = reward || 0;
+    
     const animation = document.createElement('div');
     animation.style.cssText = `
         position: fixed;
@@ -11950,7 +11911,7 @@ function showPromocodeSuccessAnimation(reward) {
             Промокод активирован!
         </div>
         <div style="font-size: 32px; font-weight: 700; color: #000; margin: 15px 0;">
-            +${reward} ⭐
+            +${displayReward} ⭐
         </div>
         <div style="font-size: 16px; opacity: 0.8;">
             Награда добавлена на ваш баланс
@@ -11959,7 +11920,6 @@ function showPromocodeSuccessAnimation(reward) {
     
     document.body.appendChild(animation);
     
-    // Автоматическое скрытие через 3 секунды
     setTimeout(() => {
         animation.remove();
     }, 3000);
