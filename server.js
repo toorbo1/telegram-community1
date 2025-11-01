@@ -2400,13 +2400,13 @@ app.get('/api/admin/tasks', async (req, res) => {
     }
 });
 // В server.js - исправленная функция загрузки админ-заданий
+// Обновите endpoint /api/admin/all-tasks
 app.get('/api/admin/all-tasks', async (req, res) => {
     const { adminId } = req.query;
     
     console.log('🔄 Admin ALL tasks request from:', adminId);
     
     try {
-        // УПРОЩЕННАЯ ПРОВЕРКА - разрешаем всем админам
         const isAdmin = await checkAdminAccess(adminId);
         if (!isAdmin) {
             return res.status(403).json({
@@ -2415,13 +2415,17 @@ app.get('/api/admin/all-tasks', async (req, res) => {
             });
         }
         
-        // ПРОСТОЙ запрос без сложной статистики
+        // УЛУЧШЕННЫЙ запрос с полной статистикой
         const result = await pool.query(`
             SELECT 
                 t.*,
-                COUNT(ut.id) as completed_count
+                COUNT(ut.id) as completed_count,
+                COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as actual_completed,
+                COUNT(CASE WHEN ut.status = 'rejected' THEN 1 END) as rejected_count,
+                COUNT(CASE WHEN ut.status = 'pending_review' THEN 1 END) as pending_count,
+                MAX(ut.completed_at) as last_completed
             FROM tasks t 
-            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
+            LEFT JOIN user_tasks ut ON t.id = ut.task_id
             GROUP BY t.id
             ORDER BY t.created_at DESC
         `);
@@ -2430,13 +2434,7 @@ app.get('/api/admin/all-tasks', async (req, res) => {
         
         res.json({
             success: true,
-            tasks: result.rows || [],
-            statistics: {
-                total_tasks: result.rows.length,
-                active_tasks: result.rows.filter(t => t.status === 'active').length,
-                completed_tasks: result.rows.filter(t => t.status === 'completed').length,
-                my_tasks: result.rows.filter(t => t.created_by == adminId).length
-            }
+            tasks: result.rows || []
         });
         
     } catch (error) {
@@ -3692,6 +3690,157 @@ app.post('/api/promocodes/activate', async (req, res) => {
         
     } catch (error) {
         console.error('❌ Activate promocode error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// ==================== TASK STATISTICS ENDPOINTS ====================
+
+// Получение статистики заданий для админ-панели
+app.get('/api/admin/tasks-statistics', async (req, res) => {
+    const { adminId } = req.query;
+    
+    console.log('📊 Запрос статистики заданий от админа:', adminId);
+    
+    // Проверка прав администратора
+    const isAdmin = await checkAdminAccess(adminId);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен'
+        });
+    }
+    
+    try {
+        // Статистика по всем заданиям
+        const totalStats = await pool.query(`
+            SELECT 
+                COUNT(*) as total_tasks,
+                COUNT(CASE WHEN status = 'active' THEN 1 END) as active_tasks,
+                COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_tasks,
+                COUNT(CASE WHEN created_by = $1 THEN 1 END) as my_tasks
+            FROM tasks
+        `, [adminId]);
+        
+        // Статистика по выполнениям
+        const completionStats = await pool.query(`
+            SELECT 
+                COUNT(*) as total_completions,
+                COUNT(CASE WHEN status = 'completed' THEN 1 END) as approved_completions,
+                COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected_completions,
+                COUNT(CASE WHEN status = 'pending_review' THEN 1 END) as pending_reviews
+            FROM user_tasks
+        `);
+        
+        // Статистика по проверкам
+        const verificationStats = await pool.query(`
+            SELECT 
+                COUNT(*) as total_verifications,
+                COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved_verifications,
+                COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected_verifications,
+                COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_verifications
+            FROM task_verifications
+        `);
+        
+        // Статистика доходов от заданий
+        const revenueStats = await pool.query(`
+            SELECT 
+                COALESCE(SUM(t.price), 0) as total_revenue,
+                COALESCE(SUM(CASE WHEN ut.status = 'completed' THEN t.price ELSE 0 END), 0) as paid_revenue,
+                COUNT(DISTINCT ut.user_id) as unique_users
+            FROM user_tasks ut
+            JOIN tasks t ON ut.task_id = t.id
+            WHERE ut.status = 'completed'
+        `);
+        
+        const stats = {
+            tasks: totalStats.rows[0],
+            completions: completionStats.rows[0],
+            verifications: verificationStats.rows[0],
+            revenue: revenueStats.rows[0]
+        };
+        
+        console.log('✅ Статистика заданий получена:', stats);
+        
+        res.json({
+            success: true,
+            statistics: stats
+        });
+        
+    } catch (error) {
+        console.error('❌ Get task statistics error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Получение детальной статистики по конкретному заданию
+app.get('/api/admin/tasks/:taskId/statistics', async (req, res) => {
+    const taskId = req.params.taskId;
+    const { adminId } = req.query;
+    
+    // Проверка прав администратора
+    const isAdmin = await checkAdminAccess(adminId);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен'
+        });
+    }
+    
+    try {
+        // Основная информация о задании
+        const taskInfo = await pool.query(`
+            SELECT 
+                t.*,
+                COUNT(ut.id) as total_attempts,
+                COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as successful_completions,
+                COUNT(CASE WHEN ut.status = 'rejected' THEN 1 END) as rejected_attempts,
+                COUNT(CASE WHEN ut.status = 'pending_review' THEN 1 END) as pending_reviews
+            FROM tasks t
+            LEFT JOIN user_tasks ut ON t.id = ut.task_id
+            WHERE t.id = $1
+            GROUP BY t.id
+        `, [taskId]);
+        
+        if (taskInfo.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Задание не найдено'
+            });
+        }
+        
+        // Статистика по дням
+        const dailyStats = await pool.query(`
+            SELECT 
+                DATE(ut.started_at) as date,
+                COUNT(*) as attempts,
+                COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completions,
+                COUNT(CASE WHEN ut.status = 'rejected' THEN 1 END) as rejections
+            FROM user_tasks ut
+            WHERE ut.task_id = $1
+            GROUP BY DATE(ut.started_at)
+            ORDER BY date DESC
+            LIMIT 7
+        `, [taskId]);
+        
+        const taskStats = {
+            task: taskInfo.rows[0],
+            daily: dailyStats.rows
+        };
+        
+        res.json({
+            success: true,
+            statistics: taskStats
+        });
+        
+    } catch (error) {
+        console.error('Get task detail statistics error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
