@@ -6159,12 +6159,37 @@ class PerformanceOptimizer {
         });
     }
 }
+// 🔧 КОНФИГУРАЦИЯ ДЛЯ ПРОДУКШЕНА
+const API_BASE_URL = (function() {
+    // Если мы в Telegram WebApp, используем текущий origin
+    if (window.Telegram?.WebApp) {
+        return window.location.origin;
+    }
+    
+    // Определяем среду выполнения
+    const hostname = window.location.hostname;
+    
+    if (hostname.includes('github.io')) {
+        // GitHub Pages - используем Railway URL
+        return 'https://ваш-app.railway.app';
+    } else if (hostname.includes('railway.app')) {
+        // Railway - используем текущий origin
+        return window.location.origin;
+    } else if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        // Локальная разработка
+        return 'http://localhost:3000';
+    } else {
+        // Продакшен домен
+        return window.location.origin;
+    }
+})();
 
+console.log('🌐 API Base URL:', API_BASE_URL);
 // Инициализация при загрузке
 new PerformanceOptimizer();
         // 🔧 КОНФИГУРАЦИЯ
         console.log('🌐 Current URL:', window.location.href);
-        const API_BASE_URL = window.location.origin;
+        
         console.log('🔗 API Base URL:', API_BASE_URL);
         
         const tg = window.Telegram.WebApp;
@@ -7797,9 +7822,20 @@ async function syncUserProfile() {
     console.log('🔄 Starting profile synchronization...');
     
     try {
-        // Проверяем доступность Telegram WebApp
+        // Проверяем, находимся ли мы в Telegram
         if (!window.Telegram?.WebApp) {
-            console.log('❌ Telegram WebApp not available');
+            console.log('❌ Not in Telegram context - using fallback mode');
+            
+            // Режим fallback - используем данные из localStorage
+            const savedUser = localStorage.getItem('linkgold_user');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                displayUserProfile();
+                return true;
+            }
+            
+            // Если нет сохраненных данных, создаем тестового пользователя
+            initializeTestUser();
             return false;
         }
         
@@ -7808,6 +7844,7 @@ async function syncUserProfile() {
         
         if (!tgUser) {
             console.log('❌ Telegram user data not available');
+            showNotification('Данные Telegram недоступны', 'warning');
             return false;
         }
         
@@ -7825,13 +7862,19 @@ async function syncUserProfile() {
         // Сохраняем обновленные данные
         currentUser = updatedUser;
         
+        // Сохраняем в localStorage для fallback
+        localStorage.setItem('linkgold_user', JSON.stringify(currentUser));
+        
         // Обновляем интерфейс
         displayUserProfile();
         
-        // Отправляем обновленные данные на сервер
+        // Пытаемся синхронизировать с сервером
         try {
-            await makeRequest('/user/update-profile', {
+            const response = await fetch(`${API_BASE_URL}/api/user/update-profile`, {
                 method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
                 body: JSON.stringify({
                     userId: currentUser.id,
                     firstName: currentUser.firstName,
@@ -7840,9 +7883,15 @@ async function syncUserProfile() {
                     photoUrl: currentUser.photoUrl
                 })
             });
-            console.log('✅ Profile updated on server');
+            
+            if (response.ok) {
+                console.log('✅ Profile updated on server');
+            } else {
+                console.log('⚠️ Server update failed, but local profile saved');
+            }
         } catch (serverError) {
             console.log('⚠️ Could not update profile on server:', serverError.message);
+            // Продолжаем работу с локальными данными
         }
         
         console.log('✅ Profile synchronized successfully');
@@ -7850,10 +7899,51 @@ async function syncUserProfile() {
         
     } catch (error) {
         console.error('❌ Profile synchronization error:', error);
-        showNotification('Ошибка синхронизации профиля', 'error');
+        showNotification('Ошибка синхронизации профиля. Работаем в оффлайн-режиме.', 'warning');
         return false;
     }
 }
+
+// Обновление профиля пользователя
+app.post('/api/user/update-profile', async (req, res) => {
+    const { userId, firstName, lastName, username, photoUrl } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            error: 'User ID is required'
+        });
+    }
+    
+    try {
+        const result = await pool.query(`
+            INSERT INTO user_profiles 
+            (user_id, username, first_name, last_name, photo_url, updated_at) 
+            VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+            ON CONFLICT (user_id) 
+            DO UPDATE SET 
+                username = EXCLUDED.username,
+                first_name = EXCLUDED.first_name,
+                last_name = EXCLUDED.last_name,
+                photo_url = EXCLUDED.photo_url,
+                updated_at = CURRENT_TIMESTAMP
+            RETURNING *
+        `, [userId, username, firstName, lastName, photoUrl]);
+        
+        res.json({
+            success: true,
+            message: 'Profile updated successfully',
+            user: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Update profile error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
         // Проверка прав администратора
 // Проверка прав администратора
 // Проверка прав администратора - ОБНОВЛЕННАЯ ВЕРСИЯ

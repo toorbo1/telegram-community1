@@ -23,7 +23,29 @@ if (BOT_TOKEN) {
 } else {
     console.log('⚠️ BOT_TOKEN not set - Telegram features disabled');
 }
+// В начале server.js, после импортов
+const allowedOrigins = [
+  'https://ваш-username.github.io',
+  'https://ваш-app.railway.app', 
+  'https://ваш-домен.com', // если есть кастомный домен
+  'http://localhost:3000'   // для разработки
+];
 
+app.use(cors({
+    origin: function (origin, callback) {
+        // Разрешаем запросы без origin (например, из мобильных приложений)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('CORS policy violation'), false);
+        }
+    },
+    methods: ['GET', 'POST', 'DELETE', 'PUT', 'OPTIONS'],
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
 // Используйте переменную окружения от Railway
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
