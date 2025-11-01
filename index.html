@@ -7658,140 +7658,110 @@ function startUserDataAutoUpdate() {
                 console.error('Ошибка обновления данных пользователя:', error);
             }
         }
-// function displayUserProfile() {
-//     if (!currentUser) {
-//         console.log('❌ No user data to display');
-//         return;
-//     }
 
-//     console.log('🎨 Displaying user profile:', currentUser);
-
-//     // Обновляем основную информацию
-//     const firstNameElement = document.getElementById('user-first-name');
-//     const usernameElement = document.getElementById('user-username');
-//     const levelElement = document.getElementById('user-level');
-//     const balanceElement = document.getElementById('user-balance-main');
-    
-//     if (firstNameElement) {
-//         const fullName = currentUser.lastName ? 
-//             `${currentUser.firstName} ${currentUser.lastName}` : 
-//             currentUser.firstName;
-//         firstNameElement.textContent = fullName;
-//     }
-    
-//     if (usernameElement) {
-//         usernameElement.textContent = currentUser.username || 'username';
-//     }
-    
-//     if (levelElement) {
-//         levelElement.textContent = currentUser.level || 1;
-//     }
-    
-//     // Обновляем баланс во всех местах
-//     const userBalance = currentUser.balance || 0;
-//     if (balanceElement) {
-//         balanceElement.textContent = `${userBalance} ⭐`;
-//     }
-    
-//     // 🔥 ИСПРАВЛЕНИЕ: Улучшенное отображение аватара
-//     const userPhotoElement = document.getElementById('user-photo');
-//     if (userPhotoElement) {
-//         if (currentUser.photoUrl) {
-//             userPhotoElement.src = currentUser.photoUrl;
-//             userPhotoElement.alt = 'Фото профиля';
-//             userPhotoElement.style.display = 'block';
-//             userPhotoElement.textContent = ''; // Очищаем инициалы
-//         } else {
-//             // Показываем инициалы если нет фото
-//             userPhotoElement.style.display = 'flex';
-//             userPhotoElement.style.alignItems = 'center';
-//             userPhotoElement.style.justifyContent = 'center';
-//             userPhotoElement.style.backgroundColor = '#6366f1';
-//             userPhotoElement.style.color = 'white';
-//             userPhotoElement.style.fontWeight = 'bold';
-//             userPhotoElement.style.borderRadius = '50%';
-//             userPhotoElement.style.width = '60px';
-//             userPhotoElement.style.height = '60px';
-//             userPhotoElement.textContent = currentUser.firstName ? 
-//                 currentUser.firstName.charAt(0).toUpperCase() : 'U';
-//             userPhotoElement.src = ''; // Очищаем src
-//         }
-//     }
-    
-//     // Обновляем статистику и прогресс
-//     updateProfileStats();
-//     updateReferralSystem();
-//     updateLevelProgress();
-    
-//     console.log('✅ User profile displayed successfully');
-// }
         // 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ПРОФИЛЯ
 function displayUserProfile() {
+    // 🔥 ИСПРАВЛЕНИЕ: Проверяем и восстанавливаем данные если нужно
     if (!currentUser) {
-        console.log('❌ No user data to display');
+        console.log('⚠️ No current user, attempting recovery...');
+        emergencyUserRecovery().then(success => {
+            if (success && currentUser) {
+                console.log('✅ User recovered, displaying profile...');
+                displayUserProfile(); // Рекурсивный вызов с восстановленными данными
+            } else {
+                showProfileError();
+            }
+        });
         return;
     }
 
     console.log('🎨 Displaying user profile:', currentUser);
 
-    // Обновляем основную информацию
-    const firstNameElement = document.getElementById('user-first-name');
-    const usernameElement = document.getElementById('user-username');
-    const levelElement = document.getElementById('user-level');
-    const balanceElement = document.getElementById('user-balance-main');
-    
-    if (firstNameElement) {
-        const fullName = currentUser.lastName ? 
-            `${currentUser.firstName} ${currentUser.lastName}` : 
-            currentUser.firstName;
-        firstNameElement.textContent = fullName;
-    }
-    
-    if (usernameElement) {
-        usernameElement.textContent = currentUser.username || 'username';
-    }
-    
-    if (levelElement) {
-        levelElement.textContent = currentUser.level || 1;
-    }
-    
-    // Обновляем баланс во всех местах
-    const userBalance = currentUser.balance || 0;
-    if (balanceElement) {
-        balanceElement.textContent = `${userBalance} ⭐`;
-    }
-    
-    // 🔥 ИСПРАВЛЕНИЕ: Улучшенное отображение аватара
-    const userPhotoElement = document.getElementById('user-photo');
-    if (userPhotoElement) {
-        if (currentUser.photoUrl) {
-            userPhotoElement.src = currentUser.photoUrl;
-            userPhotoElement.alt = 'Фото профиля';
-            userPhotoElement.style.display = 'block';
-            userPhotoElement.textContent = ''; // Очищаем инициалы
-        } else {
-            // Показываем инициалы если нет фото
-            userPhotoElement.style.display = 'flex';
-            userPhotoElement.style.alignItems = 'center';
-            userPhotoElement.style.justifyContent = 'center';
-            userPhotoElement.style.backgroundColor = '#6366f1';
-            userPhotoElement.style.color = 'white';
-            userPhotoElement.style.fontWeight = 'bold';
-            userPhotoElement.style.borderRadius = '50%';
-            userPhotoElement.style.width = '60px';
-            userPhotoElement.style.height = '60px';
-            userPhotoElement.textContent = currentUser.firstName ? 
-                currentUser.firstName.charAt(0).toUpperCase() : 'U';
-            userPhotoElement.src = ''; // Очищаем src
+    try {
+        // Обновляем основную информацию с проверками
+        const firstNameElement = document.getElementById('user-first-name');
+        const usernameElement = document.getElementById('user-username');
+        const levelElement = document.getElementById('user-level');
+        const balanceElement = document.getElementById('user-balance-main');
+        
+        if (firstNameElement) {
+            const fullName = currentUser.lastName ? 
+                `${currentUser.firstName} ${currentUser.lastName}` : 
+                (currentUser.firstName || 'Пользователь');
+            firstNameElement.textContent = fullName;
         }
+        
+        if (usernameElement) {
+            usernameElement.textContent = currentUser.username || 'username';
+        }
+        
+        if (levelElement) {
+            levelElement.textContent = currentUser.level || 1;
+        }
+        
+        // Обновляем баланс во всех местах
+        const userBalance = currentUser.balance || 0;
+        if (balanceElement) {
+            balanceElement.textContent = `${userBalance} ⭐`;
+        }
+        
+        // 🔥 ИСПРАВЛЕНИЕ: Безопасное обновление аватара
+        const userPhotoElement = document.getElementById('user-photo');
+        if (userPhotoElement) {
+            if (currentUser.photoUrl) {
+                userPhotoElement.src = currentUser.photoUrl;
+                userPhotoElement.alt = 'Фото профиля';
+                userPhotoElement.style.display = 'block';
+                userPhotoElement.textContent = '';
+            } else {
+                // Показываем инициалы если нет фото
+                userPhotoElement.style.display = 'flex';
+                userPhotoElement.style.alignItems = 'center';
+                userPhotoElement.style.justifyContent = 'center';
+                userPhotoElement.style.backgroundColor = '#6366f1';
+                userPhotoElement.style.color = 'white';
+                userPhotoElement.style.fontWeight = 'bold';
+                userPhotoElement.style.borderRadius = '50%';
+                userPhotoElement.style.width = '60px';
+                userPhotoElement.style.height = '60px';
+                
+                const initial = currentUser.firstName ? 
+                    currentUser.firstName.charAt(0).toUpperCase() : 'U';
+                userPhotoElement.textContent = initial;
+                userPhotoElement.src = '';
+            }
+        }
+        
+        // Обновляем статистику и прогресс
+        updateProfileStats();
+        updateReferralSystem();
+        updateLevelProgress();
+        
+        console.log('✅ User profile displayed successfully');
+        
+    } catch (error) {
+        console.error('❌ Error displaying profile:', error);
+        showProfileError();
     }
-    
-    // Обновляем статистику и прогресс
-    updateProfileStats();
-    updateReferralSystem();
-    updateLevelProgress();
-    
-    console.log('✅ User profile displayed successfully');
+}
+
+function showProfileError() {
+    // Показываем сообщение об ошибке пользователю
+    const profileTab = document.getElementById('profile-tab');
+    if (profileTab) {
+        profileTab.innerHTML = `
+            <div class="error-message" style="text-align: center; padding: 40px 20px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">😕</div>
+                <div style="font-size: 18px; margin-bottom: 8px;">Не удалось загрузить профиль</div>
+                <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 20px;">
+                    Попробуйте обновить страницу
+                </div>
+                <button class="btn btn-primary" onclick="location.reload()">
+                    🔄 Обновить страницу
+                </button>
+            </div>
+        `;
+    }
 }
 
 function updateProfileStats() {
@@ -7959,16 +7929,16 @@ async function syncUserProfile() {
         
         console.log('📱 Syncing with Telegram data:', tgUser);
         
-        // 🔥 ИСПРАВЛЕНИЕ: Принудительное обновление ВСЕХ данных
+        // 🔥 ИСПРАВЛЕНИЕ: Создаем нового пользователя если currentUser не существует
         const updatedUser = {
-            ...currentUser, // Сохраняем существующие данные
+            // Безопасное использование currentUser
+            ...(currentUser || {}),
             id: tgUser.id.toString(),
-            firstName: tgUser.first_name || currentUser.firstName,
-            lastName: tgUser.last_name || currentUser.lastName,
-            username: tgUser.username || currentUser.username,
-            photoUrl: tgUser.photo_url || currentUser.photoUrl,
-            // Обновляем флаг администратора
-            isAdmin: parseInt(tgUser.id) === ADMIN_ID || currentUser.isAdmin
+            firstName: tgUser.first_name || (currentUser?.firstName || 'Пользователь'),
+            lastName: tgUser.last_name || (currentUser?.lastName || ''),
+            username: tgUser.username || (currentUser?.username || `user_${tgUser.id}`),
+            photoUrl: tgUser.photo_url || (currentUser?.photoUrl || ''),
+            isAdmin: parseInt(tgUser.id) === ADMIN_ID || (currentUser?.isAdmin || false)
         };
         
         currentUser = updatedUser;
@@ -8007,10 +7977,69 @@ async function syncUserProfile() {
         
     } catch (error) {
         console.error('❌ Profile sync error:', error);
+        
+        // 🔥 ДОБАВЛЕНО: Аварийное восстановление
+        await emergencyUserRecovery();
         return false;
     }
 }
-
+async function emergencyUserRecovery() {
+    try {
+        console.log('🚨 EMERGENCY: Attempting user data recovery...');
+        
+        // Пробуем получить данные из localStorage
+        const savedUser = localStorage.getItem('linkgold_user');
+        if (savedUser) {
+            currentUser = JSON.parse(savedUser);
+            console.log('✅ Recovered user from localStorage:', currentUser);
+            return true;
+        }
+        
+        // Если в localStorage нет, пробуем получить из Telegram
+        if (window.Telegram?.WebApp) {
+            const tg = window.Telegram.WebApp;
+            const tgUser = tg.initDataUnsafe?.user;
+            
+            if (tgUser) {
+                currentUser = {
+                    id: tgUser.id.toString(),
+                    firstName: tgUser.first_name || 'Пользователь',
+                    lastName: tgUser.last_name || '',
+                    username: tgUser.username || `user_${tgUser.id}`,
+                    photoUrl: tgUser.photo_url || '',
+                    isAdmin: parseInt(tgUser.id) === ADMIN_ID,
+                    balance: 0,
+                    tasks_completed: 0,
+                    level: 1
+                };
+                
+                localStorage.setItem('linkgold_user', JSON.stringify(currentUser));
+                console.log('✅ Created user from Telegram data:', currentUser);
+                return true;
+            }
+        }
+        
+        // Если все остальное не сработало, создаем тестового пользователя
+        currentUser = {
+            id: 'emergency_user_' + Date.now(),
+            firstName: 'Пользователь',
+            lastName: '',
+            username: 'emergency_user',
+            photoUrl: '',
+            isAdmin: false,
+            balance: 0,
+            tasks_completed: 0,
+            level: 1
+        };
+        
+        console.log('⚠️ Created emergency user:', currentUser);
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Emergency recovery failed:', error);
+        return false;
+    }
+}
 // Обновление профиля пользователя
 app.post('/api/user/update-profile', async (req, res) => {
     const { userId, firstName, lastName, username, photoUrl } = req.body;
@@ -9386,6 +9415,20 @@ function formatCategory(category) {
 }
 async function initializeApp() {
     console.log('🎮 Initializing LinkGold app...');
+    
+    // 🔥 ДОБАВЛЕНО: Принудительная синхронизация перед инициализацией
+    const syncSuccess = await syncUserProfile();
+    
+    if (!syncSuccess) {
+        console.log('⚠️ Sync failed, using emergency recovery...');
+        await emergencyUserRecovery();
+    }
+    
+    // Остальной код инициализации...
+    displayUserProfile();
+    checkAdminRights();
+    loadMainPagePosts();
+    
     // Добавляем кнопку синхронизации
     addSyncButtonToProfile();
     // Применяем исправления layout сразу
