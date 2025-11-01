@@ -6159,29 +6159,22 @@ class PerformanceOptimizer {
         });
     }
 }
-// 🔧 КОНФИГУРАЦИЯ ДЛЯ ПРОДУКШЕНА
-const API_BASE_URL = (function() {
-    // Если мы в Telegram WebApp, используем текущий origin
-    if (window.Telegram?.WebApp) {
-        return window.location.origin;
-    }
+
     
-    // Определяем среду выполнения
+// ✅ ПРАВИЛЬНАЯ КОНФИГУРАЦИЯ API
+const API_BASE_URL = (function() {
     const hostname = window.location.hostname;
     
+    // Всегда используем текущий origin
+    return window.location.origin;
+    
+    // ИЛИ для GitHub Pages + Railway:
     if (hostname.includes('github.io')) {
-        // GitHub Pages - используем Railway URL
-        return 'https://ваш-app.railway.app';
-    } else if (hostname.includes('railway.app')) {
-        // Railway - используем текущий origin
-        return window.location.origin;
-    } else if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        // Локальная разработка
-        return 'http://localhost:3000';
-    } else {
-        // Продакшен домен
-        return window.location.origin;
+        // GitHub Pages - используем абсолютный URL к вашему Railway
+        return 'https://your-app-name.railway.app'; // ← ЗАМЕНИТЕ на реальный
     }
+    
+    return window.location.origin;
 })();
 
 console.log('🌐 API Base URL:', API_BASE_URL);
@@ -7819,22 +7812,21 @@ function updateLevelProgress() {
 }
 // 🔧 ФУНКЦИЯ ДЛЯ СИНХРОНИЗАЦИИ ПРОФИЛЯ С TELEGRAM
 async function syncUserProfile() {
-    console.log('🔄 Starting profile synchronization...');
-    
     try {
-        // Проверяем, находимся ли мы в Telegram
         if (!window.Telegram?.WebApp) {
-            console.log('❌ Not in Telegram context - using fallback mode');
+            console.log('❌ Not in Telegram context');
             
-            // Режим fallback - используем данные из localStorage
-            const savedUser = localStorage.getItem('linkgold_user');
-            if (savedUser) {
-                currentUser = JSON.parse(savedUser);
-                displayUserProfile();
-                return true;
+            // Fallback: проверяем есть ли параметры запуска в URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const tgWebAppStartParam = urlParams.get('tgWebAppStartParam');
+            
+            if (tgWebAppStartParam) {
+                // Мы в Telegram Web App, но window.Telegram не загрузился
+                showNotification('Перезагрузите страницу', 'warning');
+                return false;
             }
             
-            // Если нет сохраненных данных, создаем тестового пользователя
+            // Режим тестирования
             initializeTestUser();
             return false;
         }
@@ -7898,12 +7890,28 @@ async function syncUserProfile() {
         return true;
         
     } catch (error) {
-        console.error('❌ Profile synchronization error:', error);
-        showNotification('Ошибка синхронизации профиля. Работаем в оффлайн-режиме.', 'warning');
+        console.error('❌ Profile sync error:', error);
+        // Не показываем ошибку пользователю, работаем в оффлайн-режиме
         return false;
     }
 }
-
+// ✅ ДОБАВЬТЕ В ФУНКЦИЮ addSyncButtonToProfile()
+function addSyncButtonToProfile() {
+    const syncBtn = document.createElement('button');
+    syncBtn.textContent = '🔄 Синхронизировать';
+    syncBtn.className = 'btn btn-primary';
+    syncBtn.onclick = async () => {
+        const success = await syncUserProfile();
+        if (success) {
+            showNotification('Профиль синхронизирован!', 'success');
+        }
+    };
+    
+    const profileTab = document.getElementById('profile-tab');
+    if (profileTab) {
+        profileTab.appendChild(syncBtn);
+    }
+}
 // Обновление профиля пользователя
 app.post('/api/user/update-profile', async (req, res) => {
     const { userId, firstName, lastName, username, photoUrl } = req.body;

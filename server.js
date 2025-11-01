@@ -31,21 +31,13 @@ const allowedOrigins = [
   'http://localhost:3000'   // для разработки
 ];
 
+// ✅ ПРАВИЛЬНЫЙ CORS
 app.use(cors({
-    origin: function (origin, callback) {
-        // Разрешаем запросы без origin (например, из мобильных приложений)
-        if (!origin) return callback(null, true);
-        
-        if (allowedOrigins.indexOf(origin) !== -1) {
-            callback(null, true);
-        } else {
-            callback(new Error('CORS policy violation'), false);
-        }
-    },
+    origin: '*', // Разрешаем все источники
     methods: ['GET', 'POST', 'DELETE', 'PUT', 'OPTIONS'],
-    credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+    credentials: true
 }));
+
 // Используйте переменную окружения от Railway
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
