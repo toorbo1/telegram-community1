@@ -445,15 +445,16 @@ await pool.query(`
 
 async function createPromocodesTable() {
     try {
-        console.log('🔧 Creating promocodes table with sequence fix...');
+        console.log('🔧 Creating promocodes tables with reward field...');
         
-        // Сначала удаляем последовательность если существует
-        await pool.query('DROP SEQUENCE IF EXISTS promocodes_id_seq CASCADE');
+        // Удаляем старые таблицы если существуют
+        await pool.query('DROP TABLE IF EXISTS promocode_activations CASCADE');
+        await pool.query('DROP TABLE IF EXISTS promocodes CASCADE');
         
-        // Создаем таблицу БЕЗ SERIAL (чтобы избежать конфликта)
+        // Создаем таблицу промокодов с полем reward
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS promocodes (
-                id INTEGER PRIMARY KEY,
+            CREATE TABLE promocodes (
+                id SERIAL PRIMARY KEY,
                 code VARCHAR(50) UNIQUE NOT NULL,
                 reward REAL NOT NULL DEFAULT 0,
                 max_uses INTEGER NOT NULL DEFAULT 1,
@@ -465,18 +466,9 @@ async function createPromocodesTable() {
             )
         `);
         
-        // Создаем последовательность отдельно
-        await pool.query('CREATE SEQUENCE IF NOT EXISTS promocodes_id_seq START 1');
-        
-        // Устанавливаем последовательность как значение по умолчанию
-        await pool.query(`
-            ALTER TABLE promocodes 
-            ALTER COLUMN id SET DEFAULT nextval('promocodes_id_seq')
-        `);
-        
         // Создаем таблицу активаций
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS promocode_activations (
+            CREATE TABLE promocode_activations (
                 id SERIAL PRIMARY KEY,
                 user_id BIGINT NOT NULL,
                 promocode_id INTEGER NOT NULL,
@@ -485,63 +477,12 @@ async function createPromocodesTable() {
             )
         `);
         
-        console.log('✅ Promocodes tables created with sequence fix');
+        console.log('✅ Promocodes tables created with reward field');
     } catch (error) {
         console.error('❌ Error creating promocodes tables:', error);
-        // Продолжаем работу даже при ошибке
+        throw error;
     }
 }
-
-// В server.js добавьте endpoint для синхронизации
-app.post('/api/user/sync', async (req, res) => {
-    const { user, initData } = req.body;
-    
-    if (!user || !user.id) {
-        return res.status(400).json({
-            success: false,
-            error: 'Invalid user data'
-        });
-    }
-    
-    try {
-        // Проверяем подпись Telegram Web App (для безопасности)
-        // Здесь должна быть реализация проверки подписи
-        
-        // Обновляем пользователя в базе данных
-        const result = await pool.query(`
-            INSERT INTO user_profiles 
-            (user_id, username, first_name, last_name, photo_url, updated_at) 
-            VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
-            ON CONFLICT (user_id) 
-            DO UPDATE SET 
-                username = EXCLUDED.username,
-                first_name = EXCLUDED.first_name,
-                last_name = EXCLUDED.last_name,
-                photo_url = EXCLUDED.photo_url,
-                updated_at = EXCLUDED.updated_at
-            RETURNING *
-        `, [
-            user.id, 
-            user.username,
-            user.firstName, 
-            user.lastName,
-            user.photoUrl
-        ]);
-        
-        res.json({
-            success: true,
-            user: result.rows[0],
-            message: 'Profile synchronized successfully'
-        });
-    } catch (error) {
-        console.error('Sync error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Sync failed: ' + error.message
-        });
-    }
-});
-
 // Создаем таблицу с правильным полем reward
 app.post('/api/admin/promocodes/fix-reward-field', async (req, res) => {
     try {

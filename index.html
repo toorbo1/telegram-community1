@@ -8,14 +8,29 @@
 
 
            <style>
-            /* Скрываем форму добавления задания по умолчанию */
-#admin-tasks-section .admin-form {
-    display: none;
+            /* 🔧 ПЛАВНАЯ ПРОКРУТКА ДЛЯ ВСЕХ ЭЛЕМЕНТОВ */
+html {
+    scroll-behavior: smooth;
 }
 
-/* Показываем только в разделе заданий */
-#admin-tasks-section.active .admin-form {
-    display: block;
+/* 🔧 ФИКС ДЛЯ МОБИЛЬНОЙ ПРОКРУТКИ */
+@media (max-width: 768px) {
+    .tab-content,
+    .page {
+        overflow-anchor: none;
+    }
+    
+    body {
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* 🔧 ПРЕДОТВРАЩЕНИЕ СКАЧКОВ ПРИ ПЕРЕХОДАХ */
+.tab-content,
+.page {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000;
 }
             /* 🔧 ПЛАВНАЯ ПРОКРУТКА ДЛЯ ВСЕХ ЭЛЕМЕНТОВ */
 html {
@@ -7773,59 +7788,33 @@ function updateLevelProgress() {
     }
 }
 // 🔧 ФУНКЦИЯ ДЛЯ СИНХРОНИЗАЦИИ ПРОФИЛЯ С TELEGRAM
-// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ СИНХРОНИЗАЦИИ ПРОФИЛЯ
 async function syncUserProfile() {
-    if (!currentUser || !window.Telegram?.WebApp) {
-        console.log('❌ Sync failed: no user or Telegram context');
-        return;
-    }
+    if (!currentUser || !window.Telegram?.WebApp) return;
     
     try {
         const tg = window.Telegram.WebApp;
         const tgUser = tg.initDataUnsafe?.user;
         
-        if (!tgUser) {
-            console.log('❌ Sync failed: no Telegram user data');
-            return;
-        }
-        
-        console.log('🔄 Syncing user profile with Telegram...');
-        
-        // Обновляем данные пользователя из Telegram
-        const updatedUser = {
-            ...currentUser,
-            firstName: tgUser.first_name || currentUser.firstName,
-            lastName: tgUser.last_name || currentUser.lastName,
-            username: tgUser.username || currentUser.username,
-            photoUrl: tgUser.photo_url || currentUser.photoUrl
-        };
-        
-        // Сохраняем обновленные данные
-        currentUser = updatedUser;
-        
-        // Синхронизируем с сервером
-        try {
-            const syncResult = await makeRequest('/api/user/sync', {
-                method: 'POST',
-                body: JSON.stringify({
-                    user: currentUser,
-                    initData: tg.initData
-                })
-            });
+        if (tgUser) {
+            // Обновляем данные пользователя из Telegram
+            const updatedUser = {
+                ...currentUser,
+                firstName: tgUser.first_name || currentUser.firstName,
+                lastName: tgUser.last_name || currentUser.lastName,
+                username: tgUser.username || currentUser.username,
+                photoUrl: tgUser.photo_url || currentUser.photoUrl
+            };
             
-            if (syncResult.success) {
-                console.log('✅ Profile synced with server');
-            }
-        } catch (syncError) {
-            console.log('⚠️ Server sync failed, continuing with local data');
+            // Сохраняем обновленные данные
+            currentUser = updatedUser;
+            
+            // Обновляем интерфейс
+            displayUserProfile();
+            
+            console.log('✅ Профиль синхронизирован с Telegram');
         }
-        
-        // Обновляем интерфейс
-        displayUserProfile();
-        
-        console.log('✅ Profile synchronized with Telegram');
     } catch (error) {
-        console.error('❌ Profile sync error:', error);
+        console.error('❌ Ошибка синхронизации профиля:', error);
     }
 }
         // Проверка прав администратора
@@ -9254,40 +9243,10 @@ async function initializeApp() {
     
     // Запускаем автообновление данных
     startUserDataAutoUpdate();
-    try {
-        // Сначала проверяем доступность API
-        const health = await makeRequest('/api/health');
-        console.log('✅ API connection successful');
-        
-        // Инициализируем пользователя
-        if (typeof tg !== 'undefined' && tg.initDataUnsafe?.user) {
-            await initializeTelegramUser();
-        } else {
-            console.log('📱 Telegram context not available, using fallback');
-            initializeTestUser();
-        }
-        
-        // Принудительно синхронизируем профиль
-        await syncUserProfile();
-        
-        // Инициализируем интерфейс
-        displayUserProfile();
-        checkAdminRights();
-        loadMainPagePosts();
-        
-        // Загружаем задания
-        loadTasks();
-        
-        // Запускаем автообновление
-        startUserDataAutoUpdate();
-        
-        console.log('🎉 App initialized successfully with profile sync');
-        
-    } catch (error) {
-        console.error('❌ App initialization failed:', error);
-        showNotification('Ошибка инициализации приложения', 'error');
-        showRetryButton();
-    }
+
+    console.log('🎉 App initialized successfully');
+        // Запускаем периодическое обновление
+    setInterval(updateActiveTasksCount, 30000);
 }
 async function loadUserTasksForCategory(status) {
     if (!currentUser) return;
