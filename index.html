@@ -5248,76 +5248,6 @@ html, body {
         
 
         
-        <div class="form-group">
-            <label>Название задания *</label>
-            <input type="text" class="admin-input" id="admin-task-title" placeholder="Введите название задания">
-        </div>
-        
-        <div class="form-group">
-            <label>Описание задания *</label>
-            <textarea class="admin-textarea" id="admin-task-description" placeholder="Подробное описание задания" rows="4"></textarea>
-        </div>
-        
-        <div class="form-row">
-            <div class="form-group" style="flex: 1;">
-                <label>Цена (в звездах) *</label>
-                <input type="number" class="admin-input" id="admin-task-price" placeholder="50">
-            </div>
-            <div class="form-group" style="flex: 1;">
-                <label>Категория</label>
-                <select class="admin-input" id="admin-task-category">
-                    <option value="subscribe">📱 Подписки</option>
-                    <option value="view">👀 Просмотры</option>
-                    <option value="comment">💬 Комментарии</option>
-                    <option value="repost">🔄 Репосты</option>
-                    <option value="social">👥 Соцсети</option>
-                    <option value="other">📋 Другое</option>
-                </select>
-            </div>
-        </div>
-        
-        <div class="form-row">
-            <div class="form-group" style="flex: 1;">
-                <label>Время выполнения</label>
-                <input type="text" class="admin-input" id="admin-task-time" placeholder="5-10 минут">
-            </div>
-            <div class="form-group" style="flex: 1;">
-                <label>Сложность</label>
-                <select class="admin-input" id="admin-task-difficulty">
-                    <option value="Легкая">🟢 Легкая</option>
-                    <option value="Средняя">🟡 Средняя</option>
-                    <option value="Сложная">🔴 Сложная</option>
-                </select>
-            </div>
-        </div>
-        
-        <div class="form-group">
-            <label>Количество исполнителей</label>
-            <input type="number" class="admin-input" id="admin-task-people" placeholder="10" value="10">
-        </div>
-        
-        <div class="form-group">
-            <label>Ссылка на задание (опционально)</label>
-            <input type="url" class="admin-input" id="admin-task-url" placeholder="https://...">
-        </div>
-
-
-        
-        <button class="admin-submit" onclick="addTaskWithImage()">
-            ✅ Добавить задание
-        </button>
-    </div>
-    
-    <!-- ДОБАВЬТЕ ЭТОТ БЛОК ДЛЯ ОТОБРАЖЕНИЯ СОЗДАННЫХ ЗАДАНИЙ -->
-    <div style="margin-top: 30px;">
-        <!-- <h3>📋 Созданные задания</h3> -->
-        <div id="admin-tasks-list">
-            <!-- Задания будут загружены здесь -->
-        </div>
-    </div>
-</div>
-<!-- В админ-панели добавьте кнопку -->
-<!-- <button class="admin-btn" onclick="showAdminSection('payments')">💳 Оплаты</button> -->
 
 <!-- Секция управления выплатами -->
 <div id="admin-payments-section" class="admin-section" style="display: none;">
@@ -5412,6 +5342,76 @@ html, body {
         </div>
     </div>
 
+        <div class="form-group">
+            <label>Название задания *</label>
+            <input type="text" class="admin-input" id="admin-task-title" placeholder="Введите название задания">
+        </div>
+        
+        <div class="form-group">
+            <label>Описание задания *</label>
+            <textarea class="admin-textarea" id="admin-task-description" placeholder="Подробное описание задания" rows="4"></textarea>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group" style="flex: 1;">
+                <label>Цена (в звездах) *</label>
+                <input type="number" class="admin-input" id="admin-task-price" placeholder="50">
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>Категория</label>
+                <select class="admin-input" id="admin-task-category">
+                    <option value="subscribe">📱 Подписки</option>
+                    <option value="view">👀 Просмотры</option>
+                    <option value="comment">💬 Комментарии</option>
+                    <option value="repost">🔄 Репосты</option>
+                    <option value="social">👥 Соцсети</option>
+                    <option value="other">📋 Другое</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group" style="flex: 1;">
+                <label>Время выполнения</label>
+                <input type="text" class="admin-input" id="admin-task-time" placeholder="5-10 минут">
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>Сложность</label>
+                <select class="admin-input" id="admin-task-difficulty">
+                    <option value="Легкая">🟢 Легкая</option>
+                    <option value="Средняя">🟡 Средняя</option>
+                    <option value="Сложная">🔴 Сложная</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>Количество исполнителей</label>
+            <input type="number" class="admin-input" id="admin-task-people" placeholder="10" value="10">
+        </div>
+        
+        <div class="form-group">
+            <label>Ссылка на задание (опционально)</label>
+            <input type="url" class="admin-input" id="admin-task-url" placeholder="https://...">
+        </div>
+
+
+        
+        <button class="admin-submit" onclick="addTaskWithImage()">
+            ✅ Добавить задание
+        </button>
+    </div>
+    
+    <!-- ДОБАВЬТЕ ЭТОТ БЛОК ДЛЯ ОТОБРАЖЕНИЯ СОЗДАННЫХ ЗАДАНИЙ -->
+    <div style="margin-top: 30px;">
+        <!-- <h3>📋 Созданные задания</h3> -->
+        <div id="admin-tasks-list">
+            <!-- Задания будут загружены здесь -->
+        </div>
+    </div>
+</div>
+<!-- В админ-панели добавьте кнопку -->
+<!-- <button class="admin-btn" onclick="showAdminSection('payments')">💳 Оплаты</button> -->
     <!-- Страница "Как работает" -->
     <div id="how-it-works-page" class="page">
         <div class="page-header">
