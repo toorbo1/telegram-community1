@@ -187,17 +187,22 @@ async function initDatabase() {
         // Таблица пользователей
         await pool.query(`
             CREATE TABLE IF NOT EXISTS user_profiles (
-                user_id BIGINT PRIMARY KEY,
-                username TEXT,
-                first_name TEXT,
-                last_name TEXT,
-                photo_url TEXT,
-                balance REAL DEFAULT 0,
-                level INTEGER DEFAULT 1,
-                is_admin BOOLEAN DEFAULT false,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
+    user_id BIGINT PRIMARY KEY,
+    username TEXT,
+    first_name TEXT,
+    last_name TEXT,
+    photo_url TEXT,
+    balance REAL DEFAULT 0,
+    level INTEGER DEFAULT 1,
+    is_admin BOOLEAN DEFAULT false,
+    referral_code TEXT UNIQUE,
+    referred_by BIGINT,
+    referral_count INTEGER DEFAULT 0,
+    referral_earned REAL DEFAULT 0,
+    is_first_login BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`);
+        
 
         // Добавляем реферальные поля
         await pool.query(`
@@ -4934,10 +4939,11 @@ app.get('/api/debug/tables', async (req, res) => {
     }
 });
 // В начале server.js, после инициализации pool
+// Проверьте подключение к PostgreSQL
 async function checkDatabaseConnection() {
     try {
         const result = await pool.query('SELECT NOW()');
-        console.log('✅ Database connection successful:', result.rows[0]);
+        console.log('✅ Database connection successful');
         return true;
     } catch (error) {
         console.error('❌ Database connection failed:', error);
