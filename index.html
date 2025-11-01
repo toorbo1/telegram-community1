@@ -5268,6 +5268,8 @@ html, body {
         </div>
     </div>
 </div>
+<!-- В админ-панели добавьте кнопку -->
+<!-- <button class="admin-btn" onclick="showAdminSection('payments')">💳 Оплаты</button> -->
 
 <!-- Секция управления выплатами -->
 <div id="admin-payments-section" class="admin-section" style="display: none;">
@@ -10722,7 +10724,6 @@ if (isSlowDevice()) {
 // 🔧 ФУНКЦИЯ ОТОБРАЖЕНИЯ АДМИН-ЗАДАНИЙ
 
 // В index.html обновите функцию displayAdminTasks
-// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ АДМИН-ЗАДАНИЙ С СТАТИСТИКОЙ
 function displayAdminTasks(tasks, stats) {
     const container = document.getElementById('admin-tasks-list');
     if (!container) {
@@ -10730,11 +10731,11 @@ function displayAdminTasks(tasks, stats) {
         return;
     }
     
-    console.log(`🎯 Displaying ${tasks ? tasks.length : 0} admin tasks with stats:`, stats);
+    console.log(`🎯 Displaying ${tasks ? tasks.length : 0} admin tasks`);
     
     container.innerHTML = '';
     
-    // Показываем общую статистику
+    // Показываем расширенную статистику
     if (stats) {
         const statsHTML = `
             <div class="admin-stats" style="margin-bottom: 20px; padding: 15px; background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border);">
@@ -10757,28 +10758,6 @@ function displayAdminTasks(tasks, stats) {
                         <div>Мои задания</div>
                     </div>
                 </div>
-                
-                <!-- Дополнительная статистика -->
-                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border);">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; font-size: 11px;">
-                        <div style="text-align: center;">
-                            <div style="font-weight: bold;">${stats.total_completions || 0}</div>
-                            <div>Всего выполнений</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-weight: bold; color: var(--success);">${stats.approved_completions || 0}</div>
-                            <div>Одобрено</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-weight: bold; color: var(--error);">${stats.rejected_completions || 0}</div>
-                            <div>Отклонено</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-weight: bold; color: var(--warning);">${stats.pending_reviews || 0}</div>
-                            <div>На проверке</div>
-                        </div>
-                    </div>
-                </div>
             </div>
         `;
         container.innerHTML = statsHTML;
@@ -10792,6 +10771,9 @@ function displayAdminTasks(tasks, stats) {
                 <div style="font-size: 14px; color: var(--text-secondary);">
                     Создайте первое задание используя форму выше
                 </div>
+                <button class="btn btn-primary" onclick="debugAdminTasks()" style="margin-top: 16px;">
+                    🐛 Диагностика
+                </button>
             </div>
         `;
         return;
@@ -10807,8 +10789,11 @@ function displayAdminTasks(tasks, stats) {
                 <option value="completed">Только завершенные</option>
                 <option value="my">Мои задания</option>
             </select>
-            <button onclick="loadAdminTasksWithStats()" class="btn btn-primary" style="padding: 8px 12px; font-size: 12px;">
+            <button onclick="loadAdminTasks()" class="btn btn-primary" style="padding: 8px 12px; font-size: 12px;">
                 🔄 Обновить
+            </button>
+            <button onclick="debugAdminTasks()" class="btn btn-warning" style="padding: 8px 12px; font-size: 12px;">
+                🐛 Диагностика
             </button>
         </div>
     `;
@@ -10824,178 +10809,6 @@ function displayAdminTasks(tasks, stats) {
     // Отображаем все задания
     renderAdminTasks(tasks);
 }
-
-// 🔧 ФУНКЦИЯ ДЛЯ ЗАГРУЗКИ ЗАДАНИЙ СО СТАТИСТИКОЙ
-async function loadAdminTasksWithStats() {
-    console.log('🔄 Loading admin tasks with statistics...');
-    
-    if (!currentUser) {
-        console.log('❌ No user');
-        return;
-    }
-    
-    const container = document.getElementById('admin-tasks-list');
-    if (!container) {
-        console.log('❌ Container not found');
-        return;
-    }
-    
-    // Показываем загрузку
-    container.innerHTML = `
-        <div style="text-align: center; padding: 40px 20px;">
-            <div class="loading-spinner">⏳</div>
-            <div style="margin-top: 16px;">Загружаем задания и статистику...</div>
-        </div>
-    `;
-    
-    try {
-        // Загружаем и задания и статистику параллельно
-        const [tasksResult, statsResult] = await Promise.all([
-            makeRequest(`/api/admin/all-tasks?adminId=${currentUser.id}`),
-            makeRequest(`/api/admin/tasks-statistics?adminId=${currentUser.id}`)
-        ]);
-        
-        console.log('📊 Tasks result:', tasksResult);
-        console.log('📈 Stats result:', statsResult);
-        
-        if (tasksResult.success && statsResult.success) {
-            displayAdminTasks(tasksResult.tasks, statsResult.statistics);
-        } else {
-            throw new Error(tasksResult.error || statsResult.error || 'Unknown error');
-        }
-        
-    } catch (error) {
-        console.error('💥 Error loading tasks with stats:', error);
-        container.innerHTML = `
-            <div style="text-align: center; padding: 40px 20px; color: var(--error);">
-                <div>Ошибка загрузки</div>
-                <div style="font-size: 12px; margin-top: 8px;">${error.message}</div>
-                <button class="btn btn-primary" onclick="loadAdminTasksWithStats()" style="margin-top: 16px;">
-                    Повторить
-                </button>
-            </div>
-        `;
-    }
-}
-
-// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ СОЗДАНИЯ ЭЛЕМЕНТА ЗАДАНИЯ
-function createAdminTaskElement(task) {
-    const taskElement = document.createElement('div');
-    taskElement.className = 'admin-task-item';
-    taskElement.style.cssText = `
-        background: var(--card-bg);
-        border: 1px solid ${task.status === 'completed' ? 'var(--success)' : 'var(--border)'};
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 12px;
-        opacity: ${task.status === 'completed' ? 0.8 : 1};
-    `;
-    
-    const completedCount = task.completed_count || 0;
-    const peopleRequired = task.people_required || 1;
-    const progressPercentage = Math.min(100, (completedCount / peopleRequired) * 100);
-    const isCompleted = task.status === 'completed';
-    
-    // Рассчитываем оставшееся количество выполнений
-    const remainingTasks = Math.max(0, peopleRequired - completedCount);
-    
-    taskElement.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-            <div style="flex: 1;">
-                <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">
-                    ${task.title}
-                    ${isCompleted ? ' <span style="color: var(--success); font-size: 12px;">(Завершено)</span>' : ''}
-                </div>
-                <div style="color: var(--text-secondary); font-size: 14px;">${task.description}</div>
-            </div>
-            <div style="display: flex; gap: 8px; align-items: center;">
-                <div style="font-size: 20px; color: var(--gold); font-weight: 600;">
-                    ${task.price} ⭐
-                </div>
-                ${!isCompleted ? `
-                    <button class="admin-task-delete" onclick="deleteTask(${task.id})" style="background: var(--error); color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer;">
-                        🗑️ Удалить
-                    </button>
-                ` : ''}
-            </div>
-        </div>
-        
-        <div style="display: flex; gap: 12px; font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">
-            <span>📁 ${task.category || 'general'}</span>
-            <span>👥 ${peopleRequired} чел.</span>
-            <span>⚡ ${task.difficulty || 'Легкая'}</span>
-            <span>🕒 ${task.time_to_complete || '5-10 минут'}</span>
-            <span style="color: ${isCompleted ? 'var(--success)' : 'var(--accent)'};">
-                ${isCompleted ? '✅ Завершено' : '🟢 Активно'}
-            </span>
-        </div>
-        
-        <!-- Прогресс выполнения -->
-        <div style="margin: 10px 0;">
-            <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
-                <span>Выполнено: ${completedCount}/${peopleRequired}</span>
-                <span>${Math.round(progressPercentage)}%</span>
-            </div>
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: ${progressPercentage}%; background: ${isCompleted ? 'var(--success)' : 'var(--accent)'};"></div>
-            </div>
-            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">
-                Осталось выполнений: ${remainingTasks}
-            </div>
-        </div>
-        
-        <!-- Детальная статистика -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; font-size: 11px; color: var(--text-secondary); margin-top: 10px;">
-            <div style="text-align: center; padding: 8px; background: var(--bg-secondary); border-radius: 6px;">
-                <div style="font-weight: 600; color: var(--success);">${task.actual_completed || 0}</div>
-                <div>✅ Выполнено</div>
-            </div>
-            <div style="text-align: center; padding: 8px; background: var(--bg-secondary); border-radius: 6px;">
-                <div style="font-weight: 600; color: var(--error);">${task.rejected_count || 0}</div>
-                <div>❌ Отклонено</div>
-            </div>
-            <div style="text-align: center; padding: 8px; background: var(--bg-secondary); border-radius: 6px;">
-                <div style="font-weight: 600; color: var(--warning);">${task.pending_count || 0}</div>
-                <div>⏳ На проверке</div>
-            </div>
-        </div>
-        
-        ${task.image_url ? `
-            <div style="margin-top: 10px;">
-                <img src="${task.image_url}" alt="Изображение задания" style="max-width: 200px; border-radius: 8px; border: 1px solid var(--border);">
-            </div>
-        ` : ''}
-        
-        <div style="margin-top: 8px; font-size: 11px; color: var(--text-secondary);">
-            Создано: ${new Date(task.created_at).toLocaleDateString('ru-RU')}
-            ${task.last_completed ? ` • Последнее выполнение: ${new Date(task.last_completed).toLocaleDateString('ru-RU')}` : ''}
-        </div>
-    `;
-    
-    return taskElement;
-}
-
-// 🔧 ОБНОВИТЕ ВЫЗОВ ФУНКЦИИ В СЕКЦИИ АДМИНА
-function showAdminTasksSection() {
-    showAdminSection('tasks');
-    // Используем новую функцию со статистикой
-    loadAdminTasksWithStats();
-}
-
-// 🔧 ДОБАВЬТЕ ОБНОВЛЕНИЕ СТАТИСТИКИ В РЕАЛЬНОМ ВРЕМЕНИ
-function startStatsAutoUpdate() {
-    // Обновляем статистику каждые 30 секунд
-    setInterval(() => {
-        if (document.getElementById('admin-tasks-section').style.display === 'block') {
-            loadAdminTasksWithStats();
-        }
-    }, 30000);
-}
-
-// Инициализируем автообновление при загрузке
-document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(startStatsAutoUpdate, 5000);
-});
 // В index.html добавьте функцию диагностики
 async function debugAdminTasks() {
     console.log('🐛 DEBUG Admin Tasks System:');
