@@ -5396,20 +5396,21 @@ html, body {
 
 
         
-        <button class="admin-submit" onclick="addTaskWithImage()">
-            ✅ Добавить задание
-        </button>
+<!-- Секция управления заданиями -->
+<div id="admin-tasks-section" class="admin-section" style="display: none;">
+    <div class="admin-form">
+        <h3>➕ Добавить новое задание</h3>
+        <!-- форма добавления задания здесь -->
     </div>
     
-    <!-- ДОБАВЬТЕ ЭТОТ БЛОК ДЛЯ ОТОБРАЖЕНИЯ СОЗДАННЫХ ЗАДАНИЙ -->
+    <!-- Список созданных заданий -->
     <div style="margin-top: 30px;">
-        <!-- <h3>📋 Созданные задания</h3> -->
+        <h3>📋 Созданные задания</h3>
         <div id="admin-tasks-list">
             <!-- Задания будут загружены здесь -->
         </div>
     </div>
- </div>
-    </div>
+</div>
  
     <!-- Страница "Как работает" -->
     <div id="how-it-works-page" class="page">
@@ -12034,12 +12035,6 @@ function resetAdminPanel() {
         section.style.display = 'none';
     });
     
-    // Скрываем контейнер созданных заданий
-    const tasksContainer = document.getElementById('admin-tasks-list-container');
-    if (tasksContainer) {
-        tasksContainer.style.display = 'none';
-    }
-    
     console.log('✅ Admin panel reset complete');
 }
 function debugAdminSections() {
@@ -13783,24 +13778,6 @@ initTheme();
                 showNotification('Ошибка удаления чата', 'error');
             }
         }
-// 🔧 ФУНКЦИЯ ДЛЯ ПОЛНОЙ ОЧИСТКИ АДМИН-ПАНЕЛИ
-function resetAdminPanel() {
-    console.log('🧹 Resetting admin panel display...');
-    
-    // Скрываем все секции
-    const allSections = document.querySelectorAll('.admin-section');
-    allSections.forEach(section => {
-        section.style.display = 'none';
-    });
-    
-    // Скрываем контейнер созданных заданий
-    const tasksContainer = document.getElementById('admin-tasks-list-container');
-    if (tasksContainer) {
-        tasksContainer.style.display = 'none';
-    }
-    
-    console.log('✅ Admin panel reset complete');
-}
 
 
         // Функция для воспроизведения звука при начислении средств
