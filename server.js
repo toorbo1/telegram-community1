@@ -184,37 +184,27 @@ async function initDatabase() {
     try {
         console.log('🔄 Initializing simplified database...');
         
-        // Таблица пользователей
+        // Сначала создаем базовые таблицы
         await pool.query(`
             CREATE TABLE IF NOT EXISTS user_profiles (
-    user_id BIGINT PRIMARY KEY,
-    username TEXT,
-    first_name TEXT,
-    last_name TEXT,
-    photo_url TEXT,
-    balance REAL DEFAULT 0,
-    level INTEGER DEFAULT 1,
-    is_admin BOOLEAN DEFAULT false,
-    referral_code TEXT UNIQUE,
-    referred_by BIGINT,
-    referral_count INTEGER DEFAULT 0,
-    referral_earned REAL DEFAULT 0,
-    is_first_login BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )`);
-        
-
-        // Добавляем реферальные поля
-        await pool.query(`
-            ALTER TABLE user_profiles 
-            ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE,
-            ADD COLUMN IF NOT EXISTS referred_by BIGINT,
-            ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0,
-            ADD COLUMN IF NOT EXISTS referral_earned REAL DEFAULT 0,
-            ADD COLUMN IF NOT EXISTS is_first_login BOOLEAN DEFAULT true
+                user_id BIGINT PRIMARY KEY,
+                username TEXT,
+                first_name TEXT,
+                last_name TEXT,
+                photo_url TEXT,
+                balance REAL DEFAULT 0,
+                level INTEGER DEFAULT 1,
+                is_admin BOOLEAN DEFAULT false,
+                referral_code TEXT UNIQUE,
+                referred_by BIGINT,
+                referral_count INTEGER DEFAULT 0,
+                referral_earned REAL DEFAULT 0,
+                is_first_login BOOLEAN DEFAULT true,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
         `);
 
-        // Таблица заданий - ОБНОВЛЕННАЯ ВЕРСИЯ С image_url
+        // Таблица заданий
         await pool.query(`
             CREATE TABLE IF NOT EXISTS tasks (
                 id SERIAL PRIMARY KEY,
@@ -228,17 +218,12 @@ async function initDatabase() {
                 people_required INTEGER DEFAULT 1,
                 repost_time TEXT DEFAULT '1 день',
                 task_url TEXT,
-                image_url TEXT, -- ДОБАВЛЕНА КОЛОНКА ДЛЯ ИЗОБРАЖЕНИЙ
+                image_url TEXT,
                 status TEXT DEFAULT 'active',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
 
-        // Гарантируем, что колонка image_url существует
-        await pool.query(`
-            ALTER TABLE tasks 
-            ADD COLUMN IF NOT EXISTS image_url TEXT
-        `);
         // Таблица запросов на вывод
         await pool.query(`
             CREATE TABLE IF NOT EXISTS withdrawal_requests (
@@ -313,8 +298,7 @@ async function initDatabase() {
                 reviewed_by BIGINT
             )
         `);
-         // В initDatabase() добавьте:
-        await createPromocodesTable();
+
         // Таблица сообщений
         await pool.query(`
             CREATE TABLE IF NOT EXISTS support_messages (
@@ -339,52 +323,12 @@ async function initDatabase() {
                 can_support BOOLEAN DEFAULT true,
                 can_payments BOOLEAN DEFAULT true,
                 can_admins BOOLEAN DEFAULT false,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (admin_id) REFERENCES user_profiles(user_id)
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
 
-        // Добавляем недостающие колонки
-        await pool.query(`
-            ALTER TABLE support_chats 
-            ADD COLUMN IF NOT EXISTS user_username TEXT,
-            ADD COLUMN IF NOT EXISTS unread_count INTEGER DEFAULT 0
-        `);
-        
-        await pool.query(`
-            ALTER TABLE tasks 
-            ADD COLUMN IF NOT EXISTS created_by BIGINT,
-            ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'general',
-            ADD COLUMN IF NOT EXISTS time_to_complete TEXT DEFAULT '5 минут',
-            ADD COLUMN IF NOT EXISTS difficulty TEXT DEFAULT 'Легкая',
-            ADD COLUMN IF NOT EXISTS people_required INTEGER DEFAULT 1,
-            ADD COLUMN IF NOT EXISTS repost_time TEXT DEFAULT '1 день',
-            ADD COLUMN IF NOT EXISTS task_url TEXT
-        `);
-await pool.query(`
-            CREATE TABLE IF NOT EXISTS withdrawal_requests (
-                id SERIAL PRIMARY KEY,
-                user_id BIGINT NOT NULL,
-                username TEXT,
-                first_name TEXT,
-                amount REAL NOT NULL,
-                status TEXT DEFAULT 'pending',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                completed_at TIMESTAMP,
-                completed_by BIGINT
-            )
-        `);
-        // Добавляем колонку user_username в task_verifications если ее нет
-        await pool.query(`
-            ALTER TABLE task_verifications 
-            ADD COLUMN IF NOT EXISTS user_username TEXT
-        `);
-
-        // Добавляем колонку user_username в support_messages если ее нет
-        await pool.query(`
-            ALTER TABLE support_messages 
-            ADD COLUMN IF NOT EXISTS user_username TEXT
-        `);
+        // 🔧 УПРОЩЕННОЕ СОЗДАНИЕ ТАБЛИЦЫ ПРОМОКОДОВ
+        await createPromocodesTableSafe();
 
         // Гарантируем существование главного админа
         await pool.query(`
@@ -398,69 +342,125 @@ await pool.query(`
         `, [ADMIN_ID, 'linkgold_admin', 'Главный', 'Администратор', true]);
 
         // Создаем тестовые задания если их нет
-        const tasksCount = await pool.query('SELECT COUNT(*) FROM tasks WHERE status = $1', ['active']);
-        if (parseInt(tasksCount.rows[0].count) === 0) {
-            console.log('📝 Создаем тестовые задания...');
-            await pool.query(`
-                INSERT INTO tasks (title, description, price, created_by, category) 
-                VALUES 
-                ('Подписаться на канал', 'Подпишитесь на наш Telegram канал и оставайтесь подписанным минимум 3 дня', 50, $1, 'subscribe'),
-                ('Посмотреть видео', 'Посмотрите видео до конца и поставьте лайк', 30, $1, 'view'),
-                ('Сделать репост', 'Сделайте репост записи в своем канале', 70, $1, 'repost'),
-                ('Оставить комментарий', 'Напишите содержательный комментарий под постом', 40, $1, 'comment'),
-                ('Вступить в группу', 'Вступите в нашу Telegram группу', 60, $1, 'social')
-            `, [ADMIN_ID]);
-            console.log('✅ Тестовые задания созданы');
-        }
+        await createSampleTasks();
 
-        // Создаем тестовый пост если нет постов
-        const postsCount = await pool.query('SELECT COUNT(*) FROM posts');
-        if (parseInt(postsCount.rows[0].count) === 0) {
-            await pool.query(`
-                INSERT INTO posts (title, content, author, author_id) 
-                VALUES ('Добро пожаловать!', 'Начните зарабатывать выполняя простые задания!', 'Администратор', $1)
-            `, [ADMIN_ID]);
-        }
+        console.log('✅ Database initialized successfully');
+    } catch (error) {
+        console.error('❌ Database initialization error:', error);
+    }
+}
 
-        // Гарантируем создание таблиц промокодов
-        await createPromocodesTable();
-       async function initDatabase() {
+async function createPromocodesTableSafe() {
     try {
-        console.log('🔄 Initializing simplified database...');
+        console.log('🔧 Safe creation of promocodes tables...');
         
-        // ВРЕМЕННОЕ РЕШЕНИЕ - вставьте этот код вместо вызова fixPromocodesTable
-        try {
-            console.log('🔧 Checking promocodes table...');
-            await pool.query(`
-                CREATE TABLE IF NOT EXISTS promocodes (
-                    id SERIAL PRIMARY KEY,
-                    code VARCHAR(20) UNIQUE NOT NULL,
-                    reward REAL NOT NULL DEFAULT 0,
-                    max_uses INTEGER NOT NULL DEFAULT 1,
-                    used_count INTEGER DEFAULT 0,
-                    expires_at TIMESTAMP,
-                    is_active BOOLEAN DEFAULT true,
-                    created_by BIGINT NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            `);
-            console.log('✅ Promocodes table verified');
-        } catch (error) {
-            console.log('⚠️ Promocodes table check:', error.message);
+        // Проверяем, существует ли таблица
+        const tableExists = await pool.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = 'promocodes'
+            )
+        `);
+        
+        if (tableExists.rows[0].exists) {
+            console.log('✅ Promocodes table already exists');
+            return;
         }
-        // КОНЕЦ ВРЕМЕННОГО РЕШЕНИЯ
         
-        console.log('✅ Database initialized successfully');
+        // Создаем таблицу промокодов
+        await pool.query(`
+            CREATE TABLE promocodes (
+                id SERIAL PRIMARY KEY,
+                code VARCHAR(50) UNIQUE NOT NULL,
+                reward REAL NOT NULL DEFAULT 0,
+                max_uses INTEGER NOT NULL DEFAULT 1,
+                used_count INTEGER DEFAULT 0,
+                expires_at TIMESTAMP,
+                is_active BOOLEAN DEFAULT true,
+                created_by BIGINT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Создаем таблицу активаций
+        await pool.query(`
+            CREATE TABLE promocode_activations (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                promocode_id INTEGER NOT NULL,
+                activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (promocode_id) REFERENCES promocodes(id) ON DELETE CASCADE
+            )
+        `);
+        
+        console.log('✅ Promocodes tables created successfully');
     } catch (error) {
-        console.error('❌ Database initialization error:', error);
+        console.error('❌ Safe promocodes creation error:', error);
+        
+        // Если есть конфликт, пробуем альтернативный подход
+        if (error.message.includes('pg_type_typname_nsp_index')) {
+            console.log('🔄 Trying alternative table creation...');
+            await createPromocodesTableAlternative();
+        }
     }
 }
+
+async function createPromocodesTableAlternative() {
+    try {
+        console.log('🔄 Alternative promocodes table creation...');
         
-        console.log('✅ Database initialized successfully');
+        // Создаем таблицу с уникальным именем
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS promocodes_table (
+                id SERIAL PRIMARY KEY,
+                code VARCHAR(50) UNIQUE NOT NULL,
+                reward REAL NOT NULL DEFAULT 0,
+                max_uses INTEGER NOT NULL DEFAULT 1,
+                used_count INTEGER DEFAULT 0,
+                expires_at TIMESTAMP,
+                is_active BOOLEAN DEFAULT true,
+                created_by BIGINT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        console.log('✅ Alternative promocodes table created');
     } catch (error) {
-        console.error('❌ Database initialization error:', error);
+        console.error('❌ Alternative creation also failed:', error);
     }
 }
+
+app.post('/api/admin/fix-database', async (req, res) => {
+    try {
+        console.log('🔧 Force fixing database...');
+        
+        // Удаляем проблемные таблицы если существуют
+        try {
+            await pool.query('DROP TABLE IF EXISTS promocode_activations CASCADE');
+            await pool.query('DROP TABLE IF EXISTS promocodes CASCADE');
+        } catch (error) {
+            console.log('ℹ️ Could not drop tables:', error.message);
+        }
+        
+        // Пересоздаем таблицы
+        await createPromocodesTableSafe();
+        
+        // Проверяем структуры других таблиц
+        await fixWithdrawalTable();
+        await fixTasksTable();
+        
+        res.json({
+            success: true,
+            message: 'База данных успешно исправлена'
+        });
+    } catch (error) {
+        console.error('❌ Fix database error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 
 async function createPromocodesTable() {
     try {
@@ -5012,20 +5012,21 @@ app.use('/api/*', (req, res) => {
 });
 
 // Start server
+// Start server с обработкой ошибок
 app.listen(PORT, '0.0.0.0', async () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📊 Health: http://localhost:${PORT}/api/health`);
     console.log(`🔐 Admin ID: ${ADMIN_ID}`);
     
-    // Инициализируем базу данных с заданиями
-    await initializeWithTasks();
-    
-    // Принудительно исправляем структуру таблиц
     try {
-        await fixWithdrawalTable();
-        await fixTasksTable();
-        console.log('✅ Table structures verified');
+        // Проверяем подключение к базе
+        await checkDatabaseConnection();
+        
+        // Инициализируем базу данных
+        await initDatabase();
+        
+        console.log('✅ Server started successfully');
     } catch (error) {
-        console.error('❌ Error fixing table structures:', error);
+        console.error('❌ Server startup error:', error);
     }
 });
