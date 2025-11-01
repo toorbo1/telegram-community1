@@ -8003,23 +8003,7 @@ async function syncUserProfile() {
         return false;
     }
 }
-// ✅ ДОБАВЬТЕ В ФУНКЦИЮ addSyncButtonToProfile()
-function addSyncButtonToProfile() {
-    const syncBtn = document.createElement('button');
-    syncBtn.textContent = '🔄 Синхронизировать';
-    syncBtn.className = 'btn btn-primary';
-    syncBtn.onclick = async () => {
-        const success = await syncUserProfile();
-        if (success) {
-            showNotification('Профиль синхронизирован!', 'success');
-        }
-    };
-    
-    const profileTab = document.getElementById('profile-tab');
-    if (profileTab) {
-        profileTab.appendChild(syncBtn);
-    }
-}
+
 // Обновление профиля пользователя
 app.post('/api/user/update-profile', async (req, res) => {
     const { userId, firstName, lastName, username, photoUrl } = req.body;
