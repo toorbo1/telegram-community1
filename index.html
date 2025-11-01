@@ -5296,6 +5296,51 @@ html, body {
 </div>
 
 
+            <!-- Проверка заданий -->
+            <div id="admin-verification-section" class="admin-section" style="display: none;">
+                <h3>Задания на проверке</h3>
+                <div id="admin-verification-list">
+                    <!-- Задания на проверке будут загружаться динамически -->
+                </div>
+            </div>
+
+            <!-- Поддержка -->
+            <div id="admin-support-section" class="admin-section" style="display: none;">
+                <h3>💬 Чаты с пользователями</h3>
+                
+                <!-- Переключение между активными и архивными чатами -->
+                <div class="chat-tabs" style="margin-bottom: 15px;">
+                    <button class="chat-tab-btn active" onclick="showChatTab('active')">Активные чаты</button>
+                    <button class="chat-tab-btn" onclick="showChatTab('archived')">Архивные чаты</button>
+                    <button class="chat-tab-btn" onclick="showChatTab('all')">Все чаты</button>
+                </div>
+                
+                <!-- Статистика чатов -->
+                <div class="chat-stats" style="margin-bottom: 15px; padding: 10px; background: var(--bg-secondary); border-radius: 10px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                        <span>Активные: <strong id="active-chats-count">0</strong></span>
+                        <span>Непрочитанные: <strong id="unread-chats-count">0</strong></span>
+                        <span>Всего: <strong id="total-chats-count">0</strong></span>
+                    </div>
+                </div>
+                
+                <!-- Список активных чатов -->
+                <div id="active-chats-list" class="admin-chat-list">
+                    <!-- Активные чаты будут загружены здесь -->
+                </div>
+                
+                <!-- Список архивных чатов -->
+                <div id="archived-chats-list" class="admin-chat-list" style="display: none;">
+                    <!-- Архивные чаты будут загружены здесь -->
+                </div>
+                
+                <!-- Список всех чатов -->
+                <div id="all-chats-list" class="admin-chat-list" style="display: none;">
+                    <!-- Все чаты будут загружены здесь -->
+                </div>
+            </div>
+        </div>
+
         <div class="form-group">
             <label>Название задания *</label>
             <input type="text" class="admin-input" id="admin-task-title" placeholder="Введите название задания">
@@ -5363,55 +5408,9 @@ html, body {
             <!-- Задания будут загружены здесь -->
         </div>
     </div>
-</div>
-            <!-- Проверка заданий -->
-            <div id="admin-verification-section" class="admin-section" style="display: none;">
-                <h3>Задания на проверке</h3>
-                <div id="admin-verification-list">
-                    <!-- Задания на проверке будут загружаться динамически -->
-                </div>
-            </div>
-
-            <!-- Поддержка -->
-            <div id="admin-support-section" class="admin-section" style="display: none;">
-                <h3>💬 Чаты с пользователями</h3>
-                
-                <!-- Переключение между активными и архивными чатами -->
-                <div class="chat-tabs" style="margin-bottom: 15px;">
-                    <button class="chat-tab-btn active" onclick="showChatTab('active')">Активные чаты</button>
-                    <button class="chat-tab-btn" onclick="showChatTab('archived')">Архивные чаты</button>
-                    <button class="chat-tab-btn" onclick="showChatTab('all')">Все чаты</button>
-                </div>
-                
-                <!-- Статистика чатов -->
-                <div class="chat-stats" style="margin-bottom: 15px; padding: 10px; background: var(--bg-secondary); border-radius: 10px;">
-                    <div style="display: flex; justify-content: space-between; font-size: 12px;">
-                        <span>Активные: <strong id="active-chats-count">0</strong></span>
-                        <span>Непрочитанные: <strong id="unread-chats-count">0</strong></span>
-                        <span>Всего: <strong id="total-chats-count">0</strong></span>
-                    </div>
-                </div>
-                
-                <!-- Список активных чатов -->
-                <div id="active-chats-list" class="admin-chat-list">
-                    <!-- Активные чаты будут загружены здесь -->
-                </div>
-                
-                <!-- Список архивных чатов -->
-                <div id="archived-chats-list" class="admin-chat-list" style="display: none;">
-                    <!-- Архивные чаты будут загружены здесь -->
-                </div>
-                
-                <!-- Список всех чатов -->
-                <div id="all-chats-list" class="admin-chat-list" style="display: none;">
-                    <!-- Все чаты будут загружены здесь -->
-                </div>
-            </div>
-        </div>
+ </div>
     </div>
-
-<!-- В админ-панели добавьте кнопку -->
-<!-- <button class="admin-btn" onclick="showAdminSection('payments')">💳 Оплаты</button> -->
+ 
     <!-- Страница "Как работает" -->
     <div id="how-it-works-page" class="page">
         <div class="page-header">
