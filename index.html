@@ -5922,16 +5922,28 @@ function showProfileTab() {
     document.getElementById('profile-tab').classList.add('active');
     updateNavState('profile');
     
-    // Принудительная синхронизация с Telegram при каждом открытии профиля
+    // 🔥 ИСПРАВЛЕНИЕ: Принудительная синхронизация при каждом открытии
     setTimeout(async () => {
+        console.log('🎯 Profile tab opened - syncing data...');
         await syncUserProfile();
-        updateUserData();
+        updateUserData(); // Дополнительное обновление данных
+        displayUserProfile(); // Принудительное обновление интерфейса
         
         // Прокручиваем к началу
         scrollToTop();
     }, 100);
 }
+// Автоматическая синхронизация каждые 30 секунд
+function startAutoSync() {
+    setInterval(async () => {
+        if (document.getElementById('profile-tab').classList.contains('active')) {
+            console.log('🔄 Auto-syncing profile data...');
+            await syncUserProfile();
+        }
+    }, 30000);
+}
 
+// Вызовите в initializeApp()
 // 🔧 ДОБАВЛЕНИЕ ПРОКРУТКИ К СУЩЕСТВУЮЩИМ ФУНКЦИЯМ
 function showMainTab() {
     hideAllTabs();
@@ -6476,14 +6488,20 @@ async function initializeTelegramUser() {
             
             console.log('📱 Telegram user found:', tgUser);
             
+            // 🔥 ИСПРАВЛЕНИЕ: Правильное сохранение данных Telegram
             currentUser = {
-                id: tgUser.id,
+                id: tgUser.id.toString(),
                 firstName: tgUser.first_name || 'Пользователь',
                 lastName: tgUser.last_name || '',
                 username: tgUser.username || `user_${tgUser.id}`,
                 photoUrl: tgUser.photo_url || '',
                 isAdmin: parseInt(tgUser.id) === ADMIN_ID
             };
+            
+            console.log('✅ Telegram user data saved:', currentUser);
+            
+            // Сохраняем в localStorage для надежности
+            localStorage.setItem('linkgold_user', JSON.stringify(currentUser));
             
             // Аутентификация на сервере
             try {
@@ -6499,18 +6517,36 @@ async function initializeTelegramUser() {
                     console.log('✅ User authenticated successfully');
                 }
             } catch (authError) {
-                console.log('⚠️ Auth endpoint not available, continuing with basic user data');
+                console.log('⚠️ Auth endpoint not available, continuing with Telegram data');
             }
             
             initializeApp();
             
         } else {
-            console.log('❌ Telegram user data not available, using test user');
-            initializeTestUser();
+            console.log('❌ Telegram user data not available, checking localStorage...');
+            // Проверяем сохраненные данные
+            const savedUser = localStorage.getItem('linkgold_user');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                console.log('✅ Using saved user data:', currentUser);
+                initializeApp();
+            } else {
+                console.log('❌ No saved data, using test user');
+                initializeTestUser();
+            }
         }
     } catch (error) {
         console.error('❌ Error initializing Telegram user:', error);
-        initializeTestUser();
+        
+        // Fallback на сохраненные данные
+        const savedUser = localStorage.getItem('linkgold_user');
+        if (savedUser) {
+            currentUser = JSON.parse(savedUser);
+            console.log('✅ Using saved user data after error:', currentUser);
+            initializeApp();
+        } else {
+            initializeTestUser();
+        }
     }
 }
 
@@ -7616,10 +7652,81 @@ function startUserDataAutoUpdate() {
                 console.error('Ошибка обновления данных пользователя:', error);
             }
         }
+// function displayUserProfile() {
+//     if (!currentUser) {
+//         console.log('❌ No user data to display');
+//         return;
+//     }
 
+//     console.log('🎨 Displaying user profile:', currentUser);
+
+//     // Обновляем основную информацию
+//     const firstNameElement = document.getElementById('user-first-name');
+//     const usernameElement = document.getElementById('user-username');
+//     const levelElement = document.getElementById('user-level');
+//     const balanceElement = document.getElementById('user-balance-main');
+    
+//     if (firstNameElement) {
+//         const fullName = currentUser.lastName ? 
+//             `${currentUser.firstName} ${currentUser.lastName}` : 
+//             currentUser.firstName;
+//         firstNameElement.textContent = fullName;
+//     }
+    
+//     if (usernameElement) {
+//         usernameElement.textContent = currentUser.username || 'username';
+//     }
+    
+//     if (levelElement) {
+//         levelElement.textContent = currentUser.level || 1;
+//     }
+    
+//     // Обновляем баланс во всех местах
+//     const userBalance = currentUser.balance || 0;
+//     if (balanceElement) {
+//         balanceElement.textContent = `${userBalance} ⭐`;
+//     }
+    
+//     // 🔥 ИСПРАВЛЕНИЕ: Улучшенное отображение аватара
+//     const userPhotoElement = document.getElementById('user-photo');
+//     if (userPhotoElement) {
+//         if (currentUser.photoUrl) {
+//             userPhotoElement.src = currentUser.photoUrl;
+//             userPhotoElement.alt = 'Фото профиля';
+//             userPhotoElement.style.display = 'block';
+//             userPhotoElement.textContent = ''; // Очищаем инициалы
+//         } else {
+//             // Показываем инициалы если нет фото
+//             userPhotoElement.style.display = 'flex';
+//             userPhotoElement.style.alignItems = 'center';
+//             userPhotoElement.style.justifyContent = 'center';
+//             userPhotoElement.style.backgroundColor = '#6366f1';
+//             userPhotoElement.style.color = 'white';
+//             userPhotoElement.style.fontWeight = 'bold';
+//             userPhotoElement.style.borderRadius = '50%';
+//             userPhotoElement.style.width = '60px';
+//             userPhotoElement.style.height = '60px';
+//             userPhotoElement.textContent = currentUser.firstName ? 
+//                 currentUser.firstName.charAt(0).toUpperCase() : 'U';
+//             userPhotoElement.src = ''; // Очищаем src
+//         }
+//     }
+    
+//     // Обновляем статистику и прогресс
+//     updateProfileStats();
+//     updateReferralSystem();
+//     updateLevelProgress();
+    
+//     console.log('✅ User profile displayed successfully');
+// }
         // 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ПРОФИЛЯ
 function displayUserProfile() {
-    if (!currentUser) return;
+    if (!currentUser) {
+        console.log('❌ No user data to display');
+        return;
+    }
+
+    console.log('🎨 Displaying user profile:', currentUser);
 
     // Обновляем основную информацию
     const firstNameElement = document.getElementById('user-first-name');
@@ -7634,35 +7741,51 @@ function displayUserProfile() {
         firstNameElement.textContent = fullName;
     }
     
-    if (usernameElement) usernameElement.textContent = currentUser.username || 'username';
-    if (levelElement) levelElement.textContent = currentUser.level || 1;
+    if (usernameElement) {
+        usernameElement.textContent = currentUser.username || 'username';
+    }
+    
+    if (levelElement) {
+        levelElement.textContent = currentUser.level || 1;
+    }
     
     // Обновляем баланс во всех местах
     const userBalance = currentUser.balance || 0;
-    if (balanceElement) balanceElement.textContent = `${userBalance} ⭐`;
+    if (balanceElement) {
+        balanceElement.textContent = `${userBalance} ⭐`;
+    }
     
-    // Обновляем аватар
+    // 🔥 ИСПРАВЛЕНИЕ: Улучшенное отображение аватара
     const userPhotoElement = document.getElementById('user-photo');
-    if (userPhotoElement && currentUser.photoUrl) {
-        userPhotoElement.src = currentUser.photoUrl;
-        userPhotoElement.alt = 'Фото профиля';
-        userPhotoElement.style.display = 'block';
-    } else if (userPhotoElement) {
-        // Показываем инициал если нет фото
-        userPhotoElement.style.display = 'flex';
-        userPhotoElement.style.alignItems = 'center';
-        userPhotoElement.style.justifyContent = 'center';
-        userPhotoElement.style.backgroundColor = '#6366f1';
-        userPhotoElement.style.color = 'white';
-        userPhotoElement.style.fontWeight = 'bold';
-        userPhotoElement.style.borderRadius = '50%';
-        userPhotoElement.textContent = currentUser.firstName ? currentUser.firstName.charAt(0).toUpperCase() : 'U';
+    if (userPhotoElement) {
+        if (currentUser.photoUrl) {
+            userPhotoElement.src = currentUser.photoUrl;
+            userPhotoElement.alt = 'Фото профиля';
+            userPhotoElement.style.display = 'block';
+            userPhotoElement.textContent = ''; // Очищаем инициалы
+        } else {
+            // Показываем инициалы если нет фото
+            userPhotoElement.style.display = 'flex';
+            userPhotoElement.style.alignItems = 'center';
+            userPhotoElement.style.justifyContent = 'center';
+            userPhotoElement.style.backgroundColor = '#6366f1';
+            userPhotoElement.style.color = 'white';
+            userPhotoElement.style.fontWeight = 'bold';
+            userPhotoElement.style.borderRadius = '50%';
+            userPhotoElement.style.width = '60px';
+            userPhotoElement.style.height = '60px';
+            userPhotoElement.textContent = currentUser.firstName ? 
+                currentUser.firstName.charAt(0).toUpperCase() : 'U';
+            userPhotoElement.src = ''; // Очищаем src
+        }
     }
     
     // Обновляем статистику и прогресс
     updateProfileStats();
     updateReferralSystem();
-    updateLevelProgress(); // ← ВАЖНО: вызываем обновление прогресса уровня
+    updateLevelProgress();
+    
+    console.log('✅ User profile displayed successfully');
 }
 
 function updateProfileStats() {
@@ -7813,21 +7936,10 @@ function updateLevelProgress() {
 // 🔧 ФУНКЦИЯ ДЛЯ СИНХРОНИЗАЦИИ ПРОФИЛЯ С TELEGRAM
 async function syncUserProfile() {
     try {
+        console.log('🔄 Starting profile synchronization...');
+        
         if (!window.Telegram?.WebApp) {
-            console.log('❌ Not in Telegram context');
-            
-            // Fallback: проверяем есть ли параметры запуска в URL
-            const urlParams = new URLSearchParams(window.location.search);
-            const tgWebAppStartParam = urlParams.get('tgWebAppStartParam');
-            
-            if (tgWebAppStartParam) {
-                // Мы в Telegram Web App, но window.Telegram не загрузился
-                showNotification('Перезагрузите страницу', 'warning');
-                return false;
-            }
-            
-            // Режим тестирования
-            initializeTestUser();
+            console.log('❌ Not in Telegram context, using saved data');
             return false;
         }
         
@@ -7836,31 +7948,32 @@ async function syncUserProfile() {
         
         if (!tgUser) {
             console.log('❌ Telegram user data not available');
-            showNotification('Данные Telegram недоступны', 'warning');
             return false;
         }
         
-        console.log('📱 Telegram user data:', tgUser);
+        console.log('📱 Syncing with Telegram data:', tgUser);
         
-        // Обновляем данные пользователя из Telegram
+        // 🔥 ИСПРАВЛЕНИЕ: Принудительное обновление ВСЕХ данных
         const updatedUser = {
-            ...currentUser,
+            ...currentUser, // Сохраняем существующие данные
+            id: tgUser.id.toString(),
             firstName: tgUser.first_name || currentUser.firstName,
             lastName: tgUser.last_name || currentUser.lastName,
             username: tgUser.username || currentUser.username,
-            photoUrl: tgUser.photo_url || currentUser.photoUrl
+            photoUrl: tgUser.photo_url || currentUser.photoUrl,
+            // Обновляем флаг администратора
+            isAdmin: parseInt(tgUser.id) === ADMIN_ID || currentUser.isAdmin
         };
         
-        // Сохраняем обновленные данные
         currentUser = updatedUser;
         
-        // Сохраняем в localStorage для fallback
+        // Сохраняем в localStorage
         localStorage.setItem('linkgold_user', JSON.stringify(currentUser));
         
-        // Обновляем интерфейс
+        // Обновляем интерфейс немедленно
         displayUserProfile();
         
-        // Пытаемся синхронизировать с сервером
+        // Синхронизируем с сервером
         try {
             const response = await fetch(`${API_BASE_URL}/api/user/update-profile`, {
                 method: 'POST',
@@ -7878,12 +7991,9 @@ async function syncUserProfile() {
             
             if (response.ok) {
                 console.log('✅ Profile updated on server');
-            } else {
-                console.log('⚠️ Server update failed, but local profile saved');
             }
         } catch (serverError) {
-            console.log('⚠️ Could not update profile on server:', serverError.message);
-            // Продолжаем работу с локальными данными
+            console.log('⚠️ Server update failed, using local data');
         }
         
         console.log('✅ Profile synchronized successfully');
@@ -7891,7 +8001,6 @@ async function syncUserProfile() {
         
     } catch (error) {
         console.error('❌ Profile sync error:', error);
-        // Не показываем ошибку пользователю, работаем в оффлайн-режиме
         return false;
     }
 }
@@ -9291,6 +9400,8 @@ async function initializeApp() {
     addSyncButtonToProfile();
     // Применяем исправления layout сразу
     fixLayoutIssues();
+
+    startAutoSync();
     // 🔧 ВАЖНО: Загружаем список админов если пользователь главный админ
     if (currentUser && parseInt(currentUser.id) === ADMIN_ID) {
         setTimeout(() => {
