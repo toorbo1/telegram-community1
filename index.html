@@ -5317,59 +5317,6 @@ html, body {
     </div>
 </div>
 
-            <!-- В секции управления заданиями админ-панели -->
-<div id="admin-tasks-section" class="admin-section" style="display: none;">
-    <h3>Добавить задание</h3>
-    <div class="admin-form">
-        <input type="text" class="admin-input" id="admin-task-title" placeholder="Название задания *">
-        <textarea class="admin-textarea" id="admin-task-description" placeholder="Подробное описание задания *"></textarea>
-        
-        <div class="form-row" style="display: flex; gap: 12px; margin-bottom: 12px;">
-            <input type="text" class="admin-input" id="admin-task-price" placeholder="Цена *" style="flex: 1;">
-            <select class="admin-input" id="admin-task-category" style="flex: 1;">
-                <option value="subscribe">Подписки</option>
-                <option value="view">Просмотры</option>
-                <option value="comment">Комментарии</option>
-                <option value="repost">Репосты</option>
-                <option value="social">Соцсети</option>
-                <option value="other">Другое</option>
-            </select>
-        </div>
-        
-        <div class="form-row" style="display: flex; gap: 12px; margin-bottom: 12px;">
-            <input type="text" class="admin-input" id="admin-task-time" placeholder="Время выполнения" style="flex: 1;">
-            <select class="admin-input" id="admin-task-difficulty" style="flex: 1;">
-                <option value="Легкая">Легкая</option>
-                <option value="Средняя">Средняя</option>
-                <option value="Сложная">Сложная</option>
-            </select>
-        </div>
-        
-        <input type="number" class="admin-input" id="admin-task-people" placeholder="Сколько человек должно выполнить">
-        <input type="text" class="admin-input" id="admin-task-repost" placeholder="Время повторной публикации">
-        <input type="url" class="admin-input" id="admin-task-url" placeholder="URL задания">
-        
-        <!-- Загрузка изображения -->
-        <div class="image-upload-container" style="margin-bottom: 16px;">
-            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">
-                🖼️ Изображение задания (опционально)
-            </label>
-            <div style="display: flex; gap: 12px; align-items: center;">
-                <input type="file" class="admin-input" id="admin-task-image" accept="image/*" 
-                       style="flex: 1; padding: 12px;" onchange="previewTaskImage(this)">
-                <button type="button" class="btn btn-error" onclick="clearTaskImage()" 
-                        style="padding: 12px 16px; white-space: nowrap;">
-                    ❌ Очистить
-                </button>
-            </div>
-            <div id="task-image-preview" style="margin-top: 12px; display: none;">
-                <img id="task-preview-img" style="max-width: 200px; max-height: 150px; border-radius: 8px; border: 2px solid var(--border);">
-            </div>
-        </div>
-        
-        <button class="admin-submit" onclick="addTask()">➕ Добавить задание</button>
-    </div>
-</div>
 
             <!-- Проверка заданий -->
             <div id="admin-verification-section" class="admin-section" style="display: none;">
