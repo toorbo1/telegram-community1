@@ -5262,7 +5262,7 @@ html, body {
     
     <!-- ДОБАВЬТЕ ЭТОТ БЛОК ДЛЯ ОТОБРАЖЕНИЯ СОЗДАННЫХ ЗАДАНИЙ -->
     <div style="margin-top: 30px;">
-        <h3>📋 Созданные задания</h3>
+        <!-- <h3>📋 Созданные задания</h3> -->
         <div id="admin-tasks-list">
             <!-- Задания будут загружены здесь -->
         </div>
@@ -11574,26 +11574,17 @@ function showAdminSection(section) {
         sec.style.display = 'none';
     });
     
+    // Скрываем контейнер заданий если он открыт
+    const tasksContainer = document.getElementById('admin-tasks-list-container');
+    if (tasksContainer) {
+        tasksContainer.style.display = 'none';
+    }
+    
     // Специальная обработка для секции админов
     if (section === 'admins') {
         const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
         if (!isMainAdmin) {
             showNotification('❌ Только главный администратор может управлять админами!', 'error');
-            
-            // Показываем сообщение вместо секции
-            const adminsSection = document.getElementById('admin-admins-section');
-            if (adminsSection) {
-                adminsSection.innerHTML = `
-                    <div style="text-align: center; padding: 40px 20px;">
-                        <div style="font-size: 48px; margin-bottom: 16px;">🔒</div>
-                        <div style="font-size: 18px; margin-bottom: 8px;">Доступ запрещен</div>
-                        <div style="color: var(--text-secondary);">
-                            Только главный администратор может управлять списком админов
-                        </div>
-                    </div>
-                `;
-                adminsSection.style.display = 'block';
-            }
             return;
         }
     }
@@ -11629,7 +11620,26 @@ function showAdminSection(section) {
                 loadPromocodesList();
                 break;
         }
+    } else {
+        console.error(`❌ Target section not found: admin-${section}-section`);
     }
+}
+function resetAdminPanel() {
+    console.log('🧹 Resetting admin panel display...');
+    
+    // Скрываем все секции
+    const allSections = document.querySelectorAll('.admin-section');
+    allSections.forEach(section => {
+        section.style.display = 'none';
+    });
+    
+    // Скрываем контейнер созданных заданий
+    const tasksContainer = document.getElementById('admin-tasks-list-container');
+    if (tasksContainer) {
+        tasksContainer.style.display = 'none';
+    }
+    
+    console.log('✅ Admin panel reset complete');
 }
 function debugAdminSections() {
     console.log('🔍 DEBUG Admin Sections:');
@@ -13391,23 +13401,7 @@ function resetAdminPanel() {
     console.log('✅ Admin panel reset complete');
 }
 
-// Вызывайте эту функцию при переключении между основными вкладками
-function showAdminTab() {
-    const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
-    const isRegularAdmin = currentUser?.is_admin === true;
-    
-    if (!currentUser || (!isMainAdmin && !isRegularAdmin)) {
-        showNotification('Доступ запрещен!', 'error');
-        return;
-    }
-    
-    hideAllTabs();
-    document.getElementById('admin-tab').classList.add('active');
-    updateNavState('admin');
-    
-    // Сбрасываем панель при каждом открытии
-    resetAdminPanel();
-}
+
         // Функция для воспроизведения звука при начислении средств
         function playMoneySound() {
             try {
