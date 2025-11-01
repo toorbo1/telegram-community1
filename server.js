@@ -3810,6 +3810,7 @@ app.get('/api/admin/debug-rights', async (req, res) => {
     }
 });
 // Подтверждение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ С УДАЛЕНИЕМ ФАЙЛОВ
+// Подтверждение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ С УДАЛЕНИЕМ ФАЙЛОВ
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
@@ -3824,6 +3825,8 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             error: 'Доступ запрещен. Только администраторы могут подтверждать задания.'
         });
     }
+    
+    let screenshotPath = '';
     
     try {
         // Get verification info
@@ -3886,7 +3889,6 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
                 balance = COALESCE(balance, 0) + $1,
                 tasks_completed = COALESCE(tasks_completed, 0) + 1,
                 active_tasks = GREATEST(COALESCE(active_tasks, 0) - 1, 0),
-                experience = COALESCE(experience, 0) + 10,
                 updated_at = CURRENT_TIMESTAMP
             WHERE user_id = $2
         `, [verificationData.task_price, verificationData.user_id]);
@@ -3906,31 +3908,16 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             `, [task.id]);
             
             console.log(`✅ Задание ${task.id} автоматически удалено (достигнут лимит: ${peopleRequired} исполнителей)`);
-            
         }
         
-// Получаем текущее количество выполненных заданий
-const currentStats = await pool.query(
-    'SELECT tasks_completed FROM user_profiles WHERE user_id = $1',
-    [verificationData.user_id]
-);
-
-const currentCompleted = currentStats.rows[0].tasks_completed || 0;
-
-// Обновляем с правильным подсчетом
-await pool.query(`
-    UPDATE user_profiles 
-    SET 
-        balance = COALESCE(balance, 0) + $1,
-        tasks_completed = $2,
-        active_tasks = GREATEST(COALESCE(active_tasks, 0) - 1, 0),
-        updated_at = CURRENT_TIMESTAMP
-    WHERE user_id = $3
-`, [verificationData.task_price, currentCompleted + 1, verificationData.user_id]);
-
         // 🔥 УДАЛЯЕМ ФАЙЛ СКРИНШОТА ПОСЛЕ УСПЕШНОЙ ПРОВЕРКИ
         if (screenshotPath) {
-            await deleteScreenshotFile(screenshotPath);
+            try {
+                await deleteScreenshotFile(screenshotPath);
+            } catch (deleteError) {
+                console.error('❌ Ошибка при удалении скриншота:', deleteError);
+                // Не прерываем выполнение при ошибке удаления файла
+            }
         }
         
         res.json({
@@ -3958,6 +3945,11 @@ await pool.query(`
         });
     }
 });
+        
+
+
+
+
 // Отклонение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ С УДАЛЕНИЕМ ФАЙЛОВ
 app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res) => {
     const verificationId = req.params.verificationId;
