@@ -3811,6 +3811,7 @@ app.get('/api/admin/debug-rights', async (req, res) => {
 });
 // Подтверждение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ С УДАЛЕНИЕМ ФАЙЛОВ
 // Подтверждение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ С УДАЛЕНИЕМ ФАЙЛОВ
+// Подтверждение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ С УДАЛЕНИЕМ ФАЙЛОВ
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
@@ -3920,15 +3921,26 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             }
         }
         
+        // 🔥 ИСПРАВЛЕНИЕ: Уберите дублирование и используйте одно поле
+        const taskRemoved = newCompletedCount >= peopleRequired;
+        
         res.json({
             success: true,
             message: 'Task approved successfully',
             amountAdded: verificationData.task_price,
-            taskCompleted: newCompletedCount >= peopleRequired,
-            taskRemoved: newCompletedCount >= peopleRequired
+            taskRemoved: taskRemoved, // ← ТОЛЬКО ОДНО ПОЛЕ
+            task_price: verificationData.task_price // ← для совместимости
         });
+        
     } catch (error) {
         console.error('Approve verification error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    
+        
+
         
         // Даже если есть ошибка, пробуем удалить файл
         if (screenshotPath) {
@@ -3939,6 +3951,7 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             }
         }
         
+        // 🔧 ИСПРАВЛЕНИЕ: Всегда отправляем ответ клиенту даже при ошибке
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
