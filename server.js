@@ -445,16 +445,15 @@ await pool.query(`
 
 async function createPromocodesTable() {
     try {
-        console.log('🔧 Creating promocodes tables with reward field...');
+        console.log('🔧 Creating promocodes table with sequence fix...');
         
-        // Удаляем старые таблицы если существуют
-        await pool.query('DROP TABLE IF EXISTS promocode_activations CASCADE');
-        await pool.query('DROP TABLE IF EXISTS promocodes CASCADE');
+        // Сначала удаляем последовательность если существует
+        await pool.query('DROP SEQUENCE IF EXISTS promocodes_id_seq CASCADE');
         
-        // Создаем таблицу промокодов с полем reward
+        // Создаем таблицу БЕЗ SERIAL (чтобы избежать конфликта)
         await pool.query(`
-            CREATE TABLE promocodes (
-                id SERIAL PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS promocodes (
+                id INTEGER PRIMARY KEY,
                 code VARCHAR(50) UNIQUE NOT NULL,
                 reward REAL NOT NULL DEFAULT 0,
                 max_uses INTEGER NOT NULL DEFAULT 1,
@@ -466,9 +465,18 @@ async function createPromocodesTable() {
             )
         `);
         
+        // Создаем последовательность отдельно
+        await pool.query('CREATE SEQUENCE IF NOT EXISTS promocodes_id_seq START 1');
+        
+        // Устанавливаем последовательность как значение по умолчанию
+        await pool.query(`
+            ALTER TABLE promocodes 
+            ALTER COLUMN id SET DEFAULT nextval('promocodes_id_seq')
+        `);
+        
         // Создаем таблицу активаций
         await pool.query(`
-            CREATE TABLE promocode_activations (
+            CREATE TABLE IF NOT EXISTS promocode_activations (
                 id SERIAL PRIMARY KEY,
                 user_id BIGINT NOT NULL,
                 promocode_id INTEGER NOT NULL,
@@ -477,12 +485,63 @@ async function createPromocodesTable() {
             )
         `);
         
-        console.log('✅ Promocodes tables created with reward field');
+        console.log('✅ Promocodes tables created with sequence fix');
     } catch (error) {
         console.error('❌ Error creating promocodes tables:', error);
-        throw error;
+        // Продолжаем работу даже при ошибке
     }
 }
+
+// В server.js добавьте endpoint для синхронизации
+app.post('/api/user/sync', async (req, res) => {
+    const { user, initData } = req.body;
+    
+    if (!user || !user.id) {
+        return res.status(400).json({
+            success: false,
+            error: 'Invalid user data'
+        });
+    }
+    
+    try {
+        // Проверяем подпись Telegram Web App (для безопасности)
+        // Здесь должна быть реализация проверки подписи
+        
+        // Обновляем пользователя в базе данных
+        const result = await pool.query(`
+            INSERT INTO user_profiles 
+            (user_id, username, first_name, last_name, photo_url, updated_at) 
+            VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+            ON CONFLICT (user_id) 
+            DO UPDATE SET 
+                username = EXCLUDED.username,
+                first_name = EXCLUDED.first_name,
+                last_name = EXCLUDED.last_name,
+                photo_url = EXCLUDED.photo_url,
+                updated_at = EXCLUDED.updated_at
+            RETURNING *
+        `, [
+            user.id, 
+            user.username,
+            user.firstName, 
+            user.lastName,
+            user.photoUrl
+        ]);
+        
+        res.json({
+            success: true,
+            user: result.rows[0],
+            message: 'Profile synchronized successfully'
+        });
+    } catch (error) {
+        console.error('Sync error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Sync failed: ' + error.message
+        });
+    }
+});
+
 // Создаем таблицу с правильным полем reward
 app.post('/api/admin/promocodes/fix-reward-field', async (req, res) => {
     try {
@@ -698,6 +757,50 @@ async function verifyPromocodesTableStructure() {
         console.error('❌ Ошибка проверки структуры таблицы:', error);
     }
 }
+
+// В server.js добавьте этот endpoint
+app.post('/api/admin/fix-database-sequences', async (req, res) => {
+    try {
+        console.log('🔧 Fixing database sequences...');
+        
+        // Исправляем конфликт последовательностей для промокодов
+        await pool.query(`
+            DO $$ 
+            BEGIN
+                -- Пересоздаем последовательность если она конфликтует
+                IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'promocodes_id_seq') THEN
+                    DROP SEQUENCE IF EXISTS promocodes_id_seq CASCADE;
+                END IF;
+                
+                CREATE SEQUENCE promocodes_id_seq START 1;
+                
+                -- Обновляем таблицу промокодов
+                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'promocodes') THEN
+                    ALTER TABLE promocodes 
+                    ALTER COLUMN id SET DEFAULT nextval('promocodes_id_seq'),
+                    ALTER COLUMN id SET NOT NULL;
+                    
+                    -- Обновляем текущее значение последовательности
+                    PERFORM setval('promocodes_id_seq', COALESCE((SELECT MAX(id) FROM promocodes), 0) + 1);
+                END IF;
+            END $$;
+        `);
+
+        console.log('✅ Database sequences fixed successfully');
+        
+        res.json({
+            success: true,
+            message: 'Последовательности базы данных исправлены'
+        });
+    } catch (error) {
+        console.error('❌ Fix sequences error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка исправления последовательностей: ' + error.message
+        });
+    }
+});
+
 // Функция для принудительного обновления структуры таблицы
 async function fixWithdrawalTable() {
     try {
