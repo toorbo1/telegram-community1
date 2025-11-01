@@ -5917,16 +5917,15 @@ function goBackToProfile() {
     setTimeout(scrollToTop, 100);
 }
 
-// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ПОКАЗА ПРОФИЛЯ
 function showProfileTab() {
     hideAllTabs();
     document.getElementById('profile-tab').classList.add('active');
     updateNavState('profile');
     
-    // Синхронизируем данные при каждом открытии профиля
-    setTimeout(() => {
+    // Принудительная синхронизация с Telegram при каждом открытии профиля
+    setTimeout(async () => {
+        await syncUserProfile();
         updateUserData();
-        syncUserProfile();
         
         // Прокручиваем к началу
         scrollToTop();
@@ -6452,8 +6451,12 @@ setTimeout(() => {
 
 async function initializeTelegramUser() {
     try {
-        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+        console.log('🔍 Initializing Telegram user...');
+        
+        if (typeof tg !== 'undefined' && tg.initDataUnsafe && tg.initDataUnsafe.user) {
             const tgUser = tg.initDataUnsafe.user;
+            
+            console.log('📱 Telegram user found:', tgUser);
             
             currentUser = {
                 id: tgUser.id,
@@ -6464,7 +6467,7 @@ async function initializeTelegramUser() {
                 isAdmin: parseInt(tgUser.id) === ADMIN_ID
             };
             
-            // Простая аутентификация без реферального кода (он обрабатывается в боте)
+            // Аутентификация на сервере
             try {
                 const authResult = await makeRequest('/user/auth', {
                     method: 'POST',
@@ -6475,18 +6478,20 @@ async function initializeTelegramUser() {
                 
                 if (authResult.success) {
                     Object.assign(currentUser, authResult.user);
+                    console.log('✅ User authenticated successfully');
                 }
             } catch (authError) {
-                console.log('Auth endpoint not available, continuing with basic user data');
+                console.log('⚠️ Auth endpoint not available, continuing with basic user data');
             }
             
             initializeApp();
+            
         } else {
-            console.log('Telegram user data not available');
+            console.log('❌ Telegram user data not available, using test user');
             initializeTestUser();
         }
     } catch (error) {
-        console.error('Error initializing Telegram user:', error);
+        console.error('❌ Error initializing Telegram user:', error);
         initializeTestUser();
     }
 }
@@ -7789,32 +7794,64 @@ function updateLevelProgress() {
 }
 // 🔧 ФУНКЦИЯ ДЛЯ СИНХРОНИЗАЦИИ ПРОФИЛЯ С TELEGRAM
 async function syncUserProfile() {
-    if (!currentUser || !window.Telegram?.WebApp) return;
+    console.log('🔄 Starting profile synchronization...');
     
     try {
+        // Проверяем доступность Telegram WebApp
+        if (!window.Telegram?.WebApp) {
+            console.log('❌ Telegram WebApp not available');
+            return false;
+        }
+        
         const tg = window.Telegram.WebApp;
         const tgUser = tg.initDataUnsafe?.user;
         
-        if (tgUser) {
-            // Обновляем данные пользователя из Telegram
-            const updatedUser = {
-                ...currentUser,
-                firstName: tgUser.first_name || currentUser.firstName,
-                lastName: tgUser.last_name || currentUser.lastName,
-                username: tgUser.username || currentUser.username,
-                photoUrl: tgUser.photo_url || currentUser.photoUrl
-            };
-            
-            // Сохраняем обновленные данные
-            currentUser = updatedUser;
-            
-            // Обновляем интерфейс
-            displayUserProfile();
-            
-            console.log('✅ Профиль синхронизирован с Telegram');
+        if (!tgUser) {
+            console.log('❌ Telegram user data not available');
+            return false;
         }
+        
+        console.log('📱 Telegram user data:', tgUser);
+        
+        // Обновляем данные пользователя из Telegram
+        const updatedUser = {
+            ...currentUser,
+            firstName: tgUser.first_name || currentUser.firstName,
+            lastName: tgUser.last_name || currentUser.lastName,
+            username: tgUser.username || currentUser.username,
+            photoUrl: tgUser.photo_url || currentUser.photoUrl
+        };
+        
+        // Сохраняем обновленные данные
+        currentUser = updatedUser;
+        
+        // Обновляем интерфейс
+        displayUserProfile();
+        
+        // Отправляем обновленные данные на сервер
+        try {
+            await makeRequest('/user/update-profile', {
+                method: 'POST',
+                body: JSON.stringify({
+                    userId: currentUser.id,
+                    firstName: currentUser.firstName,
+                    lastName: currentUser.lastName,
+                    username: currentUser.username,
+                    photoUrl: currentUser.photoUrl
+                })
+            });
+            console.log('✅ Profile updated on server');
+        } catch (serverError) {
+            console.log('⚠️ Could not update profile on server:', serverError.message);
+        }
+        
+        console.log('✅ Profile synchronized successfully');
+        return true;
+        
     } catch (error) {
-        console.error('❌ Ошибка синхронизации профиля:', error);
+        console.error('❌ Profile synchronization error:', error);
+        showNotification('Ошибка синхронизации профиля', 'error');
+        return false;
     }
 }
         // Проверка прав администратора
@@ -9152,7 +9189,8 @@ function formatCategory(category) {
 }
 async function initializeApp() {
     console.log('🎮 Initializing LinkGold app...');
-
+    // Добавляем кнопку синхронизации
+    addSyncButtonToProfile();
     // Применяем исправления layout сразу
     fixLayoutIssues();
     // 🔧 ВАЖНО: Загружаем список админов если пользователь главный админ
@@ -11536,18 +11574,7 @@ function showTasksTab() {
             updateNavState('tasks');
         }
 
-        // 🔧 ОБРАБОТЧИК ПЕРЕКЛЮЧЕНИЯ НА ВКЛАДКУ ПРОФИЛЯ
-function showProfileTab() {
-    hideAllTabs();
-    document.getElementById('profile-tab').classList.add('active');
-    updateNavState('profile');
-    
-    // Синхронизируем данные при каждом открытии профиля
-    setTimeout(() => {
-        updateUserData();
-        syncUserProfile();
-    }, 100);
-}
+
 // 🔧 ФУНКЦИЯ УДАЛЕНИЯ ЗАДАНИЯ
 async function deleteTask(taskId) {
     if (!confirm('Удалить это задание?')) return;
