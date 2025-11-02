@@ -3538,7 +3538,66 @@ app.post('/api/promocodes/activate', async (req, res) => {
         });
     }
 });
-
+// Получение статистики заданий для админ-панели
+app.get('/api/admin/tasks-stats', async (req, res) => {
+    const { adminId } = req.query;
+    
+    try {
+        // Проверка прав администратора
+        const isAdmin = await checkAdminAccess(adminId);
+        if (!isAdmin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Доступ запрещен'
+            });
+        }
+        
+        // Получаем статистику по всем заданиям
+        const statsResult = await pool.query(`
+            SELECT 
+                COUNT(*) as total_tasks,
+                COUNT(CASE WHEN status = 'active' THEN 1 END) as active_tasks,
+                COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_tasks,
+                COUNT(CASE WHEN created_by = $1 THEN 1 END) as my_tasks
+            FROM tasks
+        `, [adminId]);
+        
+        // Получаем статистику по user_tasks для счетчиков
+        const userTasksStats = await pool.query(`
+            SELECT 
+                COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_count,
+                COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected_count,
+                COUNT(CASE WHEN status = 'pending_review' THEN 1 END) as pending_count,
+                COUNT(CASE WHEN status = 'active' THEN 1 END) as active_count
+            FROM user_tasks
+        `);
+        
+        const stats = statsResult.rows[0];
+        const userStats = userTasksStats.rows[0];
+        
+        res.json({
+            success: true,
+            statistics: {
+                total_tasks: parseInt(stats.total_tasks),
+                active_tasks: parseInt(stats.active_tasks),
+                completed_tasks: parseInt(stats.completed_tasks),
+                my_tasks: parseInt(stats.my_tasks),
+                // Добавляем счетчики из user_tasks
+                completed_count: parseInt(userStats.completed_count),
+                rejected_count: parseInt(userStats.rejected_count),
+                pending_count: parseInt(userStats.pending_count),
+                active_count: parseInt(userStats.active_count)
+            }
+        });
+        
+    } catch (error) {
+        console.error('Get admin tasks stats error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
 // Delete chat (for all admins) - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ПРОВЕРОК
 app.delete('/api/support/chats/:chatId', async (req, res) => {
     const chatId = req.params.chatId;
