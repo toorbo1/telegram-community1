@@ -6326,10 +6326,13 @@ function previewTaskImage(input) {
 // Инициализация при загрузке страницы
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Initializing LinkGold app...');
+    console.log('📱 Device type:', navigator.userAgent);
     
-    // Инициализация drag and drop
-    initImageUploadDragDrop();
+    // Принудительная инициализация для мобильных
+    if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        console.log('🚀 Mobile device detected, initializing with fixes...');
+        setTimeout(emergencyMobileUserFix, 500);
+    }
     
     if (typeof tg !== 'undefined') {
         tg.expand();
@@ -7661,28 +7664,22 @@ function startUserDataAutoUpdate() {
 
         // 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ПРОФИЛЯ
 function displayUserProfile() {
-    // 🔥 ИСПРАВЛЕНИЕ: Проверяем и восстанавливаем данные если нужно
+    console.log('🎨 Displaying user profile on device:', navigator.userAgent);
+    
     if (!currentUser) {
-        console.log('⚠️ No current user, attempting recovery...');
-        emergencyUserRecovery().then(success => {
-            if (success && currentUser) {
-                console.log('✅ User recovered, displaying profile...');
-                displayUserProfile(); // Рекурсивный вызов с восстановленными данными
-            } else {
-                showProfileError();
-            }
-        });
+        console.log('❌ No current user, attempting recovery...');
+        emergencyMobileUserFix();
         return;
     }
 
-    console.log('🎨 Displaying user profile:', currentUser);
+    console.log('📊 Current user data:', currentUser);
 
     try {
-        // Обновляем основную информацию с проверками
+        // ОБНОВЛЕННОЕ отображение с проверками
         const firstNameElement = document.getElementById('user-first-name');
         const usernameElement = document.getElementById('user-username');
         const levelElement = document.getElementById('user-level');
-        const balanceElement = document.getElementById('user-balance-main');
+        const userPhotoElement = document.getElementById('user-photo');
         
         if (firstNameElement) {
             const fullName = currentUser.lastName ? 
@@ -7699,50 +7696,52 @@ function displayUserProfile() {
             levelElement.textContent = currentUser.level || 1;
         }
         
-        // Обновляем баланс во всех местах
-        const userBalance = currentUser.balance || 0;
-        if (balanceElement) {
-            balanceElement.textContent = `${userBalance} ⭐`;
-        }
-        
-        // 🔥 ИСПРАВЛЕНИЕ: Безопасное обновление аватара
-        const userPhotoElement = document.getElementById('user-photo');
+        // 🔧 УЛУЧШЕННОЕ ОТОБРАЖЕНИЕ АВАТАРА
         if (userPhotoElement) {
             if (currentUser.photoUrl) {
                 userPhotoElement.src = currentUser.photoUrl;
                 userPhotoElement.alt = 'Фото профиля';
                 userPhotoElement.style.display = 'block';
-                userPhotoElement.textContent = '';
+                userPhotoElement.onerror = function() {
+                    // Если фото не загружается, показываем инициалы
+                    showUserInitials(userPhotoElement, currentUser.firstName);
+                };
             } else {
                 // Показываем инициалы если нет фото
-                userPhotoElement.style.display = 'flex';
-                userPhotoElement.style.alignItems = 'center';
-                userPhotoElement.style.justifyContent = 'center';
-                userPhotoElement.style.backgroundColor = '#6366f1';
-                userPhotoElement.style.color = 'white';
-                userPhotoElement.style.fontWeight = 'bold';
-                userPhotoElement.style.borderRadius = '50%';
-                userPhotoElement.style.width = '60px';
-                userPhotoElement.style.height = '60px';
-                
-                const initial = currentUser.firstName ? 
-                    currentUser.firstName.charAt(0).toUpperCase() : 'U';
-                userPhotoElement.textContent = initial;
-                userPhotoElement.src = '';
+                showUserInitials(userPhotoElement, currentUser.firstName);
             }
         }
         
-        // Обновляем статистику и прогресс
+        // Обновляем остальные данные
         updateProfileStats();
         updateReferralSystem();
         updateLevelProgress();
         
-        console.log('✅ User profile displayed successfully');
+        console.log('✅ User profile displayed successfully on mobile');
         
     } catch (error) {
-        console.error('❌ Error displaying profile:', error);
+        console.error('❌ Error displaying profile on mobile:', error);
         showProfileError();
     }
+}
+
+// 🔧 ФУНКЦИЯ ДЛЯ ОТОБРАЖЕНИЯ ИНИЦИАЛОВ
+function showUserInitials(element, firstName) {
+    element.style.display = 'flex';
+    element.style.alignItems = 'center';
+    element.style.justifyContent = 'center';
+    element.style.backgroundColor = '#6366f1';
+    element.style.color = 'white';
+    element.style.fontWeight = 'bold';
+    element.style.borderRadius = '50%';
+    element.style.width = '60px';
+    element.style.height = '60px';
+    element.style.fontSize = '20px';
+    
+    const initial = firstName ? 
+        firstName.charAt(0).toUpperCase() : 'U';
+    element.textContent = initial;
+    element.src = '';
 }
 
 function showProfileError() {
@@ -12699,6 +12698,161 @@ async function loadWithdrawalRequests() {
     } catch (error) {
         console.error('❌ Load withdrawal requests error:', error);
         showNotification('Ошибка загрузки заявок: ' + error.message, 'error');
+    }
+}
+
+// 🔧 ФУНКЦИЯ ЭКСТРЕННОГО ИСПРАВЛЕНИЯ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ
+function emergencyMobileUserFix() {
+    console.log('🚨 Applying emergency mobile user fix...');
+    
+    // Проверяем, мобильное ли устройство
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (!isMobile) {
+        console.log('✅ Desktop device, skipping mobile fix');
+        return;
+    }
+    
+    console.log('📱 Mobile device detected, applying fixes...');
+    
+    // 1. Принудительная инициализация Telegram Web App
+    if (typeof window.Telegram !== 'undefined' && window.Telegram.WebApp) {
+        const tg = window.Telegram.WebApp;
+        
+        // Расширяем на весь экран
+        tg.expand();
+        
+        // Принудительно получаем данные пользователя
+        const tgUser = tg.initDataUnsafe?.user;
+        
+        if (tgUser) {
+            console.log('📱 Telegram user data found on mobile:', tgUser);
+            
+            // НЕМЕДЛЕННО сохраняем данные
+            currentUser = {
+                id: tgUser.id.toString(),
+                firstName: tgUser.first_name || 'Пользователь',
+                lastName: tgUser.last_name || '',
+                username: tgUser.username || `user_${tgUser.id}`,
+                photoUrl: tgUser.photo_url || '',
+                isAdmin: parseInt(tgUser.id) === ADMIN_ID,
+                balance: 0,
+                tasks_completed: 0,
+                level: 1
+            };
+            
+            // Сохраняем в localStorage для надежности
+            localStorage.setItem('linkgold_user', JSON.stringify(currentUser));
+            console.log('✅ Mobile user data saved:', currentUser);
+            
+            // НЕМЕДЛЕННО обновляем интерфейс
+            setTimeout(() => {
+                displayUserProfile();
+                updateProfileStats();
+            }, 100);
+        } else {
+            console.log('❌ No Telegram user data on mobile, using fallback');
+            mobileUserFallback();
+        }
+    } else {
+        console.log('❌ Telegram WebApp not available on mobile');
+        mobileUserFallback();
+    }
+}
+
+// 🔧 РЕЗЕРВНАЯ СТРАТЕГИЯ ДЛЯ МОБИЛЬНЫХ
+function mobileUserFallback() {
+    console.log('🔄 Starting mobile user fallback...');
+    
+    // Пробуем получить данные из localStorage
+    const savedUser = localStorage.getItem('linkgold_user');
+    if (savedUser) {
+        try {
+            currentUser = JSON.parse(savedUser);
+            console.log('✅ Using saved user data on mobile:', currentUser);
+            displayUserProfile();
+            return;
+        } catch (e) {
+            console.error('Error parsing saved user:', e);
+        }
+    }
+    
+    // Если ничего не работает, создаем временного пользователя
+    currentUser = {
+        id: 'mobile_user_' + Date.now(),
+        firstName: 'Пользователь',
+        lastName: '',
+        username: 'mobile_user',
+        photoUrl: '',
+        isAdmin: false,
+        balance: 0,
+        tasks_completed: 0,
+        level: 1
+    };
+    
+    console.log('⚠️ Created temporary mobile user:', currentUser);
+    displayUserProfile();
+}
+
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ
+async function initializeTelegramUser() {
+    try {
+        console.log('🔍 Initializing Telegram user...');
+        
+        // Сначала применяем фикс для мобильных
+        emergencyMobileUserFix();
+        
+        if (typeof tg !== 'undefined' && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            const tgUser = tg.initDataUnsafe.user;
+            
+            console.log('📱 Telegram user found:', tgUser);
+            
+            // ОБНОВЛЕННОЕ сохранение данных
+            currentUser = {
+                id: tgUser.id.toString(),
+                firstName: tgUser.first_name || 'Пользователь',
+                lastName: tgUser.last_name || '',
+                username: tgUser.username || `user_${tgUser.id}`,
+                photoUrl: tgUser.photo_url || '',
+                isAdmin: parseInt(tgUser.id) === ADMIN_ID,
+                balance: 0,
+                tasks_completed: 0,
+                level: 1
+            };
+            
+            console.log('✅ Telegram user data saved:', currentUser);
+            
+            // Сохраняем в localStorage для надежности
+            localStorage.setItem('linkgold_user', JSON.stringify(currentUser));
+            
+            // Аутентификация на сервере
+            try {
+                const authResult = await makeRequest('/user/auth', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        user: currentUser
+                    })
+                });
+                
+                if (authResult.success) {
+                    Object.assign(currentUser, authResult.user);
+                    console.log('✅ User authenticated successfully');
+                }
+            } catch (authError) {
+                console.log('⚠️ Auth endpoint not available, continuing with Telegram data');
+            }
+            
+            initializeApp();
+            
+        } else {
+            console.log('❌ Telegram user data not available');
+            // Используем данные из фикса
+            initializeApp();
+        }
+    } catch (error) {
+        console.error('❌ Error initializing Telegram user:', error);
+        // Используем данные из фикса
+        initializeApp();
     }
 }
 
