@@ -6494,20 +6494,30 @@ async function initializeTelegramUser() {
             
             console.log('📱 Telegram user found:', tgUser);
             
-            // 🔥 ИСПРАВЛЕНИЕ: Правильное сохранение данных Telegram
+            // 🔥 ИСПРАВЛЕНИЕ: Правильное сохранение ВСЕХ данных Telegram
             currentUser = {
                 id: tgUser.id.toString(),
                 firstName: tgUser.first_name || 'Пользователь',
                 lastName: tgUser.last_name || '',
                 username: tgUser.username || `user_${tgUser.id}`,
                 photoUrl: tgUser.photo_url || '',
-                isAdmin: parseInt(tgUser.id) === ADMIN_ID
+                isAdmin: parseInt(tgUser.id) === ADMIN_ID,
+                // 🔥 ДОБАВЛЕНО: Критически важные поля для профиля
+                balance: 0,
+                tasks_completed: 0,
+                level: 1,
+                active_tasks: 0,
+                referral_count: 0,
+                referral_earned: 0
             };
             
-            console.log('✅ Telegram user data saved:', currentUser);
+            console.log('✅ Telegram user data FULLY saved:', currentUser);
             
             // Сохраняем в localStorage для надежности
             localStorage.setItem('linkgold_user', JSON.stringify(currentUser));
+            
+            // НЕМЕДЛЕННО обновляем интерфейс
+            displayUserProfile();
             
             // Аутентификация на сервере
             try {
@@ -6521,6 +6531,8 @@ async function initializeTelegramUser() {
                 if (authResult.success) {
                     Object.assign(currentUser, authResult.user);
                     console.log('✅ User authenticated successfully');
+                    // Повторно обновляем интерфейс с серверными данными
+                    displayUserProfile();
                 }
             } catch (authError) {
                 console.log('⚠️ Auth endpoint not available, continuing with Telegram data');
@@ -6530,7 +6542,6 @@ async function initializeTelegramUser() {
             
         } else {
             console.log('❌ Telegram user data not available, checking localStorage...');
-            // Проверяем сохраненные данные
             const savedUser = localStorage.getItem('linkgold_user');
             if (savedUser) {
                 currentUser = JSON.parse(savedUser);
@@ -6543,19 +6554,9 @@ async function initializeTelegramUser() {
         }
     } catch (error) {
         console.error('❌ Error initializing Telegram user:', error);
-        
-        // Fallback на сохраненные данные
-        const savedUser = localStorage.getItem('linkgold_user');
-        if (savedUser) {
-            currentUser = JSON.parse(savedUser);
-            console.log('✅ Using saved user data after error:', currentUser);
-            initializeApp();
-        } else {
-            initializeTestUser();
-        }
+        await emergencyUserRecovery();
     }
 }
-
 function debugWithdrawalSystem() {
     console.log('🐛 DEBUG Withdrawal System:');
     console.log('- currentUser:', currentUser); // ← исправлено на английское
@@ -7658,9 +7659,44 @@ function startUserDataAutoUpdate() {
                 console.error('Ошибка обновления данных пользователя:', error);
             }
         }
+// 🔥 ЭКСТРЕННОЕ ИСПРАВЛЕНИЕ ПРОФИЛЯ
+function emergencyProfileFix() {
+    if (window.Telegram?.WebApp) {
+        const tg = window.Telegram.WebApp;
+        const tgUser = tg.initDataUnsafe?.user;
+        
+        if (tgUser && currentUser) {
+            console.log('🚨 APPLYING EMERGENCY PROFILE FIX');
+            
+            // Принудительно обновляем данные из Telegram
+            currentUser.firstName = tgUser.first_name || 'Пользователь';
+            currentUser.lastName = tgUser.last_name || '';
+            currentUser.username = tgUser.username || `user_${tgUser.id}`;
+            currentUser.photoUrl = tgUser.photo_url || '';
+            
+            // Немедленно обновляем интерфейс
+            displayUserProfile();
+            
+            console.log('✅ Emergency profile fix applied');
+        }
+    }
+}
 
+// Вызовите при загрузке
+setTimeout(emergencyProfileFix, 2000);
         // 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ПРОФИЛЯ
 function displayUserProfile() {
+    // 🔥 ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ ПЕРЕД ОТОБРАЖЕНИЕМ
+    if (window.Telegram?.WebApp) {
+        setTimeout(() => {
+            syncUserProfile().then(success => {
+                if (success) {
+                    console.log('✅ Profile synced before display');
+                    updateUserDataFromServer();
+                }
+            });
+        }, 100);
+    }
     // 🔥 ИСПРАВЛЕНИЕ: Проверяем и восстанавливаем данные если нужно
     if (!currentUser) {
         console.log('⚠️ No current user, attempting recovery...');
