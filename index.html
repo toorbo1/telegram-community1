@@ -6487,14 +6487,111 @@ setTimeout(() => {
             }
         });
 
+function addDebugPanel() {
+    const debugPanel = document.createElement('div');
+    debugPanel.style.cssText = `
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        background: rgba(0,0,0,0.8);
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+        font-size: 12px;
+        z-index: 10000;
+        max-width: 300px;
+    `;
+    
+    debugPanel.innerHTML = `
+        <div><strong>🔧 Debug Panel</strong></div>
+        <div>User: <span id="debug-user">none</span></div>
+        <div>Telegram: <span id="debug-telegram">no</span></div>
+        <button onclick="runDiagnostics()">Run Diagnostics</button>
+        <button onclick="clearUserData()">Clear Data</button>
+    `;
+    
+    document.body.appendChild(debugPanel);
+    updateDebugPanel();
+}
+
+function updateDebugPanel() {
+    const userEl = document.getElementById('debug-user');
+    const telegramEl = document.getElementById('debug-telegram');
+    
+    if (userEl) userEl.textContent = currentUser ? currentUser.id : 'none';
+    if (telegramEl) telegramEl.textContent = typeof window.Telegram !== 'undefined' ? 'yes' : 'no';
+}
+
+async function runDiagnostics() {
+    console.log('🩺 RUNNING DIAGNOSTICS...');
+    
+    // 1. Проверяем Telegram
+    if (typeof window.Telegram !== 'undefined') {
+        const tg = window.Telegram.WebApp;
+        console.log('📱 Telegram Data:', {
+            initData: tg.initData,
+            initDataUnsafe: tg.initDataUnsafe,
+            user: tg.initDataUnsafe?.user
+        });
+    }
+    
+    // 2. Проверяем текущего пользователя
+    console.log('👤 Current User:', currentUser);
+    
+    // 3. Проверяем localStorage
+    console.log('💾 LocalStorage:', localStorage.getItem('linkgold_user'));
+    
+    // 4. Проверяем сервер
+    if (currentUser) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/debug/user?userId=${currentUser.id}`);
+            const result = await response.json();
+            console.log('🌐 Server Check:', result);
+        } catch (error) {
+            console.error('❌ Server check failed:', error);
+        }
+    }
+    
+    alert('Диагностика завершена. Смотрите консоль.');
+}
+
+function clearUserData() {
+    localStorage.removeItem('linkgold_user');
+    currentUser = null;
+    console.log('🧹 User data cleared');
+    updateDebugPanel();
+    location.reload();
+}
+
+// Добавьте вызов при загрузке
+setTimeout(addDebugPanel, 2000);
+
 async function initializeTelegramUser() {
-    try {
-        console.log('🔍 Initializing Telegram user...');
+     try {
+        console.log('🔍 DEBUG: Starting Telegram user initialization');
+        console.log('🌐 Telegram WebApp available:', typeof window.Telegram !== 'undefined');
         
-        if (typeof tg !== 'undefined' && tg.initDataUnsafe && tg.initDataUnsafe.user) {
-            const tgUser = tg.initDataUnsafe.user;
+        if (typeof window.Telegram !== 'undefined') {
+            const tg = window.Telegram.WebApp;
+            console.log('📱 Telegram WebApp version:', tg.version);
+            console.log('👤 Telegram initData:', tg.initData);
+            console.log('👤 Telegram initDataUnsafe:', tg.initDataUnsafe);
+            console.log('👤 Telegram user data:', tg.initDataUnsafe?.user);
             
-            console.log('📱 Telegram user found:', tgUser);
+            // 🔥 КРИТИЧЕСКАЯ ПРОВЕРКА
+            if (tg.initDataUnsafe?.user) {
+                const tgUser = tg.initDataUnsafe.user;
+                console.log('✅ REAL Telegram User Data:', {
+                    id: tgUser.id,
+                    first_name: tgUser.first_name,
+                    username: tgUser.username,
+                    photo_url: tgUser.photo_url
+                });
+            } else {
+                console.log('❌ NO Telegram user data found!');
+                console.log('🔧 initDataUnsafe keys:', Object.keys(tg.initDataUnsafe || {}));
+            }
+        
             
             // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Правильное сохранение данных
             currentUser = {

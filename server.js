@@ -1798,6 +1798,33 @@ app.post('/api/user/auth', async (req, res) => {
     }
 });
 
+// Диагностический endpoint для проверки пользователя
+app.get('/api/debug/user', async (req, res) => {
+    try {
+        const { userId } = req.query;
+        console.log('🔍 DEBUG USER REQUEST:', userId);
+        
+        // Проверяем данные в базе
+        const userResult = await pool.query(
+            'SELECT * FROM user_profiles WHERE user_id = $1',
+            [userId]
+        );
+        
+        res.json({
+            success: true,
+            userInDatabase: userResult.rows[0] || 'NOT_FOUND',
+            totalUsers: (await pool.query('SELECT COUNT(*) FROM user_profiles')).rows[0].count,
+            databaseConnected: true
+        });
+    } catch (error) {
+        console.error('Debug user error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 // Get user profile
 app.get('/api/user/:userId', async (req, res) => {
     try {
