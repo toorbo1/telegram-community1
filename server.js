@@ -3650,6 +3650,7 @@ app.get('/api/admin/debug-rights', async (req, res) => {
     }
 });
 // Подтверждение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ С УДАЛЕНИЕМ ФАЙЛОВ
+// 🔧 ИСПРАВЛЕННЫЙ ENDPOINT ДЛЯ ОДОБРЕНИЯ ЗАДАНИЯ
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
@@ -3680,9 +3681,6 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
         }
 
         const verificationData = verification.rows[0];
-        
-        // Сохраняем путь к файлу для последующего удаления
-        screenshotPath = verificationData.screenshot_url;
         
         // Получаем информацию о задании
         const taskInfo = await pool.query(`
@@ -3726,13 +3724,13 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
                 balance = COALESCE(balance, 0) + $1,
                 tasks_completed = COALESCE(tasks_completed, 0) + 1,
                 active_tasks = GREATEST(COALESCE(active_tasks, 0) - 1, 0),
-                experience = COALESCE(experience, 0) + 10,
                 updated_at = CURRENT_TIMESTAMP
             WHERE user_id = $2
         `, [verificationData.task_price, verificationData.user_id]);
         
         // 🔥 ПРОВЕРЯЕМ ДОСТИГНУТ ЛИ ЛИМИТ ИСПОЛНИТЕЛЕЙ
         const newCompletedCount = currentCompletedCount + 1;
+        let taskRemoved = false;
         
         if (newCompletedCount >= peopleRequired) {
             console.log(`🎯 Лимит исполнителей достигнут для задания ${task.id}. Удаляем задание...`);
@@ -3745,59 +3743,39 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
                 WHERE id = $1
             `, [task.id]);
             
+            taskRemoved = true;
             console.log(`✅ Задание ${task.id} автоматически удалено (достигнут лимит: ${peopleRequired} исполнителей)`);
-            
         }
         
-// Получаем текущее количество выполненных заданий
-const currentStats = await pool.query(
-    'SELECT tasks_completed FROM user_profiles WHERE user_id = $1',
-    [verificationData.user_id]
-);
-
-const currentCompleted = currentStats.rows[0].tasks_completed || 0;
-
-// Обновляем с правильным подсчетом
-await pool.query(`
-    UPDATE user_profiles 
-    SET 
-        balance = COALESCE(balance, 0) + $1,
-        tasks_completed = $2,
-        active_tasks = GREATEST(COALESCE(active_tasks, 0) - 1, 0),
-        updated_at = CURRENT_TIMESTAMP
-    WHERE user_id = $3
-`, [verificationData.task_price, currentCompleted + 1, verificationData.user_id]);
-
-        // 🔥 УДАЛЯЕМ ФАЙЛ СКРИНШОТА ПОСЛЕ УСПЕШНОЙ ПРОВЕРКИ
-        if (screenshotPath) {
-            await deleteScreenshotFile(screenshotPath);
-        }
-        
+        // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Отправляем ответ ДО удаления файла
         res.json({
             success: true,
             message: 'Task approved successfully',
             amountAdded: verificationData.task_price,
             taskCompleted: newCompletedCount >= peopleRequired,
-            taskRemoved: newCompletedCount >= peopleRequired
+            taskRemoved: taskRemoved
         });
-    } catch (error) {
-        console.error('Approve verification error:', error);
         
-        // Даже если есть ошибка, пробуем удалить файл
-        if (screenshotPath) {
-            try {
-                await deleteScreenshotFile(screenshotPath);
-            } catch (deleteError) {
-                console.error('Error deleting screenshot after failed approval:', deleteError);
-            }
+        // 🔥 УДАЛЯЕМ ФАЙЛ СКРИНШОТА ПОСЛЕ ОТПРАВКИ ОТВЕТА
+        if (verificationData.screenshot_url) {
+            setTimeout(async () => {
+                try {
+                    await deleteScreenshotFile(verificationData.screenshot_url);
+                } catch (deleteError) {
+                    console.error('Error deleting screenshot after approval:', deleteError);
+                }
+            }, 1000);
         }
         
+    } catch (error) {
+        console.error('Approve verification error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
         });
     }
 });
+
 // Отклонение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ С УДАЛЕНИЕМ ФАЙЛОВ
 app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res) => {
     const verificationId = req.params.verificationId;
