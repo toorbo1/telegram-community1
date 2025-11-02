@@ -5923,35 +5923,42 @@ function goBackToProfile() {
     setTimeout(scrollToTop, 100);
 }
 
-async function showProfileTab() {
+function showProfileTab() {
     hideAllTabs();
     document.getElementById('profile-tab').classList.add('active');
     updateNavState('profile');
     
-    // 🔥 ИСПРАВЛЕНИЕ: Используем async/await вместо setTimeout
-    try {
-        console.log('🎯 Profile tab opened - starting data sync...');
-        
-        // Показываем индикатор загрузки
-        showProfileLoadingIndicator();
-        
-        // Синхронизируем данные
-        await syncUserProfile();
-        await updateUserData(); // 🔥 ДОБАВЛЕНО await
-        displayUserProfile(); // Отображаем обновленные данные
-        
-        // Скрываем индикатор загрузки
-        hideProfileLoadingIndicator();
-        
-        console.log('✅ Profile data synchronized and displayed');
-        
-    } catch (error) {
-        console.error('❌ Profile sync error:', error);
-        showProfileError();
-    }
+    console.log('🎯 Profile tab opened');
+    
+    // 🔥 ИСПРАВЛЕНИЕ: Неблокирующая синхронизация
+    // Сначала показываем текущие данные
+    displayUserProfile();
+    
+    // Затем в фоне обновляем
+    setTimeout(async () => {
+        try {
+            console.log('🔄 Background profile sync...');
+            await syncUserProfile();
+            await updateUserData();
+            displayUserProfile(); // Обновляем если данные изменились
+            console.log('✅ Profile data updated');
+        } catch (error) {
+            console.log('⚠️ Background sync failed:', error);
+        }
+    }, 100);
     
     // Прокручиваем к началу
     setTimeout(scrollToTop, 100);
+}
+async function checkAPIConnection() {
+    try {
+        console.log('🔍 Testing API connection...');
+        const health = await makeRequest('/api/health');
+        console.log('✅ API connection successful:', health);
+    } catch (error) {
+        console.error('❌ API connection failed:', error);
+        // Не показываем ошибку пользователю, просто логируем
+    }
 }
 
 function showProfileLoadingIndicator() {
@@ -7664,24 +7671,20 @@ function startUserDataAutoUpdate() {
 }
 
         // Обновление данных пользователя
-        async function updateUserData() {
-            if (!currentUser) return;
-            
-            try {
-                const result = await makeRequest(`/user/${currentUser.id}`);
-                if (result.success) {
-                    // Обновляем текущего пользователя
-                    currentUser = { ...currentUser, ...result.profile };
-                    
-                    // Обновляем отображение во всех местах
-                    displayUserProfile();
-                    
-                    console.log('✅ Данные пользователя обновлены:', currentUser.balance);
-                }
-            } catch (error) {
-                console.error('Ошибка обновления данных пользователя:', error);
-            }
+async function updateUserData() {
+    if (!currentUser) return;
+    
+    try {
+        const result = await makeRequest(`/user/${currentUser.id}`);
+        if (result.success) {
+            currentUser = { ...currentUser, ...result.profile };
+            displayUserProfile();
+            console.log('✅ User data updated:', currentUser.balance);
         }
+    } catch (error) {
+        console.error('Error updating user data:', error);
+    }
+}
 
         // 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ПРОФИЛЯ
 function displayUserProfile() {
@@ -9447,57 +9450,62 @@ async function initializeApp() {
     console.log('🎮 Initializing LinkGold app...');
     
     try {
-        // 🔥 ИСПРАВЛЕНИЕ: Ждем завершения синхронизации ПЕРЕД инициализацией
-        console.log('🔄 Starting mandatory profile synchronization...');
-        const syncSuccess = await syncUserProfile();
+        // 🔥 ИСПРАВЛЕНИЕ: Безопасная синхронизация
+        console.log('🔄 Starting profile synchronization...');
         
-        if (!syncSuccess) {
-            console.log('⚠️ Sync failed, using emergency recovery...');
-            await emergencyUserRecovery();
-        }
-        
-        // 🔥 ИСПРАВЛЕНИЕ: Ждем обновления данных пользователя
-        await updateUserData();
-        
-        // ✅ ТЕПЕРЬ данные гарантированно загружены
-        console.log('✅ User data synchronized, displaying profile...');
-        displayUserProfile();
+        // Не блокируем инициализацию если синхронизация медленная
+        const syncPromise = syncUserProfile().catch(error => {
+            console.log('⚠️ Sync failed, continuing with existing data:', error);
+            return false;
+        });
+
+        // Параллельно запускаем критически важные функции
+        displayUserProfile(); // Показываем существующие данные сразу
         checkAdminRights();
         loadMainPagePosts();
         
-        // Добавляем кнопку синхронизации
+        // Ждем завершения синхронизации (но не блокируем интерфейс)
+        const syncSuccess = await syncPromise;
+        
+        if (syncSuccess) {
+            console.log('✅ Profile synchronized, updating data...');
+            // Обновляем данные после успешной синхронизации
+            await updateUserData().catch(error => {
+                console.log('⚠️ User data update failed:', error);
+            });
+            displayUserProfile(); // Обновляем интерфейс
+        }
+
+        // Продолжаем инициализацию
         addSyncButtonToProfile();
         fixLayoutIssues();
         startAutoSync();
 
-        // 🔥 ИСПРАВЛЕНИЕ: Загружаем задания только после полной инициализации
-        console.log('🚀 FORCE loading tasks after full initialization...');
+        // Загружаем задания
+        console.log('🚀 Loading tasks...');
         setTimeout(() => {
             if (currentUser) {
                 loadTasksForCategory('new');
             }
         }, 500);
 
-        // Остальная инициализация...
+        // Инициализация поиска и табов
         initializeTaskTabHandlers();
+        initializeSearch();
 
-        // Проверяем соединение с API
-        try {
-            console.log('🔍 Testing API connection...');
-            const health = await makeRequest('/api/health');
-            console.log('✅ API connection successful:', health);
-        } catch (error) {
-            console.error('❌ API connection failed:', error);
-            showNotification('❌ Не удалось подключиться', 'error');
-            showRetryButton();
-            return;
-        }
-        
-        console.log('🎉 App initialized successfully with synchronized data');
+        // Проверяем API соединение (без блокировки)
+        checkAPIConnection();
+
+        console.log('🎉 App initialized successfully');
         
     } catch (error) {
         console.error('❌ App initialization failed:', error);
         showNotification('Ошибка инициализации приложения', 'error');
+        // 🔥 ВАЖНО: Показываем интерфейс даже при ошибке
+        emergencyUserRecovery().then(() => {
+            displayUserProfile();
+            checkAdminRights();
+        });
     }
 }
 async function loadUserTasksForCategory(status) {
@@ -12841,20 +12849,20 @@ function updateWithdrawPage() {
 }
 
         // Загрузка постов на главную
-        async function loadMainPagePosts() {
-            try {
-                const result = await makeRequest('/posts');
-                
-                if (result.success && result.posts && result.posts.length > 0) {
-                    displayMainPagePosts(result.posts);
-                } else {
-                    hidePostsSection();
-                }
-            } catch (error) {
-                console.error('Error loading posts:', error);
-                hidePostsSection();
-            }
+async function loadMainPagePosts() {
+    try {
+        const result = await makeRequest('/posts');
+        if (result.success && result.posts && result.posts.length > 0) {
+            displayMainPagePosts(result.posts);
+        } else {
+            hidePostsSection();
         }
+    } catch (error) {
+        console.error('Error loading posts:', error);
+        hidePostsSection();
+    }
+}
+
 
         function displayMainPagePosts(posts) {
             const postsSection = document.getElementById('posts-section');
