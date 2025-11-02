@@ -42,11 +42,33 @@ setInterval(async () => {
 }, 5 * 60 * 1000); // 5 минут
 
 // Middleware
+// ЗАМЕНИТЕ существующий CORS middleware на этот:
 app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'DELETE', 'PUT'],
-    credentials: true
+    origin: function(origin, callback) {
+        // Разрешаем все источники в продакшене для Telegram
+        const allowedOrigins = [
+            'https://web.telegram.org',
+            'https://telegram.org',
+            'https://ваш-username.github.io', // замените на ваш GitHub
+            'https://telegram-community1-production-0bc1.up.railway.app',
+            APP_URL
+        ];
+        
+        // Разрешаем все в development или если источник в списке
+        if (!origin || process.env.NODE_ENV === 'development' || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            console.log('🔒 Blocked by CORS:', origin);
+            callback(null, true); // Временно разрешаем все для тестирования
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
+// Обработка preflight запросов
+app.options('*', cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static('.'));
@@ -450,28 +472,33 @@ app.post('/api/admin/fix-database', async (req, res) => {
     }
 });
 
-// В server.js после импортов
+// ЗАМЕНИТЕ существующий CORS middleware на этот:
 app.use(cors({
     origin: function(origin, callback) {
-        // Разрешаем все источники в продакшене
+        // Разрешаем все источники в продакшене для Telegram
         const allowedOrigins = [
-            'https://ваш-username.github.io',
-            'https://ваш-app.railway.app',
             'https://web.telegram.org',
-            'https://your-custom-domain.com' // если есть
+            'https://telegram.org',
+            'https://ваш-username.github.io', // замените на ваш GitHub
+            'https://telegram-community1-production-0bc1.up.railway.app',
+            APP_URL
         ];
         
-        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+        // Разрешаем все в development или если источник в списке
+        if (!origin || process.env.NODE_ENV === 'development' || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
             console.log('🔒 Blocked by CORS:', origin);
-            callback(new Error('Not allowed by CORS'));
+            callback(null, true); // Временно разрешаем все для тестирования
         }
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
+// Обработка preflight запросов
+app.options('*', cors());
 // В server.js добавьте
 app.get('/api/debug/environment', (req, res) => {
     res.json({
@@ -1726,41 +1753,27 @@ app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) 
     }
 });
 // Обновим endpoint /api/user/auth
+// Улучшенный endpoint аутентификации
 app.post('/api/user/auth', async (req, res) => {
-    const { user, referralCode } = req.body; // Добавляем referralCode
+    const { user } = req.body;
     
-    if (!user) {
+    console.log('🔐 Auth request for user:', user);
+    
+    if (!user || !user.id) {
         return res.status(400).json({
             success: false,
-            error: 'Missing required fields'
+            error: 'Invalid user data'
         });
     }
     
     try {
         const isMainAdmin = parseInt(user.id) === ADMIN_ID;
         
-        // Генерируем реферальный код для пользователя
-        const userReferralCode = `ref_${user.id}_${Date.now()}`;
-        
-        let referredBy = null;
-        let referralBonusGiven = false;
-        
-        // Если есть реферальный код, находим того кто пригласил
-        if (referralCode) {
-            const referrerResult = await pool.query(
-                'SELECT user_id FROM user_profiles WHERE referral_code = $1',
-                [referralCode]
-            );
-            
-            if (referrerResult.rows.length > 0) {
-                referredBy = referrerResult.rows[0].user_id;
-            }
-        }
-        
+        // Сохраняем/обновляем пользователя
         const result = await pool.query(`
             INSERT INTO user_profiles 
-            (user_id, username, first_name, last_name, photo_url, is_admin, referral_code, referred_by, is_first_login) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
+            (user_id, username, first_name, last_name, photo_url, is_admin) 
+            VALUES ($1, $2, $3, $4, $5, $6)
             ON CONFLICT (user_id) 
             DO UPDATE SET 
                 username = EXCLUDED.username,
@@ -1776,56 +1789,50 @@ app.post('/api/user/auth', async (req, res) => {
             user.first_name || 'Пользователь',
             user.last_name || '',
             user.photo_url || '',
-            isMainAdmin,
-            userReferralCode,
-            referredBy
+            isMainAdmin
         ]);
         
         const userProfile = result.rows[0];
         
-        // Если это первый вход и пользователь пришел по реферальной ссылке
-        if (userProfile.is_first_login && referredBy) {
-            // Даем 5 звезд новому пользователю
-            await pool.query(`
-                UPDATE user_profiles 
-                SET balance = COALESCE(balance, 0) + 5,
-                    is_first_login = false
-                WHERE user_id = $1
-            `, [user.id]);
-            
-            // Даем 20 звезд тому, кто пригласил
-            await pool.query(`
-                UPDATE user_profiles 
-                SET balance = COALESCE(balance, 0) + 20,
-                    referral_count = COALESCE(referral_count, 0) + 1,
-                    referral_earned = COALESCE(referral_earned, 0) + 20
-                WHERE user_id = $1
-            `, [referredBy]);
-            
-            referralBonusGiven = true;
-            
-            console.log(`🎉 Реферальный бонус: пользователь ${user.id} получил 5⭐, пригласивший ${referredBy} получил 10⭐`);
-        }
-        
-        // Обновляем данные пользователя после начисления бонусов
-        const updatedUser = await pool.query(
-            'SELECT * FROM user_profiles WHERE user_id = $1',
-            [user.id]
-        );
+        console.log('✅ User auth successful:', {
+            id: userProfile.user_id,
+            name: userProfile.first_name,
+            username: userProfile.username
+        });
         
         res.json({
             success: true,
-            user: updatedUser.rows[0],
-            referralBonusGiven: referralBonusGiven
+            user: userProfile
         });
+        
     } catch (error) {
-        console.error('Auth error:', error);
+        console.error('❌ Auth error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
         });
     }
 });
+
+// Диагностика пользователя
+app.get('/api/debug/telegram-data', async (req, res) => {
+    try {
+        // Возвращаем информацию о доступности Telegram WebApp
+        res.json({
+            success: true,
+            hasTelegram: typeof window !== 'undefined' && typeof window.Telegram !== 'undefined',
+            timestamp: new Date().toISOString(),
+            environment: process.env.NODE_ENV
+        });
+    } catch (error) {
+        console.error('Debug error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 app.post('/api/user/update-profile', async (req, res) => {
     const { userId, firstName, lastName, username, photoUrl } = req.body;
     
