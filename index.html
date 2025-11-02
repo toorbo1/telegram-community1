@@ -8,6 +8,20 @@
 
 
            <style>
+            /* Скрываем форму создания заданий в других разделах */
+#admin-posts-section .admin-form,
+#admin-verification-section .admin-form,
+#admin-support-section .admin-form,
+#admin-payments-section .admin-form,
+#admin-admins-section .admin-form,
+#admin-promocodes-section .admin-form {
+    display: none !important;
+}
+
+/* Показываем форму создания заданий только в разделе заданий */
+#admin-tasks-section .admin-form {
+    display: block !important;
+}
             /* 🔧 ПЛАВНАЯ ПРОКРУТКА ДЛЯ ВСЕХ ЭЛЕМЕНТОВ */
 html {
     scroll-behavior: smooth;
@@ -5366,15 +5380,11 @@ html, body {
 
 
         
-        <button class="admin-submit" onclick="addTaskWithImage()">
-            ✅ Добавить задание
-        </button>
-    </div>
-    
-<!-- В секции admin-tasks-section -->
+<!-- Секция управления заданиями -->
 <div id="admin-tasks-section" class="admin-section" style="display: none;">
     <div class="admin-form">
-        <!-- Форма добавления задания -->
+        <h3>➕ Добавить новое задание</h3>
+        <!-- Форма создания задания здесь -->
     </div>
     
     <!-- ОБЕРТКА для списка заданий -->
@@ -5385,6 +5395,17 @@ html, body {
         </div>
     </div>
 </div>
+
+<!-- Другие секции БЕЗ формы создания заданий -->
+<div id="admin-posts-section" class="admin-section" style="display: none;">
+    <!-- Только управление постами, без формы заданий -->
+</div>
+
+<div id="admin-verification-section" class="admin-section" style="display: none;">
+    <!-- Только проверка заданий, без формы создания -->
+</div>
+
+<!-- И так далее для остальных секций... -->
             <!-- Проверка заданий -->
             <div id="admin-verification-section" class="admin-section" style="display: none;">
                 <h3>Задания на проверке</h3>
@@ -11477,6 +11498,7 @@ setTimeout(addAdminDebugButton, 3000);
             }
         }
 // 🔧 ПОЛНАЯ ФУНКЦИЯ ПОКАЗА АДМИН-СЕКЦИЙ С ПРОМОКОДАМИ
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ПОКАЗА АДМИН-СЕКЦИЙ
 function showAdminSection(section) {
     console.log('🔄 Switching to admin section:', section);
     
@@ -11490,6 +11512,12 @@ function showAdminSection(section) {
     const createdTasksContainer = document.getElementById('admin-tasks-list');
     if (createdTasksContainer && createdTasksContainer.parentElement) {
         createdTasksContainer.parentElement.style.display = 'none';
+    }
+    
+    // Скрываем форму создания задания во всех секциях, кроме tasks
+    const taskForm = document.querySelector('#admin-tasks-section .admin-form');
+    if (taskForm) {
+        taskForm.style.display = section === 'tasks' ? 'block' : 'none';
     }
     
     // Показываем выбранную секцию
@@ -11511,6 +11539,10 @@ function showAdminSection(section) {
                 const tasksContainer = document.getElementById('admin-tasks-list');
                 if (tasksContainer && tasksContainer.parentElement) {
                     tasksContainer.parentElement.style.display = 'block';
+                }
+                // Показываем форму создания заданий
+                if (taskForm) {
+                    taskForm.style.display = 'block';
                 }
                 setTimeout(() => {
                     loadAdminTasks();
