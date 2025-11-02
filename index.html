@@ -10888,7 +10888,7 @@ function createAdminTaskElement(task) {
             <span>🟡 ${task.active_count || 0} в процессе</span>
         </div>
         ${!isCompleted ? `
-                    <button class="admin-task-delete" onclick="deleteTask(${task.id})" style="background: var(--error); color: white; border: none; padding: 6px 12px;  margin-bottom: -10px; border-radius: 6px; cursor: pointer;">
+                    <button class="admin-task-delete" onclick="deleteTask(${task.id})" style="background: var(--error); color: white; border: none; padding: 6px 12px;  margin-top: 20px; border-radius: 6px; cursor: pointer;">
                         🗑️ Удалить
                     </button>
                 ` : ''}
