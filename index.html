@@ -5928,55 +5928,17 @@ function showProfileTab() {
     document.getElementById('profile-tab').classList.add('active');
     updateNavState('profile');
     
-    console.log('🎯 Profile tab opened');
-    
-    // 🔥 ИСПРАВЛЕНИЕ: Неблокирующая синхронизация
-    // Сначала показываем текущие данные
-    displayUserProfile();
-    
-    // Затем в фоне обновляем
+    // 🔥 ИСПРАВЛЕНИЕ: Принудительная синхронизация при каждом открытии
     setTimeout(async () => {
-        try {
-            console.log('🔄 Background profile sync...');
-            await syncUserProfile();
-            await updateUserData();
-            displayUserProfile(); // Обновляем если данные изменились
-            console.log('✅ Profile data updated');
-        } catch (error) {
-            console.log('⚠️ Background sync failed:', error);
-        }
+        console.log('🎯 Profile tab opened - syncing data...');
+        await syncUserProfile();
+        updateUserData(); // Дополнительное обновление данных
+        displayUserProfile(); // Принудительное обновление интерфейса
+        
+        // Прокручиваем к началу
+        scrollToTop();
     }, 100);
-    
-    // Прокручиваем к началу
-    setTimeout(scrollToTop, 100);
 }
-async function checkAPIConnection() {
-    try {
-        console.log('🔍 Testing API connection...');
-        const health = await makeRequest('/api/health');
-        console.log('✅ API connection successful:', health);
-    } catch (error) {
-        console.error('❌ API connection failed:', error);
-        // Не показываем ошибку пользователю, просто логируем
-    }
-}
-
-function showProfileLoadingIndicator() {
-    const profileTab = document.getElementById('profile-tab');
-    if (profileTab) {
-        profileTab.innerHTML = `
-            <div class="loading-indicator" style="text-align: center; padding: 40px 20px;">
-                <div class="loading-spinner">⏳</div>
-                <div style="margin-top: 16px;">Обновляем данные профиля...</div>
-            </div>
-        `;
-    }
-}
-
-function hideProfileLoadingIndicator() {
-    // Восстанавливаем нормальное содержимое через displayUserProfile()
-}
-
 // Автоматическая синхронизация каждые 30 секунд
 function startAutoSync() {
     setInterval(async () => {
@@ -6363,18 +6325,16 @@ function previewTaskImage(input) {
 }
 // Инициализация при загрузке страницы
 // Инициализация при загрузке страницы
-// В самом начале выполнения
-document.addEventListener('DOMContentLoaded', async function() {
-    console.log('🚀 Starting application with forced sync...');
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Initializing LinkGold app...');
     
-    // Принудительная синхронизация перед любой инициализацией
-    await syncUserProfile();
+    // Инициализация drag and drop
+    initImageUploadDragDrop();
     
-    // Затем инициализация Telegram или тестового пользователя
     if (typeof tg !== 'undefined') {
         tg.expand();
         tg.ready();
-        await initializeTelegramUser(); // 🔥 ДОБАВЬТЕ await
+        initializeTelegramUser();
     } else {
         console.log('Telegram Web App context not available');
         initializeTestUser();
@@ -6534,7 +6494,7 @@ async function initializeTelegramUser() {
             
             console.log('📱 Telegram user found:', tgUser);
             
-            // 🔥 ИСПРАВЛЕНИЕ: Ждем завершения аутентификации
+            // 🔥 ИСПРАВЛЕНИЕ: Правильное сохранение данных Telegram
             currentUser = {
                 id: tgUser.id.toString(),
                 firstName: tgUser.first_name || 'Пользователь',
@@ -6545,9 +6505,11 @@ async function initializeTelegramUser() {
             };
             
             console.log('✅ Telegram user data saved:', currentUser);
+            
+            // Сохраняем в localStorage для надежности
             localStorage.setItem('linkgold_user', JSON.stringify(currentUser));
             
-            // 🔥 ИСПРАВЛЕНИЕ: Ждем аутентификации на сервере
+            // Аутентификация на сервере
             try {
                 const authResult = await makeRequest('/user/auth', {
                     method: 'POST',
@@ -6558,23 +6520,22 @@ async function initializeTelegramUser() {
                 
                 if (authResult.success) {
                     Object.assign(currentUser, authResult.user);
-                    localStorage.setItem('linkgold_user', JSON.stringify(currentUser));
                     console.log('✅ User authenticated successfully');
                 }
             } catch (authError) {
                 console.log('⚠️ Auth endpoint not available, continuing with Telegram data');
             }
             
-            // 🔥 ИСПРАВЛЕНИЕ: Ждем инициализации приложения
-            await initializeApp();
+            initializeApp();
             
         } else {
-            console.log('❌ Telegram user data not available');
+            console.log('❌ Telegram user data not available, checking localStorage...');
+            // Проверяем сохраненные данные
             const savedUser = localStorage.getItem('linkgold_user');
             if (savedUser) {
                 currentUser = JSON.parse(savedUser);
                 console.log('✅ Using saved user data:', currentUser);
-                await initializeApp(); // 🔥 ДОБАВЬТЕ await
+                initializeApp();
             } else {
                 console.log('❌ No saved data, using test user');
                 initializeTestUser();
@@ -6582,8 +6543,16 @@ async function initializeTelegramUser() {
         }
     } catch (error) {
         console.error('❌ Error initializing Telegram user:', error);
-        await emergencyUserRecovery(); // 🔥 ДОБАВЬТЕ await
-        await initializeApp(); // 🔥 ДОБАВЬТЕ await
+        
+        // Fallback на сохраненные данные
+        const savedUser = localStorage.getItem('linkgold_user');
+        if (savedUser) {
+            currentUser = JSON.parse(savedUser);
+            console.log('✅ Using saved user data after error:', currentUser);
+            initializeApp();
+        } else {
+            initializeTestUser();
+        }
     }
 }
 
@@ -7671,20 +7640,24 @@ function startUserDataAutoUpdate() {
 }
 
         // Обновление данных пользователя
-async function updateUserData() {
-    if (!currentUser) return;
-    
-    try {
-        const result = await makeRequest(`/user/${currentUser.id}`);
-        if (result.success) {
-            currentUser = { ...currentUser, ...result.profile };
-            displayUserProfile();
-            console.log('✅ User data updated:', currentUser.balance);
+        async function updateUserData() {
+            if (!currentUser) return;
+            
+            try {
+                const result = await makeRequest(`/user/${currentUser.id}`);
+                if (result.success) {
+                    // Обновляем текущего пользователя
+                    currentUser = { ...currentUser, ...result.profile };
+                    
+                    // Обновляем отображение во всех местах
+                    displayUserProfile();
+                    
+                    console.log('✅ Данные пользователя обновлены:', currentUser.balance);
+                }
+            } catch (error) {
+                console.error('Ошибка обновления данных пользователя:', error);
+            }
         }
-    } catch (error) {
-        console.error('Error updating user data:', error);
-    }
-}
 
         // 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ПРОФИЛЯ
 function displayUserProfile() {
@@ -7939,7 +7912,7 @@ function updateLevelProgress() {
 // 🔧 ФУНКЦИЯ ДЛЯ СИНХРОНИЗАЦИИ ПРОФИЛЯ С TELEGRAM
 async function syncUserProfile() {
     try {
-        console.log('🔄 Starting PROFILE synchronization...');
+        console.log('🔄 Starting profile synchronization...');
         
         if (!window.Telegram?.WebApp) {
             console.log('❌ Not in Telegram context, using saved data');
@@ -7956,20 +7929,16 @@ async function syncUserProfile() {
         
         console.log('📱 Syncing with Telegram data:', tgUser);
         
-        // 🔥 ИСПРАВЛЕНИЕ: Принудительное обновление данных
+        // 🔥 ИСПРАВЛЕНИЕ: Создаем нового пользователя если currentUser не существует
         const updatedUser = {
-            id: tgUser.id.toString(),
-            firstName: tgUser.first_name || 'Пользователь',
-            lastName: tgUser.last_name || '',
-            username: tgUser.username || `user_${tgUser.id}`,
-            photoUrl: tgUser.photo_url || '',
-            isAdmin: parseInt(tgUser.id) === ADMIN_ID,
-            // Сохраняем существующие данные если есть
+            // Безопасное использование currentUser
             ...(currentUser || {}),
-            // Перезаписываем критически важные поля
-            balance: currentUser?.balance || 0,
-            tasks_completed: currentUser?.tasks_completed || 0,
-            level: currentUser?.level || 1
+            id: tgUser.id.toString(),
+            firstName: tgUser.first_name || (currentUser?.firstName || 'Пользователь'),
+            lastName: tgUser.last_name || (currentUser?.lastName || ''),
+            username: tgUser.username || (currentUser?.username || `user_${tgUser.id}`),
+            photoUrl: tgUser.photo_url || (currentUser?.photoUrl || ''),
+            isAdmin: parseInt(tgUser.id) === ADMIN_ID || (currentUser?.isAdmin || false)
         };
         
         currentUser = updatedUser;
@@ -7977,7 +7946,10 @@ async function syncUserProfile() {
         // Сохраняем в localStorage
         localStorage.setItem('linkgold_user', JSON.stringify(currentUser));
         
-        // 🔥 ИСПРАВЛЕНИЕ: Синхронизируем с сервером и ЖДЕМ ответа
+        // Обновляем интерфейс немедленно
+        displayUserProfile();
+        
+        // Синхронизируем с сервером
         try {
             const response = await fetch(`${API_BASE_URL}/api/user/update-profile`, {
                 method: 'POST',
@@ -7994,17 +7966,10 @@ async function syncUserProfile() {
             });
             
             if (response.ok) {
-                const result = await response.json();
-                console.log('✅ Profile updated on server:', result);
-                
-                // 🔥 ОБНОВЛЯЕМ данные из ответа сервера
-                if (result.success && result.user) {
-                    currentUser = { ...currentUser, ...result.user };
-                    localStorage.setItem('linkgold_user', JSON.stringify(currentUser));
-                }
+                console.log('✅ Profile updated on server');
             }
         } catch (serverError) {
-            console.log('⚠️ Server update failed, using local data:', serverError);
+            console.log('⚠️ Server update failed, using local data');
         }
         
         console.log('✅ Profile synchronized successfully');
@@ -8012,6 +7977,8 @@ async function syncUserProfile() {
         
     } catch (error) {
         console.error('❌ Profile sync error:', error);
+        
+        // 🔥 ДОБАВЛЕНО: Аварийное восстановление
         await emergencyUserRecovery();
         return false;
     }
@@ -9449,64 +9416,117 @@ function formatCategory(category) {
 async function initializeApp() {
     console.log('🎮 Initializing LinkGold app...');
     
-    try {
-        // 🔥 ИСПРАВЛЕНИЕ: Безопасная синхронизация
-        console.log('🔄 Starting profile synchronization...');
-        
-        // Не блокируем инициализацию если синхронизация медленная
-        const syncPromise = syncUserProfile().catch(error => {
-            console.log('⚠️ Sync failed, continuing with existing data:', error);
-            return false;
-        });
+    // 🔥 ДОБАВЛЕНО: Принудительная синхронизация перед инициализацией
+    const syncSuccess = await syncUserProfile();
+    
+    if (!syncSuccess) {
+        console.log('⚠️ Sync failed, using emergency recovery...');
+        await emergencyUserRecovery();
+    }
+    
+    // Остальной код инициализации...
+    displayUserProfile();
+    checkAdminRights();
+    loadMainPagePosts();
+    
+    // Добавляем кнопку синхронизации
+    addSyncButtonToProfile();
+    // Применяем исправления layout сразу
+    fixLayoutIssues();
 
-        // Параллельно запускаем критически важные функции
-        displayUserProfile(); // Показываем существующие данные сразу
-        checkAdminRights();
-        loadMainPagePosts();
-        
-        // Ждем завершения синхронизации (но не блокируем интерфейс)
-        const syncSuccess = await syncPromise;
-        
-        if (syncSuccess) {
-            console.log('✅ Profile synchronized, updating data...');
-            // Обновляем данные после успешной синхронизации
-            await updateUserData().catch(error => {
-                console.log('⚠️ User data update failed:', error);
-            });
-            displayUserProfile(); // Обновляем интерфейс
-        }
-
-        // Продолжаем инициализацию
-        addSyncButtonToProfile();
-        fixLayoutIssues();
-        startAutoSync();
-
-        // Загружаем задания
-        console.log('🚀 Loading tasks...');
+    startAutoSync();
+    // 🔧 ВАЖНО: Загружаем список админов если пользователь главный админ
+    if (currentUser && parseInt(currentUser.id) === ADMIN_ID) {
         setTimeout(() => {
-            if (currentUser) {
-                loadTasksForCategory('new');
-            }
-        }, 500);
+            loadAdminsList();
+        }, 1000);
+    }
+    // 🔥 ПРИНУДИТЕЛЬНАЯ ЗАГРУЗКА ЗАДАНИЙ ПРИ СТАРТЕ
+    console.log('🚀 FORCE loading tasks on app start...');
+    setTimeout(() => {
+        if (currentUser) {
+            console.log('👤 User authenticated, loading tasks...');
+            loadTasksForCategory('new');
+        } else {
+            console.log('❌ No user for task loading');
+        }
+    }, 1000);
 
-        // Инициализация поиска и табов
-        initializeTaskTabHandlers();
-        initializeSearch();
+    // Остальной код инициализации...
+    initializeTaskTabHandlers();
 
-        // Проверяем API соединение (без блокировки)
-        checkAPIConnection();
+    
+    // Проверяем соединение с API
+    try {
+        console.log('🔍 Testing API connection...');
+        const health = await makeRequest('/api/health');
+        console.log('✅ API connection successful:', health);
 
-        console.log('🎉 App initialized successfully');
         
     } catch (error) {
-        console.error('❌ App initialization failed:', error);
-        showNotification('Ошибка инициализации приложения', 'error');
-        // 🔥 ВАЖНО: Показываем интерфейс даже при ошибке
-        emergencyUserRecovery().then(() => {
-            displayUserProfile();
-            checkAdminRights();
-        });
+        console.error('❌ API connection failed:', error);
+        showNotification('❌ Не удалось подключиться', 'error');
+        showRetryButton();
+        return;
     }
+    
+    // Принудительно обновляем права администратора
+    await refreshAdminRights();
+    
+    // Настраиваем админ-панель
+    setupAdminPanel();
+    
+    // Инициализируем приложение
+    displayUserProfile();
+    checkAdminRights();
+    loadMainPagePosts();
+    
+    // 🔥 ВАЖНО: ЗАГРУЖАЕМ ЗАДАНИЯ ПРИ ЗАПУСКЕ ПРИЛОЖЕНИЯ
+    console.log('🚀 Pre-loading tasks on app start...');
+    loadTasks();
+    
+    initializeSearch();
+    loadUserTasks();
+    
+    // Запускаем автообновление данных
+    startUserDataAutoUpdate();
+    
+    // Если пользователь админ, загружаем админ-данные
+    if (currentUser && (currentUser.is_admin || parseInt(currentUser.id) === ADMIN_ID)) {
+        loadAdminChats();
+        loadAdminTasks();
+        loadTaskVerifications();
+        
+        // Если это главный админ, загружаем список админов
+        if (parseInt(currentUser.id) === ADMIN_ID) {
+            setTimeout(() => {
+                loadAdminsList();
+            }, 500);
+        }
+    }
+    
+    // Повторно применяем исправления после загрузки контента
+    setTimeout(fixLayoutIssues, 2000);
+     // Сначала синхронизируем профиль с Telegram
+    await syncUserProfile();
+
+    // Затем инициализируем приложение
+    displayUserProfile();
+    checkAdminRights();
+    loadMainPagePosts();
+    
+    // Загружаем задания
+    loadTasks();
+     // Обновляем статистику профиля
+    updateProfileStats();
+    updateActiveTasksCount();
+    
+    // Запускаем автообновление данных
+    startUserDataAutoUpdate();
+
+    console.log('🎉 App initialized successfully');
+        // Запускаем периодическое обновление
+    setInterval(updateActiveTasksCount, 30000);
 }
 async function loadUserTasksForCategory(status) {
     if (!currentUser) return;
@@ -12849,20 +12869,20 @@ function updateWithdrawPage() {
 }
 
         // Загрузка постов на главную
-async function loadMainPagePosts() {
-    try {
-        const result = await makeRequest('/posts');
-        if (result.success && result.posts && result.posts.length > 0) {
-            displayMainPagePosts(result.posts);
-        } else {
-            hidePostsSection();
+        async function loadMainPagePosts() {
+            try {
+                const result = await makeRequest('/posts');
+                
+                if (result.success && result.posts && result.posts.length > 0) {
+                    displayMainPagePosts(result.posts);
+                } else {
+                    hidePostsSection();
+                }
+            } catch (error) {
+                console.error('Error loading posts:', error);
+                hidePostsSection();
+            }
         }
-    } catch (error) {
-        console.error('Error loading posts:', error);
-        hidePostsSection();
-    }
-}
-
 
         function displayMainPagePosts(posts) {
             const postsSection = document.getElementById('posts-section');

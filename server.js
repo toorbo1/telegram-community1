@@ -53,8 +53,6 @@ setInterval(async () => {
     }
 }, 5 * 60 * 1000); // 5 минут
 
-
-
 // Middleware
 app.use(cors({
     origin: '*',
