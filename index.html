@@ -5218,59 +5218,44 @@ html, body {
 <!-- Секция управления промокодами -->
 <div id="admin-promocodes-section" class="admin-section" style="display: none;">
     <div class="admin-form">
-        <h3>🎫 Создание промокода</h3>
-        <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px;">
-            <strong>Только главный администратор может создавать промокоды</strong>
-        </p>
+        <h3>🎫 Создать промокод</h3>
         
         <div class="form-group">
-            <label>Код промокода *</label>
-            <input type="text" class="admin-input" id="promocode-code" 
-                   placeholder="Например: SUMMER2024" maxlength="20"
-                   style="text-align: center; font-weight: 600; text-transform: uppercase;">
-            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 5px;">
-                Только латинские буквы и цифры, без пробелов
-            </div>
+            <label for="promocode-code">Код промокода *</label>
+            <input type="text" id="promocode-code" class="admin-input" 
+                   placeholder="Например: WELCOME100" maxlength="20">
         </div>
-
+        
         <div class="form-row">
-            <div class="form-group" style="flex: 1;">
-                <label>Количество активаций *</label>
-                <input type="number" class="admin-input" id="promocode-max-uses" 
-                       placeholder="10" min="1" max="1000" value="10">
+            <div class="form-group">
+                <label for="promocode-max-uses">Макс. использований *</label>
+                <input type="number" id="promocode-max-uses" class="admin-input" 
+                       value="10" min="1" max="10000">
             </div>
-            <div class="form-group" style="flex: 1;">
-                <label>Награда (звезды) *</label>
-                <input type="number" class="admin-input" id="promocode-reward" 
-                       placeholder="50" min="1" max="10000" value="50">
+            
+            <div class="form-group">
+                <label for="promocode-reward">Награда (звезды) *</label>
+                <input type="number" id="promocode-reward" class="admin-input" 
+                       value="50" min="1" max="100000" step="1">
             </div>
         </div>
-
-        <button class="admin-submit" onclick="createPromoCode()" id="create-promocode-btn">
+        
+        <div class="form-group">
+            <label for="promocode-expires">Дата истечения (необязательно)</label>
+            <input type="datetime-local" id="promocode-expires" class="admin-input">
+        </div>
+        
+        <div id="promocode-form-message" style="margin: 10px 0; min-height: 20px;"></div>
+        
+        <button id="create-promocode-btn" class="admin-submit" onclick="createPromoCode()">
             🎫 Создать промокод
         </button>
-
-        <div id="promocode-form-message" style="margin-top: 12px; min-height: 20px; font-size: 14px;"></div>
-        
-        <div style="margin-top: 10px;">
-            <button class="btn btn-warning" onclick="testPromocodeEndpoint()" style="font-size: 12px; padding: 5px 10px;">
-                🧪 Тест endpoint
-            </button>
-            <button class="btn btn-info" onclick="console.log('Current user:', currentUser)" style="font-size: 12px; padding: 5px 10px; margin-left: 5px;">
-                🔍 User Info
-            </button>
-        </div>
     </div>
     
-    <!-- Список активных промокодов -->
-    <div style="margin-top: 25px;">
-        <h4>📋 Активные промокоды</h4>
-        <div id="promocodes-list" class="admin-task-list">
-            <!-- Промокоды будут загружены здесь -->
-        </div>
+    <div class="admin-tasks-list" id="promocodes-list">
+        <!-- Список промокодов будет здесь -->
     </div>
 </div>
-
   
 
         
@@ -6230,21 +6215,28 @@ function previewTaskImage(input) {
 }
 // Инициализация при загрузке страницы
 // Инициализация при загрузке страницы
+// Убедитесь, что код выполняется после загрузки DOM
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Initializing LinkGold app...');
-    
-    // Инициализация drag and drop
-    initImageUploadDragDrop();
-    
-    if (typeof tg !== 'undefined') {
-        tg.expand();
-        tg.ready();
-        initializeTelegramUser();
-    } else {
-        console.log('Telegram Web App context not available');
-        initializeTestUser();
-    }
+    console.log('✅ DOM loaded, initializing promocodes...');
+    initializePromocodes();
 });
+
+function initializePromocodes() {
+    // Проверяем существование элементов
+    const elements = [
+        'promocode-code',
+        'promocode-max-uses', 
+        'promocode-reward',
+        'promocode-expires',
+        'promocode-form-message',
+        'create-promocode-btn'
+    ];
+    
+    elements.forEach(id => {
+        const element = document.getElementById(id);
+        console.log(`🔍 ${id}:`, element ? 'FOUND' : 'NOT FOUND');
+    });
+}
 
 async function makeRequest(endpoint, options = {}) {
     const controller = new AbortController();
@@ -9756,6 +9748,7 @@ async function createPromoCode() {
             throw new Error('Только главный администратор может создавать промокоды!');
         }
         
+        // ПРОВЕРКА СУЩЕСТВОВАНИЯ ЭЛЕМЕНТОВ
         const codeInput = document.getElementById('promocode-code');
         const maxUsesInput = document.getElementById('promocode-max-uses');
         const rewardInput = document.getElementById('promocode-reward');
@@ -9763,14 +9756,23 @@ async function createPromoCode() {
         const messageDiv = document.getElementById('promocode-form-message');
         const submitBtn = document.getElementById('create-promocode-btn');
         
+        // ПРОВЕРЯЕМ ВСЕ ЭЛЕМЕНТЫ
         if (!codeInput || !maxUsesInput || !rewardInput || !messageDiv || !submitBtn) {
-            throw new Error('Элементы формы не найдены');
+            console.error('❌ Missing form elements:', {
+                codeInput: !!codeInput,
+                maxUsesInput: !!maxUsesInput,
+                rewardInput: !!rewardInput,
+                messageDiv: !!messageDiv,
+                submitBtn: !!submitBtn
+            });
+            throw new Error('Элементы формы не найдены. Обновите страницу.');
         }
         
-        const code = codeInput.value.trim().toUpperCase();
-        const maxUses = parseInt(maxUsesInput.value);
-        const reward = parseFloat(rewardInput.value);
-        const expiresAt = expiresInput.value ? new Date(expiresInput.value).toISOString() : null;
+        // ПОЛУЧАЕМ ЗНАЧЕНИЯ С ПРОВЕРКОЙ
+        const code = codeInput?.value?.trim().toUpperCase() || '';
+        const maxUses = maxUsesInput?.value ? parseInt(maxUsesInput.value) : 0;
+        const reward = rewardInput?.value ? parseFloat(rewardInput.value) : 0;
+        const expiresAt = expiresInput?.value ? new Date(expiresInput.value).toISOString() : null;
         
         console.log('📊 Form data:', { code, maxUses, reward, expiresAt });
         
