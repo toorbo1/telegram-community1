@@ -3651,6 +3651,7 @@ app.get('/api/admin/debug-rights', async (req, res) => {
 });
 // Подтверждение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ С УДАЛЕНИЕМ ФАЙЛОВ
 // 🔧 ИСПРАВЛЕННЫЙ ENDPOINT ДЛЯ ОДОБРЕНИЯ ЗАДАНИЯ
+// 🔧 УПРОЩЕННЫЙ ENDPOINT ДЛЯ ОДОБРЕНИЯ ЗАДАНИЯ
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
@@ -3747,7 +3748,7 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             console.log(`✅ Задание ${task.id} автоматически удалено (достигнут лимит: ${peopleRequired} исполнителей)`);
         }
         
-        // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Отправляем ответ ДО удаления файла
+        // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Простой ответ без удаления файлов
         res.json({
             success: true,
             message: 'Task approved successfully',
@@ -3755,17 +3756,6 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             taskCompleted: newCompletedCount >= peopleRequired,
             taskRemoved: taskRemoved
         });
-        
-        // 🔥 УДАЛЯЕМ ФАЙЛ СКРИНШОТА ПОСЛЕ ОТПРАВКИ ОТВЕТА
-        if (verificationData.screenshot_url) {
-            setTimeout(async () => {
-                try {
-                    await deleteScreenshotFile(verificationData.screenshot_url);
-                } catch (deleteError) {
-                    console.error('Error deleting screenshot after approval:', deleteError);
-                }
-            }, 1000);
-        }
         
     } catch (error) {
         console.error('Approve verification error:', error);
