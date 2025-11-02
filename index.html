@@ -11080,7 +11080,23 @@ function displayAdminTasks(tasks, stats) {
     }
     
     // Добавляем фильтры
-    
+    const filterHTML = `
+        <div class="task-filter" style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <label style="font-weight: 600; color: var(--text-primary);"></label>
+            <select id="admin-task-filter" onchange="filterAdminTasks()" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-primary); color: var(--text-primary);">
+                <option value="all">Все задания</option>
+                <option value="active">Только активные</option>
+                <option value="completed">Только завершенные</option>
+                <option value="my">Мои задания</option>
+            </select>
+            <button onclick="loadAdminTasks()" class="btn btn-primary" style="padding: 8px 12px; font-size: 12px;">
+                🔄 Обновить
+            </button>
+            <button onclick="debugAdminTasks()" class="btn btn-warning" style="padding: 8px 12px; font-size: 12px;">
+                🐛 Диагностика
+            </button>
+        </div>
+    `;
     container.innerHTML += filterHTML;
     
     const tasksContainer = document.createElement('div');
