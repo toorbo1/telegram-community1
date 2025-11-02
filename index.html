@@ -11079,6 +11079,19 @@ function displayAdminTasks(tasks, stats) {
         return;
     }
     
+    // Добавляем фильтры
+    
+    container.innerHTML += filterHTML;
+    
+    const tasksContainer = document.createElement('div');
+    tasksContainer.id = 'admin-tasks-container';
+    container.appendChild(tasksContainer);
+    
+    // Сохраняем задачи для фильтрации
+    window.currentAdminTasks = tasks;
+    
+    // Отображаем все задания
+    renderAdminTasks(tasks);
 }
 // В index.html добавьте функцию диагностики
 async function debugAdminTasks() {
