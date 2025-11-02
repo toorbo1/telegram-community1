@@ -10853,7 +10853,13 @@ function createAdminTaskElement(task) {
                 </div>
                 <div style="color: var(--text-secondary); font-size: 14px;">${task.description}</div>
             </div>
-            
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <div style="font-size: 20px; color: var(--gold); font-weight: 600;">
+                    ${task.price} ⭐
+                </div>
+                
+            </div>
+        </div>
         
         <div style="display: flex; gap: 12px; font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">
             <span>📁 ${task.category || 'general'}</span>
@@ -10883,18 +10889,14 @@ function createAdminTaskElement(task) {
             <span>⏳ ${task.pending_count || 0} на проверке</span>
             <span>🟡 ${task.active_count || 0} в процессе</span>
         </div>
-        <div style="display: flex; gap: 8px; align-items: center;">
-                <div style="font-size: 20px; color: var(--gold); font-weight: 600;">
-                    ${task.price} ⭐
-                </div>
-                ${!isCompleted ? `
+        ${!isCompleted ? `
                     <button class="admin-task-delete" onclick="deleteTask(${task.id})" style="background: var(--error); color: white; border: none; padding: 6px 12px;  margin-bottom: 12px; border-radius: 6px; cursor: pointer;">
                         🗑️ Удалить
                     </button>
                 ` : ''}
-            </div>
-        </div>
-       
+        <div style="font-size: 20px; color: var(--gold); font-weight: 600;">
+                    ${task.price} ⭐
+                </div>
         ${task.image_url ? `
             <div style="margin-top: 10px;">
                 <img src="${task.image_url}" alt="Изображение задания" style="max-width: 200px; border-radius: 8px; border: 1px solid var(--border);">
