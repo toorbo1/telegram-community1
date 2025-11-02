@@ -3168,7 +3168,154 @@ app.post('/api/admin/promocodes/deactivate', async (req, res) => {
         });
     }
 });
+// Получение данных задания для редактирования
+app.get('/api/tasks/:taskId', async (req, res) => {
+    const taskId = req.params.taskId;
+    const adminId = req.query.adminId;
+    
+    try {
+        // Проверяем права администратора
+        const adminCheck = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [adminId]
+        );
+        
+        if (adminCheck.rows.length === 0 || !adminCheck.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Только администратор может редактировать задания'
+            });
+        }
+        
+        // Получаем данные задания
+        const result = await pool.query(`
+            SELECT * FROM tasks WHERE id = $1
+        `, [taskId]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Задание не найдено'
+            });
+        }
+        
+        res.json({
+            success: true,
+            task: result.rows[0]
+        });
+        
+    } catch (error) {
+        console.error('Get task error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка базы данных'
+        });
+    }
+});
 
+// Обновление задания
+app.post('/api/tasks/:taskId/update', upload.single('image'), async (req, res) => {
+    const taskId = req.params.taskId;
+    const {
+        title,
+        description,
+        price,
+        category,
+        time_to_complete,
+        difficulty,
+        people_required,
+        task_url,
+        adminId
+    } = req.body;
+    
+    try {
+        // Проверяем права администратора
+        const adminCheck = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [adminId]
+        );
+        
+        if (adminCheck.rows.length === 0 || !adminCheck.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Только администратор может редактировать задания'
+            });
+        }
+        
+        // Проверяем существование задания
+        const taskCheck = await pool.query(
+            'SELECT * FROM tasks WHERE id = $1',
+            [taskId]
+        );
+        
+        if (taskCheck.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Задание не найдено'
+            });
+        }
+        
+        // Подготавливаем данные для обновления
+        let updateFields = [];
+        let updateValues = [];
+        let paramCount = 1;
+        
+        const fields = {
+            'title': title,
+            'description': description,
+            'price': price,
+            'category': category,
+            'time_to_complete': time_to_complete,
+            'difficulty': difficulty,
+            'people_required': people_required,
+            'task_url': task_url,
+            'updated_at': new Date()
+        };
+        
+        // Добавляем поля для обновления
+        Object.keys(fields).forEach(field => {
+            if (fields[field] !== undefined) {
+                updateFields.push(`${field} = $${paramCount}`);
+                updateValues.push(fields[field]);
+                paramCount++;
+            }
+        });
+        
+        // Обрабатываем изображение если есть
+        if (req.file) {
+            const imageUrl = `/uploads/${req.file.filename}`;
+            updateFields.push(`image_url = $${paramCount}`);
+            updateValues.push(imageUrl);
+            paramCount++;
+        }
+        
+        // Добавляем ID задания в конец
+        updateValues.push(taskId);
+        
+        // Выполняем обновление
+        const updateQuery = `
+            UPDATE tasks 
+            SET ${updateFields.join(', ')}
+            WHERE id = $${paramCount}
+            RETURNING *
+        `;
+        
+        const result = await pool.query(updateQuery, updateValues);
+        
+        res.json({
+            success: true,
+            message: 'Задание успешно обновлено',
+            task: result.rows[0]
+        });
+        
+    } catch (error) {
+        console.error('Update task error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка базы данных'
+        });
+    }
+});
 // Активация промокода пользователем
 app.post('/api/promocodes/activate', async (req, res) => {
     const { userId, code } = req.body;

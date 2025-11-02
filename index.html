@@ -8,7 +8,39 @@
 
 
            <style>
-            
+            /* Стили для кнопки редактирования */
+.admin-task-edit {
+    background: var(--warning) !important;
+    color: white !important;
+    border: none !important;
+    padding: 6px 12px !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    font-size: 12px !important;
+    transition: all 0.3s ease !important;
+}
+
+.admin-task-edit:hover {
+    background: #d97706 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 8px rgba(245, 158, 11, 0.3) !important;
+}
+
+/* Анимация для модального окна редактирования */
+#edit-task-modal .modal-content {
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
             /* 🔧 ПЛАВНАЯ ПРОКРУТКА ДЛЯ ВСЕХ ЭЛЕМЕНТОВ */
 html {
     scroll-behavior: smooth;
@@ -5312,11 +5344,19 @@ html, body {
 </div>
 
 
-        <div class="form-group">
-            <label>Название задания *</label>
-            <input type="text" class="admin-input" id="admin-task-title" placeholder="Введите название задания">
+  <!-- Модальное окно редактирования задания -->
+<div class="modal" id="edit-task-modal">
+    <div class="modal-content" style="max-width: 500px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header">
+            <div class="modal-title">✏️ Редактировать задание</div>
+            <button class="modal-close" onclick="closeModal('edit-task-modal')">×</button>
         </div>
-        
+        <div class="modal-body">
+            <div class="admin-form">
+                <div class="form-group">
+                    <label>Название задания *</label>
+                    <input type="text" class="admin-input" id="edit-task-title" placeholder="Введите название задания">
+                </div>
         <div class="form-group">
             <label>Описание задания *</label>
             <textarea class="admin-textarea" id="admin-task-description" placeholder="Подробное описание задания" rows="4"></textarea>
@@ -8810,6 +8850,314 @@ function initializeTaskTabHandlers() {
     });
 }
 
+// Глобальная переменная для хранения ID редактируемого задания
+let editingTaskId = null;
+
+// Функция открытия модального окна редактирования
+async function editTask(taskId) {
+    console.log('✏️ Opening edit modal for task:', taskId);
+    editingTaskId = taskId;
+    
+    try {
+        // Показываем загрузку
+        const updateBtn = document.getElementById('update-task-btn');
+        const messageDiv = document.getElementById('edit-task-message');
+        if (updateBtn) updateBtn.disabled = true;
+        if (messageDiv) messageDiv.innerHTML = '<span style="color: var(--warning);">⏳ Загружаем данные задания...</span>';
+        
+        // Получаем данные задания
+        const result = await makeRequest(`/api/tasks/${taskId}?adminId=${currentUser.id}`);
+        
+        if (result.success) {
+            const task = result.task;
+            
+            // Заполняем форму данными
+            document.getElementById('edit-task-title').value = task.title || '';
+            document.getElementById('edit-task-description').value = task.description || '';
+            document.getElementById('edit-task-price').value = task.price || '';
+            document.getElementById('edit-task-category').value = task.category || 'subscribe';
+            document.getElementById('edit-task-time').value = task.time_to_complete || '';
+            document.getElementById('edit-task-difficulty').value = task.difficulty || 'Легкая';
+            document.getElementById('edit-task-people').value = task.people_required || 10;
+            document.getElementById('edit-task-url').value = task.task_url || '';
+            
+            // Обрабатываем изображение
+            const preview = document.getElementById('edit-task-image-preview');
+            const placeholder = document.getElementById('edit-upload-placeholder');
+            
+            if (task.image_url) {
+                preview.src = task.image_url;
+                preview.style.display = 'block';
+                if (placeholder) placeholder.style.display = 'none';
+            } else {
+                preview.style.display = 'none';
+                if (placeholder) placeholder.style.display = 'block';
+            }
+            
+            // Сбрасываем файловый input
+            document.getElementById('edit-task-image-input').value = '';
+            currentTaskImage = null;
+            
+            // Очищаем сообщение и активируем кнопку
+            if (messageDiv) messageDiv.innerHTML = '';
+            if (updateBtn) updateBtn.disabled = false;
+            
+            // Показываем модальное окно
+            document.getElementById('edit-task-modal').classList.add('active');
+            
+            console.log('✅ Edit form filled with task data');
+            
+        } else {
+            throw new Error(result.error || 'Не удалось загрузить данные задания');
+        }
+        
+    } catch (error) {
+        console.error('❌ Error loading task for editing:', error);
+        showNotification('Ошибка загрузки задания: ' + error.message, 'error');
+        
+        const updateBtn = document.getElementById('update-task-btn');
+        const messageDiv = document.getElementById('edit-task-message');
+        if (updateBtn) updateBtn.disabled = false;
+        if (messageDiv) messageDiv.innerHTML = `<span style="color: var(--error);">❌ Ошибка: ${error.message}</span>`;
+    }
+}
+
+// Функция обновления задания
+async function updateTask() {
+    if (!editingTaskId) {
+        showNotification('Ошибка: ID задания не найден', 'error');
+        return;
+    }
+    
+    try {
+        // Получаем значения из формы
+        const taskData = {
+            title: document.getElementById('edit-task-title').value.trim(),
+            description: document.getElementById('edit-task-description').value.trim(),
+            price: document.getElementById('edit-task-price').value,
+            category: document.getElementById('edit-task-category').value,
+            time_to_complete: document.getElementById('edit-task-time').value || '5-10 минут',
+            difficulty: document.getElementById('edit-task-difficulty').value,
+            people_required: document.getElementById('edit-task-people').value || 10,
+            task_url: document.getElementById('edit-task-url').value || '',
+            adminId: currentUser.id
+        };
+
+        console.log('📋 Updating task data:', taskData);
+
+        // Валидация
+        if (!taskData.title.trim()) {
+            showNotification('Введите название задания!', 'error');
+            return;
+        }
+        if (!taskData.description.trim()) {
+            showNotification('Введите описание задания!', 'error');
+            return;
+        }
+        if (!taskData.price) {
+            showNotification('Введите цену задания!', 'error');
+            return;
+        }
+
+        const price = parseFloat(taskData.price);
+        if (isNaN(price) || price <= 0) {
+            showNotification('Цена должна быть положительным числом!', 'error');
+            return;
+        }
+
+        // Показываем загрузку
+        const updateBtn = document.getElementById('update-task-btn');
+        const messageDiv = document.getElementById('edit-task-message');
+        if (updateBtn) {
+            updateBtn.disabled = true;
+            updateBtn.textContent = 'Сохраняем...';
+        }
+        if (messageDiv) messageDiv.innerHTML = '<span style="color: var(--warning);">⏳ Сохраняем изменения...</span>';
+
+        // Создаем FormData для отправки
+        const formData = new FormData();
+        
+        // Добавляем текстовые данные
+        Object.keys(taskData).forEach(key => {
+            formData.append(key, taskData[key]);
+        });
+        
+        // Добавляем изображение если есть новое
+        if (currentTaskImage) {
+            formData.append('image', currentTaskImage);
+            console.log('📸 Adding new image to update');
+        }
+
+        console.log('📤 Sending task update...');
+
+        // Отправляем запрос на обновление
+        const response = await fetch(`/api/tasks/${editingTaskId}/update`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+        console.log('📨 Update response:', result);
+
+        if (result.success) {
+            showNotification('✅ Задание успешно обновлено!', 'success');
+            
+            // Закрываем модальное окно
+            closeModal('edit-task-modal');
+            
+            // Обновляем списки заданий
+            setTimeout(() => {
+                loadAdminTasks();
+                loadTasks(); // Обновляем задания для пользователей
+            }, 1000);
+            
+        } else {
+            throw new Error(result.error || 'Неизвестная ошибка сервера');
+        }
+
+    } catch (error) {
+        console.error('💥 Error updating task:', error);
+        
+        const messageDiv = document.getElementById('edit-task-message');
+        if (messageDiv) messageDiv.innerHTML = `<span style="color: var(--error);">❌ Ошибка: ${error.message}</span>`;
+        
+        showNotification(`❌ Ошибка обновления задания: ${error.message}`, 'error');
+        
+        // Восстанавливаем кнопку
+        const updateBtn = document.getElementById('update-task-btn');
+        if (updateBtn) {
+            updateBtn.disabled = false;
+            updateBtn.textContent = '💾 Сохранить изменения';
+        }
+    }
+}
+
+// Функция очистки изображения в форме редактирования
+function clearEditTaskImage() {
+    const input = document.getElementById('edit-task-image-input');
+    const preview = document.getElementById('edit-task-image-preview');
+    const placeholder = document.getElementById('edit-upload-placeholder');
+    
+    if (input) input.value = '';
+    if (preview) {
+        preview.src = '';
+        preview.style.display = 'none';
+    }
+    if (placeholder) {
+        placeholder.style.display = 'block';
+    }
+    
+    currentTaskImage = null;
+    
+    // Сбрасываем стили области загрузки
+    const area = document.getElementById('edit-image-upload-area');
+    if (area) {
+        area.style.borderColor = '';
+        area.style.background = '';
+    }
+}
+
+// Инициализация drag and drop для формы редактирования
+function initEditImageUpload() {
+    const area = document.getElementById('edit-image-upload-area');
+    if (!area) return;
+    
+    const fileInput = document.getElementById('edit-task-image-input');
+    
+    area.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        area.style.borderColor = 'var(--accent)';
+        area.style.background = 'rgba(99, 102, 241, 0.05)';
+    });
+    
+    area.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        area.style.borderColor = '';
+        area.style.background = '';
+    });
+    
+    area.addEventListener('drop', function(e) {
+        e.preventDefault();
+        area.style.borderColor = '';
+        area.style.background = '';
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            // Создаем новый DataTransfer для установки файла
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(files[0]);
+            fileInput.files = dataTransfer.files;
+            
+            // Запускаем превью
+            previewEditTaskImage(fileInput);
+        }
+    });
+    
+    // Обработчик клика на область загрузки
+    area.addEventListener('click', function() {
+        fileInput.click();
+    });
+    
+    // Обработчик изменения файлового input
+    fileInput.addEventListener('change', function() {
+        previewEditTaskImage(this);
+    });
+}
+
+// Функция превью изображения для формы редактирования
+function previewEditTaskImage(input) {
+    if (!input.files || !input.files[0]) return;
+    
+    const file = input.files[0];
+    const preview = document.getElementById('edit-task-image-preview');
+    const placeholder = document.getElementById('edit-upload-placeholder');
+    
+    // Сохраняем файл в глобальную переменную
+    currentTaskImage = file;
+    
+    // Проверка типа файла
+    if (!file.type.startsWith('image/')) {
+        showNotification('Пожалуйста, выберите изображение', 'error');
+        currentTaskImage = null;
+        return;
+    }
+    
+    // Проверка размера файла
+    if (file.size > 5 * 1024 * 1024) {
+        showNotification('Размер изображения не должен превышать 5MB', 'error');
+        currentTaskImage = null;
+        return;
+    }
+    
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        preview.src = e.target.result;
+        preview.style.display = 'block';
+        if (placeholder) {
+            placeholder.style.display = 'none';
+        }
+    };
+    
+    reader.onerror = function() {
+        showNotification('Ошибка при загрузке изображения', 'error');
+        currentTaskImage = null;
+    };
+    
+    reader.readAsDataURL(file);
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    initEditImageUpload();
+});
+
+// Экспорт функций
+window.editTask = editTask;
+window.updateTask = updateTask;
+window.clearEditTaskImage = clearEditTaskImage;
+
+
 function getCategoryFromTab(tabText) {
     const text = tabText.toLowerCase();
     if (text.includes('новые')) return 'new';
@@ -10828,6 +11176,7 @@ function renderAdminTasks(tasks) {
     });
 }
 
+
 function createAdminTaskElement(task) {
     const taskElement = document.createElement('div');
     taskElement.className = 'admin-task-item';
@@ -10858,14 +11207,23 @@ function createAdminTaskElement(task) {
                 <div style="font-size: 20px; color: var(--gold); font-weight: 600;">
                     ${task.price} ⭐
                 </div>
-                ${!isCompleted ? `
-                    <button class="admin-task-delete" onclick="deleteTask(${task.id})" style="background: var(--error); color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer;">
-                        🗑️ Удалить
+                <div style="display: flex; gap: 4px;">
+                    <!-- КНОПКА РЕДАКТИРОВАНИЯ -->
+                    <button class="admin-task-edit" onclick="editTask(${task.id})" 
+                            style="background: var(--warning); color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                        ✏️ Изменить
                     </button>
-                ` : ''}
+                    ${!isCompleted ? `
+                        <button class="admin-task-delete" onclick="deleteTask(${task.id})" 
+                                style="background: var(--error); color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                            🗑️ Удалить
+                        </button>
+                    ` : ''}
+                </div>
             </div>
         </div>
         
+        <!-- Остальной код карточки задания остается без изменений -->
         <div style="display: flex; gap: 12px; font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">
             <span>📁 ${task.category || 'general'}</span>
             <span>👥 ${peopleRequired} чел.</span>
@@ -10909,6 +11267,7 @@ function createAdminTaskElement(task) {
     
     return taskElement;
 }
+
 
 function filterAdminTasks() {
     const container = document.getElementById('admin-tasks-container');
