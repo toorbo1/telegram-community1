@@ -25,29 +25,6 @@ if (BOT_TOKEN) {
 }
 
 
-// ✅ ПРАВИЛЬНЫЙ CORS для Railway
-app.use(cors({
-    origin: function(origin, callback) {
-        const allowedOrigins = [
-            'https://ваш-username.github.io',
-            'https://ваш-app.railway.app',
-            'https://web.telegram.org',
-            'https://telegram-community1-production-0bc1.up.railway.app' // ← ЗАМЕНИТЕ на реальный
-        ];
-        
-        // Разрешаем запросы без origin (например, из Telegram)
-        if (!origin) return callback(null, true);
-        
-        if (allowedOrigins.indexOf(origin) !== -1) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
 
 // Используйте переменную окружения от Railway
 const pool = new Pool({
@@ -472,6 +449,47 @@ app.post('/api/admin/fix-database', async (req, res) => {
         });
     }
 });
+
+// В server.js после импортов
+app.use(cors({
+    origin: function(origin, callback) {
+        // Разрешаем все источники в продакшене
+        const allowedOrigins = [
+            'https://ваш-username.github.io',
+            'https://ваш-app.railway.app',
+            'https://web.telegram.org',
+            'https://your-custom-domain.com' // если есть
+        ];
+        
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            console.log('🔒 Blocked by CORS:', origin);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+// В server.js добавьте
+app.get('/api/debug/environment', (req, res) => {
+    res.json({
+        success: true,
+        environment: {
+            NODE_ENV: process.env.NODE_ENV,
+            RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT,
+            RAILWAY_PUBLIC_DOMAIN: process.env.RAILWAY_PUBLIC_DOMAIN,
+            DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT_SET',
+            BOT_TOKEN: process.env.BOT_TOKEN ? 'SET' : 'NOT_SET',
+            PORT: process.env.PORT
+        },
+        headers: req.headers,
+        timestamp: new Date().toISOString()
+    });
+});
+// Обработка preflight запросов
+app.options('*', cors());
 
 async function createPromocodesTable() {
     try {

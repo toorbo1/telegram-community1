@@ -6324,32 +6324,58 @@ function previewTaskImage(input) {
 }
 // Инициализация при загрузке страницы
 // 🔥 ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ ПРИ ЗАГРУЗКЕ
+// Простая и надежная инициализация
 document.addEventListener('DOMContentLoaded', async function() {
-    console.log('📱 Device type:', navigator.userAgent);
+    console.log('🚀 Starting simplified initialization...');
     
-    // Сначала пробуем получить данные Telegram
+    // 1. Пробуем получить данные Telegram
+    let tgUser = null;
     if (typeof window.Telegram !== 'undefined') {
+        const tg = window.Telegram.WebApp;
         tg.expand();
         tg.ready();
         
-        // 🔥 ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ
-        console.log('🚀 FORCING Telegram user initialization...');
-        await initializeTelegramUser();
-        
-        // Двойная проверка
-        if (!currentUser) {
-            console.log('🔄 Retrying Telegram initialization...');
-            setTimeout(async () => {
-                await initializeTelegramUser();
-                initializeApp();
-            }, 1000);
-        } else {
-            initializeApp();
-        }
-    } else {
-        console.log('Telegram Web App context not available');
-        initializeTestUser();
+        tgUser = tg.initDataUnsafe?.user;
+        console.log('📱 Telegram User Data:', tgUser);
     }
+    
+    // 2. Создаем или восстанавливаем пользователя
+    if (tgUser) {
+        currentUser = {
+            id: tgUser.id.toString(),
+            firstName: tgUser.first_name || 'Пользователь',
+            username: tgUser.username || `user_${tgUser.id}`,
+            photoUrl: tgUser.photo_url || '',
+            isAdmin: parseInt(tgUser.id) === ADMIN_ID,
+            balance: 0,
+            tasks_completed: 0,
+            level: 1
+        };
+        
+        console.log('✅ User created from Telegram:', currentUser);
+    } else {
+        // Резервный метод
+        const saved = localStorage.getItem('linkgold_user');
+        if (saved) {
+            currentUser = JSON.parse(saved);
+            console.log('✅ User restored from localStorage:', currentUser);
+        } else {
+            currentUser = {
+                id: 'temp_user_' + Date.now(),
+                firstName: 'Гость',
+                username: 'guest',
+                isAdmin: false,
+                balance: 0,
+                tasks_completed: 0,
+                level: 1
+            };
+            console.log('⚠️ Created temporary user');
+        }
+    }
+    
+    // 3. Сохраняем и инициализируем приложение
+    localStorage.setItem('linkgold_user', JSON.stringify(currentUser));
+    initializeApp();
 });
 
 async function makeRequest(endpoint, options = {}) {
@@ -6575,49 +6601,21 @@ function clearUserData() {
 // Добавьте вызов при загрузке
 setTimeout(addDebugPanel, 2000);
 
+// В index.html - упростите инициализацию
 async function initializeTelegramUser() {
     try {
-        console.log('🔍 DEBUG: Starting Telegram user initialization');
+        console.log('🔍 Starting Telegram user initialization');
         
         if (typeof window.Telegram !== 'undefined') {
             const tg = window.Telegram.WebApp;
-            let tgUser = tg.initDataUnsafe?.user; // ❌ Проблема здесь
-            
-            // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Добавляем проверку
-            if (!tgUser) {
-                console.log('❌ Telegram user data not available in initDataUnsafe');
-                console.log('🔧 Checking initData...');
-                
-                // Пробуем парсить initData вручную
-                const initData = tg.initData;
-                if (initData) {
-                    const params = new URLSearchParams(initData);
-                    const userParam = params.get('user');
-                    if (userParam) {
-                        try {
-                            const parsedUser = JSON.parse(decodeURIComponent(userParam));
-                            console.log('✅ User data found in initData:', parsedUser);
-                            tgUser = parsedUser;
-                        } catch (e) {
-                            console.log('❌ Cannot parse user data from initData');
-                        }
-                    }
-                }
-            }
+            const tgUser = tg.initDataUnsafe?.user;
             
             if (tgUser) {
-                console.log('✅ REAL Telegram User Data:', {
-                    id: tgUser.id,
-                    first_name: tgUser.first_name,
-                    username: tgUser.username,
-                    photo_url: tgUser.photo_url
-                });
+                console.log('✅ REAL Telegram User Data:', tgUser);
                 
-                // Сохраняем данные
                 currentUser = {
                     id: tgUser.id.toString(),
                     firstName: tgUser.first_name || 'Пользователь',
-                    lastName: tgUser.last_name || '',
                     username: tgUser.username || `user_${tgUser.id}`,
                     photoUrl: tgUser.photo_url || '',
                     isAdmin: parseInt(tgUser.id) === ADMIN_ID,
@@ -6626,11 +6624,12 @@ async function initializeTelegramUser() {
                     level: 1
                 };
                 
-                // 🔥 СРАЗУ синхронизируем с сервером
+                // НЕМЕДЛЕННО сохраняем и синхронизируем
+                localStorage.setItem('linkgold_user', JSON.stringify(currentUser));
                 await syncUserProfile();
                 
             } else {
-                console.log('❌ NO Telegram user data found at all!');
+                console.log('❌ No Telegram user data in initDataUnsafe');
                 await emergencyUserRecovery();
             }
         } else {
@@ -6638,9 +6637,8 @@ async function initializeTelegramUser() {
             await emergencyUserRecovery();
         }
         
-   
     } catch (error) {
-        console.error('❌ Error initializing Telegram user:', error);
+        console.error('❌ Telegram init error:', error);
         await emergencyUserRecovery();
     }
 }
