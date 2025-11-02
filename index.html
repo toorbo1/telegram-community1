@@ -6804,7 +6804,7 @@ function debugWithdrawalSystem() {
         console.error('❌ Error loading withdrawal requests:', error);
     });
 }
-// 🔄 Функция для обновления интерфейса проверки заданий
+// 🔧 ФУНКЦИЯ ДЛЯ ОБНОВЛЕНИЯ ИНТЕРФЕЙСА ПРОВЕРКИ
 function updateVerificationInterface() {
     if (document.getElementById('admin-verification-section').style.display === 'block') {
         loadTaskVerifications();
@@ -10040,13 +10040,11 @@ async function cancelTask() {
         showNotification('Ошибка отмены задания', 'error');
     }
 }
-
-// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ ЗАДАНИЙ НА ПРОВЕРКУ
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ ПРОВЕРОК
 async function loadTaskVerifications() {
     if (!currentUser) return;
 
     try {
-        // 🔧 ИСПРАВЛЕНИЕ: Правильный endpoint с /api/
         const result = await makeRequest(`/api/admin/task-verifications?adminId=${currentUser.id}`);
         if (result.success) {
             displayTaskVerifications(result.verifications);
@@ -10056,55 +10054,54 @@ async function loadTaskVerifications() {
     }
 }
 
-        // Отображение заданий на проверку
-        function displayTaskVerifications(verifications) {
-            const container = document.getElementById('admin-verification-list');
-            if (!container) return;
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ПРОВЕРОК
+function displayTaskVerifications(verifications) {
+    const container = document.getElementById('admin-verification-list');
+    if (!container) return;
 
-            container.innerHTML = '';
+    container.innerHTML = '';
 
-            if (!verifications || verifications.length === 0) {
-                container.innerHTML = `
-                    <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
-                        <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
-                        <div>Нет заданий на проверке</div>
-                        <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
-                            Все задания проверены
-                        </div>
+    if (!verifications || verifications.length === 0) {
+        container.innerHTML = `
+            <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
+                <div>Нет заданий на проверке</div>
+                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
+                    Все задания проверены
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    verifications.forEach(verification => {
+        const verificationElement = document.createElement('div');
+        verificationElement.className = 'verification-item';
+        verificationElement.onclick = () => openVerificationModal(verification);
+
+        const userAvatar = verification.user_name ? verification.user_name.charAt(0).toUpperCase() : 'U';
+        const submissionTime = formatPostDate(verification.submitted_at);
+
+        verificationElement.innerHTML = `
+            <div class="verification-header">
+                <div class="verification-avatar">
+                    ${userAvatar}
+                </div>
+                <div class="verification-user-info">
+                    <div class="verification-user-name">
+                        ${verification.user_name}
+                        ${verification.username ? `(@${verification.username})` : ''}
                     </div>
-                `;
-                return;
-            }
+                    <div class="verification-task-title">${verification.task_title}</div>
+                </div>
+                <div class="verification-price">${verification.task_price} ⭐</div>
+            </div>
+            <div class="verification-time">Отправлено: ${submissionTime}</div>
+        `;
 
-            verifications.forEach(verification => {
-                const verificationElement = document.createElement('div');
-                verificationElement.className = 'verification-item';
-                verificationElement.onclick = () => openVerificationModal(verification);
-
-                const userAvatar = verification.user_name ? verification.user_name.charAt(0).toUpperCase() : 'U';
-                const submissionTime = formatPostDate(verification.submitted_at);
-
-                verificationElement.innerHTML = `
-                    <div class="verification-header">
-                        <div class="verification-avatar">
-                            ${userAvatar}
-                        </div>
-                        <div class="verification-user-info">
-                            <div class="verification-user-name">
-                                ${verification.user_name}
-                                ${verification.username ? `(@${verification.username})` : ''}
-                            </div>
-                            <div class="verification-task-title">${verification.task_title}</div>
-                        </div>
-                        <div class="verification-price">${verification.task_price} ⭐</div>
-                    </div>
-                    <div class="verification-time">Отправлено: ${submissionTime}</div>
-                `;
-
-                container.appendChild(verificationElement);
-            });
-        }
-// 🔧 ФУНКЦИИ ДЛЯ РАБОТЫ С ПРОМОКОДАМИ
+        container.appendChild(verificationElement);
+    });
+}
 
 // Показать секцию промокодов
 function showPromocodesSection() {
@@ -10458,6 +10455,7 @@ window.deactivatePromoCode = deactivatePromoCode;
             document.getElementById('verification-modal').classList.add('active');
         }
 
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОДОБРЕНИЯ ЗАДАНИЯ
 async function approveVerification() {
     if (!currentVerificationId) {
         showNotification('❌ ID верификации не найден', 'error');
@@ -10497,20 +10495,22 @@ async function approveVerification() {
             
             if (result.taskRemoved || result.taskCompleted) {
                 message += "\n\n🎯 Задание автоматически удалено - достигнут лимит исполнителей!";
-                
-                // 🔥 ВАЖНО: НЕМЕДЛЕННО ОБНОВЛЯЕМ СПИСКИ ЗАДАНИЙ
-                setTimeout(() => {
-                    loadTasks(); // Обновляем новые задания
-                    loadUserTasks(); // Обновляем задания пользователя
-                    loadTaskVerifications(); // Обновляем список проверки
-                }, 500);
             }
             
             showNotification(message, 'success');
+            
+            // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Закрываем модальное окно ДО обновления данных
             closeModal('verification-modal');
             
-            // ОБНОВЛЯЕМ ВСЕ ДАННЫЕ
-            await updateUserData();
+            // 🔥 ОБНОВЛЯЕМ ДАННЫЕ ПОСЛЕ ЗАКРЫТИЯ МОДАЛЬНОГО ОКНА
+            setTimeout(() => {
+                // Обновляем все списки
+                loadTaskVerifications(); // Обновляем список проверки
+                loadAdminTasks(); // Обновляем задания админа
+                updateUserData(); // Обновляем данные пользователя
+                
+                console.log('✅ Интерфейс успешно обновлен после одобрения задания');
+            }, 500);
             
         } else {
             throw new Error(result.error || 'Неизвестная ошибка сервера');
@@ -10540,6 +10540,7 @@ async function approveVerification() {
         }
     }
 }
+
 // Функция для диагностики проблемы
 async function debugApprovalIssue() {
     console.log('🔍 Диагностика проблемы одобрения:');
