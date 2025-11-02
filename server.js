@@ -23,19 +23,30 @@ if (BOT_TOKEN) {
 } else {
     console.log('⚠️ BOT_TOKEN not set - Telegram features disabled');
 }
-// В начале server.js, после импортов
-const allowedOrigins = [
-  'https://ваш-username.github.io',
-  'https://ваш-app.railway.app', 
-  'https://ваш-домен.com', // если есть кастомный домен
-  'http://localhost:3000'   // для разработки
-];
 
-// ✅ ПРАВИЛЬНЫЙ CORS
+
+// ✅ ПРАВИЛЬНЫЙ CORS для Railway
 app.use(cors({
-    origin: '*', // Разрешаем все источники
-    methods: ['GET', 'POST', 'DELETE', 'PUT', 'OPTIONS'],
-    credentials: true
+    origin: function(origin, callback) {
+        const allowedOrigins = [
+            'https://ваш-username.github.io',
+            'https://ваш-app.railway.app',
+            'https://web.telegram.org',
+            'https://telegram-community1-production-0bc1.up.railway.app' // ← ЗАМЕНИТЕ на реальный
+        ];
+        
+        // Разрешаем запросы без origin (например, из Telegram)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
 // Используйте переменную окружения от Railway
@@ -2348,6 +2359,34 @@ async function createSampleTasks() {
         console.error('❌ Error creating sample tasks:', error);
     }
 }
+
+document.addEventListener('DOMContentLoaded', async function() {
+    console.log('📱 Device type:', navigator.userAgent);
+    
+    // Сначала пробуем получить данные Telegram
+    if (typeof window.Telegram !== 'undefined') {
+        tg.expand();
+        tg.ready();
+        
+        // 🔥 ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ
+        console.log('🚀 FORCING Telegram user initialization...');
+        await initializeTelegramUser();
+        
+        // Двойная проверка
+        if (!currentUser) {
+            console.log('🔄 Retrying Telegram initialization...');
+            setTimeout(async () => {
+                await initializeTelegramUser();
+                initializeApp();
+            }, 1000);
+        } else {
+            initializeApp();
+        }
+    } else {
+        console.log('Telegram Web App context not available');
+        initializeTestUser();
+    }
+});
 
 // Вызовите эту функцию после инициализации базы данных
 async function initializeWithTasks() {

@@ -6581,7 +6581,7 @@ async function initializeTelegramUser() {
         
         if (typeof window.Telegram !== 'undefined') {
             const tg = window.Telegram.WebApp;
-            const tgUser = tg.initDataUnsafe?.user;
+            let tgUser = tg.initDataUnsafe?.user; // ❌ Проблема здесь
             
             // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Добавляем проверку
             if (!tgUser) {
@@ -6638,6 +6638,7 @@ async function initializeTelegramUser() {
             await emergencyUserRecovery();
         }
         
+   
     } catch (error) {
         console.error('❌ Error initializing Telegram user:', error);
         await emergencyUserRecovery();
@@ -8105,6 +8106,29 @@ async function syncUserProfile() {
         return false;
     }
 }
+function debugTelegramData() {
+    if (typeof window.Telegram !== 'undefined') {
+        const tg = window.Telegram.WebApp;
+        console.log('🔍 TELEGRAM DEBUG INFO:');
+        console.log('- initData:', tg.initData);
+        console.log('- initDataUnsafe:', tg.initDataUnsafe);
+        console.log('- version:', tg.version);
+        console.log('- platform:', tg.platform);
+        console.log('- colorScheme:', tg.colorScheme);
+        
+        // Проверяем все возможные места с данными пользователя
+        if (tg.initDataUnsafe?.user) {
+            console.log('✅ User found in initDataUnsafe:', tg.initDataUnsafe.user);
+        } else {
+            console.log('❌ User NOT found in initDataUnsafe');
+        }
+    } else {
+        console.log('❌ Telegram WebApp not available');
+    }
+}
+
+// Вызовите при загрузке
+setTimeout(debugTelegramData, 1000);
 async function emergencyUserRecovery() {
     try {
         console.log('🚨 EMERGENCY: Attempting user data recovery...');
