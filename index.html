@@ -6494,8 +6494,8 @@ async function initializeTelegramUser() {
             
             console.log('📱 Telegram user found:', tgUser);
             
-            // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Правильное сохранение и синхронизация
-            const telegramUserData = {
+            // 🔥 ИСПРАВЛЕНИЕ: Правильное сохранение данных Telegram
+            currentUser = {
                 id: tgUser.id.toString(),
                 firstName: tgUser.first_name || 'Пользователь',
                 lastName: tgUser.last_name || '',
@@ -6504,46 +6504,55 @@ async function initializeTelegramUser() {
                 isAdmin: parseInt(tgUser.id) === ADMIN_ID
             };
             
-            console.log('✅ Telegram user data prepared:', telegramUserData);
+            console.log('✅ Telegram user data saved:', currentUser);
             
-            // 🔥 ВАЖНО: Сначала пытаемся синхронизировать с сервером
+            // Сохраняем в localStorage для надежности
+            localStorage.setItem('linkgold_user', JSON.stringify(currentUser));
+            
+            // Аутентификация на сервере
             try {
                 const authResult = await makeRequest('/user/auth', {
                     method: 'POST',
                     body: JSON.stringify({
-                        user: telegramUserData
+                        user: currentUser
                     })
                 });
                 
                 if (authResult.success) {
-                    // 🔥 ИСПРАВЛЕНИЕ: Используем данные С СЕРВЕРА, а не только из Telegram
-                    currentUser = { ...telegramUserData, ...authResult.user };
-                    console.log('✅ User authenticated with server data:', currentUser);
-                } else {
-                    // Если сервер вернул ошибку, используем Telegram данные как fallback
-                    currentUser = telegramUserData;
-                    console.log('⚠️ Using Telegram data as fallback');
+                    Object.assign(currentUser, authResult.user);
+                    console.log('✅ User authenticated successfully');
                 }
             } catch (authError) {
-                console.error('❌ Auth endpoint error, using Telegram data:', authError);
-                currentUser = telegramUserData;
+                console.log('⚠️ Auth endpoint not available, continuing with Telegram data');
             }
-            
-            // 🔥 ВАЖНО: Сохраняем в localStorage только после успешной синхронизации
-            localStorage.setItem('linkgold_user', JSON.stringify(currentUser));
-            
-            // 🔥 ДОБАВЛЕНО: Принудительное обновление профиля
-            await syncUserProfile();
             
             initializeApp();
             
         } else {
             console.log('❌ Telegram user data not available, checking localStorage...');
-            await emergencyUserRecovery();
+            // Проверяем сохраненные данные
+            const savedUser = localStorage.getItem('linkgold_user');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                console.log('✅ Using saved user data:', currentUser);
+                initializeApp();
+            } else {
+                console.log('❌ No saved data, using test user');
+                initializeTestUser();
+            }
         }
     } catch (error) {
         console.error('❌ Error initializing Telegram user:', error);
-        await emergencyUserRecovery();
+        
+        // Fallback на сохраненные данные
+        const savedUser = localStorage.getItem('linkgold_user');
+        if (savedUser) {
+            currentUser = JSON.parse(savedUser);
+            console.log('✅ Using saved user data after error:', currentUser);
+            initializeApp();
+        } else {
+            initializeTestUser();
+        }
     }
 }
 
@@ -7903,10 +7912,10 @@ function updateLevelProgress() {
 // 🔧 ФУНКЦИЯ ДЛЯ СИНХРОНИЗАЦИИ ПРОФИЛЯ С TELEGRAM
 async function syncUserProfile() {
     try {
-        console.log('🔄 CRITICAL: Starting profile synchronization...');
+        console.log('🔄 Starting profile synchronization...');
         
         if (!window.Telegram?.WebApp) {
-            console.log('❌ Not in Telegram context');
+            console.log('❌ Not in Telegram context, using saved data');
             return false;
         }
         
@@ -7920,54 +7929,57 @@ async function syncUserProfile() {
         
         console.log('📱 Syncing with Telegram data:', tgUser);
         
-        // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Принудительная синхронизация с сервером
-        const syncData = {
-            userId: tgUser.id.toString(),
-            firstName: tgUser.first_name || 'Пользователь',
-            lastName: tgUser.last_name || '',
-            username: tgUser.username || `user_${tgUser.id}`,
-            photoUrl: tgUser.photo_url || '',
-            isAdmin: parseInt(tgUser.id) === ADMIN_ID
+        // 🔥 ИСПРАВЛЕНИЕ: Создаем нового пользователя если currentUser не существует
+        const updatedUser = {
+            // Безопасное использование currentUser
+            ...(currentUser || {}),
+            id: tgUser.id.toString(),
+            firstName: tgUser.first_name || (currentUser?.firstName || 'Пользователь'),
+            lastName: tgUser.last_name || (currentUser?.lastName || ''),
+            username: tgUser.username || (currentUser?.username || `user_${tgUser.id}`),
+            photoUrl: tgUser.photo_url || (currentUser?.photoUrl || ''),
+            isAdmin: parseInt(tgUser.id) === ADMIN_ID || (currentUser?.isAdmin || false)
         };
         
-        // 🔥 ВАЖНО: Сначала обновляем на сервере
+        currentUser = updatedUser;
+        
+        // Сохраняем в localStorage
+        localStorage.setItem('linkgold_user', JSON.stringify(currentUser));
+        
+        // Обновляем интерфейс немедленно
+        displayUserProfile();
+        
+        // Синхронизируем с сервером
         try {
             const response = await fetch(`${API_BASE_URL}/api/user/update-profile`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(syncData)
+                body: JSON.stringify({
+                    userId: currentUser.id,
+                    firstName: currentUser.firstName,
+                    lastName: currentUser.lastName,
+                    username: currentUser.username,
+                    photoUrl: currentUser.photoUrl
+                })
             });
             
             if (response.ok) {
-                const result = await response.json();
-                if (result.success) {
-                    // 🔥 ИСПРАВЛЕНИЕ: Используем данные С СЕРВЕРА
-                    currentUser = { ...syncData, ...result.user };
-                    console.log('✅ Profile updated on server and locally:', currentUser);
-                }
-            } else {
-                throw new Error('Server update failed');
+                console.log('✅ Profile updated on server');
             }
         } catch (serverError) {
-            console.error('❌ Server sync failed:', serverError);
-            // Используем локальные данные как fallback
-            currentUser = syncData;
+            console.log('⚠️ Server update failed, using local data');
         }
         
-        // Сохраняем в localStorage
-        localStorage.setItem('linkgold_user', JSON.stringify(currentUser));
-        
-        // 🔥 ВАЖНО: Принудительно обновляем интерфейс
-        displayUserProfile();
-        updateUserData();
-        
-        console.log('✅ Profile synchronization completed');
+        console.log('✅ Profile synchronized successfully');
         return true;
         
     } catch (error) {
         console.error('❌ Profile sync error:', error);
+        
+        // 🔥 ДОБАВЛЕНО: Аварийное восстановление
+        await emergencyUserRecovery();
         return false;
     }
 }
