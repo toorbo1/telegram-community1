@@ -5573,11 +5573,39 @@ html, body {
         <!-- Форма добавления задания -->
     </div>
     
-    <!-- ОБЕРТКА для списка заданий -->
-    <div id="admin-tasks-list-container" style="margin-top: 30px;">
-        <h3>📋 Созданные задания</h3>
-        <div id="admin-tasks-list">
-            <!-- Задания будут загружены здесь -->
+ <div id="admin-tasks-list-container" style="margin-top: 30px;">
+    <h3>📋 Созданные задания</h3>
+    <div id="admin-tasks-list">
+        <!-- Пример карточки задания -->
+        <div class="admin-task-item">
+            <div class="admin-task-header">
+                <div class="admin-task-title">Название задания может быть очень длинным и занимать несколько строк текста</div>
+                <div class="admin-task-actions">
+                    <div class="admin-task-price">50 ⭐</div>
+                    <button class="admin-task-delete">🗑️ Удалить</button>
+                </div>
+            </div>
+            
+            <div class="admin-task-meta">
+                <span>📁 Категория</span>
+                <span>👥 10 чел.</span>
+                <span>⚡ Легкая</span>
+                <span>🕒 5-10 минут</span>
+            </div>
+            
+            <div class="admin-task-description">
+                Очень длинное описание задания, которое может занимать много места и выходить за пределы экрана, если не ограничить его высоту. Это описание содержит много текста и подробностей о том, что нужно сделать для выполнения задания.
+            </div>
+            
+            <div class="task-progress-container">
+                <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
+                    <span>Выполнено: 5/10</span>
+                    <span>50%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 50%"></div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
