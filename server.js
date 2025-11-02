@@ -2360,33 +2360,7 @@ async function createSampleTasks() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', async function() {
-    console.log('📱 Device type:', navigator.userAgent);
-    
-    // Сначала пробуем получить данные Telegram
-    if (typeof window.Telegram !== 'undefined') {
-        tg.expand();
-        tg.ready();
-        
-        // 🔥 ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ
-        console.log('🚀 FORCING Telegram user initialization...');
-        await initializeTelegramUser();
-        
-        // Двойная проверка
-        if (!currentUser) {
-            console.log('🔄 Retrying Telegram initialization...');
-            setTimeout(async () => {
-                await initializeTelegramUser();
-                initializeApp();
-            }, 1000);
-        } else {
-            initializeApp();
-        }
-    } else {
-        console.log('Telegram Web App context not available');
-        initializeTestUser();
-    }
-});
+
 
 // Вызовите эту функцию после инициализации базы данных
 async function initializeWithTasks() {
