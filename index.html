@@ -8013,35 +8013,15 @@ function updateReferralSystem() {
     if (refEarned) refEarned.textContent = `${currentUser.referral_earned || 0} ⭐`;
     
     // 🔥 ИСПРАВЛЕНИЕ: Обновляем текст с правильными бонусами
-    // 🔥 ИСПРАВЛЕНИЕ: Обновляем текст с правильными бонусами
     const referralInfo = document.querySelector('.referral-info');
     if (referralInfo) {
         referralInfo.innerHTML = `
-            🎁 Вы получаете: <strong>${REFERRER_BONUS}⭐</strong> за друга<br>
-            🎁 Друг получает: <strong>${REFERRED_BONUS}⭐</strong> при регистрации<br><br>
+            🎁 Вы получаете: <strong>10⭐</strong> за друга<br>
+            🎁 Друг получает: <strong>5⭐</strong> при регистрации<br><br>
             🔗 Просто отправьте другу эту ссылку в Telegram
         `;
     }
 }
-
-function parseReferralCode(referralCode) {
-    if (!referralCode) return null;
-    
-    // Поддерживаем разные форматы: ref_123, 123, start=ref_123
-    let cleanCode = referralCode;
-    
-    if (cleanCode.includes('start=')) {
-        cleanCode = cleanCode.split('start=')[1];
-    }
-    
-    if (cleanCode.startsWith('ref_')) {
-        cleanCode = cleanCode.substring(4);
-    }
-    
-    // Проверяем что это число
-    return /^\d+$/.test(cleanCode) ? cleanCode : null;
-}
-
 // Получение детальной информации о рефералах
 app.get('/api/user/:userId/referrals/detailed', async (req, res) => {
     const userId = req.params.userId;
