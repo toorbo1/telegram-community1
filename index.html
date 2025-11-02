@@ -5087,16 +5087,20 @@ html, body {
             </div>
         </div>
         <!-- В секции профиля после реферальной системы -->
-<div class="promocode-section" style="margin: 20px 0; padding: 20px; background: var(--card-bg); border-radius: 12px;">
-    <h3 style="margin-bottom: 15px;">🎫 Активация промокода</h3>
-    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-        <input type="text" id="promocode-input" placeholder="Введите промокод" 
-               style="flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-primary); color: var(--text-primary);">
-        <button onclick="activatePromoCode()" class="btn btn-primary" style="padding: 12px 20px;">
-            Активировать
-        </button>
+<div class="referral-system fade-in">
+    <div class="referral-title">🎫 Активация промокода</div>
+    
+    <div class="referral-code">
+        <div class="referral-label">Введите промокод для получения бонуса</div>
+        <input type="text" id="promocode-input" 
+               style="width: 100%; padding: 12px; margin: 8px 0; background: var(--bg-primary); 
+                      border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); 
+                      text-align: center; text-transform: uppercase;"
+               placeholder="ВВЕДИТЕ ПРОМОКОД" maxlength="20">
+        <button class="copy-btn" onclick="activatePromoCode()">Активировать промокод</button>
     </div>
-    <div id="promocode-message" style="min-height: 20px; font-size: 14px;"></div>
+    
+    <div id="promocode-message" style="margin-top: 10px; min-height: 20px; font-size: 14px;"></div>
 </div>
 
 
@@ -6240,15 +6244,6 @@ function initializePromocodes() {
         const element = document.getElementById(id);
         console.log(`🔍 ${id}:`, element ? 'FOUND' : 'NOT FOUND');
     });
-        const input = document.getElementById('promocode-input');
-    if (input) {
-        input.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                activatePromoCode();
-            }
-        });
-    }
-
 }
 
 async function makeRequest(endpoint, options = {}) {
@@ -10076,48 +10071,6 @@ async function activatePromoCode() {
         input.disabled = false;
     }
 }
-// 🔧 ФУНКЦИЯ ДЛЯ ПРОВЕРКИ АКТИВИРОВАННЫХ ПРОМОКОДОВ
-async function checkPromocodeActivation(userId, code) {
-    try {
-        const result = await makeRequest(`/api/promocodes/check-activation`, {
-            method: 'POST',
-            body: JSON.stringify({
-                userId: userId,
-                code: code
-            })
-        });
-        return result;
-    } catch (error) {
-        console.error('Check promocode activation error:', error);
-        return { success: false, activated: false };
-    }
-}
-
-// Добавьте этот endpoint в server.js
-app.post('/api/promocodes/check-activation', async (req, res) => {
-    const { userId, code } = req.body;
-    
-    try {
-        const activationCheck = await pool.query(`
-            SELECT pa.id 
-            FROM promocode_activations pa
-            JOIN promocodes p ON pa.promocode_id = p.id
-            WHERE pa.user_id = $1 AND p.code = $2
-        `, [userId, code.toUpperCase()]);
-        
-        res.json({
-            success: true,
-            activated: activationCheck.rows.length > 0
-        });
-        
-    } catch (error) {
-        console.error('Check activation error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error'
-        });
-    }
-});
 
 // Экспорт функций
 window.showPromocodesSection = showPromocodesSection;

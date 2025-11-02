@@ -3169,7 +3169,7 @@ app.post('/api/admin/promocodes/deactivate', async (req, res) => {
     }
 });
 
-// В server.js - обновите endpoint активации промокода
+// Активация промокода пользователем
 app.post('/api/promocodes/activate', async (req, res) => {
     const { userId, code } = req.body;
     
@@ -3196,16 +3196,16 @@ app.post('/api/promocodes/activate', async (req, res) => {
             });
         }
         
-        // 🔥 ИСПРАВЛЕНИЕ: Проверяем существование промокода
+        // Проверяем промокод
         const promocodeResult = await pool.query(`
             SELECT * FROM promocodes 
             WHERE code = $1 AND is_active = true
-        `, [code.toUpperCase()]);
+        `, [code]);
         
         if (promocodeResult.rows.length === 0) {
             return res.status(404).json({
                 success: false,
-                error: '❌ Промокод не существует или неактивен'
+                error: 'Промокод не найден или неактивен'
             });
         }
         
@@ -3215,7 +3215,7 @@ app.post('/api/promocodes/activate', async (req, res) => {
         if (promocode.expires_at && new Date(promocode.expires_at) < new Date()) {
             return res.status(400).json({
                 success: false,
-                error: '❌ Срок действия промокода истек'
+                error: 'Срок действия промокода истек'
             });
         }
         
@@ -3223,7 +3223,7 @@ app.post('/api/promocodes/activate', async (req, res) => {
         if (promocode.used_count >= promocode.max_uses) {
             return res.status(400).json({
                 success: false,
-                error: '❌ Лимит активаций промокода исчерпан'
+                error: 'Лимит активаций промокода исчерпан'
             });
         }
         
@@ -3233,12 +3233,12 @@ app.post('/api/promocodes/activate', async (req, res) => {
             FROM promocode_activations pa
             JOIN promocodes p ON pa.promocode_id = p.id
             WHERE pa.user_id = $1 AND p.code = $2
-        `, [userId, code.toUpperCase()]);
+        `, [userId, code]);
         
         if (activationCheck.rows.length > 0) {
             return res.status(400).json({
                 success: false,
-                error: '❌ Вы уже активировали этот промокод'
+                error: 'Вы уже активировали этот промокод'
             });
         }
         
@@ -3274,7 +3274,7 @@ app.post('/api/promocodes/activate', async (req, res) => {
             
             res.json({
                 success: true,
-                message: `✅ Промокод активирован! Вы получили ${promocode.reward} ⭐`,
+                message: `Промокод активирован! Вы получили ${promocode.reward} ⭐`,
                 reward: promocode.reward
             });
             
@@ -3289,7 +3289,7 @@ app.post('/api/promocodes/activate', async (req, res) => {
         console.error('❌ Activate promocode error:', error);
         res.status(500).json({
             success: false,
-            error: '❌ Ошибка сервера: ' + error.message
+            error: 'Database error: ' + error.message
         });
     }
 });
