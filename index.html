@@ -6992,12 +6992,7 @@ function showVerificationsModal(verifications) {
     `;
     
     if (!verifications || verifications.length === 0) {
-        modalHTML += `
-            <div style="text-align: center; padding: 40px;">
-                <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
-                <div>Нет заданий на проверке</div>
-            </div>
-        `;
+        modalHTML += ``;
     } else {
         verifications.forEach(verification => {
             modalHTML += `
@@ -13120,11 +13115,7 @@ setTimeout(addStartTaskDebugButton, 3000);
             container.innerHTML = '';
             
             if (!chats || chats.length === 0) {
-                container.innerHTML = `
-                    <div class="no-tasks" style="text-align: center; padding: 20px;">
-                        <div>Нет чатов</div>
-                    </div>
-                `;
+                container.innerHTML = ``;
                 return;
             }
             
