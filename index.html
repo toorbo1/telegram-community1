@@ -6323,20 +6323,29 @@ function previewTaskImage(input) {
     reader.readAsDataURL(file);
 }
 // Инициализация при загрузке страницы
-// Инициализация при загрузке страницы
-document.addEventListener('DOMContentLoaded', function() {
+// 🔥 ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ ПРИ ЗАГРУЗКЕ
+document.addEventListener('DOMContentLoaded', async function() {
     console.log('📱 Device type:', navigator.userAgent);
     
-    // Принудительная инициализация для мобильных
-    if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-        console.log('🚀 Mobile device detected, initializing with fixes...');
-        setTimeout(emergencyMobileUserFix, 500);
-    }
-    
-    if (typeof tg !== 'undefined') {
+    // Сначала пробуем получить данные Telegram
+    if (typeof window.Telegram !== 'undefined') {
         tg.expand();
         tg.ready();
-        initializeTelegramUser();
+        
+        // 🔥 ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ
+        console.log('🚀 FORCING Telegram user initialization...');
+        await initializeTelegramUser();
+        
+        // Двойная проверка
+        if (!currentUser) {
+            console.log('🔄 Retrying Telegram initialization...');
+            setTimeout(async () => {
+                await initializeTelegramUser();
+                initializeApp();
+            }, 1000);
+        } else {
+            initializeApp();
+        }
     } else {
         console.log('Telegram Web App context not available');
         initializeTestUser();
@@ -6567,86 +6576,71 @@ function clearUserData() {
 setTimeout(addDebugPanel, 2000);
 
 async function initializeTelegramUser() {
-     try {
+    try {
         console.log('🔍 DEBUG: Starting Telegram user initialization');
-        console.log('🌐 Telegram WebApp available:', typeof window.Telegram !== 'undefined');
         
         if (typeof window.Telegram !== 'undefined') {
             const tg = window.Telegram.WebApp;
-            console.log('📱 Telegram WebApp version:', tg.version);
-            console.log('👤 Telegram initData:', tg.initData);
-            console.log('👤 Telegram initDataUnsafe:', tg.initDataUnsafe);
-            console.log('👤 Telegram user data:', tg.initDataUnsafe?.user);
+            const tgUser = tg.initDataUnsafe?.user;
             
-            // 🔥 КРИТИЧЕСКАЯ ПРОВЕРКА
-            if (tg.initDataUnsafe?.user) {
-                const tgUser = tg.initDataUnsafe.user;
+            // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Добавляем проверку
+            if (!tgUser) {
+                console.log('❌ Telegram user data not available in initDataUnsafe');
+                console.log('🔧 Checking initData...');
+                
+                // Пробуем парсить initData вручную
+                const initData = tg.initData;
+                if (initData) {
+                    const params = new URLSearchParams(initData);
+                    const userParam = params.get('user');
+                    if (userParam) {
+                        try {
+                            const parsedUser = JSON.parse(decodeURIComponent(userParam));
+                            console.log('✅ User data found in initData:', parsedUser);
+                            tgUser = parsedUser;
+                        } catch (e) {
+                            console.log('❌ Cannot parse user data from initData');
+                        }
+                    }
+                }
+            }
+            
+            if (tgUser) {
                 console.log('✅ REAL Telegram User Data:', {
                     id: tgUser.id,
                     first_name: tgUser.first_name,
                     username: tgUser.username,
                     photo_url: tgUser.photo_url
                 });
-            } else {
-                console.log('❌ NO Telegram user data found!');
-                console.log('🔧 initDataUnsafe keys:', Object.keys(tg.initDataUnsafe || {}));
-            }
-        
-            
-            // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Правильное сохранение данных
-            currentUser = {
-                id: tgUser.id.toString(),
-                firstName: tgUser.first_name || 'Пользователь',
-                lastName: tgUser.last_name || '',
-                username: tgUser.username || `user_${tgUser.id}`,
-                photoUrl: tgUser.photo_url || '',
-                isAdmin: parseInt(tgUser.id) === ADMIN_ID,
-                balance: 0,
-                tasks_completed: 0,
-                level: 1
-            };
-            
-            console.log('✅ Telegram user data saved:', currentUser);
-            
-            // Сохраняем в localStorage для надежности
-            localStorage.setItem('linkgold_user', JSON.stringify(currentUser));
-            
-            // Синхронизируем с сервером
-            try {
-                const authResult = await makeRequest('/user/auth', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        user: currentUser
-                    })
-                });
                 
-                if (authResult.success) {
-                    Object.assign(currentUser, authResult.user);
-                    console.log('✅ User authenticated successfully');
-                }
-            } catch (authError) {
-                console.log('⚠️ Auth endpoint not available, continuing with Telegram data');
-            }
-            
-            // 🔥 НЕМЕДЛЕННО обновляем интерфейс
-            displayUserProfile();
-            initializeApp();
-            
-        } else {
-            console.log('❌ Telegram user data not available, checking localStorage...');
-            const savedUser = localStorage.getItem('linkgold_user');
-            if (savedUser) {
-                currentUser = JSON.parse(savedUser);
-                console.log('✅ Using saved user data:', currentUser);
-                initializeApp();
+                // Сохраняем данные
+                currentUser = {
+                    id: tgUser.id.toString(),
+                    firstName: tgUser.first_name || 'Пользователь',
+                    lastName: tgUser.last_name || '',
+                    username: tgUser.username || `user_${tgUser.id}`,
+                    photoUrl: tgUser.photo_url || '',
+                    isAdmin: parseInt(tgUser.id) === ADMIN_ID,
+                    balance: 0,
+                    tasks_completed: 0,
+                    level: 1
+                };
+                
+                // 🔥 СРАЗУ синхронизируем с сервером
+                await syncUserProfile();
+                
             } else {
-                console.log('❌ No saved data, using test user');
-                initializeTestUser();
+                console.log('❌ NO Telegram user data found at all!');
+                await emergencyUserRecovery();
             }
+        } else {
+            console.log('❌ Telegram WebApp not available');
+            await emergencyUserRecovery();
         }
+        
     } catch (error) {
         console.error('❌ Error initializing Telegram user:', error);
-        emergencyUserRecovery();
+        await emergencyUserRecovery();
     }
 }
 function debugWithdrawalSystem() {
@@ -7754,45 +7748,50 @@ function startUserDataAutoUpdate() {
 
         // 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ПРОФИЛЯ
 function displayUserProfile() {
-    console.log('🎨 Displaying user profile...');
+    console.log('🎨 Displaying user profile with real data...');
     
     if (!currentUser) {
-        console.log('❌ No current user, attempting recovery...');
-        emergencyUserRecovery();
+        console.log('❌ No current user');
+        showProfileError();
         return;
     }
 
-    console.log('📊 Current user data:', currentUser);
+    console.log('📊 Current user REAL data:', {
+        id: currentUser.id,
+        firstName: currentUser.firstName,
+        username: currentUser.username,
+        level: currentUser.level,
+        balance: currentUser.balance
+    });
 
     try {
-        // ОБНОВЛЕННОЕ отображение с проверками
-        const firstNameElement = document.getElementById('user-first-name');
-        const usernameElement = document.getElementById('user-username');
-        const levelElement = document.getElementById('user-level');
+        // ОБНОВЛЯЕМ ВСЕ ЭЛЕМЕНТЫ ИНТЕРФЕЙСА
+        const updateElement = (id, value) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = value;
+                console.log(`✅ Updated ${id}: ${value}`);
+            }
+        };
+
+        // Основная информация
+        updateElement('user-first-name', currentUser.firstName || 'Пользователь');
+        updateElement('user-username', currentUser.username || 'username');
+        updateElement('user-level', currentUser.level || 1);
+        
+        // Статистика
+        updateElement('user-balance', `${currentUser.balance || 0} ⭐`);
+        updateElement('user-tasks-completed', currentUser.tasks_completed || 0);
+        
+        // 🔥 ОБНОВЛЯЕМ АВАТАР
         const userPhotoElement = document.getElementById('user-photo');
-        
-        if (firstNameElement) {
-            const fullName = currentUser.lastName ? 
-                `${currentUser.firstName} ${currentUser.lastName}` : 
-                (currentUser.firstName || 'Пользователь');
-            firstNameElement.textContent = fullName;
-        }
-        
-        if (usernameElement) {
-            usernameElement.textContent = currentUser.username || 'username';
-        }
-        
-        if (levelElement) {
-            levelElement.textContent = currentUser.level || 1;
-        }
-        
-        // 🔧 УЛУЧШЕННОЕ ОТОБРАЖЕНИЕ АВАТАРА
         if (userPhotoElement) {
             if (currentUser.photoUrl) {
                 userPhotoElement.src = currentUser.photoUrl;
                 userPhotoElement.alt = 'Фото профиля';
                 userPhotoElement.style.display = 'block';
                 userPhotoElement.onerror = function() {
+                    // Если фото не загружается, показываем инициалы
                     showUserInitials(userPhotoElement, currentUser.firstName);
                 };
             } else {
@@ -7805,14 +7804,13 @@ function displayUserProfile() {
         updateReferralSystem();
         updateLevelProgress();
         
-        console.log('✅ User profile displayed successfully');
+        console.log('✅ User profile displayed with REAL data');
         
     } catch (error) {
         console.error('❌ Error displaying profile:', error);
         showProfileError();
     }
 }
-
 // 🔧 ФУНКЦИЯ ДЛЯ ОТОБРАЖЕНИЯ ИНИЦИАЛОВ
 function showUserInitials(element, firstName) {
     element.style.display = 'flex';
@@ -7999,32 +7997,66 @@ function updateLevelProgress() {
 // 🔧 ФУНКЦИЯ ДЛЯ СИНХРОНИЗАЦИИ ПРОФИЛЯ С TELEGRAM
 async function syncUserProfile() {
     try {
-        console.log('🔄 Starting profile synchronization...');
+        console.log('🔄 Starting enhanced profile synchronization...');
         
         if (!window.Telegram?.WebApp) {
-            console.log('❌ Not in Telegram context, using saved data');
+            console.log('❌ Not in Telegram context');
             return false;
         }
         
         const tg = window.Telegram.WebApp;
-        const tgUser = tg.initDataUnsafe?.user;
+        
+        // 🔥 РАСШИРЕННЫЙ ПОИСК ДАННЫХ ПОЛЬЗОВАТЕЛЯ
+        let tgUser = tg.initDataUnsafe?.user;
+        
+        // Если нет в initDataUnsafe, пробуем другие методы
+        if (!tgUser) {
+            console.log('🔍 User not in initDataUnsafe, trying alternative methods...');
+            
+            // Метод 1: Парсинг initData
+            if (tg.initData) {
+                const params = new URLSearchParams(tg.initData);
+                const userStr = params.get('user');
+                if (userStr) {
+                    try {
+                        tgUser = JSON.parse(decodeURIComponent(userStr));
+                        console.log('✅ Found user in initData:', tgUser);
+                    } catch (e) {
+                        console.log('❌ Cannot parse user from initData');
+                    }
+                }
+            }
+            
+            // Метод 2: Проверяем другие места
+            if (!tgUser && window.Telegram.WebApp.initParams) {
+                try {
+                    const initParams = JSON.parse(window.Telegram.WebApp.initParams);
+                    tgUser = initParams.user;
+                    console.log('✅ Found user in initParams:', tgUser);
+                } catch (e) {
+                    console.log('❌ No user in initParams');
+                }
+            }
+        }
         
         if (!tgUser) {
-            console.log('❌ Telegram user data not available');
+            console.log('❌ No Telegram user data found by any method');
             return false;
         }
         
-        console.log('📱 Syncing with Telegram data:', tgUser);
+        console.log('📱 Telegram user data found:', tgUser);
         
-        // 🔥 ОБНОВЛЯЕМ данные пользователя
+        // 🔥 ОБНОВЛЯЕМ ДАННЫЕ ПОЛЬЗОВАТЕЛЯ
         const updatedUser = {
-            ...(currentUser || {}),
             id: tgUser.id.toString(),
-            firstName: tgUser.first_name || (currentUser?.firstName || 'Пользователь'),
-            lastName: tgUser.last_name || (currentUser?.lastName || ''),
-            username: tgUser.username || (currentUser?.username || `user_${tgUser.id}`),
-            photoUrl: tgUser.photo_url || (currentUser?.photoUrl || ''),
-            isAdmin: parseInt(tgUser.id) === ADMIN_ID || (currentUser?.isAdmin || false)
+            firstName: tgUser.first_name || 'Пользователь',
+            lastName: tgUser.last_name || '',
+            username: tgUser.username || `user_${tgUser.id}`,
+            photoUrl: tgUser.photo_url || '',
+            isAdmin: parseInt(tgUser.id) === ADMIN_ID,
+            balance: currentUser?.balance || 0,
+            tasks_completed: currentUser?.tasks_completed || 0,
+            level: currentUser?.level || 1
         };
         
         currentUser = updatedUser;
@@ -8032,10 +8064,7 @@ async function syncUserProfile() {
         // Сохраняем в localStorage
         localStorage.setItem('linkgold_user', JSON.stringify(currentUser));
         
-        // НЕМЕДЛЕННО обновляем интерфейс
-        displayUserProfile();
-        
-        // Синхронизируем с сервером
+        // СИНХРОНИЗИРУЕМ С СЕРВЕРОМ
         try {
             const response = await fetch(`${API_BASE_URL}/api/user/update-profile`, {
                 method: 'POST',
@@ -8052,18 +8081,27 @@ async function syncUserProfile() {
             });
             
             if (response.ok) {
-                console.log('✅ Profile updated on server');
+                const result = await response.json();
+                if (result.success && result.user) {
+                    // Обновляем данные с сервера
+                    Object.assign(currentUser, result.user);
+                    localStorage.setItem('linkgold_user', JSON.stringify(currentUser));
+                    console.log('✅ Profile synced with server');
+                }
             }
         } catch (serverError) {
-            console.log('⚠️ Server update failed, using local data');
+            console.log('⚠️ Server sync failed, using local data');
         }
+        
+        // НЕМЕДЛЕННО обновляем интерфейс
+        displayUserProfile();
+        updateProfileStats();
         
         console.log('✅ Profile synchronized successfully');
         return true;
         
     } catch (error) {
         console.error('❌ Profile sync error:', error);
-        await emergencyUserRecovery();
         return false;
     }
 }
@@ -8128,6 +8166,8 @@ async function emergencyUserRecovery() {
 app.post('/api/user/update-profile', async (req, res) => {
     const { userId, firstName, lastName, username, photoUrl } = req.body;
     
+    console.log('📝 Updating user profile:', { userId, firstName, username });
+    
     if (!userId) {
         return res.status(400).json({
             success: false,
@@ -8149,6 +8189,8 @@ app.post('/api/user/update-profile', async (req, res) => {
                 updated_at = CURRENT_TIMESTAMP
             RETURNING *
         `, [userId, username, firstName, lastName, photoUrl]);
+        
+        console.log('✅ Profile updated successfully for user:', userId);
         
         res.json({
             success: true,

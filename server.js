@@ -1797,7 +1797,48 @@ app.post('/api/user/auth', async (req, res) => {
         });
     }
 });
-
+app.post('/api/user/update-profile', async (req, res) => {
+    const { userId, firstName, lastName, username, photoUrl } = req.body;
+    
+    console.log('📝 Updating user profile:', { userId, firstName, username });
+    
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            error: 'User ID is required'
+        });
+    }
+    
+    try {
+        const result = await pool.query(`
+            INSERT INTO user_profiles 
+            (user_id, username, first_name, last_name, photo_url, updated_at) 
+            VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+            ON CONFLICT (user_id) 
+            DO UPDATE SET 
+                username = EXCLUDED.username,
+                first_name = EXCLUDED.first_name,
+                last_name = EXCLUDED.last_name,
+                photo_url = EXCLUDED.photo_url,
+                updated_at = CURRENT_TIMESTAMP
+            RETURNING *
+        `, [userId, username, firstName, lastName, photoUrl]);
+        
+        console.log('✅ Profile updated successfully for user:', userId);
+        
+        res.json({
+            success: true,
+            message: 'Profile updated successfully',
+            user: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Update profile error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
 // Диагностический endpoint для проверки пользователя
 app.get('/api/debug/user', async (req, res) => {
     try {
