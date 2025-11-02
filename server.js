@@ -2887,23 +2887,7 @@ app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
         });
     }
 });
-function parseReferralCode(referralCode) {
-    if (!referralCode) return null;
-    
-    // Поддерживаем разные форматы: ref_123, 123, start=ref_123
-    let cleanCode = referralCode;
-    
-    if (cleanCode.includes('start=')) {
-        cleanCode = cleanCode.split('start=')[1];
-    }
-    
-    if (cleanCode.startsWith('ref_')) {
-        cleanCode = cleanCode.substring(4);
-    }
-    
-    // Проверяем что это число
-    return /^\d+$/.test(cleanCode) ? cleanCode : null;
-}
+
 // В server.js добавьте endpoint для статистики
 app.get('/api/referral/stats', async (req, res) => {
     try {

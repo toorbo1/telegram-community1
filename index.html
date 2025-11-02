@@ -8023,6 +8023,25 @@ function updateReferralSystem() {
         `;
     }
 }
+
+function parseReferralCode(referralCode) {
+    if (!referralCode) return null;
+    
+    // Поддерживаем разные форматы: ref_123, 123, start=ref_123
+    let cleanCode = referralCode;
+    
+    if (cleanCode.includes('start=')) {
+        cleanCode = cleanCode.split('start=')[1];
+    }
+    
+    if (cleanCode.startsWith('ref_')) {
+        cleanCode = cleanCode.substring(4);
+    }
+    
+    // Проверяем что это число
+    return /^\d+$/.test(cleanCode) ? cleanCode : null;
+}
+
 // Получение детальной информации о рефералах
 app.get('/api/user/:userId/referrals/detailed', async (req, res) => {
     const userId = req.params.userId;
