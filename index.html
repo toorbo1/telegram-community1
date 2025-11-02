@@ -8,6 +8,60 @@
 
 
            <style>
+            
+        /* Стили для поиска в админке */
+        .admin-search-container {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .admin-search-input {
+            width: 100%;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 12px 16px 12px 45px;
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .admin-search-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+
+        .admin-search-results {
+            margin-top: 10px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        .admin-search-clear {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 18px;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .admin-search-clear:hover {
+            color: var(--error);
+        }
             /* 🔧 ПЛАВНАЯ ПРОКРУТКА ДЛЯ ВСЕХ ЭЛЕМЕНТОВ */
 html {
     scroll-behavior: smooth;
@@ -5311,10 +5365,27 @@ html, body {
 </div>
 
 
-        <div class="form-group">
-            <label>Название задания *</label>
-            <input type="text" class="admin-input" id="admin-task-title" placeholder="Введите название задания">
-        </div>
+            <!-- Секция управления заданиями в админке -->
+    <div id="admin-tasks-section" class="admin-section" style="display: none;">
+        <div class="admin-form">
+            <h3>➕ Добавить новое задание</h3>
+            
+            <!-- Поисковая система для заданий -->
+            <div class="admin-search-container">
+                <div class="admin-search-icon">🔍</div>
+                <input type="text" class="admin-search-input" id="admin-task-search" 
+                       placeholder="Поиск по названию, описанию или категории...">
+                <button class="admin-search-clear" onclick="clearAdminTaskSearch()" style="display: none;">×</button>
+            </div>
+            <div class="admin-search-results" id="admin-search-results">
+                <!-- Результаты поиска будут здесь -->
+            </div>
+
+            <!-- Остальная форма добавления задания -->
+            <div class="form-group">
+                <label>Название задания *</label>
+                <input type="text" class="admin-input" id="admin-task-title" placeholder="Введите название задания">
+            </div>
         
         <div class="form-group">
             <label>Описание задания *</label>
@@ -5893,6 +5964,302 @@ html, body {
 
 
     <script>
+
+  // 🔧 ПОИСКОВАЯ СИСТЕМА ДЛЯ АДМИНСКИХ ЗАДАНИЙ
+
+        let allAdminTasks = []; // Глобальная переменная для хранения всех заданий
+        let currentAdminSearchTerm = ''; // Текущий поисковый запрос
+
+        // Инициализация поиска
+        function initAdminTaskSearch() {
+            const searchInput = document.getElementById('admin-task-search');
+            if (searchInput) {
+                let searchTimeout;
+                
+                searchInput.addEventListener('input', function(e) {
+                    clearTimeout(searchTimeout);
+                    const searchText = e.target.value.trim();
+                    
+                    searchTimeout = setTimeout(() => {
+                        if (searchText.length >= 2 || searchText.length === 0) {
+                            searchAdminTasks(searchText);
+                        }
+                    }, 300);
+                });
+
+                // Обработчик клавиши Enter
+                searchInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        searchAdminTasks(searchInput.value.trim());
+                    }
+                });
+            }
+        }
+
+        // Функция поиска заданий
+        async function searchAdminTasks(searchTerm = '') {
+            console.log('🔍 Searching admin tasks:', searchTerm);
+            
+            currentAdminSearchTerm = searchTerm;
+            
+            // Показываем/скрываем кнопку очистки
+            const clearBtn = document.querySelector('.admin-search-clear');
+            if (clearBtn) {
+                clearBtn.style.display = searchTerm ? 'block' : 'none';
+            }
+
+            try {
+                if (!currentUser) {
+                    showNotification('Пользователь не авторизован', 'error');
+                    return;
+                }
+
+                // Показываем индикатор загрузки
+                const resultsDiv = document.getElementById('admin-search-results');
+                if (resultsDiv) {
+                    resultsDiv.innerHTML = '<span style="color: var(--warning);">⏳ Ищем задания...</span>';
+                }
+
+                // Формируем URL для поиска
+                const params = new URLSearchParams();
+                params.append('adminId', currentUser.id);
+                if (searchTerm) {
+                    params.append('search', searchTerm);
+                }
+
+                const url = `/api/admin/tasks/search?${params.toString()}`;
+                console.log('📡 Search URL:', url);
+
+                const result = await makeRequest(url);
+                
+                if (result.success) {
+                    allAdminTasks = result.tasks || [];
+                    displayAdminTasks(allAdminTasks, result.statistics);
+                    
+                    // Обновляем информацию о результатах
+                    updateSearchResultsInfo(searchTerm, allAdminTasks.length);
+                    
+                } else {
+                    throw new Error(result.error || 'Ошибка поиска');
+                }
+
+            } catch (error) {
+                console.error('❌ Search error:', error);
+                const resultsDiv = document.getElementById('admin-search-results');
+                if (resultsDiv) {
+                    resultsDiv.innerHTML = `<span style="color: var(--error);">❌ Ошибка поиска: ${error.message}</span>`;
+                }
+                showNotification('Ошибка поиска заданий', 'error');
+            }
+        }
+
+        // Обновление информации о результатах поиска
+        function updateSearchResultsInfo(searchTerm, resultsCount) {
+            const resultsDiv = document.getElementById('admin-search-results');
+            if (!resultsDiv) return;
+
+            if (!searchTerm) {
+                resultsDiv.innerHTML = '';
+                return;
+            }
+
+            if (resultsCount === 0) {
+                resultsDiv.innerHTML = `
+                    <span style="color: var(--text-secondary);">
+                        🔍 По запросу "<strong>${escapeHtml(searchTerm)}</strong>" ничего не найдено
+                    </span>
+                `;
+            } else {
+                resultsDiv.innerHTML = `
+                    <span style="color: var(--success);">
+                        ✅ Найдено <strong>${resultsCount}</strong> заданий по запросу "<strong>${escapeHtml(searchTerm)}</strong>"
+                    </span>
+                `;
+            }
+        }
+
+        // Очистка поиска
+        function clearAdminTaskSearch() {
+            const searchInput = document.getElementById('admin-task-search');
+            if (searchInput) {
+                searchInput.value = '';
+                searchAdminTasks('');
+            }
+        }
+
+        // Обновленная функция загрузки админских заданий
+        async function loadAdminTasks() {
+            console.log('🎯 Loading admin tasks...');
+            
+            if (!currentUser) {
+                console.log('❌ No user');
+                return;
+            }
+            
+            const container = document.getElementById('admin-tasks-list');
+            if (!container) {
+                console.log('❌ Container not found');
+                return;
+            }
+            
+            // Показываем контейнер заданий
+            const tasksContainer = document.getElementById('admin-tasks-list-container');
+            if (tasksContainer) {
+                tasksContainer.style.display = 'block';
+            }
+            
+            // Показываем загрузку
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px 20px;">
+                    <div class="loading-spinner">⏳</div>
+                    <div style="margin-top: 16px;">Загружаем задания админа...</div>
+                </div>
+            `;
+            
+            try {
+                // Если есть активный поисковый запрос, используем поиск
+                if (currentAdminSearchTerm) {
+                    await searchAdminTasks(currentAdminSearchTerm);
+                } else {
+                    // Иначе загружаем все задания
+                    const result = await makeRequest(`/api/admin/simple-tasks?adminId=${currentUser.id}`);
+                    
+                    console.log('📊 Simple tasks result:', result);
+                    
+                    if (result.success) {
+                        allAdminTasks = result.tasks || [];
+                        displayAdminTasks(allAdminTasks, result.statistics);
+                    } else {
+                        throw new Error(result.error || 'Unknown error');
+                    }
+                }
+                
+            } catch (error) {
+                console.error('💥 Error:', error);
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px 20px; color: var(--error);">
+                        <div style="font-size: 48px; margin-bottom: 16px;">❌</div>
+                        <div>Ошибка загрузки заданий</div>
+                        <div style="font-size: 12px; margin-top: 8px;">${error.message}</div>
+                        
+                        <div style="margin-top: 20px;">
+                            <button class="btn btn-primary" onclick="loadAdminTasks()">
+                                🔄 Попробовать снова
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Обновленная функция отображения заданий с учетом поиска
+        function displayAdminTasks(tasks, stats) {
+            const container = document.getElementById('admin-tasks-list');
+            if (!container) {
+                console.error('❌ Admin tasks container not found!');
+                return;
+            }
+            
+            console.log(`🎯 Displaying ${tasks ? tasks.length : 0} admin tasks`);
+            
+            container.innerHTML = '';
+            
+            // Показываем расширенную статистику
+            if (stats) {
+                const statsHTML = `
+                    <div class="admin-stats" style="margin-bottom: 20px; padding: 15px; background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border);">
+                        <h4 style="margin-bottom: 10px;">📊 Статистика заданий</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; font-size: 12px;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 18px; font-weight: bold; color: var(--accent);">${stats.total_tasks || 0}</div>
+                                <div>Всего заданий</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 18px; font-weight: bold; color: var(--success);">${stats.active_tasks || 0}</div>
+                                <div>Активных</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 18px; font-weight: bold; color: var(--warning);">${stats.completed_tasks || 0}</div>
+                                <div>Завершенных</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 18px; font-weight: bold; color: var(--text-primary);">${stats.my_tasks || 0}</div>
+                                <div>Мои задания</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML = statsHTML;
+            }
+            
+            if (!tasks || tasks.length === 0) {
+                let message = 'Нет созданных заданий';
+                if (currentAdminSearchTerm) {
+                    message = `Нет заданий по запросу "${currentAdminSearchTerm}"`;
+                }
+                
+                container.innerHTML += `
+                    <div class="no-tasks" style="text-align: center; padding: 40px 20px; background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border);">
+                        <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
+                        <div style="font-size: 18px; margin-bottom: 8px;">${message}</div>
+                        <div style="font-size: 14px; color: var(--text-secondary);">
+                            ${currentAdminSearchTerm ? 
+                                'Попробуйте изменить поисковый запрос' : 
+                                'Создайте первое задание используя форму выше'
+                            }
+                        </div>
+                        ${currentAdminSearchTerm ? `
+                            <button class="btn btn-primary" onclick="clearAdminTaskSearch()" style="margin-top: 16px;">
+                                🗑️ Очистить поиск
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+                return;
+            }
+            
+            // Добавляем фильтры
+            const filterHTML = `
+                <div class="task-filter" style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <label style="font-weight: 600; color: var(--text-primary);">Фильтр:</label>
+                    <select id="admin-task-filter" onchange="filterAdminTasks()" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-primary); color: var(--text-primary);">
+                        <option value="all">Все задания</option>
+                        <option value="active">Только активные</option>
+                        <option value="completed">Только завершенные</option>
+                        <option value="my">Мои задания</option>
+                    </select>
+                    <button onclick="loadAdminTasks()" class="btn btn-primary" style="padding: 8px 12px; font-size: 12px;">
+                        🔄 Обновить
+                    </button>
+                    ${currentAdminSearchTerm ? `
+                        <button onclick="clearAdminTaskSearch()" class="btn btn-warning" style="padding: 8px 12px; font-size: 12px;">
+                            🗑️ Очистить поиск
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+            container.innerHTML += filterHTML;
+            
+            const tasksContainer = document.createElement('div');
+            tasksContainer.id = 'admin-tasks-container';
+            container.appendChild(tasksContainer);
+            
+            // Сохраняем задачи для фильтрации
+            window.currentAdminTasks = tasks;
+            
+            // Отображаем все задания
+            renderAdminTasks(tasks);
+        }
+
+        // Инициализация поиска при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            initAdminTaskSearch();
+        });
+
+        // 🔧 ЭКСПОРТ ФУНКЦИЙ
+        window.searchAdminTasks = searchAdminTasks;
+        window.clearAdminTaskSearch = clearAdminTaskSearch;
+        window.initAdminTaskSearch = initAdminTaskSearch;
 
 // 🔧 ФУНКЦИИ ДЛЯ ПРОКРУТКИ К НАЧАЛУ СТРАНИЦЫ
 function scrollToTop() {

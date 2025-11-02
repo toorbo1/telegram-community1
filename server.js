@@ -2037,6 +2037,104 @@ app.get('/api/debug/tasks-structure', async (req, res) => {
         });
     }
 });
+
+// В server.js добавьте этот endpoint
+
+// Поиск заданий в админке
+app.get('/api/admin/tasks/search', async (req, res) => {
+    const { adminId, search } = req.query;
+    
+    if (!adminId) {
+        return res.status(400).json({
+            success: false,
+            error: 'ID администратора обязателен'
+        });
+    }
+
+    try {
+        // Проверяем права администратора
+        const adminCheck = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [adminId]
+        );
+
+        if (adminCheck.rows.length === 0 || !adminCheck.rows[0].is_admin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Доступ запрещен. Только для администраторов.'
+            });
+        }
+
+        let query = `
+            SELECT 
+                t.*,
+                COUNT(ut.id) as completed_count,
+                COUNT(CASE WHEN ut.status = 'rejected' THEN 1 END) as rejected_count,
+                COUNT(CASE WHEN ut.status = 'pending' THEN 1 END) as pending_count,
+                COUNT(CASE WHEN ut.status = 'active' THEN 1 END) as active_count,
+                MAX(ut.completed_at) as last_completed
+            FROM tasks t
+            LEFT JOIN user_tasks ut ON t.id = ut.task_id
+        `;
+
+        const queryParams = [];
+        let whereConditions = [];
+
+        // Добавляем условия поиска если есть поисковый запрос
+        if (search && search.trim() !== '') {
+            whereConditions.push(`
+                (t.title ILIKE $${queryParams.length + 1} 
+                 OR t.description ILIKE $${queryParams.length + 1}
+                 OR t.category ILIKE $${queryParams.length + 1})
+            `);
+            queryParams.push(`%${search}%`);
+        }
+
+        if (whereConditions.length > 0) {
+            query += ' WHERE ' + whereConditions.join(' AND ');
+        }
+
+        query += `
+            GROUP BY t.id
+            ORDER BY t.created_at DESC
+        `;
+
+        const result = await pool.query(query, queryParams);
+
+        // Получаем статистику
+        const statsQuery = `
+            SELECT 
+                COUNT(*) as total_tasks,
+                COUNT(CASE WHEN t.status = 'active' THEN 1 END) as active_tasks,
+                COUNT(CASE WHEN t.status = 'completed' THEN 1 END) as completed_tasks,
+                COUNT(CASE WHEN t.created_by = $1 THEN 1 END) as my_tasks
+            FROM tasks t
+            ${search ? `WHERE (t.title ILIKE $2 OR t.description ILIKE $2 OR t.category ILIKE $2)` : ''}
+        `;
+
+        const statsParams = [adminId];
+        if (search) {
+            statsParams.push(`%${search}%`);
+        }
+
+        const statsResult = await pool.query(statsQuery, statsParams);
+
+        res.json({
+            success: true,
+            tasks: result.rows,
+            statistics: statsResult.rows[0],
+            searchTerm: search || ''
+        });
+
+    } catch (error) {
+        console.error('Search tasks error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Внутренняя ошибка сервера: ' + error.message
+        });
+    }
+});
+
 // Функция для добавления недостающих колонок в таблицу tasks
 async function fixTasksTable() {
     try {
