@@ -24,8 +24,6 @@ if (BOT_TOKEN) {
     console.log('⚠️ BOT_TOKEN not set - Telegram features disabled');
 }
 
-
-
 // Используйте переменную окружения от Railway
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -42,33 +40,11 @@ setInterval(async () => {
 }, 5 * 60 * 1000); // 5 минут
 
 // Middleware
-// ЗАМЕНИТЕ существующий CORS middleware на этот:
 app.use(cors({
-    origin: function(origin, callback) {
-        // Разрешаем все источники в продакшене для Telegram
-        const allowedOrigins = [
-            'https://web.telegram.org',
-            'https://telegram.org',
-            'https://ваш-username.github.io', // замените на ваш GitHub
-            'https://telegram-community1-production-0bc1.up.railway.app',
-            APP_URL
-        ];
-        
-        // Разрешаем все в development или если источник в списке
-        if (!origin || process.env.NODE_ENV === 'development' || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            console.log('🔒 Blocked by CORS:', origin);
-            callback(null, true); // Временно разрешаем все для тестирования
-        }
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+    origin: '*',
+    methods: ['GET', 'POST', 'DELETE', 'PUT'],
+    credentials: true
 }));
-
-// Обработка preflight запросов
-app.options('*', cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static('.'));
@@ -194,7 +170,7 @@ async function initDatabase() {
     try {
         console.log('🔄 Initializing simplified database...');
         
-        // Сначала создаем базовые таблицы
+        // Таблица пользователей
         await pool.query(`
             CREATE TABLE IF NOT EXISTS user_profiles (
                 user_id BIGINT PRIMARY KEY,
@@ -205,16 +181,21 @@ async function initDatabase() {
                 balance REAL DEFAULT 0,
                 level INTEGER DEFAULT 1,
                 is_admin BOOLEAN DEFAULT false,
-                referral_code TEXT UNIQUE,
-                referred_by BIGINT,
-                referral_count INTEGER DEFAULT 0,
-                referral_earned REAL DEFAULT 0,
-                is_first_login BOOLEAN DEFAULT true,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
 
-        // Таблица заданий
+        // Добавляем реферальные поля
+        await pool.query(`
+            ALTER TABLE user_profiles 
+            ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE,
+            ADD COLUMN IF NOT EXISTS referred_by BIGINT,
+            ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS referral_earned REAL DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS is_first_login BOOLEAN DEFAULT true
+        `);
+
+        // Таблица заданий - ОБНОВЛЕННАЯ ВЕРСИЯ С image_url
         await pool.query(`
             CREATE TABLE IF NOT EXISTS tasks (
                 id SERIAL PRIMARY KEY,
@@ -228,12 +209,17 @@ async function initDatabase() {
                 people_required INTEGER DEFAULT 1,
                 repost_time TEXT DEFAULT '1 день',
                 task_url TEXT,
-                image_url TEXT,
+                image_url TEXT, -- ДОБАВЛЕНА КОЛОНКА ДЛЯ ИЗОБРАЖЕНИЙ
                 status TEXT DEFAULT 'active',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
 
+        // Гарантируем, что колонка image_url существует
+        await pool.query(`
+            ALTER TABLE tasks 
+            ADD COLUMN IF NOT EXISTS image_url TEXT
+        `);
         // Таблица запросов на вывод
         await pool.query(`
             CREATE TABLE IF NOT EXISTS withdrawal_requests (
@@ -308,7 +294,8 @@ async function initDatabase() {
                 reviewed_by BIGINT
             )
         `);
-
+         // В initDatabase() добавьте:
+        await createPromocodesTable();
         // Таблица сообщений
         await pool.query(`
             CREATE TABLE IF NOT EXISTS support_messages (
@@ -333,12 +320,52 @@ async function initDatabase() {
                 can_support BOOLEAN DEFAULT true,
                 can_payments BOOLEAN DEFAULT true,
                 can_admins BOOLEAN DEFAULT false,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (admin_id) REFERENCES user_profiles(user_id)
             )
         `);
 
-        // 🔧 УПРОЩЕННОЕ СОЗДАНИЕ ТАБЛИЦЫ ПРОМОКОДОВ
-        await createPromocodesTableSafe();
+        // Добавляем недостающие колонки
+        await pool.query(`
+            ALTER TABLE support_chats 
+            ADD COLUMN IF NOT EXISTS user_username TEXT,
+            ADD COLUMN IF NOT EXISTS unread_count INTEGER DEFAULT 0
+        `);
+        
+        await pool.query(`
+            ALTER TABLE tasks 
+            ADD COLUMN IF NOT EXISTS created_by BIGINT,
+            ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'general',
+            ADD COLUMN IF NOT EXISTS time_to_complete TEXT DEFAULT '5 минут',
+            ADD COLUMN IF NOT EXISTS difficulty TEXT DEFAULT 'Легкая',
+            ADD COLUMN IF NOT EXISTS people_required INTEGER DEFAULT 1,
+            ADD COLUMN IF NOT EXISTS repost_time TEXT DEFAULT '1 день',
+            ADD COLUMN IF NOT EXISTS task_url TEXT
+        `);
+await pool.query(`
+            CREATE TABLE IF NOT EXISTS withdrawal_requests (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                username TEXT,
+                first_name TEXT,
+                amount REAL NOT NULL,
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP,
+                completed_by BIGINT
+            )
+        `);
+        // Добавляем колонку user_username в task_verifications если ее нет
+        await pool.query(`
+            ALTER TABLE task_verifications 
+            ADD COLUMN IF NOT EXISTS user_username TEXT
+        `);
+
+        // Добавляем колонку user_username в support_messages если ее нет
+        await pool.query(`
+            ALTER TABLE support_messages 
+            ADD COLUMN IF NOT EXISTS user_username TEXT
+        `);
 
         // Гарантируем существование главного админа
         await pool.query(`
@@ -352,188 +379,82 @@ async function initDatabase() {
         `, [ADMIN_ID, 'linkgold_admin', 'Главный', 'Администратор', true]);
 
         // Создаем тестовые задания если их нет
-        await createSampleTasks();
+        const tasksCount = await pool.query('SELECT COUNT(*) FROM tasks WHERE status = $1', ['active']);
+        if (parseInt(tasksCount.rows[0].count) === 0) {
+            console.log('📝 Создаем тестовые задания...');
+            await pool.query(`
+                INSERT INTO tasks (title, description, price, created_by, category) 
+                VALUES 
+                ('Подписаться на канал', 'Подпишитесь на наш Telegram канал и оставайтесь подписанным минимум 3 дня', 50, $1, 'subscribe'),
+                ('Посмотреть видео', 'Посмотрите видео до конца и поставьте лайк', 30, $1, 'view'),
+                ('Сделать репост', 'Сделайте репост записи в своем канале', 70, $1, 'repost'),
+                ('Оставить комментарий', 'Напишите содержательный комментарий под постом', 40, $1, 'comment'),
+                ('Вступить в группу', 'Вступите в нашу Telegram группу', 60, $1, 'social')
+            `, [ADMIN_ID]);
+            console.log('✅ Тестовые задания созданы');
+        }
 
+        // Создаем тестовый пост если нет постов
+        const postsCount = await pool.query('SELECT COUNT(*) FROM posts');
+        if (parseInt(postsCount.rows[0].count) === 0) {
+            await pool.query(`
+                INSERT INTO posts (title, content, author, author_id) 
+                VALUES ('Добро пожаловать!', 'Начните зарабатывать выполняя простые задания!', 'Администратор', $1)
+            `, [ADMIN_ID]);
+        }
+
+        // Гарантируем создание таблиц промокодов
+        await createPromocodesTable();
+       async function initDatabase() {
+    try {
+        console.log('🔄 Initializing simplified database...');
+        
+        // ВРЕМЕННОЕ РЕШЕНИЕ - вставьте этот код вместо вызова fixPromocodesTable
+        try {
+            console.log('🔧 Checking promocodes table...');
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS promocodes (
+                    id SERIAL PRIMARY KEY,
+                    code VARCHAR(20) UNIQUE NOT NULL,
+                    reward REAL NOT NULL DEFAULT 0,
+                    max_uses INTEGER NOT NULL DEFAULT 1,
+                    used_count INTEGER DEFAULT 0,
+                    expires_at TIMESTAMP,
+                    is_active BOOLEAN DEFAULT true,
+                    created_by BIGINT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log('✅ Promocodes table verified');
+        } catch (error) {
+            console.log('⚠️ Promocodes table check:', error.message);
+        }
+        // КОНЕЦ ВРЕМЕННОГО РЕШЕНИЯ
+        
+        console.log('✅ Database initialized successfully');
+    } catch (error) {
+        console.error('❌ Database initialization error:', error);
+    }
+}
+        
         console.log('✅ Database initialized successfully');
     } catch (error) {
         console.error('❌ Database initialization error:', error);
     }
 }
 
-async function createPromocodesTableSafe() {
-    try {
-        console.log('🔧 Safe creation of promocodes tables...');
-        
-        // Проверяем, существует ли таблица
-        const tableExists = await pool.query(`
-            SELECT EXISTS (
-                SELECT FROM information_schema.tables 
-                WHERE table_name = 'promocodes'
-            )
-        `);
-        
-        if (tableExists.rows[0].exists) {
-            console.log('✅ Promocodes table already exists');
-            return;
-        }
-        
-        // Создаем таблицу промокодов
-        await pool.query(`
-            CREATE TABLE promocodes (
-                id SERIAL PRIMARY KEY,
-                code VARCHAR(50) UNIQUE NOT NULL,
-                reward REAL NOT NULL DEFAULT 0,
-                max_uses INTEGER NOT NULL DEFAULT 1,
-                used_count INTEGER DEFAULT 0,
-                expires_at TIMESTAMP,
-                is_active BOOLEAN DEFAULT true,
-                created_by BIGINT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        
-        // Создаем таблицу активаций
-        await pool.query(`
-            CREATE TABLE promocode_activations (
-                id SERIAL PRIMARY KEY,
-                user_id BIGINT NOT NULL,
-                promocode_id INTEGER NOT NULL,
-                activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (promocode_id) REFERENCES promocodes(id) ON DELETE CASCADE
-            )
-        `);
-        
-        console.log('✅ Promocodes tables created successfully');
-    } catch (error) {
-        console.error('❌ Safe promocodes creation error:', error);
-        
-        // Если есть конфликт, пробуем альтернативный подход
-        if (error.message.includes('pg_type_typname_nsp_index')) {
-            console.log('🔄 Trying alternative table creation...');
-            await createPromocodesTableAlternative();
-        }
-    }
-}
-
-async function createPromocodesTableAlternative() {
-    try {
-        console.log('🔄 Alternative promocodes table creation...');
-        
-        // Создаем таблицу с уникальным именем
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS promocodes_table (
-                id SERIAL PRIMARY KEY,
-                code VARCHAR(50) UNIQUE NOT NULL,
-                reward REAL NOT NULL DEFAULT 0,
-                max_uses INTEGER NOT NULL DEFAULT 1,
-                used_count INTEGER DEFAULT 0,
-                expires_at TIMESTAMP,
-                is_active BOOLEAN DEFAULT true,
-                created_by BIGINT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        
-        console.log('✅ Alternative promocodes table created');
-    } catch (error) {
-        console.error('❌ Alternative creation also failed:', error);
-    }
-}
-
-app.post('/api/admin/fix-database', async (req, res) => {
-    try {
-        console.log('🔧 Force fixing database...');
-        
-        // Удаляем проблемные таблицы если существуют
-        try {
-            await pool.query('DROP TABLE IF EXISTS promocode_activations CASCADE');
-            await pool.query('DROP TABLE IF EXISTS promocodes CASCADE');
-        } catch (error) {
-            console.log('ℹ️ Could not drop tables:', error.message);
-        }
-        
-        // Пересоздаем таблицы
-        await createPromocodesTableSafe();
-        
-        // Проверяем структуры других таблиц
-        await fixWithdrawalTable();
-        await fixTasksTable();
-        
-        res.json({
-            success: true,
-            message: 'База данных успешно исправлена'
-        });
-    } catch (error) {
-        console.error('❌ Fix database error:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-
-// ЗАМЕНИТЕ существующий CORS middleware на этот:
-app.use(cors({
-    origin: function(origin, callback) {
-        // Разрешаем все источники в продакшене для Telegram
-        const allowedOrigins = [
-            'https://web.telegram.org',
-            'https://telegram.org',
-            'https://ваш-username.github.io', // замените на ваш GitHub
-            'https://telegram-community1-production-0bc1.up.railway.app',
-            APP_URL
-        ];
-        
-        // Разрешаем все в development или если источник в списке
-        if (!origin || process.env.NODE_ENV === 'development' || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            console.log('🔒 Blocked by CORS:', origin);
-            callback(null, true); // Временно разрешаем все для тестирования
-        }
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
-
-// Обработка preflight запросов
-app.options('*', cors());
-// В server.js добавьте
-app.get('/api/debug/environment', (req, res) => {
-    res.json({
-        success: true,
-        environment: {
-            NODE_ENV: process.env.NODE_ENV,
-            RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT,
-            RAILWAY_PUBLIC_DOMAIN: process.env.RAILWAY_PUBLIC_DOMAIN,
-            DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT_SET',
-            BOT_TOKEN: process.env.BOT_TOKEN ? 'SET' : 'NOT_SET',
-            PORT: process.env.PORT
-        },
-        headers: req.headers,
-        timestamp: new Date().toISOString()
-    });
-});
-// Обработка preflight запросов
-app.options('*', cors());
-
 async function createPromocodesTable() {
     try {
-        console.log('🔧 Creating promocodes tables with reward field...');
+        console.log('🔧 Creating/verifying promocodes table...');
         
-        // Удаляем старые таблицы если существуют
-        await pool.query('DROP TABLE IF EXISTS promocode_activations CASCADE');
-        await pool.query('DROP TABLE IF EXISTS promocodes CASCADE');
-        
-        // Создаем таблицу промокодов с полем reward
+        // Создаем основную таблицу промокодов
         await pool.query(`
-            CREATE TABLE promocodes (
+            CREATE TABLE IF NOT EXISTS promocodes (
                 id SERIAL PRIMARY KEY,
-                code VARCHAR(50) UNIQUE NOT NULL,
-                reward REAL NOT NULL DEFAULT 0,
-                max_uses INTEGER NOT NULL DEFAULT 1,
+                code VARCHAR(20) UNIQUE NOT NULL,
+                max_uses INTEGER NOT NULL,
                 used_count INTEGER DEFAULT 0,
+                reward REAL NOT NULL DEFAULT 0,
                 expires_at TIMESTAMP,
                 is_active BOOLEAN DEFAULT true,
                 created_by BIGINT NOT NULL,
@@ -543,71 +464,55 @@ async function createPromocodesTable() {
         
         // Создаем таблицу активаций
         await pool.query(`
-            CREATE TABLE promocode_activations (
+            CREATE TABLE IF NOT EXISTS promocode_activations (
                 id SERIAL PRIMARY KEY,
                 user_id BIGINT NOT NULL,
                 promocode_id INTEGER NOT NULL,
                 activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (promocode_id) REFERENCES promocodes(id) ON DELETE CASCADE
+                FOREIGN KEY (promocode_id) REFERENCES promocodes(id)
             )
         `);
         
-        console.log('✅ Promocodes tables created with reward field');
+        // Проверяем и добавляем отсутствующие колонки
+        const columnsToCheck = [
+            {name: 'reward', type: 'REAL', nullable: 'NOT NULL', defaultValue: '0'},
+            {name: 'max_uses', type: 'INTEGER', nullable: 'NOT NULL'},
+            {name: 'used_count', type: 'INTEGER', nullable: 'DEFAULT 0'},
+            {name: 'expires_at', type: 'TIMESTAMP', nullable: 'NULL'},
+            {name: 'is_active', type: 'BOOLEAN', nullable: 'DEFAULT true'},
+            {name: 'created_by', type: 'BIGINT', nullable: 'NOT NULL'}
+        ];
+        
+        for (const column of columnsToCheck) {
+            const columnExists = await pool.query(`
+                SELECT EXISTS (
+                    SELECT FROM information_schema.columns 
+                    WHERE table_name = 'promocodes' AND column_name = $1
+                )
+            `, [column.name]);
+            
+            if (!columnExists.rows[0].exists) {
+                console.log(`❌ Column ${column.name} missing, adding...`);
+                try {
+                    await pool.query(`
+                        ALTER TABLE promocodes 
+                        ADD COLUMN ${column.name} ${column.type} ${column.nullable}
+                        ${column.defaultValue ? `DEFAULT ${column.defaultValue}` : ''}
+                    `);
+                    console.log(`✅ Column ${column.name} added`);
+                } catch (addError) {
+                    console.log(`⚠️ Could not add column ${column.name}:`, addError.message);
+                }
+            }
+        }
+        
+        console.log('✅ Promocodes tables created/verified');
     } catch (error) {
         console.error('❌ Error creating promocodes tables:', error);
         throw error;
     }
 }
-// Создаем таблицу с правильным полем reward
-app.post('/api/admin/promocodes/fix-reward-field', async (req, res) => {
-    try {
-        console.log('🔧 Исправляем поле reward...');
-        
-        // Удаляем старые таблицы
-        await pool.query('DROP TABLE IF EXISTS promocode_activations CASCADE');
-        await pool.query('DROP TABLE IF EXISTS promocodes CASCADE');
-        
-        // Создаем новую таблицу с полем reward (а не reward_amount)
-        await pool.query(`
-            CREATE TABLE promocodes (
-                id SERIAL PRIMARY KEY,
-                code VARCHAR(50) UNIQUE NOT NULL,
-                reward REAL NOT NULL DEFAULT 0,
-                max_uses INTEGER NOT NULL DEFAULT 1,
-                used_count INTEGER DEFAULT 0,
-                expires_at TIMESTAMP,
-                is_active BOOLEAN DEFAULT true,
-                created_by BIGINT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        
-        // Создаем таблицу активаций
-        await pool.query(`
-            CREATE TABLE promocode_activations (
-                id SERIAL PRIMARY KEY,
-                user_id BIGINT NOT NULL,
-                promocode_id INTEGER NOT NULL,
-                activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (promocode_id) REFERENCES promocodes(id) ON DELETE CASCADE
-            )
-        `);
-        
-        console.log('✅ Таблицы созданы с полем reward');
-        
-        res.json({
-            success: true,
-            message: 'Таблицы созданы с правильным полем reward'
-        });
-        
-    } catch (error) {
-        console.error('❌ Fix reward field error:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
+
 // Создание тестовой заявки на вывод
 app.post('/api/test-withdrawal', async (req, res) => {
     try {
@@ -773,50 +678,6 @@ async function verifyPromocodesTableStructure() {
         console.error('❌ Ошибка проверки структуры таблицы:', error);
     }
 }
-
-// В server.js добавьте этот endpoint
-app.post('/api/admin/fix-database-sequences', async (req, res) => {
-    try {
-        console.log('🔧 Fixing database sequences...');
-        
-        // Исправляем конфликт последовательностей для промокодов
-        await pool.query(`
-            DO $$ 
-            BEGIN
-                -- Пересоздаем последовательность если она конфликтует
-                IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'promocodes_id_seq') THEN
-                    DROP SEQUENCE IF EXISTS promocodes_id_seq CASCADE;
-                END IF;
-                
-                CREATE SEQUENCE promocodes_id_seq START 1;
-                
-                -- Обновляем таблицу промокодов
-                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'promocodes') THEN
-                    ALTER TABLE promocodes 
-                    ALTER COLUMN id SET DEFAULT nextval('promocodes_id_seq'),
-                    ALTER COLUMN id SET NOT NULL;
-                    
-                    -- Обновляем текущее значение последовательности
-                    PERFORM setval('promocodes_id_seq', COALESCE((SELECT MAX(id) FROM promocodes), 0) + 1);
-                END IF;
-            END $$;
-        `);
-
-        console.log('✅ Database sequences fixed successfully');
-        
-        res.json({
-            success: true,
-            message: 'Последовательности базы данных исправлены'
-        });
-    } catch (error) {
-        console.error('❌ Fix sequences error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Ошибка исправления последовательностей: ' + error.message
-        });
-    }
-});
-
 // Функция для принудительного обновления структуры таблицы
 async function fixWithdrawalTable() {
     try {
@@ -1010,17 +871,8 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         }
         
         // Отправляем основное сообщение с кнопками
-        const message = `👋 <b> Добро пожаловать в дружную команду LinkGold,  ${userData.firstName}!</b>\n\n` +
-                       `Мы создали этот сервис, чтобы каждый пользователь Telegram мог легко зарабатывать, помогая развиваться крутым проектам и каналам.\n
-
-Мы ценим твоё время и доверие, поэтому:
-<b>• Честная система:</b> Ты получаешь оплату за каждое успешно выполненное задание.
-<b>• Прозрачность:</b> Все условия задания четко описаны до его выполнения.
-<b>• Мы на связи:</b> Если возникнут вопросы, наша служба поддержки оперативно на них ответит.
-
-Присоединяйся к тысячам пользователей, которые уже зарабатывают с нами!\n
-
-Выбери задание и стань частью успеха! 🚀\n\n` +
+        const message = `👋 <b>Добро пожаловать в LinkGold, ${userData.firstName}!</b>\n\n` +
+                       `Выполняйте задания и зарабатывайте Telegram Stars! 🚀\n\n` +
                        `🎁 <b>Реферальная программа:</b>\n` +
                        `• Приглашайте друзей и получайте бонусы\n` +
                        `• Друг получает 5⭐ за регистрацию\n` +
@@ -1157,56 +1009,6 @@ bot.onText(/\/balance/, async (msg) => {
     }
 });
 
-// Полное пересоздание таблицы промокодов
-app.post('/api/admin/promocodes/recreate-table', async (req, res) => {
-    try {
-        console.log('🔄 Полное пересоздание таблицы промокодов...');
-        
-        // Удаляем старые таблицы
-        await pool.query('DROP TABLE IF EXISTS promocode_activations CASCADE');
-        await pool.query('DROP TABLE IF EXISTS promocodes CASCADE');
-        
-        // Создаем новую таблицу с правильной структурой
-        await pool.query(`
-            CREATE TABLE promocodes (
-                id SERIAL PRIMARY KEY,
-                code VARCHAR(20) UNIQUE NOT NULL,
-                reward_amount REAL NOT NULL DEFAULT 0,
-                max_uses INTEGER NOT NULL DEFAULT 1,
-                used_count INTEGER DEFAULT 0,
-                expires_at TIMESTAMP,
-                is_active BOOLEAN DEFAULT true,
-                created_by BIGINT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        
-        // Создаем таблицу активаций
-        await pool.query(`
-            CREATE TABLE promocode_activations (
-                id SERIAL PRIMARY KEY,
-                user_id BIGINT NOT NULL,
-                promocode_id INTEGER NOT NULL,
-                activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (promocode_id) REFERENCES promocodes(id)
-            )
-        `);
-        
-        console.log('✅ Таблицы промокодов полностью пересозданы');
-        
-        res.json({
-            success: true,
-            message: 'Таблицы промокодов успешно пересозданы'
-        });
-        
-    } catch (error) {
-        console.error('❌ Ошибка пересоздания таблиц:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
 
 // Обработчик callback кнопок
 bot.on('callback_query', async (callbackQuery) => {
@@ -1300,10 +1102,18 @@ app.get('/api/admin/promocodes/debug-structure', async (req, res) => {
             ORDER BY ordinal_position
         `);
         
+        const tableExists = await pool.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = 'promocodes'
+            )
+        `);
+        
         res.json({
             success: true,
+            table_exists: tableExists.rows[0].exists,
             columns: structure.rows,
-            timestamp: new Date().toISOString()
+            current_timestamp: new Date().toISOString()
         });
     } catch (error) {
         console.error('Promocodes structure debug error:', error);
@@ -1317,12 +1127,9 @@ app.get('/api/admin/promocodes/debug-structure', async (req, res) => {
 // Endpoint для принудительного исправления таблицы промокодов
 app.post('/api/admin/promocodes/fix-table', async (req, res) => {
     try {
-        // Добавляем недостающие колонки
-        await pool.query(`
-            ALTER TABLE promocodes 
-            ADD COLUMN IF NOT EXISTS reward REAL NOT NULL DEFAULT 0
-        `);
+        await fixPromocodesTable();
         
+        // Проверяем структуру после исправления
         const structure = await pool.query(`
             SELECT column_name, data_type, is_nullable 
             FROM information_schema.columns 
@@ -1500,6 +1307,32 @@ async function addTask() {
         showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
     }
 }
+// Принудительное исправление таблицы промокодов
+app.post('/api/admin/promocodes/fix-table', async (req, res) => {
+    try {
+        await fixPromocodesTable();
+        
+        // Проверяем структуру после исправления
+        const structure = await pool.query(`
+            SELECT column_name, data_type, is_nullable 
+            FROM information_schema.columns 
+            WHERE table_name = 'promocodes' 
+            ORDER BY ordinal_position
+        `);
+        
+        res.json({
+            success: true,
+            message: 'Таблица промокодов исправлена',
+            structure: structure.rows
+        });
+    } catch (error) {
+        console.error('Fix promocodes table error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 
 app.post('/api/tasks', async (req, res) => {
     const { 
@@ -1753,27 +1586,41 @@ app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) 
     }
 });
 // Обновим endpoint /api/user/auth
-// Улучшенный endpoint аутентификации
 app.post('/api/user/auth', async (req, res) => {
-    const { user } = req.body;
+    const { user, referralCode } = req.body; // Добавляем referralCode
     
-    console.log('🔐 Auth request for user:', user);
-    
-    if (!user || !user.id) {
+    if (!user) {
         return res.status(400).json({
             success: false,
-            error: 'Invalid user data'
+            error: 'Missing required fields'
         });
     }
     
     try {
         const isMainAdmin = parseInt(user.id) === ADMIN_ID;
         
-        // Сохраняем/обновляем пользователя
+        // Генерируем реферальный код для пользователя
+        const userReferralCode = `ref_${user.id}_${Date.now()}`;
+        
+        let referredBy = null;
+        let referralBonusGiven = false;
+        
+        // Если есть реферальный код, находим того кто пригласил
+        if (referralCode) {
+            const referrerResult = await pool.query(
+                'SELECT user_id FROM user_profiles WHERE referral_code = $1',
+                [referralCode]
+            );
+            
+            if (referrerResult.rows.length > 0) {
+                referredBy = referrerResult.rows[0].user_id;
+            }
+        }
+        
         const result = await pool.query(`
             INSERT INTO user_profiles 
-            (user_id, username, first_name, last_name, photo_url, is_admin) 
-            VALUES ($1, $2, $3, $4, $5, $6)
+            (user_id, username, first_name, last_name, photo_url, is_admin, referral_code, referred_by, is_first_login) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
             ON CONFLICT (user_id) 
             DO UPDATE SET 
                 username = EXCLUDED.username,
@@ -1789,115 +1636,53 @@ app.post('/api/user/auth', async (req, res) => {
             user.first_name || 'Пользователь',
             user.last_name || '',
             user.photo_url || '',
-            isMainAdmin
+            isMainAdmin,
+            userReferralCode,
+            referredBy
         ]);
         
         const userProfile = result.rows[0];
         
-        console.log('✅ User auth successful:', {
-            id: userProfile.user_id,
-            name: userProfile.first_name,
-            username: userProfile.username
-        });
+        // Если это первый вход и пользователь пришел по реферальной ссылке
+        if (userProfile.is_first_login && referredBy) {
+            // Даем 5 звезд новому пользователю
+            await pool.query(`
+                UPDATE user_profiles 
+                SET balance = COALESCE(balance, 0) + 5,
+                    is_first_login = false
+                WHERE user_id = $1
+            `, [user.id]);
+            
+            // Даем 20 звезд тому, кто пригласил
+            await pool.query(`
+                UPDATE user_profiles 
+                SET balance = COALESCE(balance, 0) + 20,
+                    referral_count = COALESCE(referral_count, 0) + 1,
+                    referral_earned = COALESCE(referral_earned, 0) + 20
+                WHERE user_id = $1
+            `, [referredBy]);
+            
+            referralBonusGiven = true;
+            
+            console.log(`🎉 Реферальный бонус: пользователь ${user.id} получил 5⭐, пригласивший ${referredBy} получил 10⭐`);
+        }
         
-        res.json({
-            success: true,
-            user: userProfile
-        });
-        
-    } catch (error) {
-        console.error('❌ Auth error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
-
-// Диагностика пользователя
-app.get('/api/debug/telegram-data', async (req, res) => {
-    try {
-        // Возвращаем информацию о доступности Telegram WebApp
-        res.json({
-            success: true,
-            hasTelegram: typeof window !== 'undefined' && typeof window.Telegram !== 'undefined',
-            timestamp: new Date().toISOString(),
-            environment: process.env.NODE_ENV
-        });
-    } catch (error) {
-        console.error('Debug error:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-
-app.post('/api/user/update-profile', async (req, res) => {
-    const { userId, firstName, lastName, username, photoUrl } = req.body;
-    
-    console.log('📝 Updating user profile:', { userId, firstName, username });
-    
-    if (!userId) {
-        return res.status(400).json({
-            success: false,
-            error: 'User ID is required'
-        });
-    }
-    
-    try {
-        const result = await pool.query(`
-            INSERT INTO user_profiles 
-            (user_id, username, first_name, last_name, photo_url, updated_at) 
-            VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
-            ON CONFLICT (user_id) 
-            DO UPDATE SET 
-                username = EXCLUDED.username,
-                first_name = EXCLUDED.first_name,
-                last_name = EXCLUDED.last_name,
-                photo_url = EXCLUDED.photo_url,
-                updated_at = CURRENT_TIMESTAMP
-            RETURNING *
-        `, [userId, username, firstName, lastName, photoUrl]);
-        
-        console.log('✅ Profile updated successfully for user:', userId);
-        
-        res.json({
-            success: true,
-            message: 'Profile updated successfully',
-            user: result.rows[0]
-        });
-    } catch (error) {
-        console.error('Update profile error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
-// Диагностический endpoint для проверки пользователя
-app.get('/api/debug/user', async (req, res) => {
-    try {
-        const { userId } = req.query;
-        console.log('🔍 DEBUG USER REQUEST:', userId);
-        
-        // Проверяем данные в базе
-        const userResult = await pool.query(
+        // Обновляем данные пользователя после начисления бонусов
+        const updatedUser = await pool.query(
             'SELECT * FROM user_profiles WHERE user_id = $1',
-            [userId]
+            [user.id]
         );
         
         res.json({
             success: true,
-            userInDatabase: userResult.rows[0] || 'NOT_FOUND',
-            totalUsers: (await pool.query('SELECT COUNT(*) FROM user_profiles')).rows[0].count,
-            databaseConnected: true
+            user: updatedUser.rows[0],
+            referralBonusGiven: referralBonusGiven
         });
     } catch (error) {
-        console.error('Debug user error:', error);
+        console.error('Auth error:', error);
         res.status(500).json({
             success: false,
-            error: error.message
+            error: 'Database error: ' + error.message
         });
     }
 });
@@ -2384,8 +2169,6 @@ async function createSampleTasks() {
         console.error('❌ Error creating sample tasks:', error);
     }
 }
-
-
 
 // Вызовите эту функцию после инициализации базы данных
 async function initializeWithTasks() {
@@ -3248,252 +3031,80 @@ app.post('/api/admin/promocodes/reset', async (req, res) => {
         });
     }
 });
-// В server.js ЗАМЕНИТЕ текущий endpoint на этот
-app.post('/api/admin/promocodes/create-simple', async (req, res) => {
-    const { adminId, code, maxUses, reward } = req.body;
+
+app.post('/api/admin/promocodes/create', async (req, res) => {
+    const { adminId, code, maxUses, reward, expiresAt } = req.body;
     
-    console.log('🎫 SIMPLE Create promocode:', { adminId, code, maxUses, reward });
+    console.log('🎫 Create promocode request:', { adminId, code, maxUses, reward, expiresAt });
     
-    // Быстрая валидация
-    if (!adminId || !code || !maxUses || !reward) {
-        return res.json({
+    // Сначала проверяем и исправляем структуру таблицы
+    await fixPromocodesTable();
+    
+    // Проверка прав - только главный админ
+    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
             success: false,
-            error: 'Заполните все поля: code, maxUses, reward'
+            error: 'Только главный администратор может создавать промокоды!'
         });
     }
     
-    // Только главный админ
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.json({
+    // Валидация
+    if (!code || !maxUses || !reward) {
+        return res.status(400).json({
             success: false,
-            error: 'Только главный администратор'
+            error: 'Заполните все обязательные поля'
         });
     }
     
     try {
-        // ПРОСТАЯ вставка без сложных проверок
+        // Проверяем существование промокода
+        const existing = await pool.query(
+            'SELECT id FROM promocodes WHERE code = $1 AND is_active = true',
+            [code.toUpperCase()]
+        );
+        
+        if (existing.rows.length > 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'Промокод с таким кодом уже существует!'
+            });
+        }
+        
+        // Создаем промокод
         const result = await pool.query(`
-            INSERT INTO promocodes (code, max_uses, reward, created_by) 
-            VALUES ($1, $2, $3, $4)
-            RETURNING id, code, reward, max_uses
+            INSERT INTO promocodes (code, max_uses, reward, expires_at, created_by) 
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING *
         `, [
             code.toUpperCase(), 
             parseInt(maxUses), 
             parseFloat(reward), 
+            expiresAt ? new Date(expiresAt) : null, 
             adminId
         ]);
         
-        console.log('✅ SIMPLE Promocode created:', result.rows[0]);
+        console.log('✅ Promocode created:', result.rows[0]);
         
         res.json({
             success: true,
-            message: `Промокод ${code} создан!`,
-            promocode: result.rows[0]
-        });
-        
-    } catch (error) {
-        console.error('❌ SIMPLE Create promocode error:', error);
-        
-        // Упрощенные ошибки
-        if (error.message.includes('unique')) {
-            return res.json({
-                success: false,
-                error: 'Промокод уже существует'
-            });
-        }
-        
-        res.json({
-            success: false,
-            error: 'Ошибка базы данных: ' + error.message
-        });
-    }
-});
-app.get('/api/admin/promocodes/debug-structure', async (req, res) => {
-    try {
-        const structure = await pool.query(`
-            SELECT column_name, data_type, is_nullable 
-            FROM information_schema.columns 
-            WHERE table_name = 'promocodes' 
-            ORDER BY ordinal_position
-        `);
-        
-        res.json({
-            success: true,
-            columns: structure.rows,
-            timestamp: new Date().toISOString()
-        });
-    } catch (error) {
-        console.error('Promocodes structure debug error:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-// Создание промокода (исправленная версия)
-// Исправленный endpoint создания промокода с полем reward
-app.post('/api/admin/promocodes/create', async (req, res) => {
-    console.log('🎫 CREATE PROMOCODE called with:', req.body);
-    
-    const { adminId, code, maxUses, reward } = req.body;
-    
-    // Валидация
-    if (!adminId || !code || !maxUses || !reward) {
-        return res.json({
-            success: false,
-            error: 'Заполните все поля'
-        });
-    }
-    
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.json({
-            success: false,
-            error: 'Только главный администратор'
-        });
-    }
-    
-    try {
-        // Используем поле reward (а не reward_amount)
-        const result = await pool.query(`
-            INSERT INTO promocodes 
-            (code, reward, max_uses, created_by) 
-            VALUES ($1, $2, $3, $4)
-            RETURNING *
-        `, [
-            code.toUpperCase().trim(),
-            parseFloat(reward),
-            parseInt(maxUses),
-            adminId
-        ]);
-        
-        console.log('✅ Promocode created successfully:', result.rows[0]);
-        
-        res.json({
-            success: true,
-            message: `Промокод ${code} создан!`,
+            message: `Промокод ${code} успешно создан!`,
             promocode: result.rows[0]
         });
         
     } catch (error) {
         console.error('❌ Create promocode error:', error);
-        
-        let errorMessage = 'Ошибка базы данных';
-        if (error.message.includes('unique')) {
-            errorMessage = 'Промокод уже существует';
-        } else if (error.message.includes('null value')) {
-            errorMessage = 'Не заполнены обязательные поля';
-        } else if (error.message.includes('column "reward"')) {
-            errorMessage = 'Неправильная структура таблицы. Нужно пересоздать таблицы.';
-        }
-        
-        res.json({
-            success: false,
-            error: errorMessage
-        });
-    }
-});
-// В server.js ДОБАВЬТЕ эту функцию для диагностики
-app.get('/api/admin/promocodes/debug-table', async (req, res) => {
-    try {
-        // Проверяем существование таблицы
-        const tableExists = await pool.query(`
-            SELECT EXISTS (
-                SELECT FROM information_schema.tables 
-                WHERE table_name = 'promocodes'
-            )
-        `);
-        
-        // Проверяем структуру
-        const structure = await pool.query(`
-            SELECT column_name, data_type, is_nullable 
-            FROM information_schema.columns 
-            WHERE table_name = 'promocodes' 
-            ORDER BY ordinal_position
-        `);
-        
-        // Проверяем данные
-        const data = await pool.query('SELECT * FROM promocodes LIMIT 5');
-        
-        res.json({
-            success: true,
-            table_exists: tableExists.rows[0].exists,
-            structure: structure.rows,
-            sample_data: data.rows,
-            timestamp: new Date().toISOString()
-        });
-        
-    } catch (error) {
-        console.error('Promocodes table debug error:', error);
         res.status(500).json({
             success: false,
-            error: error.message
+            error: 'Ошибка базы данных: ' + error.message
         });
     }
 });
-// В server.js ДОБАВЬТЕ эту функцию
-async function emergencyFixPromocodesTable() {
-    try {
-        console.log('🚨 EMERGENCY FIX: Recreating promocodes table...');
-        
-        // Удаляем таблицу если существует
-        await pool.query('DROP TABLE IF EXISTS promocodes CASCADE');
-        await pool.query('DROP TABLE IF EXISTS promocode_activations CASCADE');
-        
-        // Создаем заново с правильной структурой
-        await pool.query(`
-            CREATE TABLE promocodes (
-                id SERIAL PRIMARY KEY,
-                code VARCHAR(20) UNIQUE NOT NULL,
-                reward REAL NOT NULL DEFAULT 0,
-                max_uses INTEGER NOT NULL DEFAULT 1,
-                used_count INTEGER DEFAULT 0,
-                expires_at TIMESTAMP,
-                is_active BOOLEAN DEFAULT true,
-                created_by BIGINT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        
-        await pool.query(`
-            CREATE TABLE promocode_activations (
-                id SERIAL PRIMARY KEY,
-                user_id BIGINT NOT NULL,
-                promocode_id INTEGER NOT NULL,
-                activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (promocode_id) REFERENCES promocodes(id)
-            )
-        `);
-        
-        console.log('✅ EMERGENCY FIX: Promocodes tables recreated successfully');
-        
-    } catch (error) {
-        console.error('❌ EMERGENCY FIX failed:', error);
-    }
-}
-
-// Endpoint для экстренного исправления
-app.post('/api/admin/promocodes/emergency-fix', async (req, res) => {
-    try {
-        await emergencyFixPromocodesTable();
-        res.json({
-            success: true,
-            message: 'Таблицы промокодов пересозданы в экстренном режиме'
-        });
-    } catch (error) {
-        console.error('Emergency fix error:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-
 
 // Получение списка промокодов
-// Получение списка промокодов (исправленная версия)
 app.get('/api/admin/promocodes/list', async (req, res) => {
     const { adminId } = req.query;
     
+    // Только главный админ
     if (!adminId || parseInt(adminId) !== ADMIN_ID) {
         return res.status(403).json({
             success: false,
@@ -3525,199 +3136,7 @@ app.get('/api/admin/promocodes/list', async (req, res) => {
         });
     }
 });
-// Тестовый endpoint для создания промокода
-app.post('/api/admin/promocodes/test-create', async (req, res) => {
-    try {
-        const result = await pool.query(`
-            INSERT INTO promocodes (code, reward_amount, max_uses, created_by) 
-            VALUES ($1, $2, $3, $4)
-            RETURNING *
-        `, ['TEST123', 50, 10, ADMIN_ID]);
-        
-        res.json({
-            success: true,
-            message: 'Тестовый промокод создан',
-            promocode: result.rows[0]
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-// Полное удаление и пересоздание таблиц промокодов
-app.post('/api/admin/promocodes/nuclear-reset', async (req, res) => {
-    try {
-        console.log('🚨 ПОЛНЫЙ СБРОС таблиц промокодов...');
-        
-        // Удаляем таблицы если существуют
-        await pool.query('DROP TABLE IF EXISTS promocode_activations CASCADE');
-        await pool.query('DROP TABLE IF EXISTS promocodes CASCADE');
-        
-        console.log('✅ Старые таблицы удалены');
-        
-        // Создаем новую таблицу промокодов с правильной структурой
-        await pool.query(`
-            CREATE TABLE promocodes (
-                id SERIAL PRIMARY KEY,
-                code VARCHAR(50) UNIQUE NOT NULL,
-                reward_amount REAL NOT NULL DEFAULT 0,
-                max_uses INTEGER NOT NULL DEFAULT 1,
-                used_count INTEGER DEFAULT 0,
-                expires_at TIMESTAMP,
-                is_active BOOLEAN DEFAULT true,
-                created_by BIGINT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        
-        // Создаем таблицу активаций
-        await pool.query(`
-            CREATE TABLE promocode_activations (
-                id SERIAL PRIMARY KEY,
-                user_id BIGINT NOT NULL,
-                promocode_id INTEGER NOT NULL,
-                activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (promocode_id) REFERENCES promocodes(id) ON DELETE CASCADE
-            )
-        `);
-        
-        console.log('✅ Новые таблицы созданы');
-        
-        // Создаем тестовый промокод для проверки
-        await pool.query(`
-            INSERT INTO promocodes (code, reward_amount, max_uses, created_by) 
-            VALUES ($1, $2, $3, $4)
-        `, ['TEST123', 100, 10, ADMIN_ID]);
-        
-        console.log('✅ Тестовый промокод создан');
-        
-        res.json({
-            success: true,
-            message: 'Таблицы промокодов полностью пересозданы!'
-        });
-        
-    } catch (error) {
-        console.error('❌ Nuclear reset error:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-// СУПЕР-ПРОСТОЙ endpoint создания промокода
-app.post('/api/admin/promocodes/simple-create', async (req, res) => {
-    console.log('🎫 SIMPLE CREATE called with:', req.body);
-    
-    const { adminId, code, maxUses, reward } = req.body;
-    
-    // Быстрая валидация
-    if (!adminId || !code || !maxUses || !reward) {
-        return res.json({
-            success: false,
-            error: 'Все поля обязательны'
-        });
-    }
-    
-    // Только главный админ
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.json({
-            success: false,
-            error: 'Только главный админ'
-        });
-    }
-    
-    try {
-        // ПРОСТОЙ запрос с явным указанием всех полей
-        const query = `
-            INSERT INTO promocodes 
-            (code, reward_amount, max_uses, created_by) 
-            VALUES ($1, $2, $3, $4)
-            RETURNING *
-        `;
-        
-        const values = [
-            code.toUpperCase().trim(),
-            parseFloat(reward),
-            parseInt(maxUses),
-            adminId
-        ];
-        
-        console.log('📊 Executing query:', query);
-        console.log('📊 With values:', values);
-        
-        const result = await pool.query(query, values);
-        
-        console.log('✅ SUCCESS:', result.rows[0]);
-        
-        res.json({
-            success: true,
-            message: `Промокод ${code} создан!`,
-            promocode: result.rows[0]
-        });
-        
-    } catch (error) {
-        console.error('❌ SIMPLE CREATE error:', error);
-        
-        let errorMessage = 'Ошибка базы данных';
-        if (error.message.includes('unique')) {
-            errorMessage = 'Промокод уже существует';
-        } else if (error.message.includes('null value')) {
-            errorMessage = 'Не заполнены обязательные поля';
-        }
-        
-        res.json({
-            success: false,
-            error: errorMessage
-        });
-    }
-});
-// Проверка структуры таблицы промокодов
-app.get('/api/admin/promocodes/check-structure', async (req, res) => {
-    try {
-        // Проверяем существование таблицы
-        const tableExists = await pool.query(`
-            SELECT EXISTS (
-                SELECT FROM information_schema.tables 
-                WHERE table_name = 'promocodes'
-            )
-        `);
-        
-        if (!tableExists.rows[0].exists) {
-            return res.json({
-                success: false,
-                error: 'Таблица promocodes не существует'
-            });
-        }
-        
-        // Получаем структуру таблицы
-        const structure = await pool.query(`
-            SELECT column_name, data_type, is_nullable, column_default
-            FROM information_schema.columns 
-            WHERE table_name = 'promocodes' 
-            ORDER BY ordinal_position
-        `);
-        
-        // Проверяем существующие промокоды
-        const promocodes = await pool.query('SELECT * FROM promocodes');
-        
-        res.json({
-            success: true,
-            table_exists: true,
-            columns: structure.rows,
-            promocodes_count: promocodes.rows.length,
-            promocodes: promocodes.rows
-        });
-        
-    } catch (error) {
-        console.error('Check structure error:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
+
 // Деактивация промокода
 app.post('/api/admin/promocodes/deactivate', async (req, res) => {
     const { adminId, code } = req.body;
@@ -3751,12 +3170,10 @@ app.post('/api/admin/promocodes/deactivate', async (req, res) => {
 });
 
 // Активация промокода пользователем
-// Активация промокода (исправленная версия)
-// Активация промокода с полем reward
 app.post('/api/promocodes/activate', async (req, res) => {
     const { userId, code } = req.body;
     
-    console.log('🎫 Activate promocode:', { userId, code });
+    console.log('🎫 Activate promocode request:', { userId, code });
     
     if (!userId || !code) {
         return res.status(400).json({
@@ -3766,7 +3183,7 @@ app.post('/api/promocodes/activate', async (req, res) => {
     }
     
     try {
-        // Проверяем пользователя
+        // Проверяем существование пользователя
         const userResult = await pool.query(
             'SELECT user_id FROM user_profiles WHERE user_id = $1',
             [userId]
@@ -3779,11 +3196,11 @@ app.post('/api/promocodes/activate', async (req, res) => {
             });
         }
         
-        // Проверяем промокод (используем поле reward)
+        // Проверяем промокод
         const promocodeResult = await pool.query(`
             SELECT * FROM promocodes 
             WHERE code = $1 AND is_active = true
-        `, [code.toUpperCase()]);
+        `, [code]);
         
         if (promocodeResult.rows.length === 0) {
             return res.status(404).json({
@@ -3816,7 +3233,7 @@ app.post('/api/promocodes/activate', async (req, res) => {
             FROM promocode_activations pa
             JOIN promocodes p ON pa.promocode_id = p.id
             WHERE pa.user_id = $1 AND p.code = $2
-        `, [userId, code.toUpperCase()]);
+        `, [userId, code]);
         
         if (activationCheck.rows.length > 0) {
             return res.status(400).json({
@@ -3844,7 +3261,7 @@ app.post('/api/promocodes/activate', async (req, res) => {
                 WHERE id = $1
             `, [promocode.id]);
             
-            // Начисляем награду пользователю (используем reward)
+            // Начисляем награду пользователю
             await client.query(`
                 UPDATE user_profiles 
                 SET balance = COALESCE(balance, 0) + $1
@@ -3988,8 +3405,6 @@ app.get('/api/admin/debug-rights', async (req, res) => {
     }
 });
 // Подтверждение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ С УДАЛЕНИЕМ ФАЙЛОВ
-// Подтверждение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ С УДАЛЕНИЕМ ФАЙЛОВ
-// Подтверждение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ С УДАЛЕНИЕМ ФАЙЛОВ
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
@@ -4004,8 +3419,6 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             error: 'Доступ запрещен. Только администраторы могут подтверждать задания.'
         });
     }
-    
-    let screenshotPath = '';
     
     try {
         // Get verification info
@@ -4068,6 +3481,7 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
                 balance = COALESCE(balance, 0) + $1,
                 tasks_completed = COALESCE(tasks_completed, 0) + 1,
                 active_tasks = GREATEST(COALESCE(active_tasks, 0) - 1, 0),
+                experience = COALESCE(experience, 0) + 10,
                 updated_at = CURRENT_TIMESTAMP
             WHERE user_id = $2
         `, [verificationData.task_price, verificationData.user_id]);
@@ -4087,38 +3501,42 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             `, [task.id]);
             
             console.log(`✅ Задание ${task.id} автоматически удалено (достигнут лимит: ${peopleRequired} исполнителей)`);
+            
         }
         
+// Получаем текущее количество выполненных заданий
+const currentStats = await pool.query(
+    'SELECT tasks_completed FROM user_profiles WHERE user_id = $1',
+    [verificationData.user_id]
+);
+
+const currentCompleted = currentStats.rows[0].tasks_completed || 0;
+
+// Обновляем с правильным подсчетом
+await pool.query(`
+    UPDATE user_profiles 
+    SET 
+        balance = COALESCE(balance, 0) + $1,
+        tasks_completed = $2,
+        active_tasks = GREATEST(COALESCE(active_tasks, 0) - 1, 0),
+        updated_at = CURRENT_TIMESTAMP
+    WHERE user_id = $3
+`, [verificationData.task_price, currentCompleted + 1, verificationData.user_id]);
+
         // 🔥 УДАЛЯЕМ ФАЙЛ СКРИНШОТА ПОСЛЕ УСПЕШНОЙ ПРОВЕРКИ
         if (screenshotPath) {
-            try {
-                await deleteScreenshotFile(screenshotPath);
-            } catch (deleteError) {
-                console.error('❌ Ошибка при удалении скриншота:', deleteError);
-                // Не прерываем выполнение при ошибке удаления файла
-            }
+            await deleteScreenshotFile(screenshotPath);
         }
-        
-        // 🔥 ИСПРАВЛЕНИЕ: Уберите дублирование и используйте одно поле
-        const taskRemoved = newCompletedCount >= peopleRequired;
         
         res.json({
             success: true,
             message: 'Task approved successfully',
             amountAdded: verificationData.task_price,
-            taskRemoved: taskRemoved, // ← ТОЛЬКО ОДНО ПОЛЕ
-            task_price: verificationData.task_price // ← для совместимости
+            taskCompleted: newCompletedCount >= peopleRequired,
+            taskRemoved: newCompletedCount >= peopleRequired
         });
-        
     } catch (error) {
         console.error('Approve verification error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    
-        
-
         
         // Даже если есть ошибка, пробуем удалить файл
         if (screenshotPath) {
@@ -4129,18 +3547,12 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             }
         }
         
-        // 🔧 ИСПРАВЛЕНИЕ: Всегда отправляем ответ клиенту даже при ошибке
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
         });
     }
 });
-        
-
-
-
-
 // Отклонение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ С УДАЛЕНИЕМ ФАЙЛОВ
 app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res) => {
     const verificationId = req.params.verificationId;
@@ -5045,11 +4457,10 @@ app.get('/api/debug/tables', async (req, res) => {
     }
 });
 // В начале server.js, после инициализации pool
-// Проверьте подключение к PostgreSQL
 async function checkDatabaseConnection() {
     try {
         const result = await pool.query('SELECT NOW()');
-        console.log('✅ Database connection successful');
+        console.log('✅ Database connection successful:', result.rows[0]);
         return true;
     } catch (error) {
         console.error('❌ Database connection failed:', error);
@@ -5118,21 +4529,20 @@ app.use('/api/*', (req, res) => {
 });
 
 // Start server
-// Start server с обработкой ошибок
 app.listen(PORT, '0.0.0.0', async () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📊 Health: http://localhost:${PORT}/api/health`);
     console.log(`🔐 Admin ID: ${ADMIN_ID}`);
     
+    // Инициализируем базу данных с заданиями
+    await initializeWithTasks();
+    
+    // Принудительно исправляем структуру таблиц
     try {
-        // Проверяем подключение к базе
-        await checkDatabaseConnection();
-        
-        // Инициализируем базу данных
-        await initDatabase();
-        
-        console.log('✅ Server started successfully');
+        await fixWithdrawalTable();
+        await fixTasksTable();
+        console.log('✅ Table structures verified');
     } catch (error) {
-        console.error('❌ Server startup error:', error);
+        console.error('❌ Error fixing table structures:', error);
     }
 });
