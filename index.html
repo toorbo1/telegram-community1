@@ -12243,15 +12243,7 @@ function displayAdminPosts(posts) {
     container.innerHTML = '';
     
     if (!posts || posts.length === 0) {
-        container.innerHTML = `
-            <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
-                <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
-                <div>Нет постов</div>
-                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
-                    Создайте первый пост
-                </div>
-            </div>
-        `;
+        container.innerHTML = ` `;
         return;
     }
     
