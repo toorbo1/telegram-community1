@@ -6642,7 +6642,7 @@ async function makeRequest(endpoint, options = {}) {
             if (response.status === 403) {
                 throw new Error('Доступ запрещен. У вас недостаточно прав.');
             } else if (response.status === 404) {
-                throw new Error('Endpoint не найден.');
+                throw new Error('не найден.');
             } else if (response.status === 500) {
                 throw new Error('Внутренняя ошибка сервера.');
             } else {
@@ -10057,15 +10057,7 @@ function displayTaskVerifications(verifications) {
     container.innerHTML = '';
 
     if (!verifications || verifications.length === 0) {
-        container.innerHTML = `
-            <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
-                <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
-                <div>Нет заданий на проверке</div>
-                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
-                    Все задания проверены
-                </div>
-            </div>
-        `;
+        container.innerHTML = ` `;
         return;
     }
 
@@ -10518,7 +10510,7 @@ async function approveVerification() {
         if (error.message.includes('Failed to fetch')) {
             errorMessage = '❌ Проблема с соединением. Проверьте интернет и попробуйте снова.';
         } else if (error.message.includes('404')) {
-            errorMessage = '❌ Endpoint не найден. Сообщите администратору.';
+            errorMessage = '❌ не найден. Сообщите администратору.';
         } else if (error.message.includes('403')) {
             errorMessage = '❌ Доступ запрещен. У вас нет прав администратора.';
         } else if (error.message.includes('500')) {
@@ -13086,15 +13078,7 @@ setTimeout(addStartTaskDebugButton, 3000);
             container.innerHTML = '';
             
             if (!chats || chats.length === 0) {
-                container.innerHTML = `
-                    <div class="no-tasks" style="text-align: center; padding: 20px;">
-                        <div style="font-size: 24px; margin-bottom: 10px;">💬</div>
-                        <div>Нет активных чатов</div>
-                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
-                            Чаты появятся когда пользователи напишут в поддержку
-                        </div>
-                    </div>
-                `;
+                container.innerHTML = ``;
                 return;
             }
             
@@ -13965,7 +13949,7 @@ async function addNewAdmin() {
         
         let errorMessage = 'Ошибка при добавлении админа';
         if (error.message.includes('404')) {
-            errorMessage = 'Ошибка: Endpoint не найден. Сервер недоступен.';
+            errorMessage = 'Ошибка: не найден. Сервер недоступен.';
         } else if (error.message.includes('Failed to fetch')) {
             errorMessage = 'Ошибка сети. Проверьте подключение к интернету.';
         } else {
