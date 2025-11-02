@@ -15,6 +15,14 @@ const DATABASE_URL = process.env.DATABASE_URL;
 const ADMIN_ID = 8036875641;
 const APP_URL = process.env.RAILWAY_STATIC_URL || process.env.APP_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` || 'https://your-app.com';
 
+// Замените противоречивые значения на единые
+const REFERRER_BONUS = 10; // Бонус пригласившему
+const REFERRED_BONUS = 5;  // Бонус приглашенному
+
+// Используйте эти константы везде
+await client.query(`UPDATE user_profiles SET balance = balance + ${REFERRED_BONUS}...`);
+await client.query(`UPDATE user_profiles SET balance = balance + ${REFERRER_BONUS}...`);
+
 // Инициализация бота только если есть токен
 let bot;
 if (BOT_TOKEN) {
@@ -767,7 +775,16 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         
         let referredBy = null;
         let referrerName = '';
-        
+        if (referredBy === userId) {
+    console.log('❌ Самоприглашение заблокировано');
+    referredBy = null; // Игнорируем самоприглашение
+}
+
+// Проверка циклических рефералов
+if (await checkCircularReference(userId, referredBy)) {
+    console.log('❌ Циклическая реферальная ссылка заблокирована');
+    referredBy = null;
+}
         // Если есть реферальный код, находим пригласившего
         if (referralCode) {
             const cleanReferralCode = referralCode.replace('ref_', '');
@@ -2870,7 +2887,61 @@ app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
         });
     }
 });
-
+function parseReferralCode(referralCode) {
+    if (!referralCode) return null;
+    
+    // Поддерживаем разные форматы: ref_123, 123, start=ref_123
+    let cleanCode = referralCode;
+    
+    if (cleanCode.includes('start=')) {
+        cleanCode = cleanCode.split('start=')[1];
+    }
+    
+    if (cleanCode.startsWith('ref_')) {
+        cleanCode = cleanCode.substring(4);
+    }
+    
+    // Проверяем что это число
+    return /^\d+$/.test(cleanCode) ? cleanCode : null;
+}
+// В server.js добавьте endpoint для статистики
+app.get('/api/referral/stats', async (req, res) => {
+    try {
+        const stats = await pool.query(`
+            SELECT 
+                COUNT(*) as total_users,
+                COUNT(referred_by) as referred_users,
+                SUM(CASE WHEN referred_by IS NOT NULL THEN 1 ELSE 0 END) as total_referrals,
+                AVG(balance) as avg_balance
+            FROM user_profiles
+        `);
+        
+        const topReferrers = await pool.query(`
+            SELECT 
+                up.user_id,
+                up.username,
+                up.first_name,
+                COUNT(r.ref_user_id) as referrals_count,
+                SUM(up2.balance) as referred_balance
+            FROM user_profiles up
+            LEFT JOIN user_profiles r ON up.user_id = r.referred_by
+            LEFT JOIN user_profiles up2 ON r.user_id = up2.user_id
+            WHERE up.referral_count > 0
+            GROUP BY up.user_id, up.username, up.first_name
+            ORDER BY referrals_count DESC
+            LIMIT 10
+        `);
+        
+        res.json({
+            success: true,
+            stats: stats.rows[0],
+            topReferrers: topReferrers.rows
+        });
+    } catch (error) {
+        console.error('Referral stats error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
 // ==================== SUPPORT CHAT ENDPOINTS ====================
 
 // Get or create user chat - ИСПРАВЛЕННАЯ ВЕРСИЯ
