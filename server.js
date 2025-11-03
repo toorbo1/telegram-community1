@@ -13,7 +13,8 @@ const PORT = process.env.PORT || 3000;
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const DATABASE_URL = process.env.DATABASE_URL;
 const ADMIN_ID = 8036875641;
-const APP_URL = process.env.RAILWAY_STATIC_URL || process.env.APP_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` || 'https://your-app.com';
+const APP_URL = (process.env.RAILWAY_STATIC_URL || process.env.APP_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` || 'https://your-app.com').replace(/\/$/, '');
+console.log('🔧 APP_URL configured as:', APP_URL);
 
 // Инициализация бота только если есть токен
 let bot;
@@ -30,14 +31,17 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 // Автоматические ping-запросы каждые 5 минут
+// Автоматические ping-запросы каждые 5 минут
 setInterval(async () => {
     try {
-        const response = await fetch(`${APP_URL}/api/health`);
-        console.log('🔄 Auto-ping health check:', response.status);
+        const healthUrl = `${APP_URL}/api/health`;
+        console.log('🔄 Auto-ping health check:', healthUrl);
+        const response = await fetch(healthUrl);
+        console.log('✅ Auto-ping response:', response.status);
     } catch (error) {
         console.log('⚠️ Auto-ping failed:', error.message);
     }
-}, 5 * 60 * 1000); // 5 минут
+}, 5 * 60 * 1000);
 
 // Middleware
 app.use(cors({
@@ -932,7 +936,6 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
     }
 });
 
-// Обработчик команды /notify для главного админа
 bot.onText(/\/notify(.+)?/, async (msg, match) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
@@ -962,8 +965,11 @@ bot.onText(/\/notify(.+)?/, async (msg, match) => {
             '🔄 Начинаю отправку уведомлений всем пользователям...'
         );
         
+        const notifyUrl = `${APP_URL}/api/admin/send-notification`;
+        console.log('📨 Sending notification to:', notifyUrl);
+        
         // Используем API endpoint для отправки уведомлений
-        const response = await fetch(`${APP_URL}/api/admin/send-notification`, {
+        const response = await fetch(notifyUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1004,7 +1010,7 @@ bot.onText(/\/notify(.+)?/, async (msg, match) => {
         console.error('Notify command error:', error);
         await bot.sendMessage(
             chatId,
-            '❌ Произошла ошибка при отправке уведомлений. Попробуйте позже.'
+            '❌ Произошла ошибка при отправке уведомлений: ' + error.message
         );
     }
 });
@@ -1023,7 +1029,10 @@ bot.onText(/\/stats/, async (msg) => {
     }
     
     try {
-        const response = await fetch(`${APP_URL}/api/admin/users-detailed-stats?adminId=${userId}&limit=5`);
+        const statsUrl = `${APP_URL}/api/admin/users-detailed-stats?adminId=${userId}&limit=5`;
+        console.log('📊 Fetching stats from:', statsUrl);
+        
+        const response = await fetch(statsUrl);
         const result = await response.json();
         
         if (result.success) {
@@ -1082,7 +1091,7 @@ bot.onText(/\/stats/, async (msg) => {
         console.error('Stats command error:', error);
         await bot.sendMessage(
             chatId,
-            '❌ Ошибка при получении статистики.'
+            '❌ Ошибка при получении статистики: ' + error.message
         );
     }
 });
@@ -2200,6 +2209,23 @@ app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) 
         });
     }
 });
+
+// Диагностика URL
+app.get('/api/debug/urls', (req, res) => {
+    res.json({
+        success: true,
+        urls: {
+            APP_URL: APP_URL,
+            health_url: `${APP_URL}/api/health`,
+            stats_url: `${APP_URL}/api/admin/users-detailed-stats?adminId=8036875641&limit=5`,
+            notify_url: `${APP_URL}/api/admin/send-notification`,
+            environment: process.env.NODE_ENV,
+            railway_public_domain: process.env.RAILWAY_PUBLIC_DOMAIN,
+            railway_static_url: process.env.RAILWAY_STATIC_URL
+        }
+    });
+});
+
 // Обновим endpoint /api/user/auth
 app.post('/api/user/auth', async (req, res) => {
     const { user, referralCode } = req.body; // Добавляем referralCode
