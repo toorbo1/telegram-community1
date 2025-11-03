@@ -1040,7 +1040,7 @@ bot.onText(/\/notify(.+)?/, async (msg, match) => {
             try {
                 await bot.sendMessage(
                     user.user_id,
-                    `📢 <b>Уведомление от администратора LinkGold:</b>\n\n${messageText}`,
+                    `📢 <b>Уведомление от LinkGold:</b>\n\n${messageText}`,
                     { parse_mode: 'HTML' }
                 );
                 successCount++;
