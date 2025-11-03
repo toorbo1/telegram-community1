@@ -169,7 +169,17 @@ async function fixPromocodesTable() {
 async function initDatabase() {
     try {
         console.log('🔄 Initializing simplified database...');
-        
+              // Таблица для лога уведомлений (опционально)
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS admin_notifications (
+                id SERIAL PRIMARY KEY,
+                admin_id BIGINT NOT NULL,
+                message TEXT NOT NULL,
+                sent_count INTEGER DEFAULT 0,
+                failed_count INTEGER DEFAULT 0,
+                sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
         // Таблица пользователей
         await pool.query(`
             CREATE TABLE IF NOT EXISTS user_profiles (
@@ -908,6 +918,141 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         await bot.sendMessage(chatId, '❌ Произошла ошибка при регистрации. Попробуйте позже.');
     }
 });
+
+// Обработчик команды /notify для главного админа
+bot.onText(/\/notify(.+)?/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    const messageText = match[1] ? match[1].trim() : null;
+    
+    console.log('📢 Notify command received:', { userId, messageText });
+    
+    // Проверяем, что это главный админ
+    if (parseInt(userId) !== ADMIN_ID) {
+        return await bot.sendMessage(
+            chatId,
+            '❌ У вас нет прав для отправки уведомлений. Эта команда доступна только главному администратору.'
+        );
+    }
+    
+    if (!messageText) {
+        return await bot.sendMessage(
+            chatId,
+            '❌ Использование: /notify [сообщение]\n\nПример: /notify Всем привет! Новое обновление уже доступно!'
+        );
+    }
+    
+    try {
+        // Показываем пользователю, что началась отправка
+        const processingMsg = await bot.sendMessage(
+            chatId,
+            '🔄 Начинаю отправку уведомлений всем пользователям...'
+        );
+        
+        // Используем API endpoint для отправки уведомлений
+        const response = await fetch(`${APP_URL}/api/admin/send-notification`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                adminId: userId,
+                message: messageText
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            await bot.editMessageText(
+                `✅ <b>Уведомление отправлено!</b>\n\n` +
+                `📊 Статистика:\n` +
+                `• Всего пользователей: ${result.stats.total}\n` +
+                `• Успешно отправлено: ${result.stats.success}\n` +
+                `• С ошибкой: ${result.stats.failed}\n\n` +
+                `💬 <b>Ваше сообщение:</b>\n${messageText}`,
+                {
+                    chat_id: chatId,
+                    message_id: processingMsg.message_id,
+                    parse_mode: 'HTML'
+                }
+            );
+        } else {
+            await bot.editMessageText(
+                `❌ Ошибка при отправке: ${result.error}`,
+                {
+                    chat_id: chatId,
+                    message_id: processingMsg.message_id
+                }
+            );
+        }
+        
+    } catch (error) {
+        console.error('Notify command error:', error);
+        await bot.sendMessage(
+            chatId,
+            '❌ Произошла ошибка при отправке уведомлений. Попробуйте позже.'
+        );
+    }
+});
+
+// Команда для просмотра статистики пользователей
+bot.onText(/\/stats/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    
+    // Проверяем права администратора
+    const isAdmin = await checkAdminAccess(userId);
+    if (!isAdmin) {
+        return await bot.sendMessage(
+            chatId,
+            '❌ У вас нет прав для просмотра статистики.'
+        );
+    }
+    
+    try {
+        const response = await fetch(`${APP_URL}/api/admin/users-stats?adminId=${userId}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            const stats = result.stats;
+            
+            await bot.sendMessage(
+                chatId,
+                `📊 <b>Статистика пользователей LinkGold</b>\n\n` +
+                `👥 Всего пользователей: <b>${stats.total_users}</b>\n` +
+                `👑 Администраторов: <b>${stats.admin_users}</b>\n` +
+                `💰 Пользователей с балансом: <b>${stats.users_with_balance}</b>\n` +
+                `🔗 Приглашенных: <b>${stats.referred_users}</b>\n` +
+                `💎 Общий баланс: <b>${parseFloat(stats.total_balance).toFixed(2)}⭐</b>\n` +
+                `📈 Средний баланс: <b>${parseFloat(stats.avg_balance).toFixed(2)}⭐</b>`,
+                {
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                {
+                                    text: '📢 Отправить уведомление',
+                                    callback_data: 'send_notification'
+                                }
+                            ]
+                        ]
+                    }
+                }
+            );
+        } else {
+            throw new Error(result.error);
+        }
+        
+    } catch (error) {
+        console.error('Stats command error:', error);
+        await bot.sendMessage(
+            chatId,
+            '❌ Ошибка при получении статистики.'
+        );
+    }
+});
+
 bot.onText(/\/referral/, async (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
@@ -1052,6 +1197,30 @@ bot.on('callback_query', async (callbackQuery) => {
                     }
                 );
             }
+        }
+        
+
+        if (data === 'send_notification') {
+            // Проверяем права администратора
+            const isAdmin = await checkAdminAccess(userId);
+            if (!isAdmin) {
+                await bot.answerCallbackQuery(callbackQuery.id, {
+                    text: '❌ У вас нет прав для отправки уведомлений'
+                });
+                return;
+            }
+            
+            await bot.sendMessage(
+                chatId,
+                '📢 <b>Отправка уведомления всем пользователям</b>\n\n' +
+                'Введите команду:\n' +
+                '<code>/notify [ваше сообщение]</code>\n\n' +
+                'Пример:\n' +
+                '<code>/notify Всем привет! Новые задания уже доступны!</code>',
+                {
+                    parse_mode: 'HTML'
+                }
+            );
         }
         
         // Подтверждаем обработку callback
@@ -1445,6 +1614,141 @@ app.get('/api/health', async (req, res) => {
     }
 });
 // ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
+
+// ==================== NOTIFICATION ENDPOINTS ====================
+
+// Отправка уведомлений всем пользователям (только для главного админа)
+app.post('/api/admin/send-notification', async (req, res) => {
+    const { adminId, message } = req.body;
+    
+    console.log('📢 Notification request from admin:', { adminId, message });
+    
+    // Проверяем, что это главный админ
+    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен. Только главный администратор может отправлять уведомления.'
+        });
+    }
+    
+    if (!message || message.trim() === '') {
+        return res.status(400).json({
+            success: false,
+            error: 'Сообщение не может быть пустым'
+        });
+    }
+    
+    try {
+        // Получаем всех пользователей из базы данных
+        const usersResult = await pool.query(
+            'SELECT user_id FROM user_profiles WHERE user_id != $1',
+            [ADMIN_ID]
+        );
+        
+        const users = usersResult.rows;
+        console.log(`📨 Найдено ${users.length} пользователей для отправки уведомлений`);
+        
+        let successCount = 0;
+        let failCount = 0;
+        const failedUsers = [];
+        
+        // Отправляем уведомление каждому пользователю
+        for (const user of users) {
+            try {
+                if (bot) {
+                    await bot.sendMessage(
+                        user.user_id,
+                        `📢 <b>Уведомление от администратора LinkGold:</b>\n\n${message}`,
+                        { parse_mode: 'HTML' }
+                    );
+                    successCount++;
+                    
+                    // Небольшая задержка чтобы не превысить лимиты Telegram
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            } catch (error) {
+                console.error(`❌ Ошибка отправки пользователю ${user.user_id}:`, error.message);
+                failCount++;
+                failedUsers.push({
+                    user_id: user.user_id,
+                    error: error.message
+                });
+            }
+        }
+        
+        console.log(`✅ Уведомления отправлены: ${successCount} успешно, ${failCount} с ошибкой`);
+        
+        res.json({
+            success: true,
+            message: `Уведомление отправлено ${successCount} пользователям`,
+            stats: {
+                total: users.length,
+                success: successCount,
+                failed: failCount
+            },
+            failedUsers: failedUsers.length > 0 ? failedUsers : undefined
+        });
+        
+    } catch (error) {
+        console.error('❌ Send notification error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка при отправке уведомлений: ' + error.message
+        });
+    }
+});
+
+// Получение статистики пользователей для админ-панели
+app.get('/api/admin/users-stats', async (req, res) => {
+    const { adminId } = req.query;
+    
+    // Проверяем права администратора
+    const isAdmin = await checkAdminAccess(adminId);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен'
+        });
+    }
+    
+    try {
+        // Получаем общую статистику пользователей
+        const statsResult = await pool.query(`
+            SELECT 
+                COUNT(*) as total_users,
+                COUNT(CASE WHEN is_admin = true THEN 1 END) as admin_users,
+                COUNT(CASE WHEN balance > 0 THEN 1 END) as users_with_balance,
+                COUNT(CASE WHEN referred_by IS NOT NULL THEN 1 END) as referred_users,
+                SUM(COALESCE(balance, 0)) as total_balance,
+                AVG(COALESCE(balance, 0)) as avg_balance
+            FROM user_profiles
+            WHERE user_id != $1
+        `, [ADMIN_ID]);
+        
+        // Получаем последних зарегистрированных пользователей
+        const recentUsers = await pool.query(`
+            SELECT user_id, username, first_name, balance, created_at 
+            FROM user_profiles 
+            WHERE user_id != $1
+            ORDER BY created_at DESC 
+            LIMIT 10
+        `, [ADMIN_ID]);
+        
+        res.json({
+            success: true,
+            stats: statsResult.rows[0],
+            recentUsers: recentUsers.rows
+        });
+        
+    } catch (error) {
+        console.error('Get users stats error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
 // Получение заявок на вывод для всех админов
 app.get('/api/admin/withdrawal-requests', async (req, res) => {
     const { adminId } = req.query;
