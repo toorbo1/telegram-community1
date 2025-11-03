@@ -171,15 +171,15 @@ async function initDatabase() {
         console.log('🔄 Initializing simplified database...');
               // Таблица для лога уведомлений (опционально)
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS admin_notifications (
-                id SERIAL PRIMARY KEY,
-                admin_id BIGINT NOT NULL,
-                message TEXT NOT NULL,
-                sent_count INTEGER DEFAULT 0,
-                failed_count INTEGER DEFAULT 0,
-                sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
+    CREATE TABLE IF NOT EXISTS admin_notifications (
+        id SERIAL PRIMARY KEY,
+        admin_id BIGINT NOT NULL,
+        message TEXT NOT NULL,
+        sent_count INTEGER DEFAULT 0,
+        failed_count INTEGER DEFAULT 0,
+        sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+`);
         // Таблица пользователей
         await pool.query(`
             CREATE TABLE IF NOT EXISTS user_profiles (
@@ -996,7 +996,6 @@ bot.onText(/\/notify(.+)?/, async (msg, match) => {
     }
 });
 
-// Команда для просмотра статистики пользователей
 bot.onText(/\/stats/, async (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
@@ -1011,25 +1010,47 @@ bot.onText(/\/stats/, async (msg) => {
     }
     
     try {
-        const response = await fetch(`${APP_URL}/api/admin/users-stats?adminId=${userId}`);
+        const response = await fetch(`${APP_URL}/api/admin/users-detailed-stats?adminId=${userId}&limit=5`);
         const result = await response.json();
         
         if (result.success) {
-            const stats = result.stats;
+            const stats = result.stats.main;
+            const activity = result.stats.activity;
+            
+            let message = `📊 <b>Детальная статистика LinkGold</b>\n\n`;
+            message += `<b>👥 Пользователи:</b>\n`;
+            message += `• Всего: <b>${stats.total_users}</b>\n`;
+            message += `• Админов: <b>${stats.admin_users}</b>\n`;
+            message += `• С балансом: <b>${stats.users_with_balance}</b>\n`;
+            message += `• Могут выводить: <b>${stats.users_can_withdraw}</b>\n\n`;
+            
+            message += `<b>💰 Финансы:</b>\n`;
+            message += `• Общий баланс: <b>${parseFloat(stats.total_balance).toFixed(2)}⭐</b>\n`;
+            message += `• Средний баланс: <b>${parseFloat(stats.avg_balance).toFixed(2)}⭐</b>\n`;
+            message += `• Макс. баланс: <b>${parseFloat(stats.max_balance).toFixed(2)}⭐</b>\n\n`;
+            
+            message += `<b>🎯 Активность:</b>\n`;
+            message += `• Выполнено заданий: <b>${activity.completed_tasks || 0}</b>\n`;
+            message += `• На проверке: <b>${activity.pending_tasks || 0}</b>\n`;
+            message += `• Заработано: <b>${parseFloat(activity.total_earned_from_tasks || 0).toFixed(2)}⭐</b>\n\n`;
+            
+            message += `<b>👥 Рефералы:</b>\n`;
+            message += `• Всего приглашено: <b>${stats.total_referrals}</b>\n`;
+            message += `• Заработано: <b>${parseFloat(stats.total_referral_earnings).toFixed(2)}⭐</b>`;
             
             await bot.sendMessage(
                 chatId,
-                `📊 <b>Статистика пользователей LinkGold</b>\n\n` +
-                `👥 Всего пользователей: <b>${stats.total_users}</b>\n` +
-                `👑 Администраторов: <b>${stats.admin_users}</b>\n` +
-                `💰 Пользователей с балансом: <b>${stats.users_with_balance}</b>\n` +
-                `🔗 Приглашенных: <b>${stats.referred_users}</b>\n` +
-                `💎 Общий баланс: <b>${parseFloat(stats.total_balance).toFixed(2)}⭐</b>\n` +
-                `📈 Средний баланс: <b>${parseFloat(stats.avg_balance).toFixed(2)}⭐</b>`,
+                message,
                 {
                     parse_mode: 'HTML',
                     reply_markup: {
                         inline_keyboard: [
+                            [
+                                {
+                                    text: '📊 Полная статистика',
+                                    url: `${APP_URL}/admin.html?tab=users`
+                                }
+                            ],
                             [
                                 {
                                     text: '📢 Отправить уведомление',
@@ -1052,7 +1073,6 @@ bot.onText(/\/stats/, async (msg) => {
         );
     }
 });
-
 bot.onText(/\/referral/, async (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
@@ -1618,31 +1638,40 @@ app.get('/api/health', async (req, res) => {
 // ==================== NOTIFICATION ENDPOINTS ====================
 
 // Отправка уведомлений всем пользователям (только для главного админа)
+// Исправленный endpoint для отправки уведомлений
 app.post('/api/admin/send-notification', async (req, res) => {
     const { adminId, message } = req.body;
     
     console.log('📢 Notification request from admin:', { adminId, message });
     
-    // Проверяем, что это главный админ
-    if (!adminId || parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Доступ запрещен. Только главный администратор может отправлять уведомления.'
-        });
-    }
-    
-    if (!message || message.trim() === '') {
-        return res.status(400).json({
-            success: false,
-            error: 'Сообщение не может быть пустым'
-        });
-    }
-    
     try {
+        // Проверяем права администратора
+        const isAdmin = await checkAdminAccess(adminId);
+        if (!isAdmin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Доступ запрещен. Только администраторы могут отправлять уведомления.'
+            });
+        }
+        
+        if (!message || message.trim() === '') {
+            return res.status(400).json({
+                success: false,
+                error: 'Сообщение не может быть пустым'
+            });
+        }
+        
+        // Сохраняем запись об уведомлении
+        const notificationRecord = await pool.query(`
+            INSERT INTO admin_notifications (admin_id, message, sent_count, failed_count) 
+            VALUES ($1, $2, $3, $4)
+            RETURNING *
+        `, [adminId, message, 0, 0]);
+        
         // Получаем всех пользователей из базы данных
         const usersResult = await pool.query(
             'SELECT user_id FROM user_profiles WHERE user_id != $1',
-            [ADMIN_ID]
+            [adminId]
         );
         
         const users = usersResult.rows;
@@ -1652,7 +1681,7 @@ app.post('/api/admin/send-notification', async (req, res) => {
         let failCount = 0;
         const failedUsers = [];
         
-        // Отправляем уведомление каждому пользователю
+        // Отправляем уведомление каждому пользователю с обработкой ошибок
         for (const user of users) {
             try {
                 if (bot) {
@@ -1663,8 +1692,15 @@ app.post('/api/admin/send-notification', async (req, res) => {
                     );
                     successCount++;
                     
-                    // Небольшая задержка чтобы не превысить лимиты Telegram
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    // Задержка чтобы не превысить лимиты Telegram (20 сообщений в секунду)
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                } else {
+                    console.log('⚠️ Bot not initialized, skipping message send');
+                    failCount++;
+                    failedUsers.push({
+                        user_id: user.user_id,
+                        error: 'Bot not initialized'
+                    });
                 }
             } catch (error) {
                 console.error(`❌ Ошибка отправки пользователю ${user.user_id}:`, error.message);
@@ -1673,8 +1709,20 @@ app.post('/api/admin/send-notification', async (req, res) => {
                     user_id: user.user_id,
                     error: error.message
                 });
+                
+                // Если ошибка связана с блокировкой бота, пропускаем пользователя
+                if (error.response && error.response.statusCode === 403) {
+                    console.log(`🚫 Бот заблокирован пользователем ${user.user_id}`);
+                }
             }
         }
+        
+        // Обновляем статистику отправки
+        await pool.query(`
+            UPDATE admin_notifications 
+            SET sent_count = $1, failed_count = $2 
+            WHERE id = $3
+        `, [successCount, failCount, notificationRecord.rows[0].id]);
         
         console.log(`✅ Уведомления отправлены: ${successCount} успешно, ${failCount} с ошибкой`);
         
@@ -1686,7 +1734,8 @@ app.post('/api/admin/send-notification', async (req, res) => {
                 success: successCount,
                 failed: failCount
             },
-            failedUsers: failedUsers.length > 0 ? failedUsers : undefined
+            failedUsers: failedUsers.length > 0 ? failedUsers.slice(0, 10) : undefined, // Ограничиваем вывод
+            notificationId: notificationRecord.rows[0].id
         });
         
     } catch (error) {
@@ -1694,6 +1743,255 @@ app.post('/api/admin/send-notification', async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Ошибка при отправке уведомлений: ' + error.message
+        });
+    }
+});
+
+// Полная статистика пользователей с детализацией
+app.get('/api/admin/users-detailed-stats', async (req, res) => {
+    const { adminId, limit = 50, offset = 0, search = '' } = req.query;
+    
+    console.log('📊 Detailed users stats request from admin:', adminId);
+    
+    try {
+        // Проверяем права администратора
+        const isAdmin = await checkAdminAccess(adminId);
+        if (!isAdmin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Доступ запрещен. Только администраторы могут просматривать статистику.'
+            });
+        }
+        
+        // Основная статистика
+        const mainStats = await pool.query(`
+            SELECT 
+                COUNT(*) as total_users,
+                COUNT(CASE WHEN is_admin = true THEN 1 END) as admin_users,
+                COUNT(CASE WHEN balance > 0 THEN 1 END) as users_with_balance,
+                COUNT(CASE WHEN referred_by IS NOT NULL THEN 1 END) as referred_users,
+                COUNT(CASE WHEN balance >= 200 THEN 1 END) as users_can_withdraw,
+                SUM(COALESCE(balance, 0)) as total_balance,
+                AVG(COALESCE(balance, 0)) as avg_balance,
+                MAX(COALESCE(balance, 0)) as max_balance,
+                SUM(COALESCE(referral_count, 0)) as total_referrals,
+                SUM(COALESCE(referral_earned, 0)) as total_referral_earnings
+            FROM user_profiles
+            WHERE user_id != $1
+        `, [ADMIN_ID]);
+        
+        // Статистика по активностям
+        const activityStats = await pool.query(`
+            SELECT 
+                COUNT(DISTINCT user_id) as users_with_tasks,
+                COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_tasks,
+                COUNT(CASE WHEN status = 'pending_review' THEN 1 END) as pending_tasks,
+                COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected_tasks,
+                SUM(CASE WHEN status = 'completed' THEN t.price ELSE 0 END) as total_earned_from_tasks
+            FROM user_tasks ut
+            JOIN tasks t ON ut.task_id = t.id
+        `);
+        
+        // Статистика по датам
+        const dateStats = await pool.query(`
+            SELECT 
+                COUNT(CASE WHEN created_at >= CURRENT_DATE THEN 1 END) as new_today,
+                COUNT(CASE WHEN created_at >= CURRENT_DATE - INTERVAL '7 days' THEN 1 END) as new_week,
+                COUNT(CASE WHEN created_at >= CURRENT_DATE - INTERVAL '30 days' THEN 1 END) as new_month,
+                TO_CHAR(created_at, 'YYYY-MM-DD') as date,
+                COUNT(*) as daily_registrations
+            FROM user_profiles 
+            WHERE user_id != $1 AND created_at >= CURRENT_DATE - INTERVAL '30 days'
+            GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
+            ORDER BY date DESC
+            LIMIT 30
+        `, [ADMIN_ID]);
+        
+        // Детальный список пользователей с поиском и пагинацией
+        let usersQuery = `
+            SELECT 
+                up.user_id,
+                up.username,
+                up.first_name,
+                up.last_name,
+                up.balance,
+                up.referral_count,
+                up.referral_earned,
+                up.referred_by,
+                up.is_admin,
+                up.created_at,
+                ref.username as referrer_username,
+                ref.first_name as referrer_name,
+                COUNT(ut.id) as total_tasks,
+                COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_tasks,
+                COUNT(CASE WHEN ut.status = 'pending_review' THEN 1 END) as pending_tasks,
+                COALESCE(SUM(CASE WHEN ut.status = 'completed' THEN t.price ELSE 0 END), 0) as total_earned
+            FROM user_profiles up
+            LEFT JOIN user_profiles ref ON up.referred_by = ref.user_id
+            LEFT JOIN user_tasks ut ON up.user_id = ut.user_id
+            LEFT JOIN tasks t ON ut.task_id = t.id
+        `;
+        
+        let queryParams = [ADMIN_ID];
+        let whereConditions = ['up.user_id != $1'];
+        let paramCount = 1;
+        
+        if (search) {
+            paramCount++;
+            whereConditions.push(`
+                (up.username ILIKE $${paramCount} 
+                 OR up.first_name ILIKE $${paramCount} 
+                 OR up.last_name ILIKE $${paramCount}
+                 OR up.user_id::text = $${paramCount})
+            `);
+            queryParams.push(`%${search}%`);
+        }
+        
+        if (whereConditions.length > 0) {
+            usersQuery += ' WHERE ' + whereConditions.join(' AND ');
+        }
+        
+        usersQuery += `
+            GROUP BY up.user_id, ref.username, ref.first_name
+            ORDER BY up.created_at DESC
+            LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
+        `;
+        
+        queryParams.push(parseInt(limit), parseInt(offset));
+        
+        const usersResult = await pool.query(usersQuery, queryParams);
+        
+        // Топ рефералов
+        const topReferrers = await pool.query(`
+            SELECT 
+                user_id,
+                username,
+                first_name,
+                referral_count,
+                referral_earned
+            FROM user_profiles 
+            WHERE referral_count > 0 
+            ORDER BY referral_count DESC, referral_earned DESC 
+            LIMIT 10
+        `);
+        
+        // Топ пользователей по балансу
+        const topBalances = await pool.query(`
+            SELECT 
+                user_id,
+                username,
+                first_name,
+                balance
+            FROM user_profiles 
+            WHERE balance > 0 
+            ORDER BY balance DESC 
+            LIMIT 10
+        `);
+        
+        res.json({
+            success: true,
+            stats: {
+                main: mainStats.rows[0],
+                activity: activityStats.rows[0],
+                dates: dateStats.rows,
+                top_referrers: topReferrers.rows,
+                top_balances: topBalances.rows
+            },
+            users: usersResult.rows,
+            pagination: {
+                limit: parseInt(limit),
+                offset: parseInt(offset),
+                total: parseInt(mainStats.rows[0].total_users)
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Get detailed users stats error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Экспорт данных пользователей
+app.get('/api/admin/users-export', async (req, res) => {
+    const { adminId, format = 'json' } = req.query;
+    
+    try {
+        // Проверяем права администратора
+        const isAdmin = await checkAdminAccess(adminId);
+        if (!isAdmin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Доступ запрещен.'
+            });
+        }
+        
+        const usersResult = await pool.query(`
+            SELECT 
+                up.user_id,
+                up.username,
+                up.first_name,
+                up.last_name,
+                up.balance,
+                up.referral_count,
+                up.referral_earned,
+                up.referred_by,
+                up.is_admin,
+                up.created_at,
+                ref.username as referrer_username,
+                COUNT(ut.id) as total_tasks,
+                COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_tasks,
+                COALESCE(SUM(CASE WHEN ut.status = 'completed' THEN t.price ELSE 0 END), 0) as total_earned
+            FROM user_profiles up
+            LEFT JOIN user_profiles ref ON up.referred_by = ref.user_id
+            LEFT JOIN user_tasks ut ON up.user_id = ut.user_id
+            LEFT JOIN tasks t ON ut.task_id = t.id
+            WHERE up.user_id != $1
+            GROUP BY up.user_id, ref.username
+            ORDER BY up.created_at DESC
+        `, [ADMIN_ID]);
+        
+        if (format === 'csv') {
+            // Генерируем CSV
+            const headers = ['ID', 'Username', 'First Name', 'Balance', 'Referrals', 'Referral Earned', 'Tasks Completed', 'Total Earned', 'Registration Date'];
+            let csv = headers.join(',') + '\n';
+            
+            usersResult.rows.forEach(user => {
+                const row = [
+                    user.user_id,
+                    user.username || '',
+                    user.first_name || '',
+                    user.balance || 0,
+                    user.referral_count || 0,
+                    user.referral_earned || 0,
+                    user.completed_tasks || 0,
+                    user.total_earned || 0,
+                    user.created_at
+                ].map(field => `"${field}"`).join(',');
+                
+                csv += row + '\n';
+            });
+            
+            res.setHeader('Content-Type', 'text/csv');
+            res.setHeader('Content-Disposition', 'attachment; filename=users_export.csv');
+            return res.send(csv);
+        } else {
+            // JSON формат
+            res.json({
+                success: true,
+                users: usersResult.rows,
+                exported_at: new Date().toISOString(),
+                total_users: usersResult.rows.length
+            });
+        }
+        
+    } catch (error) {
+        console.error('❌ Users export error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
         });
     }
 });
