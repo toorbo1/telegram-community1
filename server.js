@@ -170,6 +170,7 @@ async function initDatabase() {
     try {
         console.log('🔄 Initializing simplified database...');
 // Таблица для лога уведомлений
+// Таблица для лога уведомлений
 await pool.query(`
     CREATE TABLE IF NOT EXISTS admin_notifications (
         id SERIAL PRIMARY KEY,
@@ -932,6 +933,47 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
     }
 });
 
+
+// Тестовая команда для проверки отправки уведомлений
+bot.onText(/\/testnotify/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    
+    // Только для главного админа
+    if (parseInt(userId) !== ADMIN_ID) {
+        return await bot.sendMessage(
+            chatId,
+            '❌ У вас нет прав для тестирования уведомлений.'
+        );
+    }
+    
+    try {
+        // Простая проверка - отправляем сообщение самому себе
+        await bot.sendMessage(
+            chatId,
+            '✅ Бот работает корректно! Вы можете использовать /notify для рассылки.'
+        );
+        
+        // Проверяем количество пользователей
+        const usersCount = await pool.query(
+            'SELECT COUNT(*) FROM user_profiles WHERE user_id != $1',
+            [ADMIN_ID]
+        );
+        
+        await bot.sendMessage(
+            chatId,
+            `📊 Всего пользователей для рассылки: ${parseInt(usersCount.rows[0].count)}`
+        );
+        
+    } catch (error) {
+        console.error('Test notify error:', error);
+        await bot.sendMessage(
+            chatId,
+            `❌ Ошибка тестирования: ${error.message}`
+        );
+    }
+});
+
 // Обработчик команды /notify для главного админа
 // Обработчик команды /notify для главного админа
 bot.onText(/\/notify(.+)?/, async (msg, match) => {
@@ -941,7 +983,7 @@ bot.onText(/\/notify(.+)?/, async (msg, match) => {
     
     console.log('📢 Notify command received:', { userId, messageText });
     
-    // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Проверяем что это именно главный админ
+    // Проверяем что это именно главный админ
     if (parseInt(userId) !== ADMIN_ID) {
         return await bot.sendMessage(
             chatId,
@@ -963,15 +1005,16 @@ bot.onText(/\/notify(.+)?/, async (msg, match) => {
             '🔄 Начинаю отправку уведомлений всем пользователям...'
         );
         
-        // Получаем общее количество пользователей
-        const usersCount = await pool.query(
-            'SELECT COUNT(*) FROM user_profiles WHERE user_id != $1',
+        // 🔥 ИСПРАВЛЕНИЕ: Получаем всех пользователей и отправляем напрямую через бота
+        const usersResult = await pool.query(
+            'SELECT user_id FROM user_profiles WHERE user_id != $1',
             [ADMIN_ID]
         );
         
-        const totalUsers = parseInt(usersCount.rows[0].count);
+        const users = usersResult.rows;
+        console.log(`📨 Найдено ${users.length} пользователей для отправки уведомлений`);
         
-        if (totalUsers === 0) {
+        if (users.length === 0) {
             return await bot.editMessageText(
                 '❌ Нет пользователей для отправки уведомлений',
                 {
@@ -981,70 +1024,120 @@ bot.onText(/\/notify(.+)?/, async (msg, match) => {
             );
         }
         
-        // Отправляем уведомления через API
-        const response = await fetch(`${APP_URL}/api/admin/send-notification`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                adminId: userId,
-                message: messageText
-            })
-        });
+        let successCount = 0;
+        let failCount = 0;
+        const failedUsers = [];
         
-        const result = await response.json();
+        // Сохраняем запись об уведомлении
+        const notificationRecord = await pool.query(`
+            INSERT INTO admin_notifications (admin_id, message, sent_count, failed_count) 
+            VALUES ($1, $2, $3, $4)
+            RETURNING *
+        `, [userId, messageText, 0, 0]);
         
-        if (result.success) {
-            await bot.editMessageText(
-                `✅ <b>Уведомление отправлено!</b>\n\n` +
-                `📊 Статистика:\n` +
-                `• Всего пользователей: ${result.stats.total}\n` +
-                `• Успешно отправлено: ${result.stats.success}\n` +
-                `• С ошибкой: ${result.stats.failed}\n\n` +
-                `💬 <b>Ваше сообщение:</b>\n${messageText}`,
-                {
-                    chat_id: chatId,
-                    message_id: processingMsg.message_id,
-                    parse_mode: 'HTML'
-                }
-            );
-            
-            // Показываем первых 5 ошибок если есть
-            if (result.failedUsers && result.failedUsers.length > 0) {
-                let errorsText = '\n\n❌ <b>Ошибки отправки:</b>\n';
-                result.failedUsers.slice(0, 5).forEach((failed, index) => {
-                    errorsText += `${index + 1}. Пользователь ${failed.user_id}: ${failed.error}\n`;
-                });
-                
-                if (result.failedUsers.length > 5) {
-                    errorsText += `... и еще ${result.failedUsers.length - 5} ошибок`;
-                }
-                
+        // Отправляем уведомление каждому пользователю
+        for (const user of users) {
+            try {
                 await bot.sendMessage(
-                    chatId,
-                    errorsText,
+                    user.user_id,
+                    `📢 <b>Уведомление от администратора LinkGold:</b>\n\n${messageText}`,
                     { parse_mode: 'HTML' }
                 );
-            }
-        } else {
-            await bot.editMessageText(
-                `❌ Ошибка при отправке: ${result.error}`,
-                {
-                    chat_id: chatId,
-                    message_id: processingMsg.message_id
+                successCount++;
+                
+                // Обновляем прогресс каждые 10 отправок
+                if (successCount % 10 === 0) {
+                    await bot.editMessageText(
+                        `🔄 Отправка уведомлений...\n\nПрогресс: ${successCount}/${users.length}`,
+                        {
+                            chat_id: chatId,
+                            message_id: processingMsg.message_id
+                        }
+                    );
                 }
-            );
+                
+                // Задержка чтобы не превысить лимиты Telegram (30 сообщений в секунду)
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+            } catch (error) {
+                console.error(`❌ Ошибка отправки пользователю ${user.user_id}:`, error.message);
+                failCount++;
+                failedUsers.push({
+                    user_id: user.user_id,
+                    error: error.message
+                });
+                
+                // Если ошибка связана с блокировкой бота, пропускаем пользователя
+                if (error.response && error.response.statusCode === 403) {
+                    console.log(`🚫 Бот заблокирован пользователем ${user.user_id}`);
+                }
+            }
         }
+        
+        // Обновляем статистику отправки
+        await pool.query(`
+            UPDATE admin_notifications 
+            SET sent_count = $1, failed_count = $2 
+            WHERE id = $3
+        `, [successCount, failCount, notificationRecord.rows[0].id]);
+        
+        console.log(`✅ Уведомления отправлены: ${successCount} успешно, ${failCount} с ошибкой`);
+        
+        // Формируем финальное сообщение со статистикой
+        let finalMessage = `✅ <b>Уведомление отправлено!</b>\n\n`;
+        finalMessage += `📊 <b>Статистика:</b>\n`;
+        finalMessage += `• Всего пользователей: ${users.length}\n`;
+        finalMessage += `• Успешно отправлено: ${successCount}\n`;
+        finalMessage += `• С ошибкой: ${failCount}\n\n`;
+        finalMessage += `💬 <b>Ваше сообщение:</b>\n${messageText}`;
+        
+        // Показываем ошибки если есть
+        if (failedUsers.length > 0) {
+            finalMessage += `\n\n❌ <b>Ошибки отправки (первые 5):</b>\n`;
+            failedUsers.slice(0, 5).forEach((failed, index) => {
+                finalMessage += `${index + 1}. ID ${failed.user_id}: ${failed.error}\n`;
+            });
+            
+            if (failedUsers.length > 5) {
+                finalMessage += `... и еще ${failedUsers.length - 5} ошибок`;
+            }
+        }
+        
+        await bot.editMessageText(
+            finalMessage,
+            {
+                chat_id: chatId,
+                message_id: processingMsg.message_id,
+                parse_mode: 'HTML'
+            }
+        );
         
     } catch (error) {
         console.error('Notify command error:', error);
-        await bot.sendMessage(
-            chatId,
-            '❌ Произошла ошибка при отправке уведомлений. Попробуйте позже.'
-        );
+        
+        // Пытаемся отправить сообщение об ошибке
+        try {
+            await bot.sendMessage(
+                chatId,
+                `❌ Произошла ошибка при отправке уведомлений: ${error.message}`
+            );
+        } catch (e) {
+            console.error('Even error message failed:', e);
+        }
     }
 });
+
+// Обработчик ошибок бота
+if (bot) {
+    bot.on('polling_error', (error) => {
+        console.error('❌ Bot polling error:', error);
+    });
+    
+    bot.on('webhook_error', (error) => {
+        console.error('❌ Bot webhook error:', error);
+    });
+}
+
 // Получение истории отправленных уведомлений
 app.get('/api/admin/notification-history', async (req, res) => {
     const { adminId } = req.query;
