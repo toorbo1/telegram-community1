@@ -9793,11 +9793,11 @@ function openTaskModal(taskId) {
             if (task.image_url) {
                 modalImageContainer.innerHTML = `
                     <div class="task-image-placeholder">
-    <div style="text-align: center;">
-        <div style="font-size: 32px; margin-bottom: 8px;">📋</div>
-        <div style="font-size: 12px;">Описание задания</div>
-    </div>
-</div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 32px; margin-bottom: 8px;">📋</div>
+                            <div style="font-size: 12px;">Описание задания</div>
+                        </div>
+                    </div>
                 `;
             } else {
                 modalImageContainer.innerHTML = `
@@ -9811,13 +9811,35 @@ function openTaskModal(taskId) {
             }
         }
         
-       document.getElementById('task-modal-time').textContent = task.time_to_complete || '5 минут';
+        document.getElementById('task-modal-time').textContent = task.time_to_complete || '5 минут';
         document.getElementById('task-modal-difficulty').textContent = task.difficulty || 'Легкая';
         
         const peopleRequired = task.people_required || 1;
         const completedCount = task.completed_count || 0;
         const availableTasks = Math.max(0, peopleRequired - completedCount);
         document.getElementById('task-modal-available').textContent = `${availableTasks} заданий`;
+        
+        // 🔧 ДОБАВЛЕНО: Обработка ссылки на задание
+        const taskUrl = task.task_url;
+        const startButton = document.querySelector('.task-modal-start');
+        
+        if (taskUrl && taskUrl.startsWith('http')) {
+            // Если есть валидная ссылка, меняем поведение кнопки
+            startButton.textContent = '🔗 Перейти к заданию';
+            startButton.onclick = function() {
+                console.log('🔗 Opening task URL:', taskUrl);
+                // Открываем ссылку в новом окне/вкладке
+                window.open(taskUrl, '_blank');
+                // Закрываем модальное окно
+                closeModal('task-modal');
+                // Также можно автоматически начать задание
+                startTask();
+            };
+        } else {
+            // Стандартное поведение - просто начать задание
+            startButton.textContent = 'Начать задание';
+            startButton.onclick = startTask;
+        }
         
         document.getElementById('task-modal').classList.add('active');
         console.log('✅ Task modal opened successfully');
