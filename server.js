@@ -30,12 +30,13 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 // Автоматические ping-запросы каждые 5 минут
+// Автоматические ping-запросы к базе каждые 5 минут
 setInterval(async () => {
     try {
-        const response = await fetch(`${APP_URL}/api/health`);
-        console.log('🔄 Auto-ping health check:', response.status);
+        await pool.query('SELECT 1');
+        console.log('✅ Database ping successful');
     } catch (error) {
-        console.log('⚠️ Auto-ping failed:', error.message);
+        console.error('❌ Database ping failed:', error);
     }
 }, 5 * 60 * 1000); // 5 минут
 
@@ -104,22 +105,34 @@ async function checkAdminAccess(userId) {
         return parseInt(userId) === ADMIN_ID;
     }
 }
-// // Временно добавьте эту функцию для отладки
-// function debugWithdrawalSystem() {
-//     console.log('🐛 DEBUG Withdrawal System:');
-//     console.log('- currentUser:', currentUser); // ← исправлено на английское
-//     console.log('- isAdmin:', currentUser?.is_admin);
-    
-//     // Проверьте, загружаются ли запросы
-//     loadWithdrawalRequests().then(() => {
-//         console.log('✅ Withdrawal requests loaded');
-//     }).catch(error => {
-//         console.error('❌ Error loading withdrawal requests:', error);
-//     });
-// }
-// Вызовите для тестирования
-// setTimeout(debugWithdrawalSystem, 3000);
-// 🔧 ФУНКЦИЯ ДЛЯ ИСПРАВЛЕНИЯ СТРУКТУРЫ ТАБЛИЦЫ ПРОМОКОДОВ
+// Логирование состояния базы данных
+setInterval(async () => {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                count(*) as total_tasks,
+                count(CASE WHEN status = 'active' THEN 1 END) as active_tasks,
+                count(CASE WHEN status = 'completed' THEN 1 END) as completed_tasks
+            FROM tasks
+        `);
+        
+        const userStats = await pool.query(`
+            SELECT 
+                count(*) as total_users,
+                count(CASE WHEN is_admin = true THEN 1 END) as admin_users
+            FROM user_profiles
+        `);
+        
+        console.log('📊 Database Stats:', {
+            tasks: result.rows[0],
+            users: userStats.rows[0],
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('❌ Database stats error:', error);
+    }
+}, 15 * 60 * 1000); // Каждые 15 минут
+
 async function fixPromocodesTable() {
     try {
         console.log('🔧 Fixing promocodes table structure...');
@@ -1489,12 +1502,13 @@ bot.on('callback_query', async (callbackQuery) => {
 app.get('/api/health', async (req, res) => {
     try {
         // Проверяем подключение к БД
-        await pool.query('SELECT 1');
+        const dbResult = await pool.query('SELECT 1');
+        const dbStatus = dbResult ? 'connected' : 'disconnected';
         
         const healthInfo = {
             status: 'OK',
             timestamp: new Date().toISOString(),
-            database: 'Connected',
+            database: dbStatus,
             uptime: process.uptime(),
             memory: process.memoryUsage(),
             environment: process.env.NODE_ENV || 'development'
@@ -1844,25 +1858,7 @@ app.post('/api/tasks', async (req, res) => {
         });
     }
 });
-// Health check
-app.get('/api/health', async (req, res) => {
-    try {
-        await pool.query('SELECT 1');
-        res.json({ 
-            status: 'OK', 
-            message: 'LinkGold API is running!',
-            timestamp: new Date().toISOString(),
-            database: 'PostgreSQL'
-        });
-    } catch (error) {
-        console.error('Health check error:', error);
-        res.status(500).json({
-            status: 'ERROR',
-            message: 'Database connection failed',
-            error: error.message
-        });
-    }
-});
+
 // ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
 
 // ==================== NOTIFICATION ENDPOINTS ====================
@@ -3630,9 +3626,10 @@ app.post('/api/user/tasks/:userTaskId/submit', upload.single('screenshot'), asyn
         });
     }
 });
-// Обработка ошибок подключения к БД
+// Обработчик ошибок подключения к БД
 pool.on('error', (err, client) => {
     console.error('❌ Database connection error:', err);
+    // Можно добавить логику переподключения
 });
 
 // Функция переподключения к БД
