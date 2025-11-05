@@ -4838,7 +4838,7 @@ app.post('/api/withdrawal/request', async (req, res) => {
     }
     
     try {
-        const MIN_WITHDRAWAL = 200; // Минимальная сумма вывода
+        const MIN_WITHDRAWAL = 250; // Минимальная сумма вывода
         
         // Проверяем баланс пользователя
         const userResult = await pool.query(
