@@ -8,7 +8,34 @@
 
 
            <style>
-            
+            .verification-item {
+    transition: all 0.3s ease;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    background: var(--card-bg);
+    cursor: pointer;
+}
+
+.verification-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border-color: var(--accent);
+}
+
+.verification-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--purple-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    flex-shrink: 0;
+}
         /* Стили для поиска в админке */
         .admin-search-container {
             position: relative;
@@ -5172,7 +5199,7 @@ html, body {
 <div class="admin-buttons">
     <button class="admin-btn" onclick="showAdminSection('posts')">📝 Посты</button>
     <button class="admin-btn" onclick="showAdminSection('tasks')">📋 Задания</button>
-    <button class="admin-btn" onclick="showAdminSection('verification')">✅ Проверка</button>
+    <button class="admin-btn" onclick="showAdminVerificationSection()">✅ Проверка</button>
     <button class="admin-btn" onclick="showAdminSection('support')">💬 Поддержка</button>
     <button class="admin-btn" onclick="showAdminSection('payments')">💳 Оплаты</button>
     <button class="admin-btn" onclick="showAdminSection('admins')">👥 Админы</button>
@@ -10048,7 +10075,6 @@ async function loadTaskVerifications() {
     }
 }
 
-// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ПРОВЕРОК
 function displayTaskVerifications(verifications) {
     const container = document.getElementById('admin-verification-list');
     if (!container) return;
@@ -10056,33 +10082,75 @@ function displayTaskVerifications(verifications) {
     container.innerHTML = '';
 
     if (!verifications || verifications.length === 0) {
-        container.innerHTML = ` `;
+        container.innerHTML = `
+            <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
+                <div>Нет заданий на проверке</div>
+                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
+                    Новые задания появятся здесь после отправки пользователями
+                </div>
+            </div>
+        `;
         return;
     }
 
     verifications.forEach(verification => {
         const verificationElement = document.createElement('div');
         verificationElement.className = 'verification-item';
+        verificationElement.style.cssText = `
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        `;
+        verificationElement.onmouseover = function() {
+            this.style.transform = 'translateY(-2px)';
+            this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+        };
+        verificationElement.onmouseout = function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = 'none';
+        };
+
+        // ОБРАБОТЧИК КЛИКА - ОТКРЫВАЕМ МОДАЛЬНОЕ ОКНО
         verificationElement.onclick = () => openVerificationModal(verification);
 
         const userAvatar = verification.user_name ? verification.user_name.charAt(0).toUpperCase() : 'U';
         const submissionTime = formatPostDate(verification.submitted_at);
 
         verificationElement.innerHTML = `
-            <div class="verification-header">
-                <div class="verification-avatar">
-                    ${userAvatar}
-                </div>
-                <div class="verification-user-info">
-                    <div class="verification-user-name">
-                        ${verification.user_name}
-                        ${verification.username ? `(@${verification.username})` : ''}
+            <div class="verification-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div class="verification-avatar" style="width: 40px; height: 40px; border-radius: 50%; background: var(--purple-gradient); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                        ${userAvatar}
                     </div>
-                    <div class="verification-task-title">${verification.task_title}</div>
+                    <div class="verification-user-info">
+                        <div class="verification-user-name" style="font-weight: 600; margin-bottom: 4px;">
+                            ${verification.user_name}
+                            ${verification.username ? `(@${verification.username})` : ''}
+                        </div>
+                        <div class="verification-task-title" style="color: var(--text-secondary); font-size: 14px;">
+                            ${verification.task_title}
+                        </div>
+                    </div>
                 </div>
-                <div class="verification-price">${verification.task_price} ⭐</div>
+                <div class="verification-price" style="font-size: 18px; font-weight: 700; color: var(--gold);">
+                    ${verification.task_price} ⭐
+                </div>
             </div>
-            <div class="verification-time">Отправлено: ${submissionTime}</div>
+            <div class="verification-time" style="color: var(--text-secondary); font-size: 12px;">
+                Отправлено: ${submissionTime}
+            </div>
+            
+            <!-- Индикатор нового задания -->
+            <div style="margin-top: 10px; padding: 8px; background: rgba(59, 130, 246, 0.1); border-radius: 6px; border-left: 3px solid var(--accent);">
+                <div style="font-size: 12px; color: var(--accent); font-weight: 600;">
+                    📸 Нажмите для просмотра скриншота и проверки
+                </div>
+            </div>
         `;
 
         container.appendChild(verificationElement);
@@ -10768,24 +10836,7 @@ function addApprovalDebugButton() {
 }
 
 setTimeout(addApprovalDebugButton, 3000);
-// В навигацию добавьте временно кнопку для теста
-// function addDebugButton() {
-//     const debugBtn = document.createElement('button');
-    
-//     debugBtn.style.position = 'fixed';
-//     debugBtn.style.top = '10px';
-//     debugBtn.style.right = '10px';
-//     debugBtn.style.zIndex = '10000';
-//     debugBtn.style.padding = '10px';
-//     debugBtn.style.background = 'red';
-//     debugBtn.style.color = 'white';
-//     debugBtn.style.border = 'none';
-//     debugBtn.style.borderRadius = '5px';
-//     debugBtn.onclick = debugTasksLoading;
-//     document.body.appendChild(debugBtn);
-// }
 
-// Вызовите в initializeApp()
 addDebugButton();
 // В функции rejectVerification добавьте обновление списка заданий
 // 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОТКЛОНЕНИЯ ЗАДАНИЯ
@@ -11302,6 +11353,22 @@ function filterAdminTasks() {
     }
 }
 
+// Автоматическое обновление каждые 30 секунд
+setInterval(() => {
+    if (document.getElementById('admin-verification-section').style.display === 'block') {
+        console.log('🔄 Auto-refreshing verification list');
+        loadTaskVerifications();
+    }
+}, 30000);
+
+// Принудительное обновление при открытии секции
+function showAdminVerificationSection() {
+    showAdminSection('verification');
+    // Загружаем с небольшой задержкой чтобы интерфейс успел отобразиться
+    setTimeout(() => {
+        loadTaskVerifications();
+    }, 100);
+}
 
 // 🔧 ПРИНУДИТЕЛЬНАЯ ИНИЦИАЛИЗАЦИЯ АДМИН-ПАНЕЛИ
 function initializeAdminPanel() {
