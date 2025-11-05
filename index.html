@@ -12816,7 +12816,7 @@ function showAdminPaymentsSection() {
 function updateWithdrawPage() {
     const balanceDisplay = document.getElementById('withdraw-balance-display');
     const withdrawBtn = document.getElementById('withdraw-btn');
-    const MIN_WITHDRAWAL = 200;
+    const MIN_WITHDRAWAL = 250;
     
     if (balanceDisplay && currentUser) {
         balanceDisplay.textContent = `${currentUser.balance || 0} ⭐`;
