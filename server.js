@@ -4716,7 +4716,7 @@ app.post('/api/admin/task-verifications/:verificationId/reject', async (req, res
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
     
-    console.log('❌ Отклонение задания админом:', { verificationId, adminId });
+    console.log(' ❌ Отклонение задания админом:', { verificationId, adminId });
     
     // Проверка прав администратора - РАЗРЕШАЕМ ВСЕМ АДМИНАМ
     const isAdmin = await checkAdminAccess(adminId);
