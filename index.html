@@ -8046,6 +8046,7 @@ async function updateActiveTasksCount() {
     }
 }
 
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ РЕФЕРАЛЬНОЙ СИСТЕМЫ
 function updateReferralSystem() {
     if (!currentUser) return;
     
@@ -8062,17 +8063,86 @@ function updateReferralSystem() {
     if (refInvited) refInvited.textContent = currentUser.referral_count || 0;
     if (refEarned) refEarned.textContent = `${currentUser.referral_earned || 0} ⭐`;
     
-    // 🔥 ИСПРАВЛЕНИЕ: Обновляем текст с правильными бонусами
+    // 🔥 ОБНОВЛЯЕМ ТЕКСТ С НОВЫМИ УСЛОВИЯМИ
     const referralInfo = document.querySelector('.referral-info');
     if (referralInfo) {
         referralInfo.innerHTML = `
-            🎁 Вы получаете: <strong>10⭐</strong> за друга<br>
-            🎁 Друг получает: <strong>5⭐</strong> при регистрации<br><br>
+            🎁 <strong>Новая реферальная система:</strong><br>
+            • Вы получаете <strong>10%</strong> от заработка приглашённых<br>
+            • Приглашённый получает <strong>90%</strong> от своего заработка<br>
+            • Автоматически с каждого выполненного задания<br><br>
             🔗 Просто отправьте другу эту ссылку в Telegram
         `;
     }
 }
+
+// 🔧 ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ ДЕТАЛЬНОЙ СТАТИСТИКИ РЕФЕРАЛОВ
+async function loadDetailedReferralStats() {
+    if (!currentUser) return;
+    
+    try {
+        const result = await makeRequest(`/api/user/${currentUser.id}/referrals/detailed`);
+        
+        if (result.success) {
+            displayDetailedReferralStats(result.referrals);
+        }
+    } catch (error) {
+        console.error('Error loading detailed referral stats:', error);
+    }
+}
+
+// 🔧 ФУНКЦИЯ ОТОБРАЖЕНИЯ ДЕТАЛЬНОЙ СТАТИСТИКИ РЕФЕРАЛОВ
+function displayDetailedReferralStats(referrals) {
+    const container = document.getElementById('detailed-referrals-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!referrals || referrals.length === 0) {
+        container.innerHTML = `
+            <div class="no-referrals" style="text-align: center; padding: 20px; color: var(--text-secondary);">
+                <div style="font-size: 48px; margin-bottom: 16px;">👥</div>
+                <div>У вас пока нет приглашённых друзей</div>
+                <div style="font-size: 14px; margin-top: 8px;">
+                    Приглашайте друзей и получайте 10% от их заработка!
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    referrals.forEach(ref => {
+        const refElement = document.createElement('div');
+        refElement.className = 'referral-item';
+        refElement.style.cssText = `
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+        `;
+        
+        refElement.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div style="font-weight: 600;">${ref.first_name || 'Пользователь'}</div>
+                <div style="color: ${ref.status === 'active' ? 'var(--success)' : 'var(--warning)'}; font-size: 12px;">
+                    ${ref.status === 'active' ? '✅ Активен' : '⏳ Ожидает'}
+                </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 14px; color: var(--text-secondary);">
+                <div>@${ref.username || 'без username'}</div>
+                <div>Баланс: ${ref.friend_balance || 0}⭐</div>
+            </div>
+            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
+                Зарегистрирован: ${new Date(ref.created_at).toLocaleDateString('ru-RU')}
+            </div>
+        `;
+        
+        container.appendChild(refElement);
+    });
+}
 // Получение детальной информации о рефералах
+// 🔧 ENDPOINT ДЛЯ ПОЛУЧЕНИЯ ДЕТАЛЬНОЙ СТАТИСТИКИ РЕФЕРАЛОВ
 app.get('/api/user/:userId/referrals/detailed', async (req, res) => {
     const userId = req.params.userId;
     
@@ -10771,6 +10841,7 @@ async function deleteVerification() {
 }
 
 // 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОДОБРЕНИЯ ЗАДАНИЯ
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ПОДТВЕРЖДЕНИЯ ЗАДАНИЯ
 async function approveVerification() {
     if (!currentVerificationId) {
         showNotification('❌ ID верификации не найден', 'error');
@@ -10795,7 +10866,6 @@ async function approveVerification() {
             approveBtn.textContent = 'Одобряем...';
         }
 
-        // 🔧 ИСПРАВЛЕНИЕ: Правильный endpoint и обработка ошибок
         const result = await makeRequest(`/api/admin/task-verifications/${currentVerificationId}/approve`, {
             method: 'POST',
             body: JSON.stringify({
@@ -10808,22 +10878,23 @@ async function approveVerification() {
         if (result.success) {
             let message = `✅ Задание одобрено! Пользователь получил ${result.amountAdded || result.task_price}⭐`;
             
+            // 🔥 ДОБАВЛЯЕМ ИНФОРМАЦИЮ О РЕФЕРАЛЬНОМ БОНУСЕ
+            if (result.referralBonus) {
+                message += `\n\n👥 Реферальный бонус: ${result.referralBonus.referrerName} получил ${result.referralBonus.bonusAmount}⭐ (10%)`;
+            }
+            
             if (result.taskRemoved || result.taskCompleted) {
                 message += "\n\n🎯 Задание автоматически удалено - достигнут лимит исполнителей!";
             }
             
             showNotification(message, 'success');
             
-            // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Закрываем модальное окно ДО обновления данных
             closeModal('verification-modal');
             
-            // 🔥 ОБНОВЛЯЕМ ДАННЫЕ ПОСЛЕ ЗАКРЫТИЯ МОДАЛЬНОГО ОКНА
             setTimeout(() => {
-                // Обновляем все списки
-                loadTaskVerifications(); // Обновляем список проверки
-                loadAdminTasks(); // Обновляем задания админа
-                updateUserData(); // Обновляем данные пользователя
-                
+                loadTaskVerifications();
+                loadAdminTasks();
+                updateUserData();
                 console.log('✅ Интерфейс успешно обновлен после одобрения задания');
             }, 500);
             
@@ -10847,7 +10918,6 @@ async function approveVerification() {
         
         showNotification(errorMessage, 'error');
         
-        // Восстанавливаем кнопку
         const approveBtn = document.querySelector('.verification-approve');
         if (approveBtn) {
             approveBtn.disabled = false;
