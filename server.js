@@ -5,8 +5,7 @@ const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
 const TelegramBot = require('node-telegram-bot-api');
-const fs = require('fs');
-const path = require('path');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -179,22 +178,22 @@ async function fixPromocodesTable() {
         console.error('❌ Error fixing promocodes table:', error);
     }
 }
-// Упрощенная инициализация базы данных
 async function initDatabase() {
     try {
         console.log('🔄 Initializing simplified database...');
-// Таблица для лога уведомлений
-// Таблица для лога уведомлений
-await pool.query(`
-    CREATE TABLE IF NOT EXISTS admin_notifications (
-        id SERIAL PRIMARY KEY,
-        admin_id BIGINT NOT NULL,
-        message TEXT NOT NULL,
-        sent_count INTEGER DEFAULT 0,
-        failed_count INTEGER DEFAULT 0,
-        sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-`);
+        
+        // Таблица для лога уведомлений
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS admin_notifications (
+                id SERIAL PRIMARY KEY,
+                admin_id BIGINT NOT NULL,
+                message TEXT NOT NULL,
+                sent_count INTEGER DEFAULT 0,
+                failed_count INTEGER DEFAULT 0,
+                sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
         // Таблица пользователей
         await pool.query(`
             CREATE TABLE IF NOT EXISTS user_profiles (
@@ -234,7 +233,7 @@ await pool.query(`
                 people_required INTEGER DEFAULT 1,
                 repost_time TEXT DEFAULT '1 день',
                 task_url TEXT,
-                image_url TEXT, -- ДОБАВЛЕНА КОЛОНКА ДЛЯ ИЗОБРАЖЕНИЙ
+                image_url TEXT,
                 status TEXT DEFAULT 'active',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
@@ -245,6 +244,7 @@ await pool.query(`
             ALTER TABLE tasks 
             ADD COLUMN IF NOT EXISTS image_url TEXT
         `);
+
         // Таблица запросов на вывод
         await pool.query(`
             CREATE TABLE IF NOT EXISTS withdrawal_requests (
@@ -319,8 +319,10 @@ await pool.query(`
                 reviewed_by BIGINT
             )
         `);
-         // В initDatabase() добавьте:
+
+        // В initDatabase() добавьте:
         await createPromocodesTable();
+
         // Таблица сообщений
         await pool.query(`
             CREATE TABLE IF NOT EXISTS support_messages (
@@ -367,19 +369,7 @@ await pool.query(`
             ADD COLUMN IF NOT EXISTS repost_time TEXT DEFAULT '1 день',
             ADD COLUMN IF NOT EXISTS task_url TEXT
         `);
-await pool.query(`
-            CREATE TABLE IF NOT EXISTS withdrawal_requests (
-                id SERIAL PRIMARY KEY,
-                user_id BIGINT NOT NULL,
-                username TEXT,
-                first_name TEXT,
-                amount REAL NOT NULL,
-                status TEXT DEFAULT 'pending',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                completed_at TIMESTAMP,
-                completed_by BIGINT
-            )
-        `);
+
         // Добавляем колонку user_username в task_verifications если ее нет
         await pool.query(`
             ALTER TABLE task_verifications 
@@ -428,13 +418,7 @@ await pool.query(`
             `, [ADMIN_ID]);
         }
 
-        // Гарантируем создание таблиц промокодов
-        await createPromocodesTable();
-       async function initDatabase() {
-    try {
-        console.log('🔄 Initializing simplified database...');
-        
-        // ВРЕМЕННОЕ РЕШЕНИЕ - вставьте этот код вместо вызова fixPromocodesTable
+        // ВРЕМЕННОЕ РЕШЕНИЕ - проверяем таблицу промокодов
         try {
             console.log('🔧 Checking promocodes table...');
             await pool.query(`
@@ -454,20 +438,12 @@ await pool.query(`
         } catch (error) {
             console.log('⚠️ Promocodes table check:', error.message);
         }
-        // КОНЕЦ ВРЕМЕННОГО РЕШЕНИЯ
         
         console.log('✅ Database initialized successfully');
     } catch (error) {
         console.error('❌ Database initialization error:', error);
     }
 }
-        
-        console.log('✅ Database initialized successfully');
-    } catch (error) {
-        console.error('❌ Database initialization error:', error);
-    }
-}
-
 async function createPromocodesTable() {
     try {
         console.log('🔧 Creating/verifying promocodes table...');
@@ -497,6 +473,7 @@ async function createPromocodesTable() {
                 FOREIGN KEY (promocode_id) REFERENCES promocodes(id)
             )
         `);
+        
         
         // Проверяем и добавляем отсутствующие колонки
         const columnsToCheck = [
