@@ -4631,185 +4631,235 @@ app.get('/api/admin/debug-rights', async (req, res) => {
         });
     }
 });
+
+// Автоматическая проверка реферальных начислений каждые 30 секунд
+setInterval(() => {
+    if (currentUser) {
+        checkReferralEarnings();
+    }
+}, 30000);
+
 // 🔥 ОБНОВЛЕННЫЙ ENDPOINT ПОДТВЕРЖДЕНИЯ ЗАДАНИЯ С НОВОЙ РЕФЕРАЛЬНОЙ СИСТЕМОЙ
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
-    const verificationId = req.params.verificationId;
+    const { verificationId } = req.params;
     const { adminId } = req.body;
-    
-    console.log('✅ Подтверждение задания админом:', { verificationId, adminId });
-    
-    const isAdmin = await checkAdminAccess(adminId);
-    if (!isAdmin) {
-        return res.status(403).json({
+
+    console.log('🔄 Admin approving verification:', { verificationId, adminId });
+
+    // Проверяем права администратора
+    if (!adminId) {
+        return res.status(400).json({
             success: false,
-            error: 'Доступ запрещен. Только администраторы могут подтверждать задания.'
+            error: 'ID администратора обязателен'
         });
     }
-    
+
     try {
-        // Получаем информацию о проверке
-        const verification = await pool.query(
-            'SELECT * FROM task_verifications WHERE id = $1', 
-            [verificationId]
+        // Проверяем права администратора
+        const adminCheck = await pool.query(
+            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
+            [adminId]
         );
-        
-        if (verification.rows.length === 0) {
-            return res.status(404).json({
+
+        if (adminCheck.rows.length === 0 || !adminCheck.rows[0].is_admin) {
+            return res.status(403).json({
                 success: false,
-                error: 'Verification not found'
+                error: 'Недостаточно прав. Только администратор может одобрять задания.'
             });
         }
 
-        const verificationData = verification.rows[0];
-        const taskPrice = parseFloat(verificationData.task_price);
-        
-        // 🔥 НОВАЯ РЕФЕРАЛЬНАЯ СИСТЕМА: 10% от заработка приглашенного
-        const referrerInfo = await pool.query(`
-            SELECT referred_by FROM user_profiles WHERE user_id = $1
-        `, [verificationData.user_id]);
-        
-        let referralBonus = null;
-        
-        // Если у пользователя есть пригласивший
-        if (referrerInfo.rows.length > 0 && referrerInfo.rows[0].referred_by) {
-            const referrerId = referrerInfo.rows[0].referred_by;
-            
-            // 🔥 РАСЧЕТ РЕФЕРАЛЬНОГО БОНУСА - 10% ОТ СУММЫ ЗАДАНИЯ
-            const referralBonusAmount = Math.round(taskPrice * 0.1); // 10% от суммы задания
-            const userEarnsAmount = taskPrice - referralBonusAmount; // 90% получает пользователь
-            
-            // Получаем информацию о пригласившем
-            const referrerDetails = await pool.query(
-                'SELECT first_name, username FROM user_profiles WHERE user_id = $1',
-                [referrerId]
-            );
-            
-            if (referrerDetails.rows.length > 0) {
-                const referrer = referrerDetails.rows[0];
-                
-                // 🔥 НАЧИСЛЯЕМ БОНУС ПРИГЛАСИВШЕМУ (10%)
-                await pool.query(`
-                    UPDATE user_profiles 
-                    SET 
-                        balance = COALESCE(balance, 0) + $1,
-                        referral_earned = COALESCE(referral_earned, 0) + $1,
-                        updated_at = CURRENT_TIMESTAMP
-                    WHERE user_id = $2
-                `, [referralBonusAmount, referrerId]);
-                
-                referralBonus = {
-                    referrerId: referrerId,
-                    referrerName: referrer.first_name || referrer.username || `User_${referrerId}`,
-                    bonusAmount: referralBonusAmount,
-                    taskPrice: taskPrice,
-                    userEarns: userEarnsAmount
-                };
-                
-                console.log(`🎁 Новая реферальная система: ${referrerId} получил ${referralBonusAmount}⭐ (10%) за задание пользователя ${verificationData.user_id}`);
-                
-                // 🔥 ОБНОВЛЯЕМ БАЛАНС ПОЛЬЗОВАТЕЛЯ (90% ОТ ЗАРАБОТКА)
-                await pool.query(`
-                    UPDATE user_profiles 
-                    SET 
-                        balance = COALESCE(balance, 0) + $1,
-                        tasks_completed = COALESCE(tasks_completed, 0) + 1,
-                        active_tasks = GREATEST(COALESCE(active_tasks, 0) - 1, 0),
-                        updated_at = CURRENT_TIMESTAMP
-                    WHERE user_id = $2
-                `, [userEarnsAmount, verificationData.user_id]);
-                
-            } else {
-                // Если не нашли информацию о реферере, пользователь получает 100%
-                await pool.query(`
-                    UPDATE user_profiles 
-                    SET 
-                        balance = COALESCE(balance, 0) + $1,
-                        tasks_completed = COALESCE(tasks_completed, 0) + 1,
-                        active_tasks = GREATEST(COALESCE(active_tasks, 0) - 1, 0),
-                        updated_at = CURRENT_TIMESTAMP
-                    WHERE user_id = $2
-                `, [taskPrice, verificationData.user_id]);
-            }
-        } else {
-            // Если нет реферера, пользователь получает 100%
-            await pool.query(`
-                UPDATE user_profiles 
-                SET 
-                    balance = COALESCE(balance, 0) + $1,
-                    tasks_completed = COALESCE(tasks_completed, 0) + 1,
-                    active_tasks = GREATEST(COALESCE(active_tasks, 0) - 1, 0),
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE user_id = $2
-            `, [taskPrice, verificationData.user_id]);
-        }
-        
-        // Получаем информацию о задании
-        const taskInfo = await pool.query(`
-            SELECT t.*, 
-                   COUNT(ut.id) as completed_count
-            FROM tasks t
-            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
-            WHERE t.id = $1
-            GROUP BY t.id
-        `, [verificationData.task_id]);
-        
-        if (taskInfo.rows.length === 0) {
+        // Получаем информацию о верификации
+        const verificationResult = await pool.query(`
+            SELECT 
+                tv.*,
+                t.price as task_price,
+                t.title as task_title,
+                t.people_required,
+                t.completed_count,
+                ut.user_id,
+                up.first_name as user_name,
+                up.username
+            FROM task_verifications tv
+            JOIN user_tasks ut ON tv.user_task_id = ut.id
+            JOIN tasks t ON ut.task_id = t.id
+            JOIN user_profiles up ON ut.user_id = up.user_id
+            WHERE tv.id = $1
+        `, [verificationId]);
+
+        if (verificationResult.rows.length === 0) {
             return res.status(404).json({
                 success: false,
-                error: 'Task not found'
+                error: 'Проверка задания не найдена'
             });
         }
-        
-        const task = taskInfo.rows[0];
-        const peopleRequired = task.people_required || 1;
-        const currentCompletedCount = parseInt(task.completed_count) || 0;
-        
-        // Обновляем статус проверки
-        await pool.query(`
-            UPDATE task_verifications 
-            SET status = 'approved', reviewed_at = CURRENT_TIMESTAMP, reviewed_by = $1 
-            WHERE id = $2
-        `, [adminId, verificationId]);
-        
-        // Обновляем задание пользователя
-        await pool.query(`
-            UPDATE user_tasks 
-            SET status = 'completed', completed_at = CURRENT_TIMESTAMP 
-            WHERE id = $1
-        `, [verificationData.user_task_id]);
-        
-        // 🔥 ПРОВЕРЯЕМ ДОСТИГНУТ ЛИ ЛИМИТ ИСПОЛНИТЕЛЕЙ
-        const newCompletedCount = currentCompletedCount + 1;
-        let taskRemoved = false;
-        
-        if (newCompletedCount >= peopleRequired) {
-            console.log(`🎯 Лимит исполнителей достигнут для задания ${task.id}. Удаляем задание...`);
-            
-            await pool.query(`
-                UPDATE tasks 
-                SET status = 'completed', 
-                    updated_at = CURRENT_TIMESTAMP 
-                WHERE id = $1
-            `, [task.id]);
-            
-            taskRemoved = true;
-            console.log(`✅ Задание ${task.id} автоматически удалено (достигнут лимит: ${peopleRequired} исполнителей)`);
-        }
-        
-        res.json({
-            success: true,
-            message: 'Task approved successfully',
-            amountAdded: referralBonus ? referralBonus.userEarns : taskPrice, // Показываем сколько получил пользователь
-            referralBonus: referralBonus,
-            taskCompleted: newCompletedCount >= peopleRequired,
-            taskRemoved: taskRemoved
+
+        const verification = verificationResult.rows[0];
+        const userId = verification.user_id;
+        const taskPrice = verification.task_price;
+        const taskId = verification.task_id;
+
+        console.log('📊 Verification details:', {
+            userId,
+            taskPrice,
+            taskTitle: verification.task_title,
+            peopleRequired: verification.people_required,
+            completedCount: verification.completed_count
         });
-        
+
+        // Начинаем транзакцию
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+
+            // 1. Обновляем статус user_task на 'completed'
+            await client.query(
+                'UPDATE user_tasks SET status = $1, completed_at = NOW() WHERE id = $2',
+                ['completed', verification.user_task_id]
+            );
+
+            // 2. Начисляем вознаграждение пользователю
+            await client.query(
+                'UPDATE user_profiles SET balance = balance + $1, tasks_completed = COALESCE(tasks_completed, 0) + 1 WHERE user_id = $2',
+                [taskPrice, userId]
+            );
+
+            // 3. Обновляем счетчик выполненных заданий
+            await client.query(
+                'UPDATE tasks SET completed_count = COALESCE(completed_count, 0) + 1 WHERE id = $1',
+                [taskId]
+            );
+
+            // 4. Помечаем верификацию как обработанную
+            await client.query(
+                'UPDATE task_verifications SET status = $1, processed_at = NOW(), processed_by = $2 WHERE id = $3',
+                ['approved', adminId, verificationId]
+            );
+
+            // 🔥 РЕФЕРАЛЬНАЯ СИСТЕМА: Начисляем бонус пригласившему
+            let referralBonus = null;
+            
+            // Находим реферера (кто пригласил этого пользователя)
+            const referrerResult = await client.query(
+                'SELECT referred_by FROM user_profiles WHERE user_id = $1',
+                [userId]
+            );
+
+            if (referrerResult.rows.length > 0 && referrerResult.rows[0].referred_by) {
+                const referrerId = referrerResult.rows[0].referred_by;
+                
+                // Проверяем, что реферер существует
+                const referrerCheck = await client.query(
+                    'SELECT user_id, first_name, username FROM user_profiles WHERE user_id = $1',
+                    [referrerId]
+                );
+
+                if (referrerCheck.rows.length > 0) {
+                    const referrer = referrerCheck.rows[0];
+                    const bonusAmount = Math.round(taskPrice * 0.1); // 10% от стоимости задания
+                    
+                    console.log('👥 Referral bonus calculation:', {
+                        referrerId: referrer.user_id,
+                        referrerName: referrer.first_name,
+                        taskPrice,
+                        bonusAmount
+                    });
+
+                    // Начисляем бонус рефереру
+                    await client.query(
+                        `UPDATE user_profiles 
+                         SET balance = balance + $1, 
+                             referral_earned = COALESCE(referral_earned, 0) + $1,
+                             referral_count = COALESCE(referral_count, 0) + 1
+                         WHERE user_id = $2`,
+                        [bonusAmount, referrerId]
+                    );
+
+                    // Создаем запись о реферальной транзакции
+                    await client.query(
+                        `INSERT INTO referral_transactions 
+                         (referrer_id, referred_id, task_id, amount, created_at) 
+                         VALUES ($1, $2, $3, $4, NOW())`,
+                        [referrerId, userId, taskId, bonusAmount]
+                    );
+
+                    referralBonus = {
+                        referrerName: referrer.first_name || referrer.username || `User_${referrerId}`,
+                        bonusAmount: bonusAmount,
+                        referrerId: referrerId
+                    };
+
+                    console.log('✅ Referral bonus awarded:', referralBonus);
+                }
+            }
+
+            // 5. Проверяем, достигнут ли лимит выполнения задания
+            const taskUpdateResult = await client.query(
+                'SELECT people_required, completed_count FROM tasks WHERE id = $1',
+                [taskId]
+            );
+
+            let taskRemoved = false;
+            if (taskUpdateResult.rows.length > 0) {
+                const task = taskUpdateResult.rows[0];
+                const peopleRequired = task.people_required || 1;
+                const completedCount = task.completed_count || 0;
+
+                // Если задание выполнено нужное количество раз, помечаем его как завершенное
+                if (completedCount >= peopleRequired) {
+                    await client.query(
+                        'UPDATE tasks SET status = $1 WHERE id = $2',
+                        ['completed', taskId]
+                    );
+                    taskRemoved = true;
+                    console.log('🎯 Task completed and removed:', taskId);
+                }
+            }
+
+            // Фиксируем транзакцию
+            await client.query('COMMIT');
+
+            // Формируем ответ
+            const response = {
+                success: true,
+                message: 'Задание успешно одобрено!',
+                amountAdded: taskPrice,
+                taskRemoved: taskRemoved,
+                taskCompleted: true
+            };
+
+            // Добавляем информацию о реферальном бонусе, если он был начислен
+            if (referralBonus) {
+                response.referralBonus = referralBonus;
+                response.message += ` Реферальный бонус начислен!`;
+            }
+
+            console.log('✅ Verification approved successfully:', response);
+
+            res.json(response);
+
+        } catch (transactionError) {
+            // Откатываем транзакцию в случае ошибки
+            await client.query('ROLLBACK');
+            console.error('❌ Transaction error:', transactionError);
+            throw transactionError;
+        } finally {
+            client.release();
+        }
+
     } catch (error) {
-        console.error('Approve verification error:', error);
+        console.error('❌ Approve verification error:', error);
+        
+        let errorMessage = 'Внутренняя ошибка сервера';
+        if (error.code === '23505') { // unique violation
+            errorMessage = 'Задание уже было обработано';
+        } else if (error.code === '23503') { // foreign key violation
+            errorMessage = 'Ошибка целостности данных';
+        }
+
         res.status(500).json({
             success: false,
-            error: 'Database error: ' + error.message
+            error: errorMessage,
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 });

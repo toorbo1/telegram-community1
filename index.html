@@ -6368,9 +6368,7 @@ function showProfileTab() {
     setTimeout(() => {
         updateUserData();
         syncUserProfile();
-        
-        // Прокручиваем к началу
-        scrollToTop();
+        checkReferralEarnings(); // 🔥 ДОБАВЬТЕ ЭТУ СТРОЧКУ
     }, 100);
 }
 
@@ -8056,7 +8054,6 @@ async function updateActiveTasksCount() {
 }
 
 // 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ РЕФЕРАЛЬНОЙ СИСТЕМЫ
-// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ РЕФЕРАЛЬНОЙ СИСТЕМЫ
 function updateReferralSystem() {
     if (!currentUser) return;
     
@@ -8073,18 +8070,47 @@ function updateReferralSystem() {
     if (refInvited) refInvited.textContent = currentUser.referral_count || 0;
     if (refEarned) refEarned.textContent = `${currentUser.referral_earned || 0} ⭐`;
     
-    // 🔥 ОБНОВЛЯЕМ ТЕКСТ С НОВЫМИ УСЛОВИЯМИ
+    // 🔥 ОБНОВЛЯЕМ ТЕКСТ С НОВЫМИ УСЛОВИЯМИ И СТАТИСТИКОЙ
     const referralInfo = document.querySelector('.referral-info');
     if (referralInfo) {
         referralInfo.innerHTML = `
-            🎁 <strong>Новая реферальная система:</strong><br>
+            🎁 <strong>Реферальная система:</strong><br>
             • Вы получаете <strong>10%</strong> от заработка приглашённых<br>
             • Приглашённый получает <strong>90%</strong> от своего заработка<br>
-            • Автоматически с каждого выполненного задания<br><br>
-            🔗 Просто отправьте другу эту ссылку в  Telegram
+            • Автоматически с каждого выполненного задания<br>
+            • Ваш заработок с рефералов: <strong>${currentUser.referral_earned || 0} ⭐</strong><br>
+            • Приглашено друзей: <strong>${currentUser.referral_count || 0}</strong><br><br>
+            🔗 Просто отправьте другу эту ссылку в Telegram
         `;
     }
 }
+
+
+// 🔧 ФУНКЦИЯ ДЛЯ ПРОВЕРКИ РЕФЕРАЛЬНЫХ НАЧИСЛЕНИЙ
+async function checkReferralEarnings() {
+    if (!currentUser) return;
+    
+    try {
+        const result = await makeRequest(`/api/user/${currentUser.id}/referral-earnings`);
+        
+        if (result.success) {
+            console.log('📊 Реферальные начисления:', result.earnings);
+            
+            // Обновляем данные пользователя
+            if (result.earnings) {
+                currentUser.referral_earned = result.earnings.total_earned || 0;
+                currentUser.referral_count = result.earnings.referral_count || 0;
+                
+                // Обновляем интерфейс
+                updateReferralSystem();
+                displayUserProfile();
+            }
+        }
+    } catch (error) {
+        console.error('Ошибка проверки реферальных начислений:', error);
+    }
+}
+
 
 // 🔧 ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ ДЕТАЛЬНОЙ СТАТИСТИКИ РЕФЕРАЛОВ
 async function loadDetailedReferralStats() {
@@ -10851,7 +10877,6 @@ async function deleteVerification() {
 }
 
 // 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОДОБРЕНИЯ ЗАДАНИЯ
-// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ПОДТВЕРЖДЕНИЯ ЗАДАНИЯ
 async function approveVerification() {
     if (!currentVerificationId) {
         showNotification('❌ ID верификации не найден', 'error');
@@ -10888,9 +10913,12 @@ async function approveVerification() {
         if (result.success) {
             let message = `✅ Задание одобрено! Пользователь получил ${result.amountAdded || result.task_price}⭐`;
             
-            // 🔥 ДОБАВЛЯЕМ ИНФОРМАЦИЮ О РЕФЕРАЛЬНОМ БОНУСЕ
+            // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Проверяем и отображаем реферальный бонус
             if (result.referralBonus) {
                 message += `\n\n👥 Реферальный бонус: ${result.referralBonus.referrerName} получил ${result.referralBonus.bonusAmount}⭐ (10%)`;
+                
+                // Показываем анимацию реферального бонуса
+                showReferralBonusAnimation(result.referralBonus.referrerName, result.referralBonus.bonusAmount);
             }
             
             if (result.taskRemoved || result.taskCompleted) {
@@ -10904,7 +10932,7 @@ async function approveVerification() {
             setTimeout(() => {
                 loadTaskVerifications();
                 loadAdminTasks();
-                updateUserData();
+                updateUserData(); // Обновляем данные пользователя
                 console.log('✅ Интерфейс успешно обновлен после одобрения задания');
             }, 500);
             
@@ -10935,6 +10963,77 @@ async function approveVerification() {
         }
     }
 }
+
+function showReferralBonusAnimation(referrerName, bonusAmount) {
+    const animation = document.createElement('div');
+    animation.style.cssText = `
+        position: fixed;
+        top: 20%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--success);
+        color: white;
+        padding: 20px 30px;
+        border-radius: 15px;
+        text-align: center;
+        z-index: 10001;
+        box-shadow: 0 10px 25px rgba(34, 197, 94, 0.3);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        animation: referralBonusSlide 3s ease-in-out;
+        max-width: 300px;
+        width: 90%;
+    `;
+    
+    animation.innerHTML = `
+        <div style="font-size: 32px; margin-bottom: 10px;">👥</div>
+        <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">
+            Реферальный бонус!
+        </div>
+        <div style="font-size: 14px; margin-bottom: 5px;">
+            ${referrerName}
+        </div>
+        <div style="font-size: 20px; font-weight: 800; color: var(--gold);">
+            +${bonusAmount} ⭐
+        </div>
+        <div style="font-size: 12px; opacity: 0.9; margin-top: 5px;">
+            (10% от заработка реферала)
+        </div>
+    `;
+    
+    document.body.appendChild(animation);
+    
+    // Автоматическое скрытие через 4 секунды
+    setTimeout(() => {
+        animation.remove();
+    }, 4000);
+}
+
+// Добавьте CSS анимацию
+const referralBonusStyles = `
+    <style>
+        @keyframes referralBonusSlide {
+            0% {
+                transform: translateX(-50%) translateY(-20px);
+                opacity: 0;
+            }
+            20% {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+            80% {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(-50%) translateY(-20px);
+                opacity: 0;
+            }
+        }
+    </style>
+`;
+
+// Добавьте стили в документ
+document.head.insertAdjacentHTML('beforeend', referralBonusStyles);
 
 // Функция для диагностики проблемы
 async function debugApprovalIssue() {
@@ -11911,18 +12010,7 @@ function showTasksTab() {
             updateNavState('tasks');
         }
 
-        // 🔧 ОБРАБОТЧИК ПЕРЕКЛЮЧЕНИЯ НА ВКЛАДКУ ПРОФИЛЯ
-function showProfileTab() {
-    hideAllTabs();
-    document.getElementById('profile-tab').classList.add('active');
-    updateNavState('profile');
-    
-    // Синхронизируем данные при каждом открытии профиля
-    setTimeout(() => {
-        updateUserData();
-        syncUserProfile();
-    }, 100);
-}
+
 // 🔧 ФУНКЦИЯ УДАЛЕНИЯ ЗАДАНИЯ
 async function deleteTask(taskId) {
     if (!confirm('Удалить это задание?')) return;
