@@ -8010,28 +8010,40 @@ setTimeout(debugAdminRights, 2000);
         }
 
        // 🔧 ОБНОВЛЕННОЕ АВТООБНОВЛЕНИЕ ДАННЫХ
+// Добавьте в начало функции, где используется currentUser
 function startUserDataAutoUpdate() {
+    // Проверяем существование currentUser перед установкой интервала
+    if (typeof currentUser === 'undefined' || !currentUser) {
+        console.log('❌ currentUser не определен, откладываем автообновление');
+        setTimeout(startUserDataAutoUpdate, 5000); // Повторим через 5 секунд
+        return;
+    }
+    
     setInterval(async () => {
-        if (currentUser) {
-            try {
-                const result = await makeRequest(`/user/${currentUser.id}`);
-                if (result.success) {
-                    // Сохраняем старые данные для сравнения
-                    const oldLevel = currentUser.level;
-                    const oldTasksCompleted = currentUser.tasks_completed;
-                    
-                    // Обновляем текущего пользователя
-                    currentUser = { ...currentUser, ...result.profile };
-                    
-                    // Обновляем отображение
-                    displayUserProfile();
-                    updateLevelProgress(); // Важно: обновляем прогресс уровня
-                    
-                    console.log('✅ Данные пользователя автообновлены');
-                }
-            } catch (error) {
-                console.error('Ошибка автообновления данных пользователя:', error);
+        // Дополнительная проверка внутри интервала
+        if (typeof currentUser === 'undefined' || !currentUser) {
+            console.log('❌ currentUser не определен в интервале');
+            return;
+        }
+        
+        try {
+            const result = await makeRequest(`/user/${currentUser.id}`);
+            if (result.success) {
+                // Сохраняем старые данные для сравнения
+                const oldLevel = currentUser.level;
+                const oldTasksCompleted = currentUser.tasks_completed;
+                
+                // Обновляем текущего пользователя
+                currentUser = { ...currentUser, ...result.profile };
+                
+                // Обновляем отображение
+                displayUserProfile();
+                updateLevelProgress();
+                
+                console.log('✅ Данные пользователя автообновлены');
             }
+        } catch (error) {
+            console.error('Ошибка автообновления данных пользователя:', error);
         }
     }, 30000);
 }
