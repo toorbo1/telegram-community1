@@ -5362,6 +5362,10 @@ html, body {
                 <span>Активные заявки: <strong id="active-withdrawals-count">0</strong></span>
                 <span>Всего: <strong id="total-withdrawals-count">0</strong></span>
             </div>
+            <!-- Добавьте эту кнопку рядом с другими элементами управления выплатами -->
+<button class="btn btn-warning" onclick="showCancelledWithdrawals()" style="margin: 10px 0;">
+    📋 История отмененных выплат
+</button>
             <div style="margin-top: 8px;">
                 <button class="btn btn-primary" onclick="loadWithdrawalRequests()" style="padding: 6px 12px; font-size: 12px;">
                     🔄 Обновить
@@ -12799,17 +12803,111 @@ function displayWithdrawalRequests(requests) {
                 <div>ID пользователя: ${request.user_id}</div>
                 <div>Запрос создан: ${requestDate}</div>
             </div>
-            <div class="admin-task-actions" style="margin-top: 10px; display: flex; gap: 10px;">
-                <button class="admin-task-approve" onclick="completeWithdrawal(${request.id})" 
-                        style="background: var(--success); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; flex: 1;">
-                    ✅ Перечислил средства
-                </button>
-            </div>
+<div class="admin-task-actions" style="margin-top: 10px; display: flex; gap: 10px;">
+    <button class="admin-task-approve" onclick="completeWithdrawal(${request.id})" 
+            style="background: var(--success); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; flex: 1;">
+        ✅ Перечислил средства
+    </button>
+    <button class="admin-task-cancel" onclick="cancelWithdrawal(${request.id})" 
+            style="background: var(--error); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; flex: 1;">
+        ❌ Отменить выплату
+    </button>
+</div>
         `;
         
         container.appendChild(requestElement);
     });
 }
+
+// 🔧 ФУНКЦИЯ ОТМЕНЫ ВЫПЛАТЫ
+async function cancelWithdrawal(requestId) {
+    if (!confirm('Вы уверены, что хотите отменить эту выплату?\n\nСредства будут возвращены на баланс пользователя.')) {
+        return;
+    }
+    
+    try {
+        console.log('🔄 Cancelling withdrawal:', requestId);
+        
+        const result = await makeRequest(`/api/admin/withdrawal-requests/${requestId}/cancel`, {
+            method: 'POST',
+            body: JSON.stringify({
+                adminId: currentUser.id
+            })
+        });
+        
+        console.log('📨 Cancel response:', result);
+        
+        if (result.success) {
+            showNotification(`✅ ${result.message}`, 'success');
+            loadWithdrawalRequests(); // Обновляем список заявок
+        } else {
+            showNotification('❌ Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('❌ Cancel withdrawal error:', error);
+        showNotification('❌ Ошибка отмены выплаты: ' + error.message, 'error');
+    }
+}
+
+// 🔧 ФУНКЦИЯ ДЛЯ ПРОСМОТРА ИСТОРИИ ОТМЕНЕННЫХ ВЫПЛАТ
+async function showCancelledWithdrawals() {
+    try {
+        const result = await makeRequest(`/api/admin/cancelled-withdrawals?adminId=${currentUser.id}`);
+        
+        if (result.success) {
+            displayCancelledWithdrawals(result.cancelledWithdrawals);
+        } else {
+            showNotification('Ошибка загрузки истории отмен: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error loading cancelled withdrawals:', error);
+        showNotification('Ошибка загрузки истории отмененных выплат', 'error');
+    }
+}
+
+// 🔧 ФУНКЦИЯ ОТОБРАЖЕНИЯ ОТМЕНЕННЫХ ВЫПЛАТ
+function displayCancelledWithdrawals(withdrawals) {
+    // Создаем модальное окно для отображения истории
+    const modalHTML = `
+        <div class="modal active" id="cancelled-withdrawals-modal">
+            <div class="modal-content" style="max-width: 800px; max-height: 80vh;">
+                <div class="modal-header">
+                    <div class="modal-title">❌ История отмененных выплат</div>
+                    <button class="modal-close" onclick="closeModal('cancelled-withdrawals-modal')">×</button>
+                </div>
+                <div class="modal-body">
+                    <div id="cancelled-withdrawals-list">
+                        ${withdrawals.length === 0 ? 
+                            '<div style="text-align: center; padding: 40px; color: var(--text-secondary);">Нет отмененных выплат</div>' : 
+                            withdrawals.map(withdrawal => `
+                                <div class="admin-task-item" style="margin-bottom: 12px;">
+                                    <div class="admin-task-header">
+                                        <div class="admin-task-title">
+                                            ${withdrawal.first_name || withdrawal.username || `User_${withdrawal.user_id}`}
+                                            ${withdrawal.username ? ` (@${withdrawal.username})` : ''}
+                                        </div>
+                                        <div class="admin-task-price" style="color: var(--error);">
+                                            ${withdrawal.amount} ⭐
+                                        </div>
+                                    </div>
+                                    <div class="admin-task-description">
+                                        <div>Отменено: ${new Date(withdrawal.completed_at).toLocaleString('ru-RU')}</div>
+                                        <div>Администратором: ${withdrawal.admin_name || `ID: ${withdrawal.completed_by}`}</div>
+                                        <div>ID пользователя: ${withdrawal.user_id}</div>
+                                    </div>
+                                </div>
+                            `).join('')
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Добавляем модальное окно в DOM
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
 // Замените сложные функции на более простые
 function simpleShowTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(tab => {

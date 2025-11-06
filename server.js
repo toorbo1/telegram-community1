@@ -854,7 +854,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
 
 Выбери задание и стань частью успеха! 🚀
 
-                       Выполняйте задания и зарабатывайте Telegram Stars! 🚀\n\n` +
+                   ` +
                        `🎁 <b>Новая реферальная система:</b>\n` +
                        `• Вы получаете <strong>10%</strong> от заработка приглашённых\n` +
                        `• Приглашённый получает <strong>90%</strong> от своего заработка\n` +
@@ -3969,6 +3969,154 @@ app.post('/api/admin/promocodes/create', async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Ошибка базы данных: ' + error.message
+        });
+    }
+});
+
+// ==================== ОТМЕНА ВЫПЛАТЫ ====================
+
+// Endpoint для отмены выплаты и возврата средств пользователю
+app.post('/api/admin/withdrawal-requests/:requestId/cancel', async (req, res) => {
+    const requestId = req.params.requestId;
+    const { adminId } = req.body;
+    
+    console.log('🔄 Отмена выплаты админом:', { requestId, adminId });
+    
+    // Проверка прав администратора
+    const isAdmin = await checkAdminAccess(adminId);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен. Только администраторы могут отменять выплаты.'
+        });
+    }
+    
+    try {
+        // Получаем информацию о запросе на вывод
+        const requestCheck = await pool.query(
+            'SELECT * FROM withdrawal_requests WHERE id = $1',
+            [requestId]
+        );
+        
+        if (requestCheck.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Запрос на вывод не найден'
+            });
+        }
+        
+        const withdrawalRequest = requestCheck.rows[0];
+        
+        // Проверяем, что запрос еще не обработан
+        if (withdrawalRequest.status !== 'pending') {
+            return res.status(400).json({
+                success: false,
+                error: 'Невозможно отменить уже обработанный запрос'
+            });
+        }
+        
+        // Начинаем транзакцию для безопасного возврата средств
+        const client = await pool.connect();
+        
+        try {
+            await client.query('BEGIN');
+            
+            // 1. Возвращаем средства пользователю
+            await client.query(`
+                UPDATE user_profiles 
+                SET balance = COALESCE(balance, 0) + $1
+                WHERE user_id = $2
+            `, [withdrawalRequest.amount, withdrawalRequest.user_id]);
+            
+            // 2. Обновляем статус запроса на "отменен"
+            await client.query(`
+                UPDATE withdrawal_requests 
+                SET status = 'cancelled', 
+                    completed_at = CURRENT_TIMESTAMP,
+                    completed_by = $1
+                WHERE id = $2
+            `, [adminId, requestId]);
+            
+            await client.query('COMMIT');
+            
+            console.log(`✅ Выплата отменена! Средства возвращены пользователю ${withdrawalRequest.user_id}`);
+            
+            // Отправляем уведомление пользователю через бота
+            if (bot) {
+                try {
+                    await bot.sendMessage(
+                        withdrawalRequest.user_id,
+                        `❌ Ваша заявка на вывод ${withdrawalRequest.amount}⭐ была отменена администратором. ` +
+                        `Средства возвращены на ваш баланс.`
+                    );
+                } catch (botError) {
+                    console.log('Не удалось отправить уведомление пользователю:', botError.message);
+                }
+            }
+            
+            res.json({
+                success: true,
+                message: `Выплата отменена! ${withdrawalRequest.amount}⭐ возвращены пользователю`,
+                returnedAmount: withdrawalRequest.amount,
+                userId: withdrawalRequest.user_id
+            });
+            
+        } catch (transactionError) {
+            await client.query('ROLLBACK');
+            throw transactionError;
+        } finally {
+            client.release();
+        }
+        
+    } catch (error) {
+        console.error('❌ Cancel withdrawal error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка при отмене выплаты: ' + error.message
+        });
+    }
+});
+
+// ==================== ИСТОРИЯ ОТМЕНЕННЫХ ВЫПЛАТ ====================
+
+// Получение истории отмененных выплат
+app.get('/api/admin/cancelled-withdrawals', async (req, res) => {
+    const { adminId } = req.query;
+    
+    console.log('📋 Запрос истории отмененных выплат от админа:', adminId);
+    
+    // Проверка прав администратора
+    const isAdmin = await checkAdminAccess(adminId);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен'
+        });
+    }
+    
+    try {
+        const result = await pool.query(`
+            SELECT wr.*, u.username, u.first_name, 
+                   up.username as admin_username, up.first_name as admin_name
+            FROM withdrawal_requests wr
+            LEFT JOIN user_profiles u ON wr.user_id = u.user_id
+            LEFT JOIN user_profiles up ON wr.completed_by = up.user_id
+            WHERE wr.status = 'cancelled'
+            ORDER BY wr.completed_at DESC
+            LIMIT 50
+        `);
+        
+        console.log(`✅ Найдено ${result.rows.length} отмененных выплат`);
+        
+        res.json({
+            success: true,
+            cancelledWithdrawals: result.rows
+        });
+    } catch (error) {
+        console.error('❌ Get cancelled withdrawals error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
         });
     }
 });
