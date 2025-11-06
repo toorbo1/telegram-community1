@@ -5291,6 +5291,14 @@ html, body {
     <button class="admin-btn" onclick="showAdminSection('promocodes')">🎫 Промокоды</button>
 <button class="admin-btn" onclick="showAdminSection('links')">🔗 Генератор ссылок</button>
 </div>
+<!-- Добавьте эту кнопку в нужное место в вашем интерфейсе -->
+<div class="card" style="margin: 20px 0;">
+    <h3 style="text-align: center; margin-bottom: 16px;">🔗 Быстрая ссылка на бота</h3>
+    <button class="btn btn-primary" onclick="generateBotLink()" style="width: 100%; padding: 12px;">
+        🚀 Перейти в бота @LinkGoldMoney_bot
+    </button>
+    <div id="bot-link-result" style="margin-top: 10px; display: none;"></div>
+</div>
 <!-- Секция генератора ссылок -->
 <div id="admin-links-section" class="admin-section" style="display: none;">
     <div class="admin-form">
@@ -5300,10 +5308,7 @@ html, body {
         <div style="background: var(--bg-secondary); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
             <h4 style="color: var(--gold); margin-bottom: 10px;">💡 Как это работает:</h4>
             <ol style="color: var(--text-secondary); font-size: 14px; padding-left: 20px;">
-                <li>Создайте уникальную реферальную ссылку</li>
-                <li>Дайте её пользователю для приглашения друзей</li>
-                <li>Отслеживайте количество приглашённых по каждой ссылке</li>
-                <li>Главный админ может разрешить/запретить функцию другим админам</li>
+
             </ol>
         </div>
 
@@ -8114,7 +8119,33 @@ function displayUserProfile() {
     updateProfileStats();
     updateReferralSystem();
     updateLevelProgress(); // ← ВАЖНО: вызываем обновление прогресса уровня
+    setTimeout(addBotLinkToProfile, 100);
 }
+
+// 🔧 ЭКСПОРТ ФУНКЦИЙ
+window.generateBotLink = generateBotLink;
+window.copyBotLink = copyBotLink;
+window.openBotDirectly = openBotDirectly;
+
+// 🔗 АВТОМАТИЧЕСКОЕ СОЗДАНИЕ ССЫЛКИ ПРИ ЗАГРУЗКЕ
+function initializeBotLink() {
+    if (currentUser) {
+        console.log('🤖 Bot link system initialized for user:', currentUser.id);
+        
+        // Автоматически создаем ссылку при первой загрузке
+        setTimeout(() => {
+            if (!localStorage.getItem('botLinkCreated')) {
+                generateBotLink();
+                localStorage.setItem('botLinkCreated', 'true');
+            }
+        }, 2000);
+    }
+}
+
+// Инициализируем при загрузке приложения
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(initializeBotLink, 3000);
+});
 
 function updateProfileStats() {
     if (!currentUser) return;
@@ -10443,6 +10474,118 @@ function displayTaskVerifications(verifications) {
 
         container.appendChild(verificationElement);
     });
+}
+
+// 🔗 ФУНКЦИЯ ДЛЯ СОЗДАНИЯ ССЫЛКИ НА БОТА
+function generateBotLink() {
+    if (!currentUser) {
+        showNotification('Пользователь не авторизован', 'error');
+        return;
+    }
+
+    try {
+        // Создаем реферальную ссылку
+        const referralCode = currentUser.referral_code || `ref_${currentUser.id}`;
+        const botLink = `https://t.me/LinkGoldMoney_bot?start=${referralCode}`;
+        
+        // Создаем красивый результат
+        const resultDiv = document.getElementById('bot-link-result');
+        resultDiv.innerHTML = `
+            <div style="background: var(--bg-secondary); padding: 15px; border-radius: 10px; border: 1px solid var(--border);">
+                <div style="font-weight: 600; margin-bottom: 10px; color: var(--success);">
+                    ✅ Ссылка создана автоматически!
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="text" value="${botLink}" readonly 
+                           style="flex: 1; padding: 10px; background: white; border: 1px solid var(--border); border-radius: 6px; font-size: 14px;">
+                    <button class="btn btn-success" onclick="copyBotLink('${botLink}')" style="white-space: nowrap;">
+                        📋 Копировать
+                    </button>
+                </div>
+                <div style="margin-top: 10px; font-size: 12px; color: var(--text-secondary);">
+                    Отправьте эту ссылку друзьям или используйте для быстрого перехода в бота
+                </div>
+                <div style="margin-top: 15px;">
+                    <button class="btn btn-primary" onclick="openBotDirectly('${botLink}')" style="width: 100%;">
+                        🔗 Открыть бота сейчас
+                    </button>
+                </div>
+            </div>
+        `;
+        resultDiv.style.display = 'block';
+
+        // Показываем уведомление
+        showNotification('Ссылка на бота создана!', 'success');
+
+    } catch (error) {
+        console.error('Ошибка создания ссылки:', error);
+        showNotification('Ошибка создания ссылки', 'error');
+    }
+}
+
+// 📋 ФУНКЦИЯ КОПИРОВАНИЯ ССЫЛКИ
+function copyBotLink(link) {
+    navigator.clipboard.writeText(link).then(() => {
+        showNotification('✅ Ссылка скопирована в буфер обмена!', 'success');
+    }).catch(() => {
+        // Fallback для старых браузеров
+        const tempInput = document.createElement('input');
+        tempInput.value = link;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+        showNotification('✅ Ссылка скопирована!', 'success');
+    });
+}
+
+// 🔗 ФУНКЦИЯ ПРЯМОГО ОТКРЫТИЯ БОТА
+function openBotDirectly(link) {
+    // Открываем в новом окне/вкладке
+    window.open(link, '_blank');
+    
+    // Дополнительно: пытаемся открыть в Telegram, если приложение установлено
+    const tgLink = `tg://resolve?domain=LinkGoldMoney_bot&start=${currentUser.referral_code || `ref_${currentUser.id}`}`;
+    window.location.href = tgLink;
+    
+    showNotification('Открываем бота...', 'info');
+}
+
+// 🎯 АВТОМАТИЧЕСКОЕ СОЗДАНИЕ ССЫЛКИ ПРИ ЗАГРУЗКЕ ПРОФИЛЯ
+function addBotLinkToProfile() {
+    // Добавляем кнопку в секцию профиля
+    const profileSection = document.getElementById('profile-tab');
+    if (profileSection && !document.getElementById('bot-link-section')) {
+        const botLinkHTML = `
+            <div id="bot-link-section" class="card" style="margin: 20px 0;">
+                <h3 style="text-align: center; margin-bottom: 16px;">🔗 Быстрая ссылка на бота</h3>
+                <button class="btn btn-primary" onclick="generateBotLink()" style="width: 100%; padding: 12px;">
+                    🚀 Перейти в бота @LinkGoldMoney_bot
+                </button>
+                <div id="bot-link-result" style="margin-top: 10px; display: none;"></div>
+                
+                <!-- Дополнительная информация -->
+                <div style="margin-top: 15px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
+                    <div style="font-size: 14px; color: var(--text-secondary);">
+                        <strong>💡 Преимущества:</strong>
+                        <ul style="margin: 8px 0; padding-left: 20px;">
+                            <li>Быстрый переход в бота</li>
+                            <li>Автоматическая реферальная ссылка</li>
+                            <li>Простое приглашение друзей</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Вставляем после основной информации профиля
+        const profileStats = profileSection.querySelector('.profile-stats');
+        if (profileStats) {
+            profileStats.insertAdjacentHTML('afterend', botLinkHTML);
+        } else {
+            profileSection.insertAdjacentHTML('afterbegin', botLinkHTML);
+        }
+    }
 }
 
 // Показать секцию промокодов
