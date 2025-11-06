@@ -773,6 +773,7 @@ async function fixWithdrawalTable() {
 // Вызовите эту функцию при инициализации сервера
 fixWithdrawalTable();
 
+// 🔥 ОБНОВЛЕННАЯ КОМАНДА /start С НОВОЙ РЕФЕРАЛЬНОЙ СИСТЕМОЙ
 bot.onText(/\/start(.+)?/, async (msg, match) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
@@ -838,65 +839,9 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         
         const userProfile = userResult.rows[0];
         
-        // Если пользователь пришел по реферальной ссылке и это его первый вход
-        if (referredBy && userProfile.is_first_login) {
-            // 🔥 ИСПРАВЛЕНИЕ: Приглашенный получает 5 звезд, пригласивший получает 10 звезд
-            await pool.query(`
-                UPDATE user_profiles 
-                SET balance = COALESCE(balance, 0) + 5,
-                    is_first_login = false
-                WHERE user_id = $1
-            `, [userId]);
-            
-            // Пригласивший получает 10 звезд
-            await pool.query(`
-                UPDATE user_profiles 
-                SET balance = COALESCE(balance, 0) + 10,
-                    referral_count = COALESCE(referral_count, 0) + 1,
-                    referral_earned = COALESCE(referral_earned, 0) + 10
-                WHERE user_id = $1
-            `, [referredBy]);
-            
-            console.log(`🎉 Реферальный бонус: пользователь ${userId} получил 5⭐, пригласивший ${referredBy} получил 10⭐`);
-            
-            // Отправляем уведомление приглашенному
-            await bot.sendMessage(
-                chatId,
-                `🎉 <b>Поздравляем, ${userData.firstName}!</b>\n\n` +
-                `Вы получили <b>5⭐</b> за регистрацию по приглашению от ${referrerName}!\n\n` +
-                `Теперь вы можете начать зарабатывать выполняя задания! 🚀`,
-                { parse_mode: 'HTML' }
-            );
-            
-            // Отправляем уведомление пригласившему
-            try {
-                const referrerStats = await pool.query(
-                    'SELECT referral_count, referral_earned FROM user_profiles WHERE user_id = $1',
-                    [referredBy]
-                );
-                
-                const stats = referrerStats.rows[0];
-                
-                await bot.sendMessage(
-                    referredBy,
-                    `🎊 <b>Отличная работа!</b>\n\n` +
-                    `Ваш друг ${userData.firstName} зарегистрировался по вашей ссылке!\n\n` +
-                    `💫 <b>Вы получили:</b> 10⭐\n` +
-                    `👥 <b>Всего приглашено:</b> ${(stats.referral_count || 0)} человек\n` +
-                    `💰 <b>Заработано на рефералах:</b> ${(stats.referral_earned || 0)}⭐\n\n` +
-                    `🔗 <b>Ваша реферальная ссылка:</b>\nhttps://t.me/LinkGoldMoney_bot?start=ref_${referredBy}`,
-                    {
-                        parse_mode: 'HTML'
-                    }
-                );
-            } catch (error) {
-                console.log('Не удалось отправить уведомление рефереру:', error.message);
-            }
-        }
-        
-        // Отправляем основное сообщение с кнопками
+        // 🔥 ОБНОВЛЕННОЕ ПРИВЕТСТВЕННОЕ СООБЩЕНИЕ С НОВОЙ РЕФЕРАЛЬНОЙ СИСТЕМОЙ
         const message = `👋 <b>Добро пожаловать в LinkGold, ${userData.firstName}!</b>\n\n` +
-                       `Мы создали этот сервис, чтобы каждый пользователь Telegram мог легко зарабатывать, помогая развиваться крутым проектам и каналам.
+                               `Мы создали этот сервис, чтобы каждый пользователь Telegram мог легко зарабатывать, помогая развиваться крутым проектам и каналам.
 
 
 Мы ценим твоё время и доверие, поэтому:
@@ -910,10 +855,10 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
 Выбери задание и стань частью успеха! 🚀
 
                        Выполняйте задания и зарабатывайте Telegram Stars! 🚀\n\n` +
-                       `🎁 <b>Реферальная программа:</b>\n` +
-                       `• Приглашайте друзей и получайте бонусы\n` +
-                       `• Друг получает 5⭐ за регистрацию\n` +
-                       `• Вы получаете 10⭐ за каждого приглашенного\n\n` +
+                       `🎁 <b>Новая реферальная система:</b>\n` +
+                       `• Вы получаете <strong>10%</strong> от заработка приглашённых\n` +
+                       `• Приглашённый получает <strong>90%</strong> от своего заработка\n` +
+                       `• Автоматически с каждого выполненного задания\n\n` +
                        `🔗 <b>Ваша реферальная ссылка:</b>\nhttps://t.me/LinkGoldMoney_bot?start=${userReferralCode}`;
         
         await bot.sendMessage(
@@ -923,7 +868,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                 parse_mode: 'HTML',
                 reply_markup: {
                     inline_keyboard: [
-                       [
+                        [
                             {
                                 text: '📢 Наш канал',
                                 url: 'https://t.me/LinkGoldChannel1'
@@ -945,6 +890,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         await bot.sendMessage(chatId, '❌ Произошла ошибка при регистрации. Попробуйте позже.');
     }
 });
+
 
 
 // Тестовая команда для проверки отправки уведомлений
@@ -1316,6 +1262,7 @@ bot.onText(/\/stats/, async (msg) => {
         );
     }
 });
+// 🔥 ОБНОВЛЕННАЯ КОМАНДА /referral
 bot.onText(/\/referral/, async (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
@@ -1338,9 +1285,10 @@ bot.onText(/\/referral/, async (msg) => {
         await bot.sendMessage(
             chatId,
             `📢 <b>Реферальная программа LinkGold</b>\n\n` +
-            `🎁 <b>Бонусы за приглашение:</b>\n` +
-            `• Вы получаете: <b>10⭐</b> за друга\n` +
-            `• Друг получает: <b>5⭐</b> при регистрации\n\n` +
+            `🎁 <b>Новая система:</b>\n` +
+            `• Вы получаете: <b>10%</b> от заработка друзей\n` +
+            `• Друг получает: <b>90%</b> от своего заработка\n` +
+            `• Автоматически с каждого задания\n\n` +
             `📊 <b>Ваша статистика:</b>\n` +
             `• Приглашено: <b>${user.referral_count || 0} чел.</b>\n` +
             `• Заработано: <b>${user.referral_earned || 0}⭐</b>\n\n` +
@@ -4535,8 +4483,7 @@ app.get('/api/admin/debug-rights', async (req, res) => {
         });
     }
 });
-// Подтверждение задания для ВСЕХ админов - ОБНОВЛЕННАЯ ВЕРСИЯ С УДАЛЕНИЕМ ФАЙЛОВ
-// 🔧 ОБНОВЛЕННЫЙ ENDPOINT ПОДТВЕРЖДЕНИЯ ЗАДАНИЯ С РЕФЕРАЛЬНОЙ СИСТЕМОЙ
+// 🔥 ОБНОВЛЕННЫЙ ENDPOINT ПОДТВЕРЖДЕНИЯ ЗАДАНИЯ С НОВОЙ РЕФЕРАЛЬНОЙ СИСТЕМОЙ
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const verificationId = req.params.verificationId;
     const { adminId } = req.body;
@@ -4566,8 +4513,9 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
         }
 
         const verificationData = verification.rows[0];
+        const taskPrice = parseFloat(verificationData.task_price);
         
-        // 🔥 ПОЛУЧАЕМ ИНФОРМАЦИЮ О РЕФЕРАЛЕ
+        // 🔥 НОВАЯ РЕФЕРАЛЬНАЯ СИСТЕМА: 10% от заработка приглашенного
         const referrerInfo = await pool.query(`
             SELECT referred_by FROM user_profiles WHERE user_id = $1
         `, [verificationData.user_id]);
@@ -4579,8 +4527,8 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             const referrerId = referrerInfo.rows[0].referred_by;
             
             // 🔥 РАСЧЕТ РЕФЕРАЛЬНОГО БОНУСА - 10% ОТ СУММЫ ЗАДАНИЯ
-            const taskPrice = parseFloat(verificationData.task_price);
             const referralBonusAmount = Math.round(taskPrice * 0.1); // 10% от суммы задания
+            const userEarnsAmount = taskPrice - referralBonusAmount; // 90% получает пользователь
             
             // Получаем информацию о пригласившем
             const referrerDetails = await pool.query(
@@ -4591,7 +4539,7 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             if (referrerDetails.rows.length > 0) {
                 const referrer = referrerDetails.rows[0];
                 
-                // 🔥 НАЧИСЛЯЕМ БОНУС ПРИГЛАСИВШЕМУ
+                // 🔥 НАЧИСЛЯЕМ БОНУС ПРИГЛАСИВШЕМУ (10%)
                 await pool.query(`
                     UPDATE user_profiles 
                     SET 
@@ -4605,11 +4553,46 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
                     referrerId: referrerId,
                     referrerName: referrer.first_name || referrer.username || `User_${referrerId}`,
                     bonusAmount: referralBonusAmount,
-                    taskPrice: taskPrice
+                    taskPrice: taskPrice,
+                    userEarns: userEarnsAmount
                 };
                 
-                console.log(`🎁 Реферальный бонус: ${referrerId} получил ${referralBonusAmount}⭐ за задание пользователя ${verificationData.user_id}`);
+                console.log(`🎁 Новая реферальная система: ${referrerId} получил ${referralBonusAmount}⭐ (10%) за задание пользователя ${verificationData.user_id}`);
+                
+                // 🔥 ОБНОВЛЯЕМ БАЛАНС ПОЛЬЗОВАТЕЛЯ (90% ОТ ЗАРАБОТКА)
+                await pool.query(`
+                    UPDATE user_profiles 
+                    SET 
+                        balance = COALESCE(balance, 0) + $1,
+                        tasks_completed = COALESCE(tasks_completed, 0) + 1,
+                        active_tasks = GREATEST(COALESCE(active_tasks, 0) - 1, 0),
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = $2
+                `, [userEarnsAmount, verificationData.user_id]);
+                
+            } else {
+                // Если не нашли информацию о реферере, пользователь получает 100%
+                await pool.query(`
+                    UPDATE user_profiles 
+                    SET 
+                        balance = COALESCE(balance, 0) + $1,
+                        tasks_completed = COALESCE(tasks_completed, 0) + 1,
+                        active_tasks = GREATEST(COALESCE(active_tasks, 0) - 1, 0),
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = $2
+                `, [taskPrice, verificationData.user_id]);
             }
+        } else {
+            // Если нет реферера, пользователь получает 100%
+            await pool.query(`
+                UPDATE user_profiles 
+                SET 
+                    balance = COALESCE(balance, 0) + $1,
+                    tasks_completed = COALESCE(tasks_completed, 0) + 1,
+                    active_tasks = GREATEST(COALESCE(active_tasks, 0) - 1, 0),
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = $2
+            `, [taskPrice, verificationData.user_id]);
         }
         
         // Получаем информацию о задании
@@ -4647,17 +4630,6 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             WHERE id = $1
         `, [verificationData.user_task_id]);
         
-        // 🔥 ОБНОВЛЯЕМ БАЛАНС ПОЛЬЗОВАТЕЛЯ (ПОЛНАЯ СУММА БЕЗ ВЫЧЕТА)
-        await pool.query(`
-            UPDATE user_profiles 
-            SET 
-                balance = COALESCE(balance, 0) + $1,
-                tasks_completed = COALESCE(tasks_completed, 0) + 1,
-                active_tasks = GREATEST(COALESCE(active_tasks, 0) - 1, 0),
-                updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = $2
-        `, [verificationData.task_price, verificationData.user_id]);
-        
         // 🔥 ПРОВЕРЯЕМ ДОСТИГНУТ ЛИ ЛИМИТ ИСПОЛНИТЕЛЕЙ
         const newCompletedCount = currentCompletedCount + 1;
         let taskRemoved = false;
@@ -4679,8 +4651,8 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
         res.json({
             success: true,
             message: 'Task approved successfully',
-            amountAdded: verificationData.task_price,
-            referralBonus: referralBonus, // 🔥 ДОБАВЛЯЕМ ИНФОРМАЦИЮ О БОНУСЕ
+            amountAdded: referralBonus ? referralBonus.userEarns : taskPrice, // Показываем сколько получил пользователь
+            referralBonus: referralBonus,
             taskCompleted: newCompletedCount >= peopleRequired,
             taskRemoved: taskRemoved
         });

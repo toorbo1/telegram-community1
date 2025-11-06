@@ -5144,30 +5144,35 @@ html, body {
         </div>
         
         <!-- Реферальная система -->
-        <div class="referral-system fade-in">
-            <div class="referral-title">Реферальная система</div>
-            
-            <div class="referral-code">
-                <div class="referral-label">Ваша реферальная ссылка</div>
-                <input type="text" id="referral-link" readonly style="width: 100%; padding: 8px; margin: 8px 0; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); text-align: center;">
-                <button class="copy-btn" onclick="copyReferralLink()">Скопировать ссылку</button>
-            </div>
-            
-            <div class="referral-stats">
-                <div class="referral-stat">
-                    <div class="referral-value" id="ref-invited">0</div>
-                    <div class="referral-label">Приглашено</div>
-                </div>
-                <div class="referral-stat">
-                    <div class="referral-value" id="ref-earned">0 ⭐</div>
-                    <div class="referral-label">Заработано</div>
-                </div>
-            </div>
-            
-            <div class="referral-info">
-                Приглашайте друзей и получайте 10% от их заработка!
-            </div>
+<!-- ОБНОВЛЕННАЯ РЕФЕРАЛЬНАЯ СИСТЕМА -->
+<div class="referral-system fade-in">
+    <div class="referral-title">Реферальная система</div>
+    
+    <div class="referral-code">
+        <div class="referral-label">Ваша реферальная ссылка</div>
+        <input type="text" id="referral-link" readonly style="width: 100%; padding: 8px; margin: 8px 0; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); text-align: center;">
+        <button class="copy-btn" onclick="copyReferralLink()">Скопировать ссылку</button>
+    </div>
+    
+    <div class="referral-stats">
+        <div class="referral-stat">
+            <div class="referral-value" id="ref-invited">0</div>
+            <div class="referral-label">Приглашено</div>
         </div>
+        <div class="referral-stat">
+            <div class="referral-value" id="ref-earned">0 ⭐</div>
+            <div class="referral-label">Заработано</div>
+        </div>
+    </div>
+    
+    <div class="referral-info">
+        🎁 <strong>Новая реферальная система:</strong><br>
+        • Вы получаете <strong>10%</strong> от заработка приглашённых<br>
+        • Приглашённый получает <strong>90%</strong> от своего заработка<br>
+        • Автоматически с каждого выполненного задания<br><br>
+        🔗 Просто отправьте другу эту ссылку в Telegram
+    </div>
+</div>
         <!-- В секции профиля после реферальной системы -->
 <div class="referral-system fade-in">
     <div class="referral-title">🎫 Активация промокода</div>
@@ -8046,6 +8051,7 @@ async function updateActiveTasksCount() {
     }
 }
 
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ РЕФЕРАЛЬНОЙ СИСТЕМЫ
 // 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ РЕФЕРАЛЬНОЙ СИСТЕМЫ
 function updateReferralSystem() {
     if (!currentUser) return;
