@@ -12284,6 +12284,11 @@ function showAdminSection(section) {
 
         // Загружаем данные для определенных секций
         switch(section) {
+            case 'links':
+                console.log('🔗 Loading links management...');
+                showAdminLinksSection();
+                break;
+                
             case 'posts':
                 console.log('📝 Loading posts management...');
                 loadAdminPosts();
@@ -13162,6 +13167,8 @@ function showAdminPaymentsSection() {
 
 // 🔗 ФУНКЦИИ ДЛЯ ГЕНЕРАТОРА ССЫЛОК
 
+// 🔗 ФУНКЦИИ ДЛЯ ГЕНЕРАТОРА ССЫЛОК - ИСПРАВЛЕННАЯ ВЕРСИЯ
+
 // Показать секцию управления ссылками
 function showAdminLinksSection() {
     showAdminSection('links');
@@ -13187,7 +13194,7 @@ async function loadLinkAccessSettings() {
     }
 }
 
-// Создать реферальную ссылку
+// Создать реферальную ссылку - ИСПРАВЛЕННАЯ ВЕРСИЯ
 async function createReferralLink() {
     const nameInput = document.getElementById('link-name');
     const descriptionInput = document.getElementById('link-description');
@@ -13237,8 +13244,8 @@ async function createReferralLink() {
             nameInput.value = '';
             descriptionInput.value = '';
             
-            // Обновляем список ссылок
-            loadReferralLinksList();
+            // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: НЕМЕДЛЕННО обновляем список ссылок
+            await loadReferralLinksList();
             
             showNotification('✅ Ссылка успешно создана!', 'success');
             
@@ -13256,27 +13263,34 @@ async function createReferralLink() {
     }
 }
 
-// Загрузить список ссылок
+// Загрузить список ссылок - ИСПРАВЛЕННАЯ ВЕРСИЯ
 async function loadReferralLinksList() {
     if (!currentUser) return;
     
     try {
+        console.log('🔄 Loading referral links list...');
         const result = await makeRequest(`/api/admin/links/list?adminId=${currentUser.id}`);
         
         if (result.success) {
+            console.log(`✅ Loaded ${result.links?.length || 0} referral links`);
             displayReferralLinksList(result.links);
         } else {
-            console.error('Error loading links:', result.error);
+            console.error('❌ Error loading links:', result.error);
+            showNotification('Ошибка загрузки ссылок: ' + result.error, 'error');
         }
     } catch (error) {
-        console.error('Load links error:', error);
+        console.error('❌ Load links error:', error);
+        showNotification('Ошибка загрузки списка ссылок: ' + error.message, 'error');
     }
 }
 
-// Отобразить список ссылок
+// Отобразить список ссылок - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function displayReferralLinksList(links) {
     const container = document.getElementById('links-list');
-    if (!container) return;
+    if (!container) {
+        console.error('❌ Links list container not found');
+        return;
+    }
     
     container.innerHTML = '';
     
@@ -13293,13 +13307,15 @@ function displayReferralLinksList(links) {
         return;
     }
     
+    console.log(`🎨 Displaying ${links.length} referral links`);
+    
     links.forEach(link => {
         const linkElement = createLinkElement(link);
         container.appendChild(linkElement);
     });
 }
 
-// Создать элемент ссылки
+// Создать элемент ссылки - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function createLinkElement(link) {
     const linkElement = document.createElement('div');
     linkElement.className = 'admin-task-item';
@@ -13389,7 +13405,7 @@ function copyLink(url) {
     });
 }
 
-// Удалить ссылку
+// Удалить ссылку - ИСПРАВЛЕННАЯ ВЕРСИЯ
 async function deleteReferralLink(code) {
     if (!confirm('Удалить эту ссылку? Все данные о приглашениях будут потеряны.')) {
         return;
@@ -13406,7 +13422,8 @@ async function deleteReferralLink(code) {
         
         if (result.success) {
             showNotification('✅ Ссылка удалена!', 'success');
-            loadReferralLinksList();
+            // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: НЕМЕДЛЕННО обновляем список ссылок
+            await loadReferralLinksList();
         } else {
             showNotification('❌ Ошибка: ' + result.error, 'error');
         }
@@ -13458,13 +13475,10 @@ function showAdminSection(section) {
 
         // Загружаем данные для определенных секций
         switch(section) {
-            // ... существующие case ...
-            
             case 'links':
                 console.log('🔗 Loading links management...');
                 showAdminLinksSection();
                 break;
-                
             // ... остальные case ...
         }
     }
@@ -13476,6 +13490,29 @@ window.createReferralLink = createReferralLink;
 window.copyLink = copyLink;
 window.deleteReferralLink = deleteReferralLink;
 window.saveLinkAccessSettings = saveLinkAccessSettings;
+
+// Инициализация обработчиков для генератора ссылок
+function initLinksSectionHandlers() {
+    const allowAdminsCheckbox = document.getElementById('allow-admins-links');
+    if (allowAdminsCheckbox) {
+        allowAdminsCheckbox.addEventListener('change', saveLinkAccessSettings);
+    }
+    
+    // Обработчик Enter для поля названия ссылки
+    const linkNameInput = document.getElementById('link-name');
+    if (linkNameInput) {
+        linkNameInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                createReferralLink();
+            }
+        });
+    }
+}
+
+// Инициализация при загрузке DOM
+document.addEventListener('DOMContentLoaded', function() {
+    initLinksSectionHandlers();
+});
 // В функции initAdminInputHandlers добавьте:
 const allowAdminsCheckbox = document.getElementById('allow-admins-links');
 if (allowAdminsCheckbox) {
