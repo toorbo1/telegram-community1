@@ -5289,55 +5289,57 @@ html, body {
     <button class="admin-btn" onclick="showAdminSection('payments')">💳 Оплаты</button>
     <button class="admin-btn" onclick="showAdminSection('admins')">👥 Админы</button>
     <button class="admin-btn" onclick="showAdminSection('promocodes')">🎫 Промокоды</button>
-<button class="admin-btn" onclick="showAdminLinksSection()">
-    🔗 Генератор ссылок
-</button>
-
+<button class="admin-btn" onclick="showAdminSection('links')">🔗 Генератор ссылок</button>
 
 </div>
 
 <!-- Секция генератора ссылок -->
-<!-- Секция генератора ссылок -->
-<!-- В разделе админ-панели добавьте -->
-<!-- ОБНОВЛЕННАЯ СЕКЦИЯ ГЕНЕРАТОРА ССЫЛОК -->
-<div class="admin-section" id="admin-links-section" style="display: none;">
-    <div class="admin-section-header">
+<div id="admin-links-section" class="admin-section" style="display: none;">
+    <div class="admin-form">
         <h3>🔗 Генератор реферальных ссылок</h3>
-        <p>Создавайте ссылки для приглашения пользователей в бота @LinkGoldMoney_bot</p>
-    </div>
-    
-    <!-- Форма создания ссылки -->
-    <div class="admin-card">
-        <h4>Создать новую ссылку</h4>
-        <div class="form-group">
-            <input type="text" id="link-name" placeholder="Название ссылки (например: Основная ссылка)" class="form-input">
+        
+        <!-- Информация о правах -->
+        <div style="background: var(--bg-secondary); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+            <h4 style="color: var(--gold); margin-bottom: 10px;">💡 Как это работает:</h4>
+            <ol style="color: var(--text-secondary); font-size: 14px; padding-left: 20px;">
+
+            </ol>
         </div>
+
+        <!-- Форма создания ссылки -->
         <div class="form-group">
-            <textarea id="link-description" placeholder="Описание ссылки (опционально)" class="form-input" rows="3"></textarea>
+            <label>Название ссылки *</label>
+            <input type="text" class="admin-input" id="link-name" 
+                   placeholder="Например: Рекламная кампания ноябрь" maxlength="50">
         </div>
-        <button id="create-link-btn" onclick="createReferralLink()" class="btn btn-primary">
+        
+        <div class="form-group">
+            <label>Описание (опционально)</label>
+            <textarea class="admin-textarea" id="link-description" 
+                      placeholder="Описание цели ссылки..." rows="2"></textarea>
+        </div>
+
+        <!-- Настройки доступа (только для главного админа) -->
+        <div id="link-access-control" style="display: none;">
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="allow-admins-links">
+                    Разрешить нанятым админам создавать ссылки
+                </label>
+            </div>
+        </div>
+
+        <button class="admin-submit" onclick="createReferralLink()" id="create-link-btn">
             🔗 Создать ссылку
         </button>
-        <div id="link-form-message" style="margin-top: 10px; min-height: 20px;"></div>
+        
+        <div id="link-form-message" style="margin-top: 12px; min-height: 20px; font-size: 14px;"></div>
     </div>
-    
-    <!-- Настройки доступа (только для главного админа) -->
-    <div id="link-access-control" class="admin-card" style="display: none;">
-        <h4>⚙️ Настройки доступа</h4>
-        <label class="checkbox-label">
-            <input type="checkbox" id="allow-admins-links" onchange="saveLinkAccessSettings()">
-            Разрешить нанятым админам создавать ссылки
-        </label>
-    </div>
-    
+
     <!-- Список созданных ссылок -->
-    <div class="admin-card">
+    <div style="margin-top: 25px;">
         <h4>📋 Созданные ссылки</h4>
-        <div class="admin-card-description">
-            Все ссылки ведут на бота: <strong>@LinkGoldMoney_bot</strong><br>
-            Статистика приглашений обновляется автоматически
-        </div>
-        <div id="links-list">
+        <div id="links-list" class="admin-task-list">
             <!-- Ссылки будут загружены здесь -->
         </div>
     </div>
@@ -7035,19 +7037,9 @@ async function deletePostAsAdmin(postId) {
     }
 }
 
-// В index.html обновите функцию addTaskAsAdmin()
+// 📋 Создание задания
 async function addTaskAsAdmin() {
-    if (!currentUser) {
-        showNotification('Пользователь не авторизован', 'error');
-        return;
-    }
-    
-    // Проверка прав
-    const isAdmin = await checkUserIsAdmin(currentUser.id);
-    if (!isAdmin) {
-        showNotification('Только администратор может создавать задания!', 'error');
-        return;
-    }
+    if (!currentUser) return;
     
     const title = prompt('Введите название задания:');
     if (!title) return;
@@ -7058,69 +7050,36 @@ async function addTaskAsAdmin() {
     const price = prompt('Введите цену задания (в рублях):');
     if (!price) return;
     
+    // Проверяем права
+    const isAdmin = await checkAdminAccess(currentUser.id);
+    if (!isAdmin) {
+        showNotification('Только администратор может создавать задания!', 'error');
+        return;
+    }
+    
     try {
-        const result = await makeRequest('/api/tasks', {
+        const result = await makeRequest('/tasks', {
             method: 'POST',
             body: JSON.stringify({
-                title: title.trim(),
-                description: description.trim(),
+                title: title,
+                description: description,
                 price: parseFloat(price),
-                created_by: currentUser.id,
-                category: 'general',
-                time_to_complete: '5-10 минут',
-                difficulty: 'Легкая',
-                people_required: 1
+                created_by: currentUser.id
             })
         });
 
         if (result.success) {
             showNotification('Задание успешно создано!', 'success');
-            loadTasks(); // Обновляем список заданий
+            loadTasks();
         } else {
             showNotification('Ошибка: ' + result.error, 'error');
         }
     } catch (error) {
         console.error('Error adding task:', error);
-        showNotification('Ошибка создания задания: ' + error.message, 'error');
-    }
-}
-// Для отладки добавьте эту функцию
-async function debugLinkCreation() {
-    console.log('🔍 Debug link creation:');
-    console.log('- Current user:', currentUser);
-    console.log('- Is admin:', await checkUserIsAdmin(currentUser.id));
-    console.log('- API base URL:', API_BASE_URL);
-    
-    // Тестовый запрос
-    try {
-        const testData = {
-            title: 'Тестовое задание',
-            description: 'Тестовое описание',
-            price: 50,
-            created_by: currentUser.id
-        };
-        
-        console.log('📤 Test data:', testData);
-        
-        const response = await fetch(API_BASE_URL + '/api/tasks', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(testData)
-        });
-        
-        console.log('📨 Response status:', response.status);
-        const result = await response.json();
-        console.log('📨 Response data:', result);
-        
-    } catch (error) {
-        console.error('❌ Test request failed:', error);
+        showNotification('Ошибка создания задания', 'error');
     }
 }
 
-// Вызовите для тестирования
-// debugLinkCreation();
 // 🗑️ Удаление задания
 async function deleteTaskAsAdmin(taskId) {
     if (!currentUser) return;
@@ -7972,7 +7931,65 @@ async function loadEssentialData() {
     console.error('Load error:', error);
   }
 }
+// 📋 Функция создания задания (для всех админов)
+async function addTaskAsAdmin() {
+    if (!currentUser) {
+        showNotification('Пользователь не авторизован', 'error');
+        return;
+    }
+    
+    // ✅ ПРАВИЛЬНАЯ ПРОВЕРКА
+    const isAdmin = await checkUserIsAdmin(currentUser.id);
+    if (!isAdmin) {
+        showNotification('Только администратор может создавать задания!', 'error');
+        return;
+    }
+    
+    const title = prompt('Введите название задания:');
+    if (!title) return;
+    
+    const description = prompt('Введите описание задания:');
+    if (!description) return;
+    
+    const price = prompt('Введите цену задания (в рублях):');
+    if (!price) return;
+    
+    try {
+        const result = await makeRequest('/tasks', {
+            method: 'POST',
+            body: JSON.stringify({
+                title: title,
+                description: description,
+                price: parseFloat(price),
+                created_by: currentUser.id
+            })
+        });
 
+        if (result.success) {
+            showNotification('Задание успешно создано!', 'success');
+            loadTasks();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error adding task:', error);
+        showNotification('Ошибка создания задания', 'error');
+    }
+}
+
+// Функция для отладки прав администратора
+function debugAdminRights() {
+    console.log('🐛 DEBUG Admin Rights:');
+    console.log('- Current User:', currentUser);
+    console.log('- ADMIN_ID:', ADMIN_ID);
+    console.log('- is_admin:', currentUser?.is_admin);
+    console.log('- isMainAdmin:', currentUser?.id === ADMIN_ID.toString());
+    console.log('- Admin Nav Visible:', document.getElementById('admin-nav-item')?.style.display);
+    console.log('- Admin Panel Visible:', document.getElementById('admin-panel')?.style.display);
+}
+
+// Вызов для отладки (можно убрать после тестирования)
+setTimeout(debugAdminRights, 2000);
 
 
 
@@ -10966,7 +10983,6 @@ async function deleteVerification() {
 }
 
 // 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОДОБРЕНИЯ ЗАДАНИЯ
-// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОДОБРЕНИЯ ЗАДАНИЯ
 async function approveVerification() {
     if (!currentVerificationId) {
         showNotification('❌ ID верификации не найден', 'error');
@@ -10991,28 +11007,14 @@ async function approveVerification() {
             approveBtn.textContent = 'Одобряем...';
         }
 
-        // 🔥 ИСПРАВЛЕНИЕ: Правильный endpoint и обработка ошибок
-        const response = await fetch(`${API_BASE_URL}/api/admin/task-verifications/${currentVerificationId}/approve`, {
+        const result = await makeRequest(`/api/admin/task-verifications/${currentVerificationId}/approve`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
             body: JSON.stringify({
                 adminId: currentUser.id
             })
         });
 
-        console.log('📨 Ответ сервера при одобрении:', {
-            status: response.status,
-            statusText: response.statusText
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const result = await response.json();
-        console.log('📨 Данные ответа:', result);
+        console.log('📨 Ответ сервера при одобрении:', result);
 
         if (result.success) {
             let message = `✅ Задание одобрено! Пользователь получил ${result.amountAdded || result.task_price}⭐`;
@@ -11051,13 +11053,11 @@ async function approveVerification() {
         if (error.message.includes('Failed to fetch')) {
             errorMessage = '❌ Проблема с соединением. Проверьте интернет и попробуйте снова.';
         } else if (error.message.includes('404')) {
-            errorMessage = '❌ Endpoint не найден. Сообщите администратору.';
+            errorMessage = '❌ не найден. Сообщите администратору.';
         } else if (error.message.includes('403')) {
             errorMessage = '❌ Доступ запрещен. У вас нет прав администратора.';
         } else if (error.message.includes('500')) {
             errorMessage = '❌ Ошибка сервера. Попробуйте позже.';
-        } else if (error.message.includes('Network Error')) {
-            errorMessage = '❌ Проблема с сетью. Проверьте подключение к интернету.';
         }
         
         showNotification(errorMessage, 'error');
@@ -11142,7 +11142,6 @@ const referralBonusStyles = `
 document.head.insertAdjacentHTML('beforeend', referralBonusStyles);
 
 // Функция для диагностики проблемы
-// 🔧 ФУНКЦИЯ ДЛЯ ДИАГНОСТИКИ ПРОБЛЕМЫ С ОДОБРЕНИЕМ
 async function debugApprovalIssue() {
     console.log('🔍 Диагностика проблемы одобрения:');
     
@@ -11166,12 +11165,8 @@ async function debugApprovalIssue() {
     try {
         const testResponse = await fetch(`${API_BASE_URL}/api/health`);
         console.log('✅ Сервер доступен:', testResponse.status);
-        
-        // Проверяем конкретный endpoint
-        const endpointTest = await fetch(`${API_BASE_URL}/api/admin/task-verifications`);
-        console.log('✅ Endpoint доступен:', endpointTest.status);
     } catch (error) {
-        console.error('❌ Сервер/endpoint недоступен:', error);
+        console.error('❌ Сервер недоступен:', error);
     }
 }
 
@@ -12276,11 +12271,11 @@ setTimeout(addAdminDebugButton, 3000);
 // 🔧 ПОЛНАЯ ФУНКЦИЯ ПОКАЗА АДМИН-СЕКЦИЙ С ПРОМОКОДАМИ
 // 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ПОКАЗА АДМИН-СЕКЦИЙ
 function showAdminSection(section) {
-    console.log('🔄 Showing admin section:', section);
+    console.log('🔄 Switching to admin section:', section);
     
-    // Скрываем все секции
-    const allSections = document.querySelectorAll('.admin-section');
-    allSections.forEach(sec => {
+    // Скрываем ВСЕ админ секции
+    const adminSections = document.querySelectorAll('.admin-section');
+    adminSections.forEach(sec => {
         sec.style.display = 'none';
     });
     
@@ -12297,29 +12292,13 @@ function showAdminSection(section) {
     }
     
     // Показываем выбранную секцию
-    const targetSection = document.getElementById(`admin-${section}-section`);
+    const targetSection = document.getElementById('admin-' + section + '-section');
     if (targetSection) {
         targetSection.style.display = 'block';
-        console.log('✅ Section displayed:', section);
-    } else {
-        console.error('❌ Section not found:', `admin-${section}-section`);
-    }
-    
-    // Обновляем активную кнопку в навигации
-    document.querySelectorAll('.admin-nav-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    const activeBtn = document.querySelector(`[onclick*="showAdmin${section.charAt(0).toUpperCase() + section.slice(1)}Section"]`);
-    if (activeBtn) {
-        activeBtn.classList.add('active');
+        console.log(`✅ Showing: admin-${section}-section`);
+
         // Загружаем данные для определенных секций
         switch(section) {
-            case 'links':
-                console.log('🔗 Loading links management...');
-                showAdminLinksSection();
-                break;
-                
             case 'posts':
                 console.log('📝 Loading posts management...');
                 loadAdminPosts();
@@ -13196,74 +13175,20 @@ function showAdminPaymentsSection() {
     }, 100);
 }
 
+// 🔗 ФУНКЦИИ ДЛЯ ГЕНЕРАТОРА ССЫЛОК
 
 // Показать секцию управления ссылками
 function showAdminLinksSection() {
-    console.log('🔗 Показ секции управления ссылками...');
-    
-    // Сначала показываем основную админ-секцию
     showAdminSection('links');
+    loadReferralLinksList();
     
-    // Принудительно показываем контейнер
-    const linksSection = document.getElementById('admin-links-section');
-    if (linksSection) {
-        linksSection.style.display = 'block';
-        linksSection.style.opacity = '1';
-        linksSection.style.visibility = 'visible';
-    }
-    
-    // Затем загружаем список ссылок с небольшой задержкой
-    setTimeout(() => {
-        console.log('🔄 Принудительная загрузка ссылок...');
-        loadReferralLinksList();
-        
-        // Показываем настройки доступа только главному админу
-        const accessControl = document.getElementById('link-access-control');
-        if (accessControl && parseInt(currentUser.id) === ADMIN_ID) {
-            accessControl.style.display = 'block';
-            loadLinkAccessSettings();
-        } else if (accessControl) {
-            accessControl.style.display = 'none';
-        }
-    }, 200);
-}
-
-function forceRefreshLinksSection() {
-    console.log('🔄 Принудительное обновление секции ссылок...');
-    
-    // 1. Очищаем контейнер
-    const container = document.getElementById('links-list');
-    if (container) {
-        container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-secondary);">🔄 Загружаем ссылки...</div>';
-    }
-    
-    // 2. Перезагружаем данные
-    setTimeout(() => {
-        loadReferralLinksList();
-    }, 100);
-    
-    // 3. Показываем уведомление
-    showNotification('🔄 Обновляем список ссылок...', 'info');
-}
-
-// Добавьте кнопку принудительного обновления
-function addRefreshButton() {
-    const refreshBtn = document.createElement('button');
-    refreshBtn.textContent = '🔄 Обновить';
-    refreshBtn.className = 'btn btn-primary';
-    refreshBtn.style.margin = '10px';
-    refreshBtn.onclick = forceRefreshLinksSection;
-    
-    const linksSection = document.getElementById('admin-links-section');
-    if (linksSection) {
-        const header = linksSection.querySelector('.admin-section-header');
-        if (header) {
-            header.appendChild(refreshBtn);
-        }
+    // Показываем настройки доступа только главному админу
+    const accessControl = document.getElementById('link-access-control');
+    if (accessControl && parseInt(currentUser.id) === ADMIN_ID) {
+        accessControl.style.display = 'block';
+        loadLinkAccessSettings();
     }
 }
-
-setTimeout(addRefreshButton, 2000);
 
 // Загрузить настройки доступа
 async function loadLinkAccessSettings() {
@@ -13277,8 +13202,7 @@ async function loadLinkAccessSettings() {
     }
 }
 
-// Создать реферальную ссылку - ИСПРАВЛЕННАЯ ВЕРСИЯ
-// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ СОЗДАНИЯ ССЫЛКИ
+// Создать реферальную ссылку
 async function createReferralLink() {
     const nameInput = document.getElementById('link-name');
     const descriptionInput = document.getElementById('link-description');
@@ -13287,8 +13211,6 @@ async function createReferralLink() {
     
     const name = nameInput.value.trim();
     const description = descriptionInput.value.trim();
-    
-    console.log('🔍 Создание ссылки:', { name, description, userId: currentUser?.id });
     
     if (!name) {
         messageDiv.innerHTML = '<span style="color: var(--error);">Введите название ссылки!</span>';
@@ -13300,7 +13222,7 @@ async function createReferralLink() {
         return;
     }
     
-    // Проверяем права
+    // Проверяем права для нанятых админов
     const isMainAdmin = parseInt(currentUser.id) === ADMIN_ID;
     if (!isMainAdmin && !currentUser.can_create_links) {
         messageDiv.innerHTML = '<span style="color: var(--error);">У вас нет прав для создания ссылок!</span>';
@@ -13313,21 +13235,15 @@ async function createReferralLink() {
     messageDiv.innerHTML = '<span style="color: var(--warning);">Создаем ссылку...</span>';
     
     try {
-        const requestData = {
-            adminId: currentUser.id,
-            name: name,
-            description: description,
-            createdBy: currentUser.id
-        };
-        
-        console.log('📤 Отправка данных:', requestData);
-        
         const result = await makeRequest('/api/admin/links/create', {
             method: 'POST',
-            body: JSON.stringify(requestData)
+            body: JSON.stringify({
+                adminId: currentUser.id,
+                name: name,
+                description: description,
+                createdBy: currentUser.id
+            })
         });
-        
-        console.log('📨 Ответ сервера:', result);
         
         if (result.success) {
             messageDiv.innerHTML = `<span style="color: var(--success);">${result.message}</span>`;
@@ -13336,10 +13252,8 @@ async function createReferralLink() {
             nameInput.value = '';
             descriptionInput.value = '';
             
-            // НЕМЕДЛЕННО обновляем список ссылок
-            setTimeout(() => {
-                loadReferralLinksList();
-            }, 500);
+            // Обновляем список ссылок
+            loadReferralLinksList();
             
             showNotification('✅ Ссылка успешно создана!', 'success');
             
@@ -13348,7 +13262,7 @@ async function createReferralLink() {
         }
         
     } catch (error) {
-        console.error('❌ Ошибка создания ссылки:', error);
+        console.error('❌ Create link error:', error);
         messageDiv.innerHTML = `<span style="color: var(--error);">Ошибка: ${error.message}</span>`;
         showNotification('❌ Ошибка создания ссылки: ' + error.message, 'error');
     } finally {
@@ -13357,101 +13271,27 @@ async function createReferralLink() {
     }
 }
 
-// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ СПИСКА ССЫЛОК
+// Загрузить список ссылок
 async function loadReferralLinksList() {
     if (!currentUser) return;
     
-    // Проверяем права доступа
-    const isMainAdmin = parseInt(currentUser.id) === ADMIN_ID;
-    if (!isMainAdmin && !currentUser.can_create_links) {
-        console.log('❌ У пользователя нет прав для просмотра ссылок');
-        return;
-    }
-    
     try {
-        console.log('🔄 Загрузка списка ссылок...');
         const result = await makeRequest(`/api/admin/links/list?adminId=${currentUser.id}`);
         
-        console.log('📨 Ответ сервера (ссылки):', result);
-        
         if (result.success) {
-            console.log(`✅ Загружено ${result.links?.length || 0} ссылок`);
             displayReferralLinksList(result.links);
         } else {
-            console.error('❌ Ошибка загрузки ссылок:', result.error);
-            showNotification('Ошибка загрузки ссылок: ' + result.error, 'error');
+            console.error('Error loading links:', result.error);
         }
     } catch (error) {
-        console.error('❌ Ошибка загрузки списка ссылок:', error);
-        showNotification('Ошибка загрузки списка ссылок: ' + error.message, 'error');
-    }
-}
-async function debugLinksIssue() {
-    console.log('🐛 ДИАГНОСТИКА ПРОБЛЕМЫ С ССЫЛКАМИ:');
-    
-    // 1. Проверяем пользователя
-    console.log('1. ПОЛЬЗОВАТЕЛЬ:', {
-        id: currentUser?.id,
-        isMainAdmin: parseInt(currentUser?.id) === ADMIN_ID,
-        can_create_links: currentUser?.can_create_links
-    });
-    
-    // 2. Проверяем элементы DOM
-    console.log('2. ЭЛЕМЕНТЫ DOM:');
-    const elements = [
-        'admin-links-section',
-        'links-list',
-        'link-name',
-        'link-description',
-        'create-link-btn'
-    ];
-    
-    elements.forEach(id => {
-        const element = document.getElementById(id);
-        console.log(`- ${id}:`, element ? '✅ Найден' : '❌ Не найден');
-    });
-    
-    // 3. Проверяем API endpoint
-    try {
-        console.log('3. ПРОВЕРКА API:');
-        const testResult = await makeRequest('/api/health');
-        console.log('- API доступен:', testResult);
-        
-        // Пробуем загрузить ссылки
-        const linksResult = await makeRequest(`/api/admin/links/list?adminId=${currentUser.id}`);
-        console.log('- Ответ links/list:', linksResult);
-        
-    } catch (error) {
-        console.error('- Ошибка API:', error);
+        console.error('Load links error:', error);
     }
 }
 
-// Добавьте кнопку диагностики
-function addLinksDebugButton() {
-    const debugBtn = document.createElement('button');
-    debugBtn.textContent = '🐛 Debug Links';
-    debugBtn.style.position = 'fixed';
-    debugBtn.style.top = '400px';
-    debugBtn.style.right = '10px';
-    debugBtn.style.zIndex = '10000';
-    debugBtn.style.padding = '10px';
-    debugBtn.style.background = 'red';
-    debugBtn.style.color = 'white';
-    debugBtn.style.border = 'none';
-    debugBtn.style.borderRadius = '5px';
-    debugBtn.style.fontSize = '12px';
-    debugBtn.onclick = debugLinksIssue;
-    document.body.appendChild(debugBtn);
-}
-
-setTimeout(addLinksDebugButton, 3000);
-// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ СПИСКА ССЫЛОК
+// Отобразить список ссылок
 function displayReferralLinksList(links) {
     const container = document.getElementById('links-list');
-    if (!container) {
-        console.error('❌ Контейнер списка ссылок не найден');
-        return;
-    }
+    if (!container) return;
     
     container.innerHTML = '';
     
@@ -13468,22 +13308,18 @@ function displayReferralLinksList(links) {
         return;
     }
     
-    console.log(`🎨 Отображаем ${links.length} ссылок`);
-    
     links.forEach(link => {
         const linkElement = createLinkElement(link);
         container.appendChild(linkElement);
     });
 }
 
-// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ СОЗДАНИЯ ЭЛЕМЕНТА ССЫЛКИ
+// Создать элемент ссылки
 function createLinkElement(link) {
     const linkElement = document.createElement('div');
     linkElement.className = 'admin-task-item';
     
-    // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Правильно формируем ссылку для бота
-    const referralUrl = `https://t.me/LinkGoldMoney_bot?start=ref_${link.code}`;
-    
+    const referralUrl = `${window.location.origin}?ref=${link.code}`;
     const isOwner = link.created_by === currentUser.id;
     const isMainAdmin = parseInt(currentUser.id) === ADMIN_ID;
     
@@ -13509,7 +13345,7 @@ function createLinkElement(link) {
         <div class="admin-task-description">
             <!-- Ссылка -->
             <div style="margin-bottom: 10px;">
-                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Реферальная ссылка:</div>
+                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Ссылка:</div>
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <input type="text" value="${referralUrl}" readonly 
                            style="flex: 1; padding: 8px; background: var(--bg-primary); 
@@ -13552,7 +13388,7 @@ function createLinkElement(link) {
     return linkElement;
 }
 
-// 🔧 ФУНКЦИЯ ДЛЯ КОПИРОВАНИЯ ССЫЛКИ
+// Копировать ссылку
 function copyLink(url) {
     navigator.clipboard.writeText(url).then(() => {
         showNotification('✅ Ссылка скопирована в буфер обмена!', 'success');
@@ -13568,15 +13404,13 @@ function copyLink(url) {
     });
 }
 
-// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ УДАЛЕНИЯ ССЫЛКИ
+// Удалить ссылку
 async function deleteReferralLink(code) {
     if (!confirm('Удалить эту ссылку? Все данные о приглашениях будут потеряны.')) {
         return;
     }
     
     try {
-        console.log('🗑️ Удаление ссылки:', code);
-        
         const result = await makeRequest('/api/admin/links/delete', {
             method: 'POST',
             body: JSON.stringify({
@@ -13585,68 +13419,17 @@ async function deleteReferralLink(code) {
             })
         });
         
-        console.log('📨 Ответ удаления:', result);
-        
         if (result.success) {
             showNotification('✅ Ссылка удалена!', 'success');
-            // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: НЕМЕДЛЕННО обновляем список ссылок
-            await loadReferralLinksList();
+            loadReferralLinksList();
         } else {
             showNotification('❌ Ошибка: ' + result.error, 'error');
         }
     } catch (error) {
-        console.error('❌ Ошибка удаления ссылки:', error);
+        console.error('Delete link error:', error);
         showNotification('❌ Ошибка удаления ссылки: ' + error.message, 'error');
     }
 }
-
-// 🔧 ФУНКЦИЯ ДЛЯ ПОКАЗА СЕКЦИИ ССЫЛОК
-
-
-// 🔧 ФУНКЦИЯ ДЛЯ ДИАГНОСТИКИ
-function debugLinksSection() {
-    console.log('🐛 ДИАГНОСТИКА СЕКЦИИ ССЫЛОК:');
-    console.log('- currentUser:', currentUser);
-    console.log('- isMainAdmin:', parseInt(currentUser?.id) === ADMIN_ID);
-    console.log('- can_create_links:', currentUser?.can_create_links);
-    
-    // Проверяем элементы DOM
-    const elements = [
-        'admin-links-section',
-        'link-name', 
-        'link-description',
-        'links-list',
-        'create-link-btn'
-    ];
-    
-    elements.forEach(id => {
-        const element = document.getElementById(id);
-        console.log(`- ${id}:`, element ? '✅ Найден' : '❌ Не найден');
-    });
-}
-
-// Добавьте кнопку для диагностики
-function addLinksDebugButton() {
-    const debugBtn = document.createElement('button');
-    debugBtn.textContent = '🐛 Debug Links';
-    debugBtn.style.position = 'fixed';
-    debugBtn.style.top = '350px';
-    debugBtn.style.right = '10px';
-    debugBtn.style.zIndex = '10000';
-    debugBtn.style.padding = '10px';
-    debugBtn.style.background = 'blue';
-    debugBtn.style.color = 'white';
-    debugBtn.style.border = 'none';
-    debugBtn.style.borderRadius = '5px';
-    debugBtn.style.fontSize = '12px';
-    debugBtn.onclick = debugLinksSection;
-    document.body.appendChild(debugBtn);
-}
-
-// Вызовите при загрузке
-setTimeout(addLinksDebugButton, 3000);
-
-
 
 // Сохранить настройки доступа (только для главного админа)
 async function saveLinkAccessSettings() {
@@ -13672,40 +13455,42 @@ async function saveLinkAccessSettings() {
     }
 }
 
+// Обновить функцию showAdminSection для обработки ссылок
+function showAdminSection(section) {
+    console.log('🔄 Switching to admin section:', section);
+    
+    // Скрываем ВСЕ админ секции
+    const adminSections = document.querySelectorAll('.admin-section');
+    adminSections.forEach(sec => {
+        sec.style.display = 'none';
+    });
+    
+    // Показываем выбранную секцию
+    const targetSection = document.getElementById('admin-' + section + '-section');
+    if (targetSection) {
+        targetSection.style.display = 'block';
+        console.log(`✅ Showing: admin-${section}-section`);
+
+        // Загружаем данные для определенных секций
+        switch(section) {
+            // ... существующие case ...
+            
+            case 'links':
+                console.log('🔗 Loading links management...');
+                showAdminLinksSection();
+                break;
+                
+            // ... остальные case ...
+        }
+    }
+}
+
 // 🔧 ЭКСПОРТ ФУНКЦИЙ
 window.showAdminLinksSection = showAdminLinksSection;
 window.createReferralLink = createReferralLink;
 window.copyLink = copyLink;
 window.deleteReferralLink = deleteReferralLink;
 window.saveLinkAccessSettings = saveLinkAccessSettings;
-// Инициализация обработчиков для генератора ссылок
-// Инициализация обработчиков для генератора ссылок
-function initLinksSectionHandlers() {
-    const allowAdminsCheckbox = document.getElementById('allow-admins-links');
-    if (allowAdminsCheckbox) {
-        allowAdminsCheckbox.addEventListener('change', saveLinkAccessSettings);
-    }
-    
-    // Обработчик Enter для поля названия ссылки
-    const linkNameInput = document.getElementById('link-name');
-    if (linkNameInput) {
-        linkNameInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                createReferralLink();
-            }
-        });
-    }
-}
-
-// Инициализация при загрузке DOM
-document.addEventListener('DOMContentLoaded', function() {
-    initLinksSectionHandlers();
-});
-
-// Инициализация при загрузке DOM
-document.addEventListener('DOMContentLoaded', function() {
-    initLinksSectionHandlers();
-});
 // В функции initAdminInputHandlers добавьте:
 const allowAdminsCheckbox = document.getElementById('allow-admins-links');
 if (allowAdminsCheckbox) {
@@ -13992,23 +13777,7 @@ function updateWithdrawPage() {
                 }
             }, 5000);
         }
-// 🔧 ПРОВЕРКА ЗАГРУЗКИ СЕКЦИИ ССЫЛОК
-function checkLinksSectionLoaded() {
-    const sections = [
-        'admin-links-section',
-        'link-name', 
-        'link-description',
-        'links-list'
-    ];
-    
-    sections.forEach(id => {
-        const element = document.getElementById(id);
-        console.log(`🔍 ${id}:`, element ? '✅ Found' : '❌ Not found');
-    });
-}
 
-// Вызовите после загрузки страницы
-setTimeout(checkLinksSectionLoaded, 1000);
         function copyReferralLink() {
             const referralInput = document.getElementById('referral-link');
             if (!referralInput) return;
