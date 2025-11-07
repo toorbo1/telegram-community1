@@ -9,6 +9,73 @@
 
            <style>
             
+.admin-task-item {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    transition: all 0.3s ease;
+}
+
+.admin-task-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.admin-task-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.admin-task-title {
+    flex: 1;
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.admin-task-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.admin-task-delete {
+    background: var(--error);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.admin-task-description {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.copy-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.3s ease;
+}
+
+.copy-btn:hover {
+    background: var(--accent-dark);
+}
+
+.no-tasks {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-secondary);
+}
 
             /* Стили для улучшенного интерфейса проверки */
 .verification-modal-content {
@@ -5341,18 +5408,11 @@ html, body {
 </div>
 
 <!-- Секция генератора ссылок -->
+<!-- Секция генератора ссылок -->
 <div id="admin-links-section" class="admin-section" style="display: none;">
     <div class="admin-form">
-        <h3>🔗 Генератор реферальных ссылок</h3>
+        <h3>🔗 Генератор ссылок</h3>
         
-        <!-- Информация о правах -->
-        <div style="background: var(--bg-secondary); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-            <h4 style="color: var(--gold); margin-bottom: 10px;">💡 Как это работает:</h4>
-            <ol style="color: var(--text-secondary); font-size: 14px; padding-left: 20px;">
-
-            </ol>
-        </div>
-
         <!-- Форма создания ссылки -->
         <div class="form-group">
             <label>Название ссылки *</label>
@@ -13557,18 +13617,6 @@ function showAdminPaymentsSection() {
 
 // 🔗 ФУНКЦИИ ДЛЯ ГЕНЕРАТОРА ССЫЛОК
 
-// Показать секцию управления ссылками
-function showAdminLinksSection() {
-    showAdminSection('links');
-    loadReferralLinksList();
-    
-    // Скрываем настройки доступа для упрощенной версии
-    const accessControl = document.getElementById('link-access-control');
-    if (accessControl) {
-        accessControl.style.display = 'none';
-    }
-}
-
 
 // Загрузить настройки доступа
 async function loadLinkAccessSettings() {
@@ -13774,9 +13822,231 @@ function copyLink(url) {
     });
 }
 
+// 🔗 ФУНКЦИИ ДЛЯ ГЕНЕРАТОРА ССЫЛОК
+
+// Показать секцию управления ссылками
+function showAdminLinksSection() {
+    showAdminSection('links');
+    loadReferralLinksList();
+}
+
+// Загрузить список ссылок с подробной статистикой
+async function loadReferralLinksList() {
+    if (!currentUser) return;
+    
+    try {
+        const result = await makeRequest(`/api/admin/links/list?adminId=${currentUser.id}`);
+        
+        if (result.success) {
+            displayReferralLinksList(result.links);
+        } else {
+            console.error('Error loading links:', result.error);
+        }
+    } catch (error) {
+        console.error('Load links error:', error);
+    }
+}
+
+// Отобразить список ссылок с подробной статистикой
+function displayReferralLinksList(links) {
+    const container = document.getElementById('links-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!links || links.length === 0) {
+        container.innerHTML = `
+            <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">🔗</div>
+                <div>Нет созданных ссылок</div>
+                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
+                    Создайте первую ссылку используя форму выше
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    links.forEach(link => {
+        const linkElement = createDetailedLinkElement(link);
+        container.appendChild(linkElement);
+    });
+}
+
+// Создать элемент ссылки с подробной статистикой
+function createDetailedLinkElement(link) {
+    const linkElement = document.createElement('div');
+    linkElement.className = 'admin-task-item';
+    
+    const referralUrl = link.referral_url || `https://t.me/LinkGoldMoney_bot?start=${link.code}`;
+    const isOwner = link.created_by === currentUser.id;
+    const isMainAdmin = parseInt(currentUser.id) === ADMIN_ID;
+    
+    // Статистика переходов
+    const totalClicks = link.total_clicks || 0;
+    const uniqueClicks = link.unique_clicks || 0;
+    const conversions = link.conversions || 0;
+    const conversionRate = totalClicks > 0 ? ((conversions / totalClicks) * 100).toFixed(1) : 0;
+    
+    linkElement.innerHTML = `
+        <div class="admin-task-header">
+            <div class="admin-task-title">
+                <span style="font-weight: 600;">${escapeHtml(link.name)}</span>
+                ${link.description ? `
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                        ${escapeHtml(link.description)}
+                    </div>
+                ` : ''}
+            </div>
+            <div class="admin-task-actions">
+                ${(isOwner || isMainAdmin) ? `
+                    <button class="admin-task-delete" onclick="deleteReferralLink('${link.code}')">
+                        🗑️ Удалить
+                    </button>
+                ` : ''}
+            </div>
+        </div>
+        
+        <div class="admin-task-description">
+            <!-- Ссылка -->
+            <div style="margin-bottom: 10px;">
+                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Ссылка:</div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="text" value="${referralUrl}" readonly 
+                           style="flex: 1; padding: 8px; background: var(--bg-primary); 
+                                  border: 1px solid var(--border); border-radius: 6px; 
+                                  color: var(--text-primary); font-size: 12px;">
+                    <button class="copy-btn" onclick="copyLink('${referralUrl}')" 
+                            style="background: var(--accent); color: white; border: none; 
+                                   padding: 8px 12px; border-radius: 6px; cursor: pointer; 
+                                   font-size: 12px;">
+                        Копировать
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Подробная статистика -->
+            <div style="margin-top: 15px;">
+                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">
+                    📊 Статистика переходов:
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 18px; font-weight: 700; color: var(--accent);">${totalClicks}</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">Всего переходов</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 18px; font-weight: 700; color: var(--success);">${uniqueClicks}</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">Уникальных</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 18px; font-weight: 700; color: var(--gold);">${conversions}</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">Регистраций</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 18px; font-weight: 700; color: var(--purple);">${conversionRate}%</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">Конверсия</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Дополнительная информация -->
+            <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); margin-top: 12px;">
+                <div>Создана: ${new Date(link.created_at).toLocaleDateString('ru-RU')}</div>
+                <div>Код: ${link.code}</div>
+            </div>
+            
+            <!-- Владелец -->
+            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">
+                Создал: ${link.creator_name || 'Администратор'}
+            </div>
+        </div>
+    `;
+    
+    return linkElement;
+}
+
+// Создать реферальную ссылку
+async function createReferralLink() {
+    const nameInput = document.getElementById('link-name');
+    const descriptionInput = document.getElementById('link-description');
+    const messageDiv = document.getElementById('link-form-message');
+    const submitBtn = document.getElementById('create-link-btn');
+    
+    const name = nameInput.value.trim();
+    const description = descriptionInput.value.trim();
+    
+    if (!name) {
+        messageDiv.innerHTML = '<span style="color: var(--error);">Введите название ссылки!</span>';
+        return;
+    }
+    
+    if (!currentUser) {
+        messageDiv.innerHTML = '<span style="color: var(--error);">Пользователь не авторизован</span>';
+        return;
+    }
+    
+    // Показываем загрузку
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Создаем...';
+    messageDiv.innerHTML = '<span style="color: var(--warning);">Создаем ссылку...</span>';
+    
+    try {
+        const result = await makeRequest('/api/admin/links/create', {
+            method: 'POST',
+            body: JSON.stringify({
+                adminId: currentUser.id,
+                name: name,
+                description: description,
+                createdBy: currentUser.id
+            })
+        });
+        
+        if (result.success) {
+            messageDiv.innerHTML = `<span style="color: var(--success);">${result.message}</span>`;
+            
+            // Очищаем форму
+            nameInput.value = '';
+            descriptionInput.value = '';
+            
+            // Обновляем список ссылок
+            loadReferralLinksList();
+            
+            showNotification('✅ Ссылка успешно создана!', 'success');
+            
+        } else {
+            throw new Error(result.error || 'Неизвестная ошибка сервера');
+        }
+        
+    } catch (error) {
+        console.error('❌ Create link error:', error);
+        messageDiv.innerHTML = `<span style="color: var(--error);">Ошибка: ${error.message}</span>`;
+        showNotification('❌ Ошибка создания ссылки: ' + error.message, 'error');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '🔗 Создать ссылку';
+    }
+}
+
+// Копировать ссылку
+function copyLink(url) {
+    navigator.clipboard.writeText(url).then(() => {
+        showNotification('✅ Ссылка скопирована в буфер обмена!', 'success');
+    }).catch(() => {
+        // Fallback для старых браузеров
+        const tempInput = document.createElement('input');
+        tempInput.value = url;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+        showNotification('✅ Ссылка скопирована!', 'success');
+    });
+}
+
 // Удалить ссылку
 async function deleteReferralLink(code) {
-    if (!confirm('Удалить эту ссылку? Все данные о приглашениях будут потеряны.')) {
+    if (!confirm('Удалить эту ссылку? Все данные о переходах будут потеряны.')) {
         return;
     }
     
@@ -13800,6 +14070,12 @@ async function deleteReferralLink(code) {
         showNotification('❌ Ошибка удаления ссылки: ' + error.message, 'error');
     }
 }
+
+// 🔧 ЭКСПОРТ ФУНКЦИЙ
+window.showAdminLinksSection = showAdminLinksSection;
+window.createReferralLink = createReferralLink;
+window.copyLink = copyLink;
+window.deleteReferralLink = deleteReferralLink;
 
 // 🔧 ЭКСПОРТ ФУНКЦИЙ
 window.showAdminLinksSection = showAdminLinksSection;
@@ -15253,17 +15529,17 @@ async function updateAdminPermissions(adminId, permission, enabled) {
         showNotification('Ошибка обновления прав доступа', 'error');
     }
 }
+// В функции setupAdminPanel добавьте кнопку для ссылок
 function setupAdminPanel() {
     if (!currentUser) return;
     
-    const isMainAdmin = parseInt(currentUser.id) === ADMIN_ID;
-    const adminsBtn = document.getElementById('admins-btn');
-    
-    if (adminsBtn) {
-        adminsBtn.style.display = isMainAdmin ? 'block' : 'none';
+    const adminButtons = document.querySelector('.admin-buttons');
+    if (adminButtons) {
+        // Добавляем кнопку для управления ссылками
+        adminButtons.innerHTML += `
+            <button class="admin-btn" onclick="showAdminLinksSection()">🔗 Ссылки</button>
+        `;
     }
-    
-    console.log('✅ Admin panel setup complete');
 }
 
 
