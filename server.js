@@ -183,18 +183,18 @@ async function initDatabase() {
         console.log('🔄 Initializing simplified database...');
         // Таблица реферальных ссылок
 await pool.query(`
-    CREATE TABLE IF NOT EXISTS referral_links (
-        id SERIAL PRIMARY KEY,
-        code VARCHAR(20) UNIQUE NOT NULL,
-        name TEXT NOT NULL,
-        description TEXT,
-        created_by BIGINT NOT NULL,
-        referral_url TEXT NOT NULL,
-        is_active BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (created_by) REFERENCES user_profiles(user_id)
-    )
-`);
+CREATE TABLE IF NOT EXISTS referral_links 
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(20) UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_by BIGINT NOT NULL,
+    referral_url TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES user_profiles(user_id)
+)
+    `);
 
 // Таблица активаций реферальных ссылок
 await pool.query(`
@@ -3829,6 +3829,7 @@ app.get('/api/admin/users-detailed-stats', async (req, res) => {
 // 🔗 ENDPOINTS ДЛЯ РЕФЕРАЛЬНЫХ ССЫЛОК
 
 // Создание реферальной ссылки
+// Создание реферальной ссылки - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.post('/api/admin/links/create', async (req, res) => {
     const { adminId, name, description, createdBy } = req.body;
     
@@ -3871,7 +3872,7 @@ app.post('/api/admin/links/create', async (req, res) => {
         // Генерируем уникальный код
         const code = generateReferralCode();
         
-        // 🔥 ИСПРАВЛЕНИЕ: Ссылка должна вести на бота, а не на сайт
+        // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Ссылка должна вести на Telegram бота
         const referralUrl = `https://t.me/LinkGoldMoney_bot?start=${code}`;
         
         // Создаем запись в базе данных
@@ -3929,6 +3930,7 @@ async function fixReferralLinksTable() {
             console.log('✅ referral_links table created');
         }
         
+        
         // Проверяем и добавляем отсутствующие колонки
         const columnsToCheck = [
             {name: 'description', type: 'TEXT'},
@@ -3960,7 +3962,23 @@ async function fixReferralLinksTable() {
         console.error('❌ Error fixing referral_links table:', error);
     }
 }
-
+// В app.listen добавьте:
+app.listen(PORT, '0.0.0.0', async () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    
+    // Инициализируем базу данных с заданиями
+    await initializeWithTasks();
+    
+    // Принудительно исправляем структуру таблиц
+    try {
+        await fixWithdrawalTable();
+        await fixTasksTable();
+        await fixReferralLinksTable(); // Добавьте эту строку
+        console.log('✅ All table structures verified');
+    } catch (error) {
+        console.error('❌ Error fixing table structures:', error);
+    }
+});
 // Вызовите эту функцию при инициализации сервера
 async function initializeServer() {
     await initDatabase();
@@ -4192,6 +4210,7 @@ app.post('/api/admin/links/settings', async (req, res) => {
 });
 
 // Вспомогательная функция для генерации кода
+// Вспомогательная функция для генерации кода
 function generateReferralCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let result = '';
@@ -4200,7 +4219,6 @@ function generateReferralCode() {
     }
     return 'LINK_' + result;
 }
-
 // Экспорт данных пользователей
 app.get('/api/admin/users-export', async (req, res) => {
     const { adminId, format = 'json' } = req.query;

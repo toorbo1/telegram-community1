@@ -9885,7 +9885,15 @@ async function initializeApp() {
 
     // Применяем исправления layout сразу
     fixLayoutIssues();
+    // Применяем исправления layout сразу
+    fixLayoutIssues();
 
+    // 🔥 ВАЖНО: Загружаем ссылки при старте если пользователь админ
+    if (currentUser && (currentUser.is_admin || parseInt(currentUser.id) === ADMIN_ID)) {
+        setTimeout(() => {
+            loadReferralLinksList();
+        }, 1000);
+    }
     // 🔥 ПРИНУДИТЕЛЬНАЯ ЗАГРУЗКА ЗАДАНИЙ ПРИ СТАРТЕ
     console.log('🚀 FORCE loading tasks on app start...');
     setTimeout(() => {
@@ -13691,7 +13699,9 @@ function createLinkElement(link) {
     const linkElement = document.createElement('div');
     linkElement.className = 'admin-task-item';
     
-    const referralUrl = `${window.location.origin}?ref=${link.code}`;
+    // 🔥 ИСПРАВЛЕНИЕ: Используем referral_url из базы данных
+    const referralUrl = link.referral_url || `https://t.me/LinkGoldMoney_bot?start=${link.code}`;
+    
     const isOwner = link.created_by === currentUser.id;
     const isMainAdmin = parseInt(currentUser.id) === ADMIN_ID;
     
@@ -13759,7 +13769,6 @@ function createLinkElement(link) {
     
     return linkElement;
 }
-
 // Копировать ссылку
 function copyLink(url) {
     navigator.clipboard.writeText(url).then(() => {
