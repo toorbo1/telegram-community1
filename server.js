@@ -3962,23 +3962,7 @@ async function fixReferralLinksTable() {
         console.error('❌ Error fixing referral_links table:', error);
     }
 }
-// В app.listen добавьте:
-app.listen(PORT, '0.0.0.0', async () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    
-    // Инициализируем базу данных с заданиями
-    await initializeWithTasks();
-    
-    // Принудительно исправляем структуру таблиц
-    try {
-        await fixWithdrawalTable();
-        await fixTasksTable();
-        await fixReferralLinksTable(); // Добавьте эту строку
-        console.log('✅ All table structures verified');
-    } catch (error) {
-        console.error('❌  Error fixing table structures:', error);
-    }
-});
+
 // Вызовите эту функцию при инициализации сервера
 async function initializeServer() {
     await initDatabase();
