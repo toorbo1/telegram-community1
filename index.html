@@ -5289,61 +5289,49 @@ html, body {
     <button class="admin-btn" onclick="showAdminSection('payments')">💳 Оплаты</button>
     <button class="admin-btn" onclick="showAdminSection('admins')">👥 Админы</button>
     <button class="admin-btn" onclick="showAdminSection('promocodes')">🎫 Промокоды</button>
-<button class="admin-btn" onclick="showAdminSection('links')">🔗 Генератор ссылок</button>
+<button class="admin-nav-btn" onclick="showAdminLinksSection()">
+    🔗 Генератор ссылок
+</button>
 
 </div>
 
 <!-- Секция генератора ссылок -->
 <!-- Секция генератора ссылок -->
-<div id="admin-links-section" class="admin-section" style="display: none;">
-    <div class="admin-form">
+<!-- В разделе админ-панели добавьте -->
+<div class="admin-section" id="admin-links-section" style="display: none;">
+    <div class="admin-section-header">
         <h3>🔗 Генератор реферальных ссылок</h3>
-        
-        <!-- Информация о правах -->
-        <div style="background: var(--bg-secondary); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-            <h4 style="color: var(--gold); margin-bottom: 10px;">💡 Как это работает:</h4>
-            <ol style="color: var(--text-secondary); font-size: 14px; padding-left: 20px;">
-                <li>Создайте уникальную ссылку для отслеживания приглашений</li>
-                <li>Отправьте ссылку пользователям для регистрации</li>
-                <li>Отслеживайте статистику приглашений и заработка</li>
-                <li>Получайте 10% от заработка приглашенных пользователей</li>
-            </ol>
-        </div>
-
-        <!-- Форма создания ссылки -->
+        <p>Создавайте и управляйте реферальными ссылками</p>
+    </div>
+    
+    <!-- Форма создания ссылки -->
+    <div class="admin-card">
+        <h4>Создать новую ссылку</h4>
         <div class="form-group">
-            <label>Название ссылки *</label>
-            <input type="text" class="admin-input" id="link-name" 
-                   placeholder="Например: Рекламная кампания ноябрь" maxlength="50">
+            <input type="text" id="link-name" placeholder="Название ссылки" class="form-input">
         </div>
-        
         <div class="form-group">
-            <label>Описание (опционально)</label>
-            <textarea class="admin-textarea" id="link-description" 
-                      placeholder="Описание цели ссылки..." rows="2"></textarea>
+            <textarea id="link-description" placeholder="Описание ссылки" class="form-input" rows="3"></textarea>
         </div>
-
-        <!-- Настройки доступа (только для главного админа) -->
-        <div id="link-access-control" style="display: none;">
-            <div class="form-group">
-                <label style="display: flex; align-items: center; gap: 10px;">
-                    <input type="checkbox" id="allow-admins-links">
-                    Разрешить нанятым админам создавать ссылки
-                </label>
-            </div>
-        </div>
-
-        <button class="admin-submit" onclick="createReferralLink()" id="create-link-btn">
+        <button id="create-link-btn" onclick="createReferralLink()" class="btn btn-primary">
             🔗 Создать ссылку
         </button>
-        
-        <div id="link-form-message" style="margin-top: 12px; min-height: 20px; font-size: 14px;"></div>
+        <div id="link-form-message" style="margin-top: 10px;"></div>
     </div>
-
+    
+    <!-- Настройки доступа (только для главного админа) -->
+    <div id="link-access-control" class="admin-card" style="display: none;">
+        <h4>⚙️ Настройки доступа</h4>
+        <label class="checkbox-label">
+            <input type="checkbox" id="allow-admins-links" onchange="saveLinkAccessSettings()">
+            Разрешить нанятым админам создавать ссылки
+        </label>
+    </div>
+    
     <!-- Список созданных ссылок -->
-    <div style="margin-top: 25px;">
+    <div class="admin-card">
         <h4>📋 Созданные ссылки</h4>
-        <div id="links-list" class="admin-task-list">
+        <div id="links-list">
             <!-- Ссылки будут загружены здесь -->
         </div>
     </div>
@@ -12260,11 +12248,11 @@ setTimeout(addAdminDebugButton, 3000);
 // 🔧 ПОЛНАЯ ФУНКЦИЯ ПОКАЗА АДМИН-СЕКЦИЙ С ПРОМОКОДАМИ
 // 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ПОКАЗА АДМИН-СЕКЦИЙ
 function showAdminSection(section) {
-    console.log('🔄 Switching to admin section:', section);
+    console.log('🔄 Showing admin section:', section);
     
-    // Скрываем ВСЕ админ секции
-    const adminSections = document.querySelectorAll('.admin-section');
-    adminSections.forEach(sec => {
+    // Скрываем все секции
+    const allSections = document.querySelectorAll('.admin-section');
+    allSections.forEach(sec => {
         sec.style.display = 'none';
     });
     
@@ -12281,11 +12269,22 @@ function showAdminSection(section) {
     }
     
     // Показываем выбранную секцию
-    const targetSection = document.getElementById('admin-' + section + '-section');
+    const targetSection = document.getElementById(`admin-${section}-section`);
     if (targetSection) {
         targetSection.style.display = 'block';
-        console.log(`✅ Showing: admin-${section}-section`);
-
+        console.log('✅ Section displayed:', section);
+    } else {
+        console.error('❌ Section not found:', `admin-${section}-section`);
+    }
+    
+    // Обновляем активную кнопку в навигации
+    document.querySelectorAll('.admin-nav-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    const activeBtn = document.querySelector(`[onclick*="showAdmin${section.charAt(0).toUpperCase() + section.slice(1)}Section"]`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
         // Загружаем данные для определенных секций
         switch(section) {
             case 'links':
@@ -13169,24 +13168,27 @@ function showAdminPaymentsSection() {
     }, 100);
 }
 
-// 🔗 ФУНКЦИИ ДЛЯ ГЕНЕРАТОРА ССЫЛОК
-
-// 🔗 ФУНКЦИИ ДЛЯ ГЕНЕРАТОРА ССЫЛОК - ИСПРАВЛЕННАЯ ВЕРСИЯ
-
-// Показать секцию управления ссылками
-// 🔗 ФУНКЦИИ ДЛЯ ГЕНЕРАТОРА ССЫЛОК - ИСПРАВЛЕННАЯ ВЕРСИЯ
 
 // Показать секцию управления ссылками
 function showAdminLinksSection() {
-    showAdminSection('links');
-    loadReferralLinksList();
+    console.log('🔗 Showing admin links section...');
     
-    // Показываем настройки доступа только главному админу
-    const accessControl = document.getElementById('link-access-control');
-    if (accessControl && parseInt(currentUser.id) === ADMIN_ID) {
-        accessControl.style.display = 'block';
-        loadLinkAccessSettings();
-    }
+    // Сначала показываем основную админ-секцию
+    showAdminSection('links');
+    
+    // Затем загружаем список ссылок
+    setTimeout(() => {
+        loadReferralLinksList();
+        
+        // Показываем настройки доступа только главному админу
+        const accessControl = document.getElementById('link-access-control');
+        if (accessControl && parseInt(currentUser.id) === ADMIN_ID) {
+            accessControl.style.display = 'block';
+            loadLinkAccessSettings();
+        } else if (accessControl) {
+            accessControl.style.display = 'none';
+        }
+    }, 100);
 }
 
 // Загрузить настройки доступа
@@ -13784,7 +13786,23 @@ function updateWithdrawPage() {
                 }
             }, 5000);
         }
+// 🔧 ПРОВЕРКА ЗАГРУЗКИ СЕКЦИИ ССЫЛОК
+function checkLinksSectionLoaded() {
+    const sections = [
+        'admin-links-section',
+        'link-name', 
+        'link-description',
+        'links-list'
+    ];
+    
+    sections.forEach(id => {
+        const element = document.getElementById(id);
+        console.log(`🔍 ${id}:`, element ? '✅ Found' : '❌ Not found');
+    });
+}
 
+// Вызовите после загрузки страницы
+setTimeout(checkLinksSectionLoaded, 1000);
         function copyReferralLink() {
             const referralInput = document.getElementById('referral-link');
             if (!referralInput) return;
