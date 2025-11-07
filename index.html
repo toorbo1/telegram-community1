@@ -5294,6 +5294,7 @@ html, body {
 </div>
 
 <!-- Секция генератора ссылок -->
+<!-- Секция генератора ссылок -->
 <div id="admin-links-section" class="admin-section" style="display: none;">
     <div class="admin-form">
         <h3>🔗 Генератор реферальных ссылок</h3>
@@ -5302,7 +5303,10 @@ html, body {
         <div style="background: var(--bg-secondary); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
             <h4 style="color: var(--gold); margin-bottom: 10px;">💡 Как это работает:</h4>
             <ol style="color: var(--text-secondary); font-size: 14px; padding-left: 20px;">
-
+                <li>Создайте уникальную ссылку для отслеживания приглашений</li>
+                <li>Отправьте ссылку пользователям для регистрации</li>
+                <li>Отслеживайте статистику приглашений и заработка</li>
+                <li>Получайте 10% от заработка приглашенных пользователей</li>
             </ol>
         </div>
 
@@ -13170,6 +13174,9 @@ function showAdminPaymentsSection() {
 // 🔗 ФУНКЦИИ ДЛЯ ГЕНЕРАТОРА ССЫЛОК - ИСПРАВЛЕННАЯ ВЕРСИЯ
 
 // Показать секцию управления ссылками
+// 🔗 ФУНКЦИИ ДЛЯ ГЕНЕРАТОРА ССЫЛОК - ИСПРАВЛЕННАЯ ВЕРСИЯ
+
+// Показать секцию управления ссылками
 function showAdminLinksSection() {
     showAdminSection('links');
     loadReferralLinksList();
@@ -13457,40 +13464,13 @@ async function saveLinkAccessSettings() {
     }
 }
 
-// Обновить функцию showAdminSection для обработки ссылок
-function showAdminSection(section) {
-    console.log('🔄 Switching to admin section:', section);
-    
-    // Скрываем ВСЕ админ секции
-    const adminSections = document.querySelectorAll('.admin-section');
-    adminSections.forEach(sec => {
-        sec.style.display = 'none';
-    });
-    
-    // Показываем выбранную секцию
-    const targetSection = document.getElementById('admin-' + section + '-section');
-    if (targetSection) {
-        targetSection.style.display = 'block';
-        console.log(`✅ Showing: admin-${section}-section`);
-
-        // Загружаем данные для определенных секций
-        switch(section) {
-            case 'links':
-                console.log('🔗 Loading links management...');
-                showAdminLinksSection();
-                break;
-            // ... остальные case ...
-        }
-    }
-}
-
 // 🔧 ЭКСПОРТ ФУНКЦИЙ
 window.showAdminLinksSection = showAdminLinksSection;
 window.createReferralLink = createReferralLink;
 window.copyLink = copyLink;
 window.deleteReferralLink = deleteReferralLink;
 window.saveLinkAccessSettings = saveLinkAccessSettings;
-
+// Инициализация обработчиков для генератора ссылок
 // Инициализация обработчиков для генератора ссылок
 function initLinksSectionHandlers() {
     const allowAdminsCheckbox = document.getElementById('allow-admins-links');
@@ -13508,6 +13488,11 @@ function initLinksSectionHandlers() {
         });
     }
 }
+
+// Инициализация при загрузке DOM
+document.addEventListener('DOMContentLoaded', function() {
+    initLinksSectionHandlers();
+});
 
 // Инициализация при загрузке DOM
 document.addEventListener('DOMContentLoaded', function() {
