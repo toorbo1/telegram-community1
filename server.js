@@ -220,7 +220,11 @@ async function initDatabase() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-
+// В initDatabase() после создания таблицы user_profiles добавьте:
+await pool.query(`
+    ALTER TABLE user_profiles 
+    ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT false
+`);
         // Добавляем реферальные поля
         await pool.query(`
             ALTER TABLE user_profiles 
@@ -363,7 +367,7 @@ await pool.query(`
                 sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-
+await fixUserProfilesTable();
         // Таблица прав доступа администраторов
         await pool.query(`
             CREATE TABLE IF NOT EXISTS admin_permissions (
@@ -3327,6 +3331,7 @@ app.get('/api/debug/tasks-test', async (req, res) => {
 // ==================== USER SEARCH SYSTEM FOR BOT ====================
 
 // Поиск пользователей по юзернейму для бота
+// Поиск пользователей по юзернейму для бота
 app.get('/api/bot/search-users', async (req, res) => {
     const { username, adminId } = req.query;
     
@@ -3359,6 +3364,7 @@ app.get('/api/bot/search-users', async (req, res) => {
                 up.balance,
                 up.is_admin,
                 up.created_at,
+                up.is_blocked,  // Добавляем эту колонку
                 -- Статистика выполненных заданий
                 COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_tasks,
                 -- Статистика отклоненных заданий
@@ -3367,9 +3373,7 @@ app.get('/api/bot/search-users', async (req, res) => {
                 COUNT(ut.id) as total_tasks,
                 -- Статистика по рефералам
                 up.referral_count,
-                up.referral_earned,
-                -- Статус блокировки (добавим поле is_blocked)
-                COALESCE(up.is_blocked, false) as is_blocked
+                up.referral_earned
             FROM user_profiles up
             LEFT JOIN user_tasks ut ON up.user_id = ut.user_id
             WHERE up.username ILIKE $1 OR up.user_id::text = $1
@@ -3400,6 +3404,36 @@ app.get('/api/bot/search-users', async (req, res) => {
         });
     }
 });
+async function fixUserProfilesTable() {
+    try {
+        console.log('🔧 Fixing user_profiles table structure...');
+        
+        const columnsToAdd = [
+            'is_blocked BOOLEAN DEFAULT false',
+            'referral_code TEXT',
+            'referred_by BIGINT', 
+            'referral_count INTEGER DEFAULT 0',
+            'referral_earned REAL DEFAULT 0',
+            'is_first_login BOOLEAN DEFAULT true'
+        ];
+        
+        for (const columnDef of columnsToAdd) {
+            try {
+                await pool.query(`
+                    ALTER TABLE user_profiles 
+                    ADD COLUMN IF NOT EXISTS ${columnDef}
+                `);
+                console.log(`✅ Added column: ${columnDef.split(' ')[0]}`);
+            } catch (error) {
+                console.log(`ℹ️ Column ${columnDef.split(' ')[0]} already exists or error:`, error.message);
+            }
+        }
+        
+        console.log('✅ User profiles table structure fixed');
+    } catch (error) {
+        console.error('❌ Error fixing user_profiles table:', error);
+    }
+}
 
 // Получение детальной информации о пользователе для бота
 app.get('/api/bot/user/:userId/details', async (req, res) => {
