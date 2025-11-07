@@ -8,6 +8,51 @@
 
 
            <style>
+            /* Стили для улучшенного интерфейса проверки */
+.verification-modal-content {
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.screenshot-error-placeholder {
+    background: #f5f5f5;
+    border: 2px dashed #ccc;
+    border-radius: 10px;
+    padding: 40px 20px;
+    text-align: center;
+    color: #666;
+}
+
+.retry-button {
+    background: #ff9800;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.retry-button:hover {
+    background: #f57c00;
+}
+
+.emergency-approve {
+    background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    margin-top: 10px;
+    width: 100%;
+}
+
+.emergency-approve:hover {
+    background: linear-gradient(45deg, #ff5252, #e84118);
+}
              /* Стили для генератора ссылок */
 .link-stats {
     display: grid;
@@ -6063,18 +6108,25 @@ html, body {
             </div>
             
             <div class="verification-modal-actions" style="display: flex; gap: 10px; margin-top: 20px;">
-                <button class="btn btn-error" style="flex: 1;" onclick="rejectVerification()">
-                    ❌ Отклонить
-                </button>
-                <button class="btn btn-success" style="flex: 1;" onclick="approveVerification()">
-                    ✅ Одобрить
-                </button>
-            </div>
-            
-            <!-- Кнопка удаления проверки -->
-            <button class="btn btn-warning" onclick="deleteVerification()" style="margin-top: 10px; width: 100%;">
-                🗑️ Удалить проверку
-            </button>
+    <button class="btn btn-error" style="flex: 1;" onclick="rejectVerification()">
+        ❌ Отклонить
+    </button>
+    <button class="btn btn-success" style="flex: 1;" onclick="approveVerification()">
+        ✅ Одобрить (даже без скриншота)
+    </button>
+</div>
+
+<!-- 🔥 НОВАЯ КНОПКА ДЛЯ АВАРИЙНОГО ОДОБРЕНИЯ -->
+<button class="btn btn-warning" onclick="forceApproveVerification()" 
+        style="margin-top: 10px; width: 100%; display: none;" 
+        id="emergency-approve-btn">
+    🚨 Аварийное одобрение (при ошибках)
+</button>
+
+<!-- Кнопка удаления проверки -->
+<button class="btn btn-warning" onclick="deleteVerification()" style="margin-top: 10px; width: 100%;">
+    🗑️ Удалить проверку
+</button>
         </div>
     </div>
 </div>
@@ -6860,7 +6912,7 @@ function initializePromocodes() {
 
 async function makeRequest(endpoint, options = {}) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 секунд
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // Увеличиваем таймаут до 30 секунд
     
     try {
         let url;
@@ -6885,17 +6937,19 @@ async function makeRequest(endpoint, options = {}) {
 
         clearTimeout(timeoutId);
 
-        // Более детальная обработка HTTP статусов
         if (!response.ok) {
             const errorText = await response.text();
             console.error(`❌ HTTP ${response.status}: ${errorText}`);
             
+            // 🔥 УЛУЧШЕННАЯ ОБРАБОТКА HTTP ОШИБОК
             if (response.status === 403) {
                 throw new Error('Доступ запрещен. У вас недостаточно прав.');
             } else if (response.status === 404) {
-                throw new Error('не найден.');
+                throw new Error('Ресурс не найден.');
             } else if (response.status === 500) {
-                throw new Error('Внутренняя ошибка сервера.');
+                throw new Error('Внутренняя ошибка сервера. Попробуйте позже.');
+            } else if (response.status === 502) {
+                throw new Error('Проблема с соединением. Сервер временно недоступен.');
             } else {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
@@ -6909,10 +6963,13 @@ async function makeRequest(endpoint, options = {}) {
         clearTimeout(timeoutId);
         console.error('💥 Request failed:', error);
         
+        // 🔥 УЛУЧШЕННАЯ КЛАССИФИКАЦИЯ ОШИБОК
         if (error.name === 'AbortError') {
-            throw new Error('Таймаут запроса. Сервер не отвежает.');
+            throw new Error('Таймаут запроса. Сервер не отвечает.');
         } else if (error.name === 'TypeError') {
             throw new Error('Проблема с сетью. Проверьте подключение к интернету.');
+        } else if (error.message.includes('Failed to fetch')) {
+            throw new Error('Не удалось подключиться к серверу. Проверьте интернет-соединение.');
         } else {
             throw error;
         }
@@ -10878,8 +10935,7 @@ window.activatePromoCode = activatePromoCode;
 window.deactivatePromoCode = deactivatePromoCode;
 
 
-// В функции openVerificationModal обновите HTML:
-// В функции openVerificationModal обновите HTML:
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОТКРЫТИЯ МОДАЛЬНОГО ОКНА ПРОВЕРКИ
 function openVerificationModal(verification) {
     console.log('📖 Opening verification modal:', verification);
     
@@ -10915,18 +10971,20 @@ function openVerificationModal(verification) {
         taskPrice.textContent = `${verification.task_price || 0} ⭐`;
     }
     
-    if (screenshot && verification.screenshot_url) {
-        screenshot.src = verification.screenshot_url;
-        screenshot.onerror = function() {
-            console.error('❌ Failed to load screenshot');
-            this.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjMWExYTNhIi8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM4YjlkZGEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4K';
-            showNotification('Не удалось загрузить скриншот', 'warning');
-        };
-        screenshot.style.display = 'block';
-    } else {
-        console.error('❌ No screenshot URL provided');
-        if (screenshot) {
+    // 🔥 УЛУЧШЕННАЯ ОБРАБОТКА СКРИНШОТА
+    if (screenshot) {
+        if (verification.screenshot_url) {
+            screenshot.src = verification.screenshot_url;
+            screenshot.style.display = 'block';
+            screenshot.onerror = function() {
+                console.error('❌ Failed to load screenshot');
+                this.style.display = 'none';
+                // 🔥 ПОКАЗЫВАЕМ СООБЩЕНИЕ О ПРОБЛЕМЕ СО СКРИНШОТОМ
+                showScreenshotErrorWarning();
+            };
+        } else {
             screenshot.style.display = 'none';
+            showScreenshotErrorWarning();
         }
     }
 
@@ -10938,6 +10996,42 @@ function openVerificationModal(verification) {
     } else {
         console.error('❌ Verification modal not found');
         showNotification('Ошибка: модальное окно не найдено', 'error');
+    }
+}
+
+// 🔧 ФУНКЦИЯ ДЛЯ ПОКАЗА ПРЕДУПРЕЖДЕНИЯ О ПРОБЛЕМЕ СО СКРИНШОТОМ
+function showScreenshotErrorWarning() {
+    const modalBody = document.querySelector('.verification-modal-content .modal-body');
+    if (!modalBody) return;
+    
+    // Удаляем существующие предупреждения
+    const existingWarning = document.getElementById('screenshot-warning');
+    if (existingWarning) {
+        existingWarning.remove();
+    }
+    
+    const warningHTML = `
+        <div id="screenshot-warning" style="
+            background: rgba(255, 152, 0, 0.1);
+            border: 1px solid #ff9800;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 10px 0;
+            text-align: center;
+        ">
+            <div style="color: #ff9800; font-weight: 600; margin-bottom: 5px;">
+                ⚠️ Скриншот не загружен
+            </div>
+            <div style="font-size: 12px; color: var(--text-secondary);">
+                Вы все равно можете одобрить задание, нажав кнопку ниже
+            </div>
+        </div>
+    `;
+    
+    // Вставляем предупреждение перед кнопками действий
+    const actionButtons = modalBody.querySelector('.verification-modal-actions');
+    if (actionButtons) {
+        actionButtons.insertAdjacentHTML('beforebegin', warningHTML);
     }
 }
 
@@ -11083,6 +11177,7 @@ async function deleteVerification() {
 }
 
 // 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОДОБРЕНИЯ ЗАДАНИЯ
+// 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ ОДОБРЕНИЯ ЗАДАНИЯ С ОБРАБОТКОЙ ОШИБОК
 async function approveVerification() {
     if (!currentVerificationId) {
         showNotification('❌ ID верификации не найден', 'error');
@@ -11101,16 +11196,18 @@ async function approveVerification() {
         });
 
         // Показываем индикатор загрузки
-        const approveBtn = document.querySelector('.verification-approve');
+        const approveBtn = document.querySelector('.btn-success');
         if (approveBtn) {
             approveBtn.disabled = true;
             approveBtn.textContent = 'Одобряем...';
         }
 
+        // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Отправляем запрос даже если скриншот не загружается
         const result = await makeRequest(`/api/admin/task-verifications/${currentVerificationId}/approve`, {
             method: 'POST',
             body: JSON.stringify({
-                adminId: currentUser.id
+                adminId: currentUser.id,
+                forceApprove: true // 🔥 Новый параметр для принудительного одобрения
             })
         });
 
@@ -11143,26 +11240,58 @@ async function approveVerification() {
             }, 500);
             
         } else {
-            throw new Error(result.error || 'Неизвестная ошибка сервера');
+            // 🔥 УЛУЧШЕННАЯ ОБРАБОТКА ОШИБОК: Пробуем принудительное одобрение
+            if (result.error && result.error.includes('скриншот') || result.error.includes('изображение')) {
+                console.log('⚠️ Проблема со скриншотом, пробуем принудительное одобрение...');
+                await forceApproveVerification();
+            } else {
+                throw new Error(result.error || 'Неизвестная ошибка сервера');
+            }
         }
 
     } catch (error) {
         console.error('❌ Сетевая ошибка при одобрении:', error);
         
-        let errorMessage = 'Сетевая ошибка при одобрении задания';
-        if (error.message.includes('Failed to fetch')) {
-            errorMessage = '❌ Проблема с соединением. Проверьте интернет и попробуйте снова.';
-        } else if (error.message.includes('404')) {
-            errorMessage = '❌ не найден. Сообщите администратору.';
-        } else if (error.message.includes('403')) {
-            errorMessage = '❌ Доступ запрещен. У вас нет прав администратора.';
-        } else if (error.message.includes('500')) {
-            errorMessage = '❌ Ошибка сервера. Попробуйте позже.';
+        // 🔥 АВАРИЙНЫЙ РЕЖИМ: Пробуем принудительное одобрение при любых сетевых ошибках
+        console.log('🚨 Аварийный режим: пробуем принудительное одобрение...');
+        await forceApproveVerification();
+    }
+}
+
+// 🔧 ФУНКЦИЯ ПРИНУДИТЕЛЬНОГО ОДОБРЕНИЯ ПРИ ОШИБКАХ
+async function forceApproveVerification() {
+    try {
+        console.log('🔧 Принудительное одобрение верификации:', currentVerificationId);
+        
+        const result = await makeRequest(`/api/admin/task-verifications/${currentVerificationId}/force-approve`, {
+            method: 'POST',
+            body: JSON.stringify({
+                adminId: currentUser.id,
+                reason: 'Автоматическое одобрение при ошибке загрузки скриншота'
+            })
+        });
+
+        if (result.success) {
+            showNotification('✅ Задание одобрено (автоматический режим)!', 'success');
+            
+            closeModal('verification-modal');
+            
+            setTimeout(() => {
+                loadTaskVerifications();
+                loadAdminTasks();
+                updateUserData();
+            }, 500);
+            
+        } else {
+            throw new Error('Не удалось выполнить принудительное одобрение: ' + result.error);
         }
         
-        showNotification(errorMessage, 'error');
+    } catch (forceError) {
+        console.error('❌ Ошибка принудительного одобрения:', forceError);
+        showNotification('❌ Критическая ошибка: ' + forceError.message, 'error');
         
-        const approveBtn = document.querySelector('.verification-approve');
+        // Восстанавливаем кнопку
+        const approveBtn = document.querySelector('.btn-success');
         if (approveBtn) {
             approveBtn.disabled = false;
             approveBtn.textContent = '✅ Одобрить';
@@ -12452,6 +12581,72 @@ async function loadPromocodesList() {
     } catch (error) {
         console.error('❌ Load promocodes error:', error);
         showNotification('Ошибка загрузки промокодов: ' + error.message, 'error');
+    }
+}
+
+// 🔧 ФУНКЦИЯ ДЛЯ ПРОВЕРКИ СЕТЕВОГО СОЕДИНЕНИЯ
+async function checkNetworkConnection() {
+    try {
+        const response = await fetch('/api/health', { 
+            method: 'HEAD',
+            timeout: 5000 
+        });
+        return response.ok;
+    } catch (error) {
+        console.error('❌ Network connection failed:', error);
+        return false;
+    }
+}
+
+// 🔧 ФУНКЦИЯ ДЛЯ ПОВТОРНОЙ ПОПЫТКИ ОДОБРЕНИЯ
+async function retryApproval(maxRetries = 3) {
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            console.log(`🔄 Попытка одобрения ${attempt}/${maxRetries}`);
+            
+            const result = await makeRequest(`/api/admin/task-verifications/${currentVerificationId}/approve`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    adminId: currentUser.id,
+                    retryAttempt: attempt
+                })
+            });
+            
+            if (result.success) {
+                return result;
+            }
+            
+            lastError = new Error(result.error);
+            
+        } catch (error) {
+            lastError = error;
+            console.error(`❌ Попытка ${attempt} не удалась:`, error);
+            
+            // Ждем перед следующей попыткой
+            if (attempt < maxRetries) {
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            }
+        }
+    }
+    
+    throw lastError;
+}
+
+// 🔧 ФУНКЦИЯ ДЛЯ ОБНОВЛЕНИЯ СТАТУСА КНОПОК ПРИ ОШИБКАХ
+function updateApprovalButtonOnError() {
+    const approveBtn = document.querySelector('.btn-success');
+    const emergencyBtn = document.getElementById('emergency-approve-btn');
+    
+    if (approveBtn) {
+        approveBtn.disabled = false;
+        approveBtn.textContent = '🔄 Повторить попытку';
+        approveBtn.onclick = retryApproval;
+    }
+    
+    if (emergencyBtn) {
+        emergencyBtn.style.display = 'block';
     }
 }
 
