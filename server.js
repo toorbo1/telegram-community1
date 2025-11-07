@@ -24,20 +24,6 @@ if (BOT_TOKEN) {
     console.log('⚠️ BOT_TOKEN not set - Telegram features disabled');
 }
 
-// Дополнительная функция для безопасного формирования URL
-function buildUrl(baseUrl, endpoint, params = {}) {
-    const url = new URL(endpoint, baseUrl);
-    Object.keys(params).forEach(key => {
-        url.searchParams.append(key, params[key]);
-    });
-    return url.toString();
-}
-
-// Использование:
-const searchUrl = buildUrl(APP_URL, '/api/bot/search-users', {
-    username: searchQuery,
-    adminId: userId
-});
 // Используйте переменную окружения от Railway
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -959,7 +945,6 @@ bot.onText(/\/testnotify/, async (msg) => {
 // ==================== BOT COMMANDS FOR USER MANAGEMENT ====================
 
 // Команда поиска пользователей
-// ИСПРАВЛЕННАЯ ВЕРСИЯ - команда поиска пользователей
 bot.onText(/\/search_user (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
@@ -977,18 +962,8 @@ bot.onText(/\/search_user (.+)/, async (msg, match) => {
     }
     
     try {
-        // 🔥 ИСПРАВЛЕНИЕ: Используем относительный URL или правильно формируем абсолютный
-        const baseUrl = process.env.RAILWAY_STATIC_URL || 'http://localhost:3000';
-        const searchUrl = `${baseUrl}/api/bot/search-users?username=${encodeURIComponent(searchQuery)}&adminId=${userId}`;
-        
-        console.log('🔗 Making request to:', searchUrl);
-        
-        const response = await fetch(searchUrl);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
+        // Выполняем поиск пользователей
+        const response = await fetch(`${APP_URL}/api/bot/search-users?username=${encodeURIComponent(searchQuery)}&adminId=${userId}`);
         const result = await response.json();
         
         if (!result.success) {
@@ -1077,6 +1052,7 @@ bot.onText(/\/search_user (.+)/, async (msg, match) => {
         );
     }
 });
+
 // Обработчик callback кнопок для управления пользователями
 bot.on('callback_query', async (callbackQuery) => {
     const message = callbackQuery.message;
