@@ -8317,6 +8317,7 @@ async function updateActiveTasksCount() {
 }
 
 // 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ РЕФЕРАЛЬНОЙ СИСТЕМЫ
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ РЕФЕРАЛЬНОЙ СИСТЕМЫ
 function updateReferralSystem() {
     if (!currentUser) return;
     
@@ -8327,19 +8328,21 @@ function updateReferralSystem() {
     const referralInput = document.getElementById('referral-link');
     if (referralInput) referralInput.value = referralLink;
     
+    // Обновляем статистику
     const refInvited = document.getElementById('ref-invited');
     const refEarned = document.getElementById('ref-earned');
     
     if (refInvited) refInvited.textContent = currentUser.referral_count || 0;
     if (refEarned) refEarned.textContent = `${currentUser.referral_earned || 0} ⭐`;
     
-    // 🔥 ОБНОВЛЯЕМ ТЕКСТ С НОВЫМИ УСЛОВИЯМИ И СТАТИСТИКОЙ
+    // 🔥 ОБНОВЛЯЕМ ТЕКСТ С НОВЫМИ УСЛОВИЯМИ
     const referralInfo = document.querySelector('.referral-info');
     if (referralInfo) {
         referralInfo.innerHTML = `
             🎁 <strong>Реферальная система:</strong><br>
-            • Вы получаете <strong>10%</strong> от заработка приглашённых<br>
-            • Приглашённый получает <strong>90%</strong> от своего заработка<br>
+            • Новый пользователь получает <strong>2⭐</strong> за переход по ссылке<br>
+            • Вы получаете <strong>90%</strong> от своего заработка<br>
+            • Пригласивший получает <strong>10%</strong> от вашего заработка<br>
             • Автоматически с каждого выполненного задания<br>
             • Ваш заработок с рефералов: <strong>${currentUser.referral_earned || 0} ⭐</strong><br>
             • Приглашено друзей: <strong>${currentUser.referral_count || 0}</strong><br><br>
@@ -8347,7 +8350,6 @@ function updateReferralSystem() {
         `;
     }
 }
-
 
 // 🔧 ФУНКЦИЯ ДЛЯ ПРОВЕРКИ РЕФЕРАЛЬНЫХ НАЧИСЛЕНИЙ
 async function checkReferralEarnings() {
@@ -8357,8 +8359,6 @@ async function checkReferralEarnings() {
         const result = await makeRequest(`/api/user/${currentUser.id}/referral-earnings`);
         
         if (result.success) {
-            console.log('📊 Реферальные начисления:', result.earnings);
-            
             // Обновляем данные пользователя
             if (result.earnings) {
                 currentUser.referral_earned = result.earnings.total_earned || 0;
@@ -8366,7 +8366,6 @@ async function checkReferralEarnings() {
                 
                 // Обновляем интерфейс
                 updateReferralSystem();
-                displayUserProfile();
             }
         }
     } catch (error) {
