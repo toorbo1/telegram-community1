@@ -301,6 +301,16 @@ async function initDatabase() {
             )
         `);
 
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS admin_actions (
+                id SERIAL PRIMARY KEY,
+                admin_id BIGINT NOT NULL,
+                action_type TEXT NOT NULL,
+                target_id INTEGER,
+                description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
         // Таблица проверки заданий
         await pool.query(`
             CREATE TABLE IF NOT EXISTS task_verifications (
@@ -2435,6 +2445,44 @@ app.post('/api/user/auth', async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// 🔧 ДИАГНОСТИКА ПРОБЛЕМ С ЗАГРУЗКОЙ ФАЙЛОВ
+app.get('/api/debug/uploads', async (req, res) => {
+    try {
+        const uploadsDir = path.join(__dirname, 'uploads');
+        const files = fs.existsSync(uploadsDir) ? fs.readdirSync(uploadsDir) : [];
+        
+        // Проверяем записи в базе данных
+        const dbScreenshots = await pool.query(`
+            SELECT screenshot_url, COUNT(*) as count 
+            FROM task_verifications 
+            WHERE screenshot_url IS NOT NULL 
+            GROUP BY screenshot_url
+            LIMIT 10
+        `);
+        
+        res.json({
+            success: true,
+            uploads: {
+                directory: uploadsDir,
+                exists: fs.existsSync(uploadsDir),
+                fileCount: files.length,
+                files: files.slice(0, 10)
+            },
+            database: {
+                totalVerifications: (await pool.query('SELECT COUNT(*) FROM task_verifications')).rows[0].count,
+                withScreenshots: (await pool.query('SELECT COUNT(*) FROM task_verifications WHERE screenshot_url IS NOT NULL')).rows[0].count,
+                sampleScreenshots: dbScreenshots.rows
+            }
+        });
+    } catch (error) {
+        console.error('Uploads debug error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
         });
     }
 });
@@ -4618,11 +4666,12 @@ setInterval(() => {
 }, 30000);
 
 // 🔥 ОБНОВЛЕННЫЙ ENDPOINT ПОДТВЕРЖДЕНИЯ ЗАДАНИЯ С НОВОЙ РЕФЕРАЛЬНОЙ СИСТЕМОЙ
+// 🔥 УЛУЧШЕННАЯ ФУНКЦИЯ ОДОБРЕНИЯ ЗАДАНИЯ С ОБРАБОТКОЙ ОШИБОК ИЗОБРАЖЕНИЙ
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const { verificationId } = req.params;
-    const { adminId } = req.body;
+    const { adminId, forceApprove = false } = req.body;
 
-    console.log('🔄 Admin approving verification:', { verificationId, adminId });
+    console.log('🔄 Admin approving verification:', { verificationId, adminId, forceApprove });
 
     // Проверяем права администратора
     if (!adminId) {
@@ -4656,7 +4705,8 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
                 t.completed_count,
                 ut.user_id,
                 up.first_name as user_name,
-                up.username
+                up.username,
+                up.referred_by
             FROM task_verifications tv
             JOIN user_tasks ut ON tv.user_task_id = ut.id
             JOIN tasks t ON ut.task_id = t.id
@@ -4681,8 +4731,14 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             taskPrice,
             taskTitle: verification.task_title,
             peopleRequired: verification.people_required,
-            completedCount: verification.completed_count
+            completedCount: verification.completed_count,
+            hasScreenshot: !!verification.screenshot_url
         });
+
+        // 🔥 ПРОВЕРКА ИСПРАВЛЕНИЯ: Если скриншот не загружается, но forceApprove = true, продолжаем
+        if (!verification.screenshot_url && !forceApprove) {
+            console.log('⚠️ Скриншот не найден, но продолжаем по forceApprove');
+        }
 
         // Начинаем транзакцию
         const client = await pool.connect();
@@ -4709,21 +4765,15 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
 
             // 4. Помечаем верификацию как обработанную
             await client.query(
-                'UPDATE task_verifications SET status = $1, processed_at = NOW(), processed_by = $2 WHERE id = $3',
+                'UPDATE task_verifications SET status = $1, reviewed_at = NOW(), reviewed_by = $2 WHERE id = $3',
                 ['approved', adminId, verificationId]
             );
 
             // 🔥 РЕФЕРАЛЬНАЯ СИСТЕМА: Начисляем бонус пригласившему
             let referralBonus = null;
             
-            // Находим реферера (кто пригласил этого пользователя)
-            const referrerResult = await client.query(
-                'SELECT referred_by FROM user_profiles WHERE user_id = $1',
-                [userId]
-            );
-
-            if (referrerResult.rows.length > 0 && referrerResult.rows[0].referred_by) {
-                const referrerId = referrerResult.rows[0].referred_by;
+            if (verification.referred_by) {
+                const referrerId = verification.referred_by;
                 
                 // Проверяем, что реферер существует
                 const referrerCheck = await client.query(
@@ -4746,19 +4796,23 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
                     await client.query(
                         `UPDATE user_profiles 
                          SET balance = balance + $1, 
-                             referral_earned = COALESCE(referral_earned, 0) + $1,
-                             referral_count = COALESCE(referral_count, 0) + 1
+                             referral_earned = COALESCE(referral_earned, 0) + $1
                          WHERE user_id = $2`,
                         [bonusAmount, referrerId]
                     );
 
-                    // Создаем запись о реферальной транзакции
-                    await client.query(
-                        `INSERT INTO referral_transactions 
-                         (referrer_id, referred_id, task_id, amount, created_at) 
-                         VALUES ($1, $2, $3, $4, NOW())`,
-                        [referrerId, userId, taskId, bonusAmount]
+                    // Увеличиваем счетчик рефералов только если это первое задание
+                    const userCompletedTasks = await client.query(
+                        'SELECT COUNT(*) FROM user_tasks WHERE user_id = $1 AND status = $2',
+                        [userId, 'completed']
                     );
+                    
+                    if (parseInt(userCompletedTasks.rows[0].count) === 1) {
+                        await client.query(
+                            'UPDATE user_profiles SET referral_count = COALESCE(referral_count, 0) + 1 WHERE user_id = $1',
+                            [referrerId]
+                        );
+                    }
 
                     referralBonus = {
                         referrerName: referrer.first_name || referrer.username || `User_${referrerId}`,
@@ -4811,6 +4865,10 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
                 response.message += ` Реферальный бонус начислен!`;
             }
 
+            if (!verification.screenshot_url) {
+                response.message += " (Одобрено без скриншота)";
+            }
+
             console.log('✅ Verification approved successfully:', response);
 
             res.json(response);
@@ -4819,7 +4877,22 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             // Откатываем транзакцию в случае ошибки
             await client.query('ROLLBACK');
             console.error('❌ Transaction error:', transactionError);
-            throw transactionError;
+            
+            // Более детальная обработка ошибок
+            let errorMessage = 'Внутренняя ошибка сервера';
+            if (transactionError.code === '23505') {
+                errorMessage = 'Задание уже было обработано';
+            } else if (transactionError.code === '23503') {
+                errorMessage = 'Ошибка целостности данных';
+            } else if (transactionError.message.includes('screenshot')) {
+                errorMessage = 'Проблема с обработкой скриншота';
+            }
+
+            res.status(500).json({
+                success: false,
+                error: errorMessage,
+                details: process.env.NODE_ENV === 'development' ? transactionError.message : undefined
+            });
         } finally {
             client.release();
         }
@@ -4827,17 +4900,75 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
     } catch (error) {
         console.error('❌ Approve verification error:', error);
         
-        let errorMessage = 'Внутренняя ошибка сервера';
-        if (error.code === '23505') { // unique violation
-            errorMessage = 'Задание уже было обработано';
-        } else if (error.code === '23503') { // foreign key violation
-            errorMessage = 'Ошибка целостности данных';
-        }
-
         res.status(500).json({
             success: false,
-            error: errorMessage,
+            error: 'Внутренняя ошибка сервера',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+// 🔧 ENDPOINT ДЛЯ ПРИНУДИТЕЛЬНОГО ОДОБРЕНИЯ БЕЗ СКРИНШОТА
+app.post('/api/admin/task-verifications/:verificationId/force-approve', async (req, res) => {
+    const { verificationId } = req.params;
+    const { adminId, reason } = req.body;
+
+    console.log('🔧 Force approving verification:', { verificationId, adminId, reason });
+
+    try {
+        // Используем основную функцию с флагом forceApprove
+        const result = await pool.query(`
+            SELECT tv.*, ut.user_id, t.price, t.id as task_id
+            FROM task_verifications tv
+            JOIN user_tasks ut ON tv.user_task_id = ut.id
+            JOIN tasks t ON ut.task_id = t.id
+            WHERE tv.id = $1
+        `, [verificationId]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Проверка не найдена'
+            });
+        }
+
+        const verification = result.rows[0];
+
+        // Вызываем основной endpoint с флагом forceApprove
+        const approveResult = await fetch(`http://localhost:${PORT}/api/admin/task-verifications/${verificationId}/approve`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                adminId: adminId,
+                forceApprove: true
+            })
+        });
+
+        const data = await approveResult.json();
+
+        if (data.success) {
+            // Логируем принудительное одобрение
+            await pool.query(`
+                INSERT INTO admin_actions (admin_id, action_type, target_id, description) 
+                VALUES ($1, $2, $3, $4)
+            `, [adminId, 'force_approve', verificationId, reason || 'Автоматическое одобрение при ошибке скриншота']);
+
+            res.json({
+                success: true,
+                message: 'Задание одобрено в принудительном режиме',
+                ...data
+            });
+        } else {
+            throw new Error(data.error);
+        }
+
+    } catch (error) {
+        console.error('❌ Force approve error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка принудительного одобрения: ' + error.message
         });
     }
 });

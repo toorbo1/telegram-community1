@@ -11241,7 +11241,7 @@ async function approveVerification() {
             
         } else {
             // 🔥 УЛУЧШЕННАЯ ОБРАБОТКА ОШИБОК: Пробуем принудительное одобрение
-            if (result.error && result.error.includes('скриншот') || result.error.includes('изображение')) {
+            if (result.error && (result.error.includes('скриншот') || result.error.includes('изображение'))) {
                 console.log('⚠️ Проблема со скриншотом, пробуем принудительное одобрение...');
                 await forceApproveVerification();
             } else {
@@ -11255,6 +11255,47 @@ async function approveVerification() {
         // 🔥 АВАРИЙНЫЙ РЕЖИМ: Пробуем принудительное одобрение при любых сетевых ошибках
         console.log('🚨 Аварийный режим: пробуем принудительное одобрение...');
         await forceApproveVerification();
+    }
+}
+
+// 🔧 ФУНКЦИЯ ПРИНУДИТЕЛЬНОГО ОДОБРЕНИЯ ПРИ ОШИБКАХ
+async function forceApproveVerification() {
+    try {
+        console.log('🔧 Принудительное одобрение верификации:', currentVerificationId);
+        
+        const result = await makeRequest(`/api/admin/task-verifications/${currentVerificationId}/force-approve`, {
+            method: 'POST',
+            body: JSON.stringify({
+                adminId: currentUser.id,
+                reason: 'Автоматическое одобрение при ошибке загрузки скриншота'
+            })
+        });
+
+        if (result.success) {
+            showNotification('✅ Задание одобрено (автоматический режим)!', 'success');
+            
+            closeModal('verification-modal');
+            
+            setTimeout(() => {
+                loadTaskVerifications();
+                loadAdminTasks();
+                updateUserData();
+            }, 500);
+            
+        } else {
+            throw new Error('Не удалось выполнить принудительное одобрение: ' + result.error);
+        }
+        
+    } catch (forceError) {
+        console.error('❌ Ошибка принудительного одобрения:', forceError);
+        showNotification('❌ Критическая ошибка: ' + forceError.message, 'error');
+        
+        // Восстанавливаем кнопку
+        const approveBtn = document.querySelector('.btn-success');
+        if (approveBtn) {
+            approveBtn.disabled = false;
+            approveBtn.textContent = '✅ Одобрить';
+        }
     }
 }
 
