@@ -181,7 +181,48 @@ async function fixPromocodesTable() {
 async function initDatabase() {
     try {
         console.log('🔄 Initializing simplified database...');
-        
+        // Таблица реферальных ссылок
+await pool.query(`
+    CREATE TABLE IF NOT EXISTS referral_links (
+        id SERIAL PRIMARY KEY,
+        code VARCHAR(20) UNIQUE NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        created_by BIGINT NOT NULL,
+        referral_url TEXT NOT NULL,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (created_by) REFERENCES user_profiles(user_id)
+    )
+`);
+
+// Таблица активаций реферальных ссылок
+await pool.query(`
+    CREATE TABLE IF NOT EXISTS referral_activations (
+        id SERIAL PRIMARY KEY,
+        link_id INTEGER NOT NULL,
+        user_id BIGINT NOT NULL,
+        activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        reward_amount REAL DEFAULT 0,
+        FOREIGN KEY (link_id) REFERENCES referral_links(id),
+        FOREIGN KEY (user_id) REFERENCES user_profiles(user_id)
+    )
+`);
+
+// Таблица настроек админ-панели
+await pool.query(`
+    CREATE TABLE IF NOT EXISTS admin_settings (
+        id INTEGER PRIMARY KEY DEFAULT 1,
+        allow_admins_links BOOLEAN DEFAULT false,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+`);
+
+// Добавьте колонку для прав создания ссылок
+await pool.query(`
+    ALTER TABLE admin_permissions 
+    ADD COLUMN IF NOT EXISTS can_create_links BOOLEAN DEFAULT false
+`);
         // Таблица для лога уведомлений
         await pool.query(`
             CREATE TABLE IF NOT EXISTS admin_notifications (
@@ -418,7 +459,38 @@ async function initDatabase() {
             `, [ADMIN_ID]);
             console.log('✅ Тестовые задания созданы');
         }
+// В функции initDatabase() добавьте:
+async function addMissingUserColumns() {
+    try {
+        console.log('🔧 Adding missing columns to user_profiles...');
+        
+        const columnsToAdd = [
+            'is_blocked BOOLEAN DEFAULT false',
+            'tasks_completed INTEGER DEFAULT 0',
+            'last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+        ];
+        
+        for (const columnDef of columnsToAdd) {
+            const columnName = columnDef.split(' ')[0];
+            try {
+                await pool.query(`
+                    ALTER TABLE user_profiles 
+                    ADD COLUMN IF NOT EXISTS ${columnDef}
+                `);
+                console.log(`✅ Added column: ${columnName}`);
+            } catch (error) {
+                console.log(`ℹ️ Column ${columnName} already exists:`, error.message);
+            }
+        }
+        
+        console.log('✅ User table structure verified');
+    } catch (error) {
+        console.error('❌ Error adding user columns:', error);
+    }
+}
 
+// Вызовите эту функцию в initDatabase()
+await addMissingUserColumns();
         // Создаем тестовый пост если нет постов
         const postsCount = await pool.query('SELECT COUNT(*) FROM posts');
         if (parseInt(postsCount.rows[0].count) === 0) {
@@ -2107,11 +2179,10 @@ async function showUserDetailedStats(chatId, targetUserId, messageId) {
     }
 }
 
-// 🚫 БЛОКИРОВКА/РАЗБЛОКИРОВКА ПОЛЬЗОВАТЕЛЯ
 async function toggleUserBlock(chatId, adminId, targetUserId, messageId) {
     try {
         const userResult = await pool.query(
-            'SELECT username, first_name, is_blocked FROM user_profiles WHERE user_id = $1',
+            'SELECT username, first_name, COALESCE(is_blocked, false) as is_blocked FROM user_profiles WHERE user_id = $1',
             [targetUserId]
         );
         
@@ -3754,6 +3825,248 @@ app.get('/api/admin/users-detailed-stats', async (req, res) => {
         });
     }
 });
+
+// 🔗 ENDPOINTS ДЛЯ РЕФЕРАЛЬНЫХ ССЫЛОК
+
+// Создание реферальной ссылки
+app.post('/api/admin/links/create', async (req, res) => {
+    const { adminId, name, description, createdBy } = req.body;
+    
+    console.log('🔗 Create referral link request:', { adminId, name, description, createdBy });
+    
+    try {
+        // Проверка прав администратора
+        const isAdmin = await checkAdminAccess(adminId);
+        if (!isAdmin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Доступ запрещен. Только администраторы могут создавать ссылки.'
+            });
+        }
+        
+        // Проверка для нанятых админов
+        const isMainAdmin = parseInt(adminId) === ADMIN_ID;
+        if (!isMainAdmin) {
+            const adminPerms = await pool.query(
+                'SELECT can_create_links FROM admin_permissions WHERE admin_id = $1',
+                [adminId]
+            );
+            
+            if (adminPerms.rows.length === 0 || !adminPerms.rows[0].can_create_links) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'У вас нет прав для создания ссылок!'
+                });
+            }
+        }
+        
+        // Валидация
+        if (!name || name.trim() === '') {
+            return res.status(400).json({
+                success: false,
+                error: 'Введите название ссылки!'
+            });
+        }
+        
+        // Генерируем уникальный код
+        const code = generateReferralCode();
+        const referralUrl = `${APP_URL}?ref=${code}`;
+        
+        // Создаем запись в базе данных
+        const result = await pool.query(`
+            INSERT INTO referral_links (code, name, description, created_by, referral_url) 
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING *
+        `, [code, name.trim(), description?.trim() || '', createdBy, referralUrl]);
+        
+        console.log('✅ Referral link created:', result.rows[0]);
+        
+        res.json({
+            success: true,
+            message: `Ссылка "${name}" успешно создана!`,
+            link: result.rows[0],
+            referralUrl: referralUrl
+        });
+        
+    } catch (error) {
+        console.error('❌ Create referral link error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка базы данных: ' + error.message
+        });
+    }
+});
+
+// Получение списка ссылок
+app.get('/api/admin/links/list', async (req, res) => {
+    const { adminId } = req.query;
+    
+    try {
+        // Проверка прав администратора
+        const isAdmin = await checkAdminAccess(adminId);
+        if (!isAdmin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Доступ запрещен'
+            });
+        }
+        
+        const result = await pool.query(`
+            SELECT rl.*, 
+                   up.username as creator_username,
+                   up.first_name as creator_name,
+                   COUNT(ra.id) as referral_count,
+                   COALESCE(SUM(ra.reward_amount), 0) as earned
+            FROM referral_links rl
+            LEFT JOIN user_profiles up ON rl.created_by = up.user_id
+            LEFT JOIN referral_activations ra ON rl.id = ra.link_id
+            WHERE rl.is_active = true
+            GROUP BY rl.id, up.username, up.first_name
+            ORDER BY rl.created_at DESC
+        `);
+        
+        res.json({
+            success: true,
+            links: result.rows
+        });
+        
+    } catch (error) {
+        console.error('Get referral links error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Удаление ссылки
+app.post('/api/admin/links/delete', async (req, res) => {
+    const { adminId, code } = req.body;
+    
+    try {
+        // Проверка прав администратора
+        const isAdmin = await checkAdminAccess(adminId);
+        if (!isAdmin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Доступ запрещен'
+            });
+        }
+        
+        // Проверяем, может ли админ удалить эту ссылку
+        const linkCheck = await pool.query(
+            'SELECT created_by FROM referral_links WHERE code = $1',
+            [code]
+        );
+        
+        if (linkCheck.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Ссылка не найдена'
+            });
+        }
+        
+        const linkCreator = linkCheck.rows[0].created_by;
+        const isMainAdmin = parseInt(adminId) === ADMIN_ID;
+        
+        if (!isMainAdmin && parseInt(linkCreator) !== parseInt(adminId)) {
+            return res.status(403).json({
+                success: false,
+                error: 'Вы можете удалять только свои ссылки!'
+            });
+        }
+        
+        // Деактивируем ссылку
+        await pool.query(
+            'UPDATE referral_links SET is_active = false WHERE code = $1',
+            [code]
+        );
+        
+        res.json({
+            success: true,
+            message: 'Ссылка успешно удалена!'
+        });
+        
+    } catch (error) {
+        console.error('Delete referral link error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Настройки доступа к ссылкам
+app.get('/api/admin/links/settings', async (req, res) => {
+    const { adminId } = req.query;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен'
+        });
+    }
+    
+    try {
+        const result = await pool.query(`
+            SELECT allow_admins_links FROM admin_settings WHERE id = 1
+        `);
+        
+        res.json({
+            success: true,
+            allowAdminsLinks: result.rows.length > 0 ? result.rows[0].allow_admins_links : false
+        });
+        
+    } catch (error) {
+        console.error('Get link settings error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+app.post('/api/admin/links/settings', async (req, res) => {
+    const { adminId, allowAdminsLinks } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен'
+        });
+    }
+    
+    try {
+        await pool.query(`
+            INSERT INTO admin_settings (id, allow_admins_links) 
+            VALUES (1, $1)
+            ON CONFLICT (id) 
+            DO UPDATE SET allow_admins_links = $1
+        `, [allowAdminsLinks]);
+        
+        res.json({
+            success: true,
+            message: 'Настройки сохранены!'
+        });
+        
+    } catch (error) {
+        console.error('Save link settings error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Вспомогательная функция для генерации кода
+function generateReferralCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 8; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return 'LINK_' + result;
+}
 
 // Экспорт данных пользователей
 app.get('/api/admin/users-export', async (req, res) => {
