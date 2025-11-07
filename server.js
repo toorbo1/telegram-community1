@@ -271,7 +271,22 @@ async function initDatabase() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-
+// Добавьте в функцию initDatabase()
+await pool.query(`
+    CREATE TABLE IF NOT EXISTS referral_links (
+        id SERIAL PRIMARY KEY,
+        code VARCHAR(20) UNIQUE NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        referral_url TEXT NOT NULL,
+        created_by BIGINT NOT NULL,
+        referral_count INTEGER DEFAULT 0,
+        earned REAL DEFAULT 0,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (created_by) REFERENCES user_profiles(user_id)
+    )
+`);
         // Таблица чатов поддержки
         await pool.query(`
             CREATE TABLE IF NOT EXISTS support_chats (
@@ -1694,6 +1709,8 @@ app.post('/api/admin/promocodes/fix-table', async (req, res) => {
 });
 
 app.post('/api/tasks', async (req, res) => {
+    console.log('📥 Received task creation request:', req.body);
+    
     const { 
         title, 
         description, 
@@ -1702,13 +1719,13 @@ app.post('/api/tasks', async (req, res) => {
         category,
         time_to_complete,
         difficulty,
-        people_required,
-        task_url
+        people_required
     } = req.body;
     
+    // Добавьте подробное логирование
     console.log('🔍 Parsed data:', {
         title, description, price, created_by, category,
-        time_to_complete, difficulty, people_required, task_url
+        time_to_complete, difficulty, people_required
     });
     
     // 🔧 ПРОВЕРКА ПРАВ АДМИНА
@@ -4616,6 +4633,64 @@ setInterval(() => {
         checkReferralEarnings();
     }
 }, 30000);
+
+// Добавьте в server.js
+app.post('/api/admin/links/create', async (req, res) => {
+    const { adminId, name, description, createdBy } = req.body;
+    
+    console.log('🔗 Create link request:', { adminId, name, description });
+    
+    try {
+        // Проверка прав администратора
+        const isAdmin = await checkAdminAccess(adminId);
+        if (!isAdmin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Доступ запрещен'
+            });
+        }
+        
+        // Валидация
+        if (!name || !description) {
+            return res.status(400).json({
+                success: false,
+                error: 'Заполните название и описание ссылки'
+            });
+        }
+        
+        // Генерация уникального кода
+        const code = generateLinkCode();
+        const referralUrl = `https://t.me/LinkGoldMoney_bot?start=ref_${code}`;
+        
+        // Сохранение в базу данных
+        const result = await pool.query(`
+            INSERT INTO referral_links (code, name, description, created_by, referral_url) 
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING *
+        `, [code, name, description, createdBy, referralUrl]);
+        
+        console.log('✅ Link created successfully:', result.rows[0]);
+        
+        res.json({
+            success: true,
+            message: 'Реферальная ссылка успешно создана!',
+            link: result.rows[0],
+            referralUrl: referralUrl
+        });
+        
+    } catch (error) {
+        console.error('❌ Create link error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка базы данных: ' + error.message
+        });
+    }
+});
+
+// Функция генерации кода
+function generateLinkCode() {
+    return Math.random().toString(36).substring(2, 10).toUpperCase();
+}
 
 // 🔥 ОБНОВЛЕННЫЙ ENDPOINT ПОДТВЕРЖДЕНИЯ ЗАДАНИЯ С НОВОЙ РЕФЕРАЛЬНОЙ СИСТЕМОЙ
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {

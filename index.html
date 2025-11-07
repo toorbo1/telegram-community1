@@ -7037,9 +7037,19 @@ async function deletePostAsAdmin(postId) {
     }
 }
 
-// 📋 Создание задания
+// В index.html обновите функцию addTaskAsAdmin()
 async function addTaskAsAdmin() {
-    if (!currentUser) return;
+    if (!currentUser) {
+        showNotification('Пользователь не авторизован', 'error');
+        return;
+    }
+    
+    // Проверка прав
+    const isAdmin = await checkUserIsAdmin(currentUser.id);
+    if (!isAdmin) {
+        showNotification('Только администратор может создавать задания!', 'error');
+        return;
+    }
     
     const title = prompt('Введите название задания:');
     if (!title) return;
@@ -7050,36 +7060,69 @@ async function addTaskAsAdmin() {
     const price = prompt('Введите цену задания (в рублях):');
     if (!price) return;
     
-    // Проверяем права
-    const isAdmin = await checkAdminAccess(currentUser.id);
-    if (!isAdmin) {
-        showNotification('Только администратор может создавать задания!', 'error');
-        return;
-    }
-    
     try {
-        const result = await makeRequest('/tasks', {
+        const result = await makeRequest('/api/tasks', {
             method: 'POST',
             body: JSON.stringify({
-                title: title,
-                description: description,
+                title: title.trim(),
+                description: description.trim(),
                 price: parseFloat(price),
-                created_by: currentUser.id
+                created_by: currentUser.id,
+                category: 'general',
+                time_to_complete: '5-10 минут',
+                difficulty: 'Легкая',
+                people_required: 1
             })
         });
 
         if (result.success) {
             showNotification('Задание успешно создано!', 'success');
-            loadTasks();
+            loadTasks(); // Обновляем список заданий
         } else {
             showNotification('Ошибка: ' + result.error, 'error');
         }
     } catch (error) {
         console.error('Error adding task:', error);
-        showNotification('Ошибка создания задания', 'error');
+        showNotification('Ошибка создания задания: ' + error.message, 'error');
+    }
+}
+// Для отладки добавьте эту функцию
+async function debugLinkCreation() {
+    console.log('🔍 Debug link creation:');
+    console.log('- Current user:', currentUser);
+    console.log('- Is admin:', await checkUserIsAdmin(currentUser.id));
+    console.log('- API base URL:', API_BASE_URL);
+    
+    // Тестовый запрос
+    try {
+        const testData = {
+            title: 'Тестовое задание',
+            description: 'Тестовое описание',
+            price: 50,
+            created_by: currentUser.id
+        };
+        
+        console.log('📤 Test data:', testData);
+        
+        const response = await fetch(API_BASE_URL + '/api/tasks', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(testData)
+        });
+        
+        console.log('📨 Response status:', response.status);
+        const result = await response.json();
+        console.log('📨 Response data:', result);
+        
+    } catch (error) {
+        console.error('❌ Test request failed:', error);
     }
 }
 
+// Вызовите для тестирования
+// debugLinkCreation();
 // 🗑️ Удаление задания
 async function deleteTaskAsAdmin(taskId) {
     if (!currentUser) return;
@@ -7931,65 +7974,7 @@ async function loadEssentialData() {
     console.error('Load error:', error);
   }
 }
-// 📋 Функция создания задания (для всех админов)
-async function addTaskAsAdmin() {
-    if (!currentUser) {
-        showNotification('Пользователь не авторизован', 'error');
-        return;
-    }
-    
-    // ✅ ПРАВИЛЬНАЯ ПРОВЕРКА
-    const isAdmin = await checkUserIsAdmin(currentUser.id);
-    if (!isAdmin) {
-        showNotification('Только администратор может создавать задания!', 'error');
-        return;
-    }
-    
-    const title = prompt('Введите название задания:');
-    if (!title) return;
-    
-    const description = prompt('Введите описание задания:');
-    if (!description) return;
-    
-    const price = prompt('Введите цену задания (в рублях):');
-    if (!price) return;
-    
-    try {
-        const result = await makeRequest('/tasks', {
-            method: 'POST',
-            body: JSON.stringify({
-                title: title,
-                description: description,
-                price: parseFloat(price),
-                created_by: currentUser.id
-            })
-        });
 
-        if (result.success) {
-            showNotification('Задание успешно создано!', 'success');
-            loadTasks();
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error adding task:', error);
-        showNotification('Ошибка создания задания', 'error');
-    }
-}
-
-// Функция для отладки прав администратора
-function debugAdminRights() {
-    console.log('🐛 DEBUG Admin Rights:');
-    console.log('- Current User:', currentUser);
-    console.log('- ADMIN_ID:', ADMIN_ID);
-    console.log('- is_admin:', currentUser?.is_admin);
-    console.log('- isMainAdmin:', currentUser?.id === ADMIN_ID.toString());
-    console.log('- Admin Nav Visible:', document.getElementById('admin-nav-item')?.style.display);
-    console.log('- Admin Panel Visible:', document.getElementById('admin-panel')?.style.display);
-}
-
-// Вызов для отладки (можно убрать после тестирования)
-setTimeout(debugAdminRights, 2000);
 
 
 
