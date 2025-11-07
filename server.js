@@ -3870,7 +3870,9 @@ app.post('/api/admin/links/create', async (req, res) => {
         
         // Генерируем уникальный код
         const code = generateReferralCode();
-        const referralUrl = `${APP_URL}?ref=${code}`;
+        
+        // 🔥 ИСПРАВЛЕНИЕ: Ссылка должна вести на бота, а не на сайт
+        const referralUrl = `https://t.me/LinkGoldMoney_bot?start=${code}`;
         
         // Создаем запись в базе данных
         const result = await pool.query(`
@@ -3879,13 +3881,13 @@ app.post('/api/admin/links/create', async (req, res) => {
             RETURNING *
         `, [code, name.trim(), description?.trim() || '', createdBy, referralUrl]);
         
-        console.log('✅ Referral link created:', result.rows[0]);
+        console.log('✅ Referral link created with bot URL:', result.rows[0]);
         
         res.json({
             success: true,
             message: `Ссылка "${name}" успешно создана!`,
             link: result.rows[0],
-            referralUrl: referralUrl
+            referralUrl: referralUrl // Теперь ссылка ведет на бота
         });
         
     } catch (error) {
@@ -3896,8 +3898,77 @@ app.post('/api/admin/links/create', async (req, res) => {
         });
     }
 });
+// Функция для проверки и восстановления таблицы referral_links
+async function fixReferralLinksTable() {
+    try {
+        console.log('🔧 Checking referral_links table structure...');
+        
+        // Проверяем существование таблицы
+        const tableExists = await pool.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = 'referral_links'
+            )
+        `);
+        
+        if (!tableExists.rows[0].exists) {
+            console.log('❌ referral_links table does not exist, creating...');
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS referral_links (
+                    id SERIAL PRIMARY KEY,
+                    code VARCHAR(20) UNIQUE NOT NULL,
+                    name TEXT NOT NULL,
+                    description TEXT,
+                    created_by BIGINT NOT NULL,
+                    referral_url TEXT NOT NULL,
+                    is_active BOOLEAN DEFAULT true,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (created_by) REFERENCES user_profiles(user_id)
+                )
+            `);
+            console.log('✅ referral_links table created');
+        }
+        
+        // Проверяем и добавляем отсутствующие колонки
+        const columnsToCheck = [
+            {name: 'description', type: 'TEXT'},
+            {name: 'is_active', type: 'BOOLEAN', defaultValue: 'true'},
+            {name: 'created_at', type: 'TIMESTAMP', defaultValue: 'CURRENT_TIMESTAMP'}
+        ];
+        
+        for (const column of columnsToCheck) {
+            const columnExists = await pool.query(`
+                SELECT EXISTS (
+                    SELECT FROM information_schema.columns 
+                    WHERE table_name = 'referral_links' AND column_name = $1
+                )
+            `, [column.name]);
+            
+            if (!columnExists.rows[0].exists) {
+                console.log(`❌ Column ${column.name} missing, adding...`);
+                await pool.query(`
+                    ALTER TABLE referral_links 
+                    ADD COLUMN ${column.name} ${column.type} 
+                    ${column.defaultValue ? `DEFAULT ${column.defaultValue}` : ''}
+                `);
+                console.log(`✅ Column ${column.name} added`);
+            }
+        }
+        
+        console.log('✅ referral_links table structure verified');
+    } catch (error) {
+        console.error('❌ Error fixing referral_links table:', error);
+    }
+}
 
+// Вызовите эту функцию при инициализации сервера
+async function initializeServer() {
+    await initDatabase();
+    await fixReferralLinksTable(); // Добавьте эту строку
+    await createSampleTasks();
+}
 // Получение списка ссылок
+// Улучшенный endpoint для получения списка ссылок
 app.get('/api/admin/links/list', async (req, res) => {
     const { adminId } = req.query;
     
@@ -3911,12 +3982,15 @@ app.get('/api/admin/links/list', async (req, res) => {
             });
         }
         
+        // Сначала проверяем и исправляем таблицу
+        await fixReferralLinksTable();
+        
         const result = await pool.query(`
             SELECT rl.*, 
                    up.username as creator_username,
                    up.first_name as creator_name,
-                   COUNT(ra.id) as referral_count,
-                   COALESCE(SUM(ra.reward_amount), 0) as earned
+                   COUNT(ra.id) as activation_count,
+                   COALESCE(SUM(ra.reward_amount), 0) as total_earned
             FROM referral_links rl
             LEFT JOIN user_profiles up ON rl.created_by = up.user_id
             LEFT JOIN referral_activations ra ON rl.id = ra.link_id
@@ -3924,6 +3998,8 @@ app.get('/api/admin/links/list', async (req, res) => {
             GROUP BY rl.id, up.username, up.first_name
             ORDER BY rl.created_at DESC
         `);
+        
+        console.log(`✅ Found ${result.rows.length} active referral links`);
         
         res.json({
             success: true,
@@ -3935,6 +4011,63 @@ app.get('/api/admin/links/list', async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Функция для восстановления потерянных ссылок
+app.post('/api/admin/links/recover', async (req, res) => {
+    const { adminId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен'
+        });
+    }
+    
+    try {
+        console.log('🔧 Attempting to recover referral links...');
+        
+        // 1. Проверяем структуру таблицы
+        await fixReferralLinksTable();
+        
+        // 2. Проверяем, есть ли ссылки в базе
+        const linksCount = await pool.query('SELECT COUNT(*) FROM referral_links WHERE is_active = true');
+        
+        // 3. Если ссылок нет, создаем пример
+        if (parseInt(linksCount.rows[0].count) === 0) {
+            console.log('📝 No links found, creating sample link...');
+            
+            const sampleCode = generateReferralCode();
+            const sampleUrl = `https://t.me/LinkGoldMoney_bot?start=${sampleCode}`;
+            
+            await pool.query(`
+                INSERT INTO referral_links (code, name, description, created_by, referral_url) 
+                VALUES ($1, $2, $3, $4, $5)
+            `, [sampleCode, 'Пример ссылки', 'Тестовая реферальная ссылка', ADMIN_ID, sampleUrl]);
+            
+            console.log('✅ Sample link created');
+        }
+        
+        // 4. Получаем обновленный список
+        const result = await pool.query(`
+            SELECT * FROM referral_links 
+            WHERE is_active = true 
+            ORDER BY created_at DESC
+        `);
+        
+        res.json({
+            success: true,
+            message: `Восстановлено ${result.rows.length} ссылок`,
+            links: result.rows
+        });
+        
+    } catch (error) {
+        console.error('Recover links error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Recovery error: ' + error.message
         });
     }
 });
@@ -7987,7 +8120,7 @@ app.use('/api/*', (req, res) => {
     });
 });
 
-// Start server
+// Замените текущий app.listen на этот:
 app.listen(PORT, '0.0.0.0', async () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📊 Health: http://localhost:${PORT}/api/health`);
@@ -8000,7 +8133,8 @@ app.listen(PORT, '0.0.0.0', async () => {
     try {
         await fixWithdrawalTable();
         await fixTasksTable();
-        console.log('✅ Table structures verified');
+        await fixReferralLinksTable(); // Добавьте эту строку
+        console.log('✅ All table structures verified');
     } catch (error) {
         console.error('❌ Error fixing table structures:', error);
     }
