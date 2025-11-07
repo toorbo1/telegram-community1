@@ -2284,7 +2284,82 @@ async function fixWithdrawalTableStructure() {
     }
 }
 
+// Добавьте эти endpoint'ы в ваш server.js
 
+// Получение списка ссылок
+app.get('/api/admin/links/list', async (req, res) => {
+    const { adminId } = req.query;
+    
+    try {
+        // Проверяем права
+        const userIsAdmin = await isUserAdmin(adminId);
+        if (!userIsAdmin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Доступ запрещен'
+            });
+        }
+        
+        const result = await pool.query(`
+            SELECT * FROM referral_links 
+            WHERE created_by = $1 OR $1 = $2
+            ORDER BY created_at DESC
+        `, [adminId, ADMIN_ID]);
+        
+        res.json({
+            success: true,
+            links: result.rows
+        });
+    } catch (error) {
+        console.error('Get links error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error'
+        });
+    }
+});
+
+// Создание ссылки
+app.post('/api/admin/links/create', async (req, res) => {
+    const { adminId, name, description, createdBy } = req.body;
+    
+    try {
+        // Проверяем права
+        const userIsAdmin = await isUserAdmin(adminId);
+        if (!userIsAdmin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Доступ запрещен'
+            });
+        }
+        
+        // Генерируем уникальный код
+        const code = generateReferralCode();
+        const referralUrl = `https://t.me/LinkGoldMoney_bot?start=ref_${code}`;
+        
+        const result = await pool.query(`
+            INSERT INTO referral_links (code, name, description, referral_url, created_by)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING *
+        `, [code, name, description, referralUrl, createdBy]);
+        
+        res.json({
+            success: true,
+            message: 'Ссылка успешно создана!',
+            link: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Create link error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error'
+        });
+    }
+});
+
+function generateReferralCode() {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
 
 // Подтверждение выплаты для всех админов
 app.post('/api/admin/withdrawal-requests/:requestId/complete', async (req, res) => {

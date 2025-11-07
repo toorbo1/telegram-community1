@@ -13177,13 +13177,22 @@ function showAdminPaymentsSection() {
 
 // Показать секцию управления ссылками
 function showAdminLinksSection() {
-    console.log('🔗 Showing admin links section...');
+    console.log('🔗 Показ секции управления ссылками...');
     
     // Сначала показываем основную админ-секцию
     showAdminSection('links');
     
-    // Затем загружаем список ссылок
+    // Принудительно показываем контейнер
+    const linksSection = document.getElementById('admin-links-section');
+    if (linksSection) {
+        linksSection.style.display = 'block';
+        linksSection.style.opacity = '1';
+        linksSection.style.visibility = 'visible';
+    }
+    
+    // Затем загружаем список ссылок с небольшой задержкой
     setTimeout(() => {
+        console.log('🔄 Принудительная загрузка ссылок...');
         loadReferralLinksList();
         
         // Показываем настройки доступа только главному админу
@@ -13194,8 +13203,45 @@ function showAdminLinksSection() {
         } else if (accessControl) {
             accessControl.style.display = 'none';
         }
-    }, 100);
+    }, 200);
 }
+
+function forceRefreshLinksSection() {
+    console.log('🔄 Принудительное обновление секции ссылок...');
+    
+    // 1. Очищаем контейнер
+    const container = document.getElementById('links-list');
+    if (container) {
+        container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-secondary);">🔄 Загружаем ссылки...</div>';
+    }
+    
+    // 2. Перезагружаем данные
+    setTimeout(() => {
+        loadReferralLinksList();
+    }, 100);
+    
+    // 3. Показываем уведомление
+    showNotification('🔄 Обновляем список ссылок...', 'info');
+}
+
+// Добавьте кнопку принудительного обновления
+function addRefreshButton() {
+    const refreshBtn = document.createElement('button');
+    refreshBtn.textContent = '🔄 Обновить';
+    refreshBtn.className = 'btn btn-primary';
+    refreshBtn.style.margin = '10px';
+    refreshBtn.onclick = forceRefreshLinksSection;
+    
+    const linksSection = document.getElementById('admin-links-section');
+    if (linksSection) {
+        const header = linksSection.querySelector('.admin-section-header');
+        if (header) {
+            header.appendChild(refreshBtn);
+        }
+    }
+}
+
+setTimeout(addRefreshButton, 2000);
 
 // Загрузить настройки доступа
 async function loadLinkAccessSettings() {
@@ -13220,6 +13266,8 @@ async function createReferralLink() {
     const name = nameInput.value.trim();
     const description = descriptionInput.value.trim();
     
+    console.log('🔍 Создание ссылки:', { name, description, userId: currentUser?.id });
+    
     if (!name) {
         messageDiv.innerHTML = '<span style="color: var(--error);">Введите название ссылки!</span>';
         return;
@@ -13243,16 +13291,18 @@ async function createReferralLink() {
     messageDiv.innerHTML = '<span style="color: var(--warning);">Создаем ссылку...</span>';
     
     try {
-        console.log('📤 Создание ссылки:', { name, description, adminId: currentUser.id });
+        const requestData = {
+            adminId: currentUser.id,
+            name: name,
+            description: description,
+            createdBy: currentUser.id
+        };
+        
+        console.log('📤 Отправка данных:', requestData);
         
         const result = await makeRequest('/api/admin/links/create', {
             method: 'POST',
-            body: JSON.stringify({
-                adminId: currentUser.id,
-                name: name,
-                description: description,
-                createdBy: currentUser.id
-            })
+            body: JSON.stringify(requestData)
         });
         
         console.log('📨 Ответ сервера:', result);
@@ -13264,8 +13314,10 @@ async function createReferralLink() {
             nameInput.value = '';
             descriptionInput.value = '';
             
-            // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: НЕМЕДЛЕННО обновляем список ссылок
-            await loadReferralLinksList();
+            // НЕМЕДЛЕННО обновляем список ссылок
+            setTimeout(() => {
+                loadReferralLinksList();
+            }, 500);
             
             showNotification('✅ Ссылка успешно создана!', 'success');
             
@@ -13287,6 +13339,13 @@ async function createReferralLink() {
 async function loadReferralLinksList() {
     if (!currentUser) return;
     
+    // Проверяем права доступа
+    const isMainAdmin = parseInt(currentUser.id) === ADMIN_ID;
+    if (!isMainAdmin && !currentUser.can_create_links) {
+        console.log('❌ У пользователя нет прав для просмотра ссылок');
+        return;
+    }
+    
     try {
         console.log('🔄 Загрузка списка ссылок...');
         const result = await makeRequest(`/api/admin/links/list?adminId=${currentUser.id}`);
@@ -13305,7 +13364,65 @@ async function loadReferralLinksList() {
         showNotification('Ошибка загрузки списка ссылок: ' + error.message, 'error');
     }
 }
+async function debugLinksIssue() {
+    console.log('🐛 ДИАГНОСТИКА ПРОБЛЕМЫ С ССЫЛКАМИ:');
+    
+    // 1. Проверяем пользователя
+    console.log('1. ПОЛЬЗОВАТЕЛЬ:', {
+        id: currentUser?.id,
+        isMainAdmin: parseInt(currentUser?.id) === ADMIN_ID,
+        can_create_links: currentUser?.can_create_links
+    });
+    
+    // 2. Проверяем элементы DOM
+    console.log('2. ЭЛЕМЕНТЫ DOM:');
+    const elements = [
+        'admin-links-section',
+        'links-list',
+        'link-name',
+        'link-description',
+        'create-link-btn'
+    ];
+    
+    elements.forEach(id => {
+        const element = document.getElementById(id);
+        console.log(`- ${id}:`, element ? '✅ Найден' : '❌ Не найден');
+    });
+    
+    // 3. Проверяем API endpoint
+    try {
+        console.log('3. ПРОВЕРКА API:');
+        const testResult = await makeRequest('/api/health');
+        console.log('- API доступен:', testResult);
+        
+        // Пробуем загрузить ссылки
+        const linksResult = await makeRequest(`/api/admin/links/list?adminId=${currentUser.id}`);
+        console.log('- Ответ links/list:', linksResult);
+        
+    } catch (error) {
+        console.error('- Ошибка API:', error);
+    }
+}
 
+// Добавьте кнопку диагностики
+function addLinksDebugButton() {
+    const debugBtn = document.createElement('button');
+    debugBtn.textContent = '🐛 Debug Links';
+    debugBtn.style.position = 'fixed';
+    debugBtn.style.top = '400px';
+    debugBtn.style.right = '10px';
+    debugBtn.style.zIndex = '10000';
+    debugBtn.style.padding = '10px';
+    debugBtn.style.background = 'red';
+    debugBtn.style.color = 'white';
+    debugBtn.style.border = 'none';
+    debugBtn.style.borderRadius = '5px';
+    debugBtn.style.fontSize = '12px';
+    debugBtn.onclick = debugLinksIssue;
+    document.body.appendChild(debugBtn);
+}
+
+setTimeout(addLinksDebugButton, 3000);
 // 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ СПИСКА ССЫЛОК
 function displayReferralLinksList(links) {
     const container = document.getElementById('links-list');
@@ -13462,26 +13579,7 @@ async function deleteReferralLink(code) {
 }
 
 // 🔧 ФУНКЦИЯ ДЛЯ ПОКАЗА СЕКЦИИ ССЫЛОК
-function showAdminLinksSection() {
-    console.log('🔗 Показ секции управления ссылками...');
-    
-    // Сначала показываем основную админ-секцию
-    showAdminSection('links');
-    
-    // Затем загружаем список ссылок
-    setTimeout(() => {
-        loadReferralLinksList();
-        
-        // Показываем настройки доступа только главному админу
-        const accessControl = document.getElementById('link-access-control');
-        if (accessControl && parseInt(currentUser.id) === ADMIN_ID) {
-            accessControl.style.display = 'block';
-            loadLinkAccessSettings();
-        } else if (accessControl) {
-            accessControl.style.display = 'none';
-        }
-    }, 100);
-}
+
 
 // 🔧 ФУНКЦИЯ ДЛЯ ДИАГНОСТИКИ
 function debugLinksSection() {
