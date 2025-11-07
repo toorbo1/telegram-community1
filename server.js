@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3000;
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const DATABASE_URL = process.env.DATABASE_URL;
 const ADMIN_ID = 8036875641;
-// const APP_URL = process.env.RAILWAY_STATIC_URL || process.env.APP_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` || 'https://your-app.com';
+const APP_URL = process.env.RAILWAY_STATIC_URL || process.env.APP_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` || 'https://your-app.com';
 
 // Инициализация бота только если есть токен
 let bot;
@@ -23,22 +23,7 @@ if (BOT_TOKEN) {
 } else {
     console.log('⚠️ BOT_TOKEN not set - Telegram features disabled');
 }
-// Проверка критических переменных окружения
-console.log('🔧 Environment check:', {
-    BOT_TOKEN: BOT_TOKEN ? 'SET' : 'MISSING',
-    DATABASE_URL: DATABASE_URL ? 'SET' : 'MISSING',
-    RAILWAY_STATIC_URL: process.env.RAILWAY_STATIC_URL || 'MISSING',
-    RAILWAY_PUBLIC_DOMAIN: process.env.RAILWAY_PUBLIC_DOMAIN || 'MISSING',
-    NODE_ENV: process.env.NODE_ENV || 'development'
-});
 
-// Убедитесь, что APP_URL корректный
-const APP_URL = process.env.RAILWAY_STATIC_URL || 
-               process.env.APP_URL || 
-               (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null) || 
-               `http://localhost:${PORT}`;
-
-console.log('🌐 Final APP_URL:', APP_URL);
 // Дополнительная функция для безопасного формирования URL
 function buildUrl(baseUrl, endpoint, params = {}) {
     const url = new URL(endpoint, baseUrl);
