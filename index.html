@@ -5353,29 +5353,40 @@ html, body {
             </ol>
         </div>
 
-<div id="admin-links-section" class="admin-section">
-    <div class="admin-section-header">
-        <h3>🔗 Генератор ссылок</h3>
-        <p>Создавайте ссылки для приглашения пользователей и отслеживайте статистику</p>
-    </div>
+        <!-- Форма создания ссылки -->
+        <div class="form-group">
+            <label>Название ссылки *</label>
+            <input type="text" class="admin-input" id="link-name" 
+                   placeholder="Например: Рекламная кампания ноябрь" maxlength="50">
+        </div>
+        
+        <div class="form-group">
+            <label>Описание (опционально)</label>
+            <textarea class="admin-textarea" id="link-description" 
+                      placeholder="Описание цели ссылки..." rows="2"></textarea>
+        </div>
 
-    <!-- Форма создания ссылки -->
-    <div class="admin-form" style="margin-bottom: 20px;">
-        <h4>➕ Создать новую ссылку</h4>
-        <input type="text" class="admin-input" id="link-name" placeholder="Название ссылки (например: Основная ссылка)" maxlength="50">
-        <textarea class="admin-textarea" id="link-description" placeholder="Описание (необязательно)" rows="2" maxlength="100"></textarea>
-        
-        <div id="link-form-message" style="margin: 10px 0; min-height: 20px;"></div>
-        
-        <button class="admin-submit" id="create-link-btn" onclick="createReferralLink()">
+        <!-- Настройки доступа (только для главного админа) -->
+        <div id="link-access-control" style="display: none;">
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="allow-admins-links">
+                    Разрешить нанятым админам создавать ссылки
+                </label>
+            </div>
+        </div>
+
+        <button class="admin-submit" onclick="createReferralLink()" id="create-link-btn">
             🔗 Создать ссылку
         </button>
+        
+        <div id="link-form-message" style="margin-top: 12px; min-height: 20px; font-size: 14px;"></div>
     </div>
 
     <!-- Список созданных ссылок -->
-    <div class="admin-tasks-list">
-        <h4>📋 Ваши ссылки </h4>
-        <div id="links-list">
+    <div style="margin-top: 25px;">
+        <h4>📋 Созданные ссылки</h4>
+        <div id="links-list" class="admin-task-list">
             <!-- Ссылки будут загружены здесь -->
         </div>
     </div>
