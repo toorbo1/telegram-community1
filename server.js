@@ -41,10 +41,30 @@ setInterval(async () => {
 }, 5 * 60 * 1000); // 5 минут
 
 // Middleware
+// 🔧 ПРАВИЛЬНАЯ НАСТРОЙКА CORS
 app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'DELETE', 'PUT'],
-    credentials: true
+    origin: function (origin, callback) {
+        // Разрешаем все origins в development
+        if (!origin || process.env.NODE_ENV === 'development') {
+            return callback(null, true);
+        }
+        
+        // В production разрешаем только определенные домены
+        const allowedOrigins = [
+            'https://your-app.com',
+            'https://www.your-app.com',
+            APP_URL
+        ];
+        
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    methods: ['GET', 'POST', 'DELETE', 'PUT', 'OPTIONS'],
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -5734,6 +5754,7 @@ function generateLinkCode() {
 }
 
 // 🔥 ОБНОВЛЕННЫЙ ENDPOINT ПОДТВЕРЖДЕНИЯ ЗАДАНИЯ С НОВОЙ РЕФЕРАЛЬНОЙ СИСТЕМОЙ
+// 🔧 УЛУЧШЕННЫЙ ENDPOINT ОДОБРЕНИЯ ЗАДАНИЯ
 app.post('/api/admin/task-verifications/:verificationId/approve', async (req, res) => {
     const { verificationId } = req.params;
     const { adminId } = req.body;
@@ -5761,7 +5782,6 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
                 error: 'Недостаточно прав. Только администратор может одобрять задания.'
             });
         }
-
         // Получаем информацию о верификации
         const verificationResult = await pool.query(`
             SELECT 

@@ -10966,6 +10966,7 @@ async function deleteVerification() {
 }
 
 // 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОДОБРЕНИЯ ЗАДАНИЯ
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОДОБРЕНИЯ ЗАДАНИЯ
 async function approveVerification() {
     if (!currentVerificationId) {
         showNotification('❌ ID верификации не найден', 'error');
@@ -10990,14 +10991,28 @@ async function approveVerification() {
             approveBtn.textContent = 'Одобряем...';
         }
 
-        const result = await makeRequest(`/api/admin/task-verifications/${currentVerificationId}/approve`, {
+        // 🔥 ИСПРАВЛЕНИЕ: Правильный endpoint и обработка ошибок
+        const response = await fetch(`${API_BASE_URL}/api/admin/task-verifications/${currentVerificationId}/approve`, {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
             body: JSON.stringify({
                 adminId: currentUser.id
             })
         });
 
-        console.log('📨 Ответ сервера при одобрении:', result);
+        console.log('📨 Ответ сервера при одобрении:', {
+            status: response.status,
+            statusText: response.statusText
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        console.log('📨 Данные ответа:', result);
 
         if (result.success) {
             let message = `✅ Задание одобрено! Пользователь получил ${result.amountAdded || result.task_price}⭐`;
@@ -11036,11 +11051,13 @@ async function approveVerification() {
         if (error.message.includes('Failed to fetch')) {
             errorMessage = '❌ Проблема с соединением. Проверьте интернет и попробуйте снова.';
         } else if (error.message.includes('404')) {
-            errorMessage = '❌ не найден. Сообщите администратору.';
+            errorMessage = '❌ Endpoint не найден. Сообщите администратору.';
         } else if (error.message.includes('403')) {
             errorMessage = '❌ Доступ запрещен. У вас нет прав администратора.';
         } else if (error.message.includes('500')) {
             errorMessage = '❌ Ошибка сервера. Попробуйте позже.';
+        } else if (error.message.includes('Network Error')) {
+            errorMessage = '❌ Проблема с сетью. Проверьте подключение к интернету.';
         }
         
         showNotification(errorMessage, 'error');
@@ -11125,6 +11142,7 @@ const referralBonusStyles = `
 document.head.insertAdjacentHTML('beforeend', referralBonusStyles);
 
 // Функция для диагностики проблемы
+// 🔧 ФУНКЦИЯ ДЛЯ ДИАГНОСТИКИ ПРОБЛЕМЫ С ОДОБРЕНИЕМ
 async function debugApprovalIssue() {
     console.log('🔍 Диагностика проблемы одобрения:');
     
@@ -11148,8 +11166,12 @@ async function debugApprovalIssue() {
     try {
         const testResponse = await fetch(`${API_BASE_URL}/api/health`);
         console.log('✅ Сервер доступен:', testResponse.status);
+        
+        // Проверяем конкретный endpoint
+        const endpointTest = await fetch(`${API_BASE_URL}/api/admin/task-verifications`);
+        console.log('✅ Endpoint доступен:', endpointTest.status);
     } catch (error) {
-        console.error('❌ Сервер недоступен:', error);
+        console.error('❌ Сервер/endpoint недоступен:', error);
     }
 }
 
