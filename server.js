@@ -6999,7 +6999,7 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
                 ['approved', adminId, verificationId]
             );
 
-            // 🔥 ОБНОВЛЕННАЯ РЕФЕРАЛЬНАЯ СИСТЕМА: Пригласивший всегда получает 10%
+            // 🔥 ИСПРАВЛЕНИЕ: Отправляем реферальное уведомление ТОЛЬКО если есть реферер
             let referralBonus = null;
             
             if (verification.referred_by) {
@@ -7044,8 +7044,8 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
 
                     console.log('✅ Реферальный бонус начислен:', referralBonus);
 
-                    // Отправляем уведомление пригласившему
-                    if (bot) {
+                    // 🔥 ИСПРАВЛЕНИЕ: Отправляем уведомление пригласившему ТОЛЬКО если бот активен
+                    if (bot && referrerId !== adminId) { // Не отправляем админу уведомление о самом себе
                         try {
                             await bot.sendMessage(
                                 referrerId,
@@ -7056,8 +7056,9 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
                                 `🎯 Задание: "${verification.task_title}"`,
                                 { parse_mode: 'HTML' }
                             );
+                            console.log(`✅ Реферальное уведомление отправлено пользователю ${referrerId}`);
                         } catch (botError) {
-                            console.log('Не удалось отправить уведомление рефереру:', botError.message);
+                            console.log('⚠️ Не удалось отправить уведомление рефереру:', botError.message);
                         }
                     }
                 }
@@ -7083,6 +7084,9 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
                     );
                     taskRemoved = true;
                     console.log('🎯 Task completed and removed:', taskId);
+                    
+                    // 🔥 ИСПРАВЛЕНИЕ: НЕ отправляем сообщение об удалении задания в чат
+                    // Убираем этот код полностью
                 }
             }
 
@@ -7136,6 +7140,47 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
         });
     }
 });
+
+// Endpoint для получения обновленного списка проверок после одобрения
+app.get('/api/admin/task-verifications/updated', async (req, res) => {
+    const { adminId } = req.query;
+    
+    console.log('🔄 Запрос обновленного списка проверок от админа:', adminId);
+    
+    // Проверка прав администратора
+    const isAdmin = await checkAdminAccess(adminId);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен'
+        });
+    }
+    
+    try {
+        const result = await pool.query(`
+            SELECT tv.*, u.username, u.first_name, u.last_name
+            FROM task_verifications tv 
+            JOIN user_profiles u ON tv.user_id = u.user_id 
+            WHERE tv.status = 'pending' 
+            ORDER BY tv.submitted_at DESC
+        `);
+        
+        console.log(`✅ Обновленный список: ${result.rows.length} заданий на проверку`);
+        
+        res.json({
+            success: true,
+            verifications: result.rows,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('❌ Get updated verifications error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
 // 🔧 ENDPOINT ДЛЯ ПРИНУДИТЕЛЬНОГО ОДОБРЕНИЯ БЕЗ СКРИНШОТА
 app.post('/api/admin/task-verifications/:verificationId/force-approve', async (req, res) => {
     const { verificationId } = req.params;
