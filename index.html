@@ -5353,40 +5353,29 @@ html, body {
             </ol>
         </div>
 
-        <!-- Форма создания ссылки -->
-        <div class="form-group">
-            <label>Название ссылки *</label>
-            <input type="text" class="admin-input" id="link-name" 
-                   placeholder="Например: Рекламная кампания ноябрь" maxlength="50">
-        </div>
+<div id="admin-links-section" class="admin-section">
+    <div class="admin-section-header">
+        <h3>🔗 Генератор ссылок</h3>
+        <p>Создавайте ссылки для приглашения пользователей и отслеживайте статистику</p>
+    </div>
+
+    <!-- Форма создания ссылки -->
+    <div class="admin-form" style="margin-bottom: 20px;">
+        <h4>➕ Создать новую ссылку</h4>
+        <input type="text" class="admin-input" id="link-name" placeholder="Название ссылки (например: Основная ссылка)" maxlength="50">
+        <textarea class="admin-textarea" id="link-description" placeholder="Описание (необязательно)" rows="2" maxlength="100"></textarea>
         
-        <div class="form-group">
-            <label>Описание (опционально)</label>
-            <textarea class="admin-textarea" id="link-description" 
-                      placeholder="Описание цели ссылки..." rows="2"></textarea>
-        </div>
-
-        <!-- Настройки доступа (только для главного админа) -->
-        <div id="link-access-control" style="display: none;">
-            <div class="form-group">
-                <label style="display: flex; align-items: center; gap: 10px;">
-                    <input type="checkbox" id="allow-admins-links">
-                    Разрешить нанятым админам создавать ссылки
-                </label>
-            </div>
-        </div>
-
-        <button class="admin-submit" onclick="createReferralLink()" id="create-link-btn">
+        <div id="link-form-message" style="margin: 10px 0; min-height: 20px;"></div>
+        
+        <button class="admin-submit" id="create-link-btn" onclick="createReferralLink()">
             🔗 Создать ссылку
         </button>
-        
-        <div id="link-form-message" style="margin-top: 12px; min-height: 20px; font-size: 14px;"></div>
     </div>
 
     <!-- Список созданных ссылок -->
-    <div style="margin-top: 25px;">
-        <h4>📋 Созданные ссылки</h4>
-        <div id="links-list" class="admin-task-list">
+    <div class="admin-tasks-list">
+        <h4>📋 Ваши ссылки</h4>
+        <div id="links-list">
             <!-- Ссылки будут загружены здесь -->
         </div>
     </div>
@@ -13562,13 +13551,13 @@ function showAdminLinksSection() {
     showAdminSection('links');
     loadReferralLinksList();
     
-    // Показываем настройки доступа только главному админу
+    // Скрываем настройки доступа для упрощенной версии
     const accessControl = document.getElementById('link-access-control');
-    if (accessControl && parseInt(currentUser.id) === ADMIN_ID) {
-        accessControl.style.display = 'block';
-        loadLinkAccessSettings();
+    if (accessControl) {
+        accessControl.style.display = 'none';
     }
 }
+
 
 // Загрузить настройки доступа
 async function loadLinkAccessSettings() {
@@ -13582,7 +13571,8 @@ async function loadLinkAccessSettings() {
     }
 }
 
-// Создать реферальную ссылку
+
+// Создать реферальную ссылку (упрощенная версия)
 async function createReferralLink() {
     const nameInput = document.getElementById('link-name');
     const descriptionInput = document.getElementById('link-description');
@@ -13599,13 +13589,6 @@ async function createReferralLink() {
     
     if (!currentUser) {
         messageDiv.innerHTML = '<span style="color: var(--error);">Пользователь не авторизован</span>';
-        return;
-    }
-    
-    // Проверяем права для нанятых админов
-    const isMainAdmin = parseInt(currentUser.id) === ADMIN_ID;
-    if (!isMainAdmin && !currentUser.can_create_links) {
-        messageDiv.innerHTML = '<span style="color: var(--error);">У вас нет прав для создания ссылок!</span>';
         return;
     }
     
@@ -13668,7 +13651,7 @@ async function loadReferralLinksList() {
     }
 }
 
-// Отобразить список ссылок
+// Отобразить список ссылок (упрощенная версия)
 function displayReferralLinksList(links) {
     const container = document.getElementById('links-list');
     if (!container) return;
@@ -13689,19 +13672,17 @@ function displayReferralLinksList(links) {
     }
     
     links.forEach(link => {
-        const linkElement = createLinkElement(link);
+        const linkElement = createSimplifiedLinkElement(link);
         container.appendChild(linkElement);
     });
 }
 
-// Создать элемент ссылки
-function createLinkElement(link) {
+// Создать упрощенный элемент ссылки (только подсчет приглашенных)
+function createSimplifiedLinkElement(link) {
     const linkElement = document.createElement('div');
     linkElement.className = 'admin-task-item';
     
-    // 🔥 ИСПРАВЛЕНИЕ: Используем referral_url из базы данных
     const referralUrl = link.referral_url || `https://t.me/LinkGoldMoney_bot?start=${link.code}`;
-    
     const isOwner = link.created_by === currentUser.id;
     const isMainAdmin = parseInt(currentUser.id) === ADMIN_ID;
     
@@ -13742,15 +13723,11 @@ function createLinkElement(link) {
                 </div>
             </div>
             
-            <!-- Статистика -->
+            <!-- Статистика - ТОЛЬКО ПОДСЧЕТ ПРИГЛАШЕННЫХ -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-top: 10px;">
                 <div style="text-align: center;">
                     <div style="font-size: 18px; font-weight: 700; color: var(--accent);">${link.referral_count || 0}</div>
                     <div style="font-size: 11px; color: var(--text-secondary);">Приглашено</div>
-                </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 18px; font-weight: 700; color: var(--gold);">${link.earned || 0} ⭐</div>
-                    <div style="font-size: 11px; color: var(--text-secondary);">Заработано</div>
                 </div>
             </div>
             
@@ -13769,6 +13746,7 @@ function createLinkElement(link) {
     
     return linkElement;
 }
+
 // Копировать ссылку
 function copyLink(url) {
     navigator.clipboard.writeText(url).then(() => {
@@ -13811,6 +13789,12 @@ async function deleteReferralLink(code) {
         showNotification('❌ Ошибка удаления ссылки: ' + error.message, 'error');
     }
 }
+
+// 🔧 ЭКСПОРТ ФУНКЦИЙ
+window.showAdminLinksSection = showAdminLinksSection;
+window.createReferralLink = createReferralLink;
+window.copyLink = copyLink;
+window.deleteReferralLink = deleteReferralLink;
 
 // Сохранить настройки доступа (только для главного админа)
 async function saveLinkAccessSettings() {
