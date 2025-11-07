@@ -13622,7 +13622,10 @@ function addLinksDebugButton() {
 }
 
 // Вызовите при загрузке
-setTimeout(addLinksDebugButton, 3000);М
+setTimeout(addLinksDebugButton, 3000);
+
+
+
 // Сохранить настройки доступа (только для главного админа)
 async function saveLinkAccessSettings() {
     if (parseInt(currentUser.id) !== ADMIN_ID) return;
