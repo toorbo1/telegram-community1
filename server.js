@@ -1561,6 +1561,800 @@ bot.onText(/\/user (.+)/, async (msg, match) => {
         );
     }
 });
+// 🔍 ПОИСК ПОЛЬЗОВАТЕЛЕЙ ПО ЮЗЕРНЕЙМУ - УЛУЧШЕННАЯ ВЕРСИЯ
+bot.onText(/\/search (.+)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    const searchQuery = match[1].trim();
+    
+    console.log('🔍 Search command received:', { userId, searchQuery });
+    
+    // Проверяем права администратора
+    const isAdmin = await checkAdminAccess(userId);
+    if (!isAdmin) {
+        return await bot.sendMessage(
+            chatId,
+            '❌ У вас нет прав для поиска пользователей.'
+        );
+    }
+    
+    try {
+        // Ищем пользователя по юзернейму или ID
+        const userResult = await pool.query(`
+            SELECT 
+                up.user_id,
+                up.username,
+                up.first_name,
+                up.last_name,
+                up.balance,
+                up.is_admin,
+                up.created_at,
+                up.referral_count,
+                up.referral_earned,
+                -- Статистика заданий
+                COUNT(ut.id) as total_tasks,
+                COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_tasks,
+                COUNT(CASE WHEN ut.status = 'rejected' THEN 1 END) as rejected_tasks,
+                COUNT(CASE WHEN ut.status = 'pending_review' THEN 1 END) as pending_tasks,
+                -- Статистика выплат
+                COUNT(wr.id) as withdrawal_requests,
+                COUNT(CASE WHEN wr.status = 'completed' THEN 1 END) as completed_withdrawals,
+                COALESCE(SUM(CASE WHEN wr.status = 'completed' THEN wr.amount ELSE 0 END), 0) as total_withdrawn,
+                -- Информация о реферере
+                ref.username as referrer_username,
+                ref.first_name as referrer_name
+            FROM user_profiles up
+            LEFT JOIN user_tasks ut ON up.user_id = ut.user_id
+            LEFT JOIN withdrawal_requests wr ON up.user_id = wr.user_id
+            LEFT JOIN user_profiles ref ON up.referred_by = ref.user_id
+            WHERE up.username ILIKE $1 OR up.user_id::text = $1 OR up.first_name ILIKE $1
+            GROUP BY up.user_id, ref.username, ref.first_name
+            ORDER BY 
+                CASE 
+                    WHEN up.username = $1 THEN 1
+                    WHEN up.user_id::text = $1 THEN 2
+                    ELSE 3
+                END,
+                up.created_at DESC
+            LIMIT 10
+        `, [`%${searchQuery}%`]);
+        
+        if (userResult.rows.length === 0) {
+            return await bot.sendMessage(
+                chatId,
+                `❌ Пользователи по запросу "${searchQuery}" не найдены.\n\nПопробуйте:\n• Юзернейм (без @)\n• ID пользователя\n• Имя`
+            );
+        }
+        
+        if (userResult.rows.length === 1) {
+            // Если найден один пользователь - показываем детальную информацию
+            const user = userResult.rows[0];
+            await sendUserManagementPanel(chatId, user);
+        } else {
+            // Если найдено несколько пользователей - показываем список
+            await sendUsersList(chatId, userResult.rows, searchQuery);
+        }
+        
+    } catch (error) {
+        console.error('❌ Search users error:', error);
+        await bot.sendMessage(
+            chatId,
+            '❌ Произошла ошибка при поиске пользователей.'
+        );
+    }
+});
+
+// 📋 ОТПРАВКА СПИСКА ПОЛЬЗОВАТЕЛЕЙ
+async function sendUsersList(chatId, users, searchQuery) {
+    let messageText = `🔍 <b>Найдено пользователей: ${users.length}</b>\n\n`;
+    
+    users.forEach((user, index) => {
+        const userName = user.first_name + (user.last_name ? ` ${user.last_name}` : '');
+        const userStatus = user.is_admin ? '👑' : '👤';
+        const balance = user.balance || 0;
+        
+        messageText += `${index + 1}. ${userStatus} <b>${userName}</b>\n`;
+        messageText += `   👤 @${user.username || 'нет юзернейма'}\n`;
+        messageText += `   🆔 <code>${user.user_id}</code>\n`;
+        messageText += `   💫 Баланс: <b>${balance}⭐</b>\n`;
+        messageText += `   📅 Регистрация: ${new Date(user.created_at).toLocaleDateString('ru-RU')}\n\n`;
+    });
+    
+    messageText += `💡 <b>Выберите пользователя для управления:</b>`;
+    
+    const keyboard = {
+        inline_keyboard: users.map(user => [
+            {
+                text: `${user.first_name} (@${user.username || user.user_id})`,
+                callback_data: `manage_user_${user.user_id}`
+            }
+        ])
+    };
+    
+    // Добавляем кнопку "Новый поиск"
+    keyboard.inline_keyboard.push([
+        {
+            text: '🔍 Новый поиск',
+            callback_data: 'new_search'
+        }
+    ]);
+    
+    await bot.sendMessage(
+        chatId,
+        messageText,
+        {
+            parse_mode: 'HTML',
+            reply_markup: keyboard
+        }
+    );
+}
+
+// 🎛️ ПАНЕЛЬ УПРАВЛЕНИЯ ПОЛЬЗОВАТЕЛЕМ
+async function sendUserManagementPanel(chatId, user) {
+    const userName = user.first_name + (user.last_name ? ` ${user.last_name}` : '');
+    const userStatus = user.is_admin ? '👑 Администратор' : '👤 Пользователь';
+    const registrationDate = new Date(user.created_at).toLocaleDateString('ru-RU');
+    const totalEarned = (user.balance || 0) + (user.total_withdrawn || 0);
+    
+    const messageText = `
+👤 <b>ПАНЕЛЬ УПРАВЛЕНИЯ ПОЛЬЗОВАТЕЛЕМ</b>
+
+<b>Основная информация:</b>
+🆔 ID: <code>${user.user_id}</code>
+👤 Имя: <b>${userName}</b>
+📧 Юзернейм: @${user.username || 'не указан'}
+🎭 Статус: ${userStatus}
+📅 Регистрация: ${registrationDate}
+
+💰 <b>Финансы:</b>
+💫 Текущий баланс: <b>${user.balance || 0}⭐</b>
+🏦 Всего выведено: <b>${user.total_withdrawn || 0}⭐</b>
+💸 Всего заработано: <b>${totalEarned}⭐</b>
+
+📊 <b>Статистика заданий:</b>
+✅ Выполнено: <b>${user.completed_tasks || 0}</b>
+❌ Отклонено: <b>${user.rejected_tasks || 0}</b>
+⏳ На проверке: <b>${user.pending_tasks || 0}</b>
+📋 Всего заданий: <b>${user.total_tasks || 0}</b>
+
+👥 <b>Реферальная система:</b>
+👤 Приглашено: <b>${user.referral_count || 0} чел.</b>
+💫 Заработано: <b>${user.referral_earned || 0}⭐</b>
+🎯 Пригласил: ${user.referrer_username ? `@${user.referrer_username}` : 'нет'}
+    `.trim();
+
+    const keyboard = {
+        inline_keyboard: [
+            // Первый ряд: Управление балансом
+            [
+                {
+                    text: '💰 Управление балансом',
+                    callback_data: `balance_menu_${user.user_id}`
+                },
+                {
+                    text: '🎭 Права доступа',
+                    callback_data: `admin_toggle_${user.user_id}`
+                }
+            ],
+            // Второй ряд: Статистика и действия
+            [
+                {
+                    text: '📊 Детальная статистика',
+                    callback_data: `user_stats_${user.user_id}`
+                },
+                {
+                    text: '🔄 Обновить',
+                    callback_data: `refresh_user_${user.user_id}`
+                }
+            ],
+            // Третий ряд: Блокировка и выплаты
+            [
+                {
+                    text: user.balance > 0 ? '💸 Выплаты' : '💸 История выплат',
+                    callback_data: `withdrawal_info_${user.user_id}`
+                },
+                {
+                    text: '🚫 Заблокировать',
+                    callback_data: `block_user_${user.user_id}`
+                }
+            ],
+            // Четвертый ряд: Навигация
+            [
+                {
+                    text: '🔍 Новый поиск',
+                    callback_data: 'new_search'
+                },
+                {
+                    text: '📋 Список пользователей',
+                    callback_data: 'users_list'
+                }
+            ]
+        ]
+    };
+
+    await bot.sendMessage(
+        chatId,
+        messageText,
+        {
+            parse_mode: 'HTML',
+            reply_markup: keyboard
+        }
+    );
+}
+
+// 💰 МЕНЮ УПРАВЛЕНИЯ БАЛАНСОМ
+async function showBalanceManagement(chatId, adminId, targetUserId, messageId) {
+    try {
+        const userResult = await pool.query(
+            'SELECT username, first_name, balance FROM user_profiles WHERE user_id = $1',
+            [targetUserId]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return await bot.editMessageText(
+                '❌ Пользователь не найден',
+                { chat_id: chatId, message_id: messageId }
+            );
+        }
+        
+        const user = userResult.rows[0];
+        const currentBalance = user.balance || 0;
+        
+        const messageText = `
+💰 <b>УПРАВЛЕНИЕ БАЛАНСОМ</b>
+
+👤 Пользователь: ${user.first_name} (@${user.username})
+💫 Текущий баланс: <b>${currentBalance}⭐</b>
+
+<b>Быстрые действия:</b>
+        `.trim();
+        
+        const keyboard = {
+            inline_keyboard: [
+                // Пополнение счета
+                [
+                    { text: '➕ 50⭐', callback_data: `balance_add_${targetUserId}_50` },
+                    { text: '➕ 100⭐', callback_data: `balance_add_${targetUserId}_100` },
+                    { text: '➕ 500⭐', callback_data: `balance_add_${targetUserId}_500` }
+                ],
+                // Списание средств
+                [
+                    { text: '➖ 50⭐', callback_data: `balance_remove_${targetUserId}_50` },
+                    { text: '➖ 100⭐', callback_data: `balance_remove_${targetUserId}_100` },
+                    { text: '➖ 500⭐', callback_data: `balance_remove_${targetUserId}_500` }
+                ],
+                // Специальные действия
+                [
+                    { text: '🎯 Указать сумму', callback_data: `balance_custom_${targetUserId}` },
+                    { text: '🔄 Сбросить баланс', callback_data: `balance_reset_${targetUserId}` },
+                    { text: '💸 Обнулить', callback_data: `balance_zero_${targetUserId}` }
+                ],
+                // Навигация
+                [
+                    { text: '🔙 Назад', callback_data: `manage_user_${targetUserId}` },
+                    { text: '📊 Статистика', callback_data: `user_stats_${targetUserId}` }
+                ]
+            ]
+        };
+        
+        if (messageId) {
+            await bot.editMessageText(
+                messageText,
+                {
+                    chat_id: chatId,
+                    message_id: messageId,
+                    parse_mode: 'HTML',
+                    reply_markup: keyboard
+                }
+            );
+        } else {
+            await bot.sendMessage(
+                chatId,
+                messageText,
+                {
+                    parse_mode: 'HTML',
+                    reply_markup: keyboard
+                }
+            );
+        }
+        
+    } catch (error) {
+        console.error('Show balance management error:', error);
+        await bot.sendMessage(
+            chatId,
+            '❌ Ошибка при загрузке управления балансом'
+        );
+    }
+}
+
+// 🔄 ОБРАБОТКА ДЕЙСТВИЙ С БАЛАНСОМ
+async function handleBalanceAction(chatId, adminId, targetUserId, action, amount, messageId) {
+    try {
+        const userResult = await pool.query(
+            'SELECT username, first_name, balance FROM user_profiles WHERE user_id = $1',
+            [targetUserId]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return await bot.editMessageText(
+                '❌ Пользователь не найден',
+                { chat_id: chatId, message_id: messageId }
+            );
+        }
+        
+        const user = userResult.rows[0];
+        let newBalance = user.balance || 0;
+        let actionText = '';
+        let notificationText = '';
+        
+        switch (action) {
+            case 'add':
+                newBalance += amount;
+                actionText = `пополнен на ${amount}⭐`;
+                notificationText = `🎉 Ваш баланс пополнен на ${amount}⭐ администратором!\n💫 Текущий баланс: ${newBalance}⭐`;
+                break;
+                
+            case 'remove':
+                if (newBalance >= amount) {
+                    newBalance -= amount;
+                    actionText = `списано ${amount}⭐`;
+                    notificationText = `ℹ️ С вашего баланса списано ${amount}⭐ администратором.\n💫 Текущий баланс: ${newBalance}⭐`;
+                } else {
+                    newBalance = 0;
+                    actionText = `баланс сброшен (было недостаточно средств)`;
+                    notificationText = `ℹ️ Ваш баланс был сброшен администратором.\n💫 Текущий баланс: ${newBalance}⭐`;
+                }
+                break;
+                
+            case 'reset':
+                actionText = `сброшен до 0⭐`;
+                newBalance = 0;
+                notificationText = `ℹ️ Ваш баланс был сброшен администратором.\n💫 Текущий баланс: ${newBalance}⭐`;
+                break;
+                
+            case 'zero':
+                actionText = `обнулен`;
+                newBalance = 0;
+                notificationText = `ℹ️ Ваш баланс был обнулен администратором.`;
+                break;
+                
+            case 'custom':
+                // Обработка произвольной суммы через текстовый ввод
+                userBalanceState[adminId] = { targetUserId, action: 'custom' };
+                await bot.sendMessage(
+                    chatId,
+                    `💵 <b>Введите сумму для изменения баланса</b>\n\n` +
+                    `Пользователь: ${user.first_name} (@${user.username})\n` +
+                    `Текущий баланс: ${user.balance || 0}⭐\n\n` +
+                    `<b>Форматы ввода:</b>\n` +
+                    `<code>+100</code> - пополнить на 100⭐\n` +
+                    `<code>-50</code> - списать 50⭐\n` +
+                    `<code>=200</code> - установить баланс 200⭐\n` +
+                    `<code>0</code> - обнулить баланс`,
+                    { parse_mode: 'HTML' }
+                );
+                return;
+        }
+        
+        if (action !== 'custom') {
+            // Обновляем баланс в базе данных
+            await pool.query(
+                'UPDATE user_profiles SET balance = $1 WHERE user_id = $2',
+                [newBalance, targetUserId]
+            );
+            
+            // Логируем действие
+            await pool.query(`
+                INSERT INTO admin_actions (admin_id, action_type, target_id, description) 
+                VALUES ($1, $2, $3, $4)
+            `, [adminId, 'balance_update', targetUserId, 
+                `Баланс пользователя ${targetUserId} ${actionText}. Новый баланс: ${newBalance}⭐`]);
+            
+            // Обновляем сообщение
+            await bot.editMessageText(
+                `✅ <b>Баланс обновлен!</b>\n\n` +
+                `👤 Пользователь: ${user.first_name}\n` +
+                `💫 Действие: ${actionText}\n` +
+                `💰 Новый баланс: <b>${newBalance}⭐</b>`,
+                {
+                    chat_id: chatId,
+                    message_id: messageId,
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                { text: '🔙 Назад к управлению', callback_data: `manage_user_${targetUserId}` },
+                                { text: '💰 Еще действия', callback_data: `balance_menu_${targetUserId}` }
+                            ]
+                        ]
+                    }
+                }
+            );
+            
+            // Уведомляем пользователя
+            if (bot && notificationText) {
+                try {
+                    await bot.sendMessage(targetUserId, notificationText);
+                } catch (error) {
+                    console.log('Не удалось отправить уведомление пользователю');
+                }
+            }
+        }
+        
+    } catch (error) {
+        console.error('Handle balance action error:', error);
+        await bot.editMessageText(
+            '❌ Ошибка при изменении баланса',
+            { chat_id: chatId, message_id: messageId }
+        );
+    }
+}
+
+// 📊 ДЕТАЛЬНАЯ СТАТИСТИКА ПОЛЬЗОВАТЕЛЯ
+async function showUserDetailedStats(chatId, targetUserId, messageId) {
+    try {
+        const statsResult = await pool.query(`
+            SELECT 
+                up.user_id,
+                up.username,
+                up.first_name,
+                up.balance,
+                up.created_at,
+                up.referral_count,
+                up.referral_earned,
+                up.referred_by,
+                -- Статистика по заданиям
+                COUNT(ut.id) as total_tasks,
+                COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_tasks,
+                COUNT(CASE WHEN ut.status = 'rejected' THEN 1 END) as rejected_tasks,
+                COUNT(CASE WHEN ut.status = 'pending_review' THEN 1 END) as pending_tasks,
+                COUNT(CASE WHEN ut.status = 'active' THEN 1 END) as active_tasks,
+                -- Статистика по выплатам
+                COUNT(wr.id) as withdrawal_requests,
+                COUNT(CASE WHEN wr.status = 'completed' THEN 1 END) as completed_withdrawals,
+                COUNT(CASE WHEN wr.status = 'pending' THEN 1 END) as pending_withdrawals,
+                COUNT(CASE WHEN wr.status = 'cancelled' THEN 1 END) as cancelled_withdrawals,
+                COALESCE(SUM(CASE WHEN wr.status = 'completed' THEN wr.amount ELSE 0 END), 0) as total_withdrawn,
+                -- Реферальная статистика
+                ref.username as referrer_username,
+                ref.first_name as referrer_name,
+                -- Последняя активность
+                MAX(ut.started_at) as last_task_activity,
+                MAX(wr.created_at) as last_withdrawal_date
+            FROM user_profiles up
+            LEFT JOIN user_tasks ut ON up.user_id = ut.user_id
+            LEFT JOIN withdrawal_requests wr ON up.user_id = wr.user_id
+            LEFT JOIN user_profiles ref ON up.referred_by = ref.user_id
+            WHERE up.user_id = $1
+            GROUP BY up.user_id, ref.username, ref.first_name
+        `, [targetUserId]);
+        
+        if (statsResult.rows.length === 0) {
+            return await bot.editMessageText(
+                '❌ Пользователь не найден',
+                { chat_id: chatId, message_id: messageId }
+            );
+        }
+        
+        const stats = statsResult.rows[0];
+        const lastActivity = stats.last_task_activity ? 
+            new Date(stats.last_task_activity).toLocaleDateString('ru-RU') : 'нет активности';
+        const lastWithdrawal = stats.last_withdrawal_date ? 
+            new Date(stats.last_withdrawal_date).toLocaleDateString('ru-RU') : 'нет выплат';
+        
+        const messageText = `
+📊 <b>ДЕТАЛЬНАЯ СТАТИСТИКА ПОЛЬЗОВАТЕЛЯ</b>
+
+👤 <b>${stats.first_name}</b> (@${stats.username})
+💫 <b>Баланс:</b> ${stats.balance || 0}⭐
+📅 <b>Регистрация:</b> ${new Date(stats.created_at).toLocaleDateString('ru-RU')}
+🕒 <b>Последняя активность:</b> ${lastActivity}
+
+🎯 <b>ЗАДАНИЯ:</b>
+• Всего: ${stats.total_tasks || 0}
+• ✅ Выполнено: ${stats.completed_tasks || 0}
+• ❌ Отклонено: ${stats.rejected_tasks || 0}
+• ⏳ На проверке: ${stats.pending_tasks || 0}
+• 🔄 Активные: ${stats.active_tasks || 0}
+
+💳 <b>ВЫПЛАТЫ:</b>
+• 📨 Запросов: ${stats.withdrawal_requests || 0}
+• ✅ Выведено: ${stats.completed_withdrawals || 0}
+• ⏳ Ожидают: ${stats.pending_withdrawals || 0}
+• ❌ Отменено: ${stats.cancelled_withdrawals || 0}
+• 💰 Сумма: ${stats.total_withdrawn || 0}⭐
+• 📅 Последняя: ${lastWithdrawal}
+
+👥 <b>РЕФЕРАЛЫ:</b>
+• 👤 Приглашено: ${stats.referral_count || 0}
+• 💫 Заработано: ${stats.referral_earned || 0}⭐
+• 🎯 Пригласил: ${stats.referrer_username ? `@${stats.referrer_username}` : 'нет'}
+
+💰 <b>ОБЩАЯ СТАТИСТИКА:</b>
+• 💸 Всего заработано: ${(stats.balance || 0) + (stats.total_withdrawn || 0)}⭐
+• 📈 Эффективность: ${stats.total_tasks ? Math.round((stats.completed_tasks / stats.total_tasks) * 100) : 0}%
+        `.trim();
+        
+        const keyboard = {
+            inline_keyboard: [
+                [
+                    { text: '🔙 Назад', callback_data: `manage_user_${targetUserId}` },
+                    { text: '🔄 Обновить', callback_data: `refresh_stats_${targetUserId}` }
+                ],
+                [
+                    { text: '💰 Управление балансом', callback_data: `balance_menu_${targetUserId}` },
+                    { text: '📋 История операций', callback_data: `user_operations_${targetUserId}` }
+                ]
+            ]
+        };
+        
+        await bot.editMessageText(
+            messageText,
+            {
+                chat_id: chatId,
+                message_id: messageId,
+                parse_mode: 'HTML',
+                reply_markup: keyboard
+            }
+        );
+        
+    } catch (error) {
+        console.error('Show user stats error:', error);
+        await bot.editMessageText(
+            '❌ Ошибка при загрузке статистики',
+            { chat_id: chatId, message_id: messageId }
+        );
+    }
+}
+
+// 🚫 БЛОКИРОВКА/РАЗБЛОКИРОВКА ПОЛЬЗОВАТЕЛЯ
+async function toggleUserBlock(chatId, adminId, targetUserId, messageId) {
+    try {
+        const userResult = await pool.query(
+            'SELECT username, first_name, is_blocked FROM user_profiles WHERE user_id = $1',
+            [targetUserId]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return await bot.editMessageText(
+                '❌ Пользователь не найден',
+                { chat_id: chatId, message_id: messageId }
+            );
+        }
+        
+        const user = userResult.rows[0];
+        const newBlockStatus = !user.is_blocked;
+        const actionText = newBlockStatus ? 'заблокирован' : 'разблокирован';
+        const emoji = newBlockStatus ? '🚫' : '✅';
+        
+        // Обновляем статус блокировки
+        await pool.query(
+            'UPDATE user_profiles SET is_blocked = $1 WHERE user_id = $2',
+            [newBlockStatus, targetUserId]
+        );
+        
+        // Логируем действие
+        await pool.query(`
+            INSERT INTO admin_actions (admin_id, action_type, target_id, description) 
+            VALUES ($1, $2, $3, $4)
+        `, [adminId, 'user_block', targetUserId, 
+            `Пользователь ${targetUserId} ${actionText}`]);
+        
+        await bot.editMessageText(
+            `${emoji} <b>Пользователь ${actionText}!</b>\n\n` +
+            `👤 ${user.first_name} (@${user.username})\n` +
+            `🆔 ID: <code>${targetUserId}</code>\n` +
+            `📊 Статус: ${newBlockStatus ? '🚫 Заблокирован' : '✅ Активен'}`,
+            {
+                chat_id: chatId,
+                message_id: messageId,
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            { text: '🔙 Назад', callback_data: `manage_user_${targetUserId}` },
+                            { text: '🔄 Обновить', callback_data: `refresh_user_${targetUserId}` }
+                        ]
+                    ]
+                }
+            }
+        );
+        
+        // Уведомляем пользователя
+        if (bot) {
+            try {
+                await bot.sendMessage(
+                    targetUserId,
+                    newBlockStatus ? 
+                    `🚫 <b>Ваш аккаунт заблокирован!</b>\n\n` +
+                    `Ваш аккаунт был заблокирован администратором. ` +
+                    `Для разблокировки обратитесь в поддержку.` :
+                    `✅ <b>Ваш аккаунт разблокирован!</b>\n\n` +
+                    `Ваш аккаунт был разблокирован администратором. ` +
+                    `Теперь вы снова можете пользоваться ботом.`,
+                    { parse_mode: 'HTML' }
+                );
+            } catch (error) {
+                console.log('Не удалось отправить уведомление пользователю');
+            }
+        }
+        
+    } catch (error) {
+        console.error('Toggle user block error:', error);
+        await bot.editMessageText(
+            '❌ Ошибка при изменении статуса блокировки',
+            { chat_id: chatId, message_id: messageId }
+        );
+    }
+}
+
+// 🔧 ОБНОВЛЕННЫЙ ОБРАБОТЧИК CALLBACK-ЗАПРОСОВ
+bot.on('callback_query', async (callbackQuery) => {
+    const message = callbackQuery.message;
+    const chatId = message.chat.id;
+    const userId = callbackQuery.from.id;
+    const data = callbackQuery.data;
+    
+    try {
+        // Управление пользователями
+        if (data.startsWith('manage_user_')) {
+            const targetUserId = data.replace('manage_user_', '');
+            const userResult = await pool.query(`
+                SELECT * FROM user_profiles WHERE user_id = $1
+            `, [targetUserId]);
+            
+            if (userResult.rows.length > 0) {
+                await sendUserManagementPanel(chatId, userResult.rows[0]);
+            }
+        }
+        
+        else if (data.startsWith('balance_menu_')) {
+            const targetUserId = data.replace('balance_menu_', '');
+            await showBalanceManagement(chatId, userId, targetUserId, message.message_id);
+        }
+        
+        else if (data.startsWith('balance_')) {
+            const parts = data.replace('balance_', '').split('_');
+            const action = parts[0];
+            const targetUserId = parts[1];
+            const amount = parts[2] ? parseInt(parts[2]) : 0;
+            
+            await handleBalanceAction(chatId, userId, targetUserId, action, amount, message.message_id);
+        }
+        
+        else if (data.startsWith('user_stats_')) {
+            const targetUserId = data.replace('user_stats_', '');
+            await showUserDetailedStats(chatId, targetUserId, message.message_id);
+        }
+        
+        else if (data.startsWith('block_user_')) {
+            const targetUserId = data.replace('block_user_', '');
+            await toggleUserBlock(chatId, userId, targetUserId, message.message_id);
+        }
+        
+        else if (data.startsWith('refresh_user_')) {
+            const targetUserId = data.replace('refresh_user_', '');
+            const userResult = await pool.query(`
+                SELECT * FROM user_profiles WHERE user_id = $1
+            `, [targetUserId]);
+            
+            if (userResult.rows.length > 0) {
+                await sendUserManagementPanel(chatId, userResult.rows[0]);
+                await bot.deleteMessage(chatId, message.message_id);
+            }
+        }
+        
+        else if (data === 'new_search') {
+            await bot.sendMessage(
+                chatId,
+                '🔍 <b>Поиск пользователей</b>\n\n' +
+                'Введите команду:\n' +
+                '<code>/search юзернейм</code> - поиск по юзернейму\n' +
+                '<code>/search ID</code> - поиск по ID пользователя\n' +
+                '<code>/search имя</code> - поиск по имени\n\n' +
+                'Примеры:\n' +
+                '<code>/search john_doe</code>\n' +
+                '<code>/search 123456789</code>\n' +
+                '<code>/search Иван</code>',
+                { parse_mode: 'HTML' }
+            );
+            await bot.deleteMessage(chatId, message.message_id);
+        }
+        
+        else if (data === 'users_list') {
+            // Показать последних пользователей
+            const usersResult = await pool.query(`
+                SELECT * FROM user_profiles 
+                ORDER BY created_at DESC 
+                LIMIT 10
+            `);
+            
+            if (usersResult.rows.length > 0) {
+                await sendUsersList(chatId, usersResult.rows, 'последние пользователи');
+                await bot.deleteMessage(chatId, message.message_id);
+            }
+        }
+        
+        // Подтверждаем обработку callback
+        await bot.answerCallbackQuery(callbackQuery.id);
+        
+    } catch (error) {
+        console.error('Callback query error:', error);
+        await bot.answerCallbackQuery(callbackQuery.id, { text: '❌ Произошла ошибка' });
+    }
+});
+
+// 📝 КОМАНДА ПОМОЩИ ПО УПРАВЛЕНИЮ ПОЛЬЗОВАТЕЛЯМИ
+bot.onText(/\/user_help/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    
+    // Проверяем права администратора
+    const isAdmin = await checkAdminAccess(userId);
+    if (!isAdmin) {
+        return await bot.sendMessage(
+            chatId,
+            '❌ У вас нет прав для доступа к этой команде.'
+        );
+    }
+    
+    const helpText = `
+🛠️ <b>СИСТЕМА УПРАВЛЕНИЯ ПОЛЬЗОВАТЕЛЯМИ</b>
+
+<b>Основные команды:</b>
+<code>/search username</code> - поиск по юзернейму
+<code>/search 123456</code> - поиск по ID
+<code>/search Имя</code> - поиск по имени
+
+<b>Функционал управления:</b>
+• 💰 <b>Управление балансом</b> - пополнение, списание, сброс
+• 🎭 <b>Права доступа</b> - назначение/снятие админа
+• 📊 <b>Детальная статистика</b> - задания, выплаты, рефералы
+• 🚫 <b>Блокировка</b> - блокировка/разблокировка пользователей
+• 💸 <b>Управление выплатами</b> - история и статусы выплат
+
+<b>Быстрые действия:</b>
+• Пополнение баланса: +50, +100, +500 ⭐
+• Списание средств: -50, -100, -500 ⭐  
+• Сброс баланса: установка 0⭐
+• Произвольная сумма: ввод любой суммы
+
+<b>Уведомления:</b>
+Пользователи автоматически получают уведомления о всех изменениях их баланса и статуса.
+    `.trim();
+    
+    await bot.sendMessage(
+        chatId,
+        helpText,
+        { 
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        { text: '🔍 Начать поиск', callback_data: 'new_search' },
+                        { text: '📋 Список пользователей', callback_data: 'users_list' }
+                    ]
+                ]
+            }
+        }
+    );
+});
+
+// 🔧 ДОБАВЛЯЕМ КОЛОНКУ is_blocked В БАЗУ ДАННЫХ
+async function addBlockedColumn() {
+    try {
+        await pool.query(`
+            ALTER TABLE user_profiles 
+            ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT false
+        `);
+        console.log('✅ Column is_blocked added to user_profiles');
+    } catch (error) {
+        console.log('ℹ️ Column is_blocked already exists or error:', error.message);
+    }
+}
+
+// Вызываем при инициализации
+addBlockedColumn();
 // Команда помощи по управлению пользователями
 bot.onText(/\/admin_help/, async (msg) => {
     const chatId = msg.chat.id;
