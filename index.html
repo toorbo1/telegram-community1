@@ -13873,7 +13873,7 @@ function displayReferralLinksList(links) {
     });
 }
 
-// Создать элемент ссылки с подробной статистикой
+// Создать элемент ссылки с подробной статистикой переходов
 function createDetailedLinkElement(link) {
     const linkElement = document.createElement('div');
     linkElement.className = 'admin-task-item';
@@ -13925,7 +13925,7 @@ function createDetailedLinkElement(link) {
                 </div>
             </div>
             
-            <!-- Подробная статистика -->
+            <!-- Подробная статистика переходов -->
             <div style="margin-top: 15px;">
                 <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">
                     📊 Статистика переходов:
@@ -13949,6 +13949,23 @@ function createDetailedLinkElement(link) {
                     </div>
                 </div>
             </div>
+            
+            <!-- Детальная информация о переходах -->
+            ${totalClicks > 0 ? `
+                <div style="margin-top: 12px; padding: 10px; background: var(--bg-secondary); border-radius: 8px;">
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">
+                        📈 Детальная статистика:
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 11px;">
+                        <span>Уникальность кликов:</span>
+                        <span><strong>${Math.round((uniqueClicks / totalClicks) * 100)}%</strong></span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 4px;">
+                        <span>Эффективность ссылки:</span>
+                        <span><strong>${conversionRate}%</strong></span>
+                    </div>
+                </div>
+            ` : ''}
             
             <!-- Дополнительная информация -->
             <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); margin-top: 12px;">
