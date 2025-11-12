@@ -11299,8 +11299,7 @@ async function monitorReferralSystem() {
 
 // Запускайте периодически
 setInterval(monitorReferralSystem, 60000);
-// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОДОБРЕНИЯ ЗАДАНИЯ
-// 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ ОДОБРЕНИЯ ЗАДАНИЯ С ОБРАБОТКОЙ ОШИБОК
+// 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ ОДОБРЕНИЯ ЗАДАНИЯ БЕЗ РЕФЕРАЛЬНОЙ СИСТЕМЫ
 async function approveVerification() {
     if (!currentVerificationId) {
         showNotification('❌ ID верификации не найден', 'error');
@@ -11317,13 +11316,7 @@ async function approveVerification() {
             verificationId: currentVerificationId,
             adminId: currentUser.id
         });
-// В функции approveVerification добавьте проверку:
-console.log('💰 Income distribution:', {
-    taskPrice: taskPrice,
-    userReward: userReward,
-    referralBonus: referralBonusAmount,
-    calculation: `User: ${userReward} (90%), Referrer: ${referralBonusAmount} (10%)`
-});
+
         // Показываем индикатор загрузки
         const approveBtn = document.querySelector('.btn-success');
         if (approveBtn) {
@@ -11331,27 +11324,20 @@ console.log('💰 Income distribution:', {
             approveBtn.textContent = 'Одобряем...';
         }
 
-        // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Отправляем запрос даже если скриншот не загружается
+        // Отправляем запрос на одобрение
         const result = await makeRequest(`/api/admin/task-verifications/${currentVerificationId}/approve`, {
             method: 'POST',
             body: JSON.stringify({
                 adminId: currentUser.id,
-                forceApprove: true // 🔥 Новый параметр для принудительного одобрения
+                forceApprove: true
             })
         });
 
         console.log('📨 Ответ сервера при одобрении:', result);
 
         if (result.success) {
-            let message = `✅ Задание одобрено! Пользователь получил ${result.amountAdded || result.task_price}⭐`;
-            
-            // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Проверяем и отображаем реферальный бонус
-            if (result.referralBonus) {
-                message += `\n\n👥 Реферальный бонус: ${result.referralBonus.referrerName} получил ${result.referralBonus.bonusAmount}⭐ (10%)`;
-                
-                // Показываем анимацию реферального бонуса
-                showReferralBonusAnimation(result.referralBonus.referrerName, result.referralBonus.bonusAmount);
-            }
+            // 🔥 ПРОСТОЕ СООБЩЕНИЕ БЕЗ РЕФЕРАЛЬНОЙ ИНФОРМАЦИИ
+            let message = `✅ Задание одобрено! Пользователь получил ${result.amountAdded}⭐`;
             
             if (result.taskRemoved || result.taskCompleted) {
                 message += "\n\n🎯 Задание автоматически удалено - достигнут лимит исполнителей!";
@@ -11364,12 +11350,12 @@ console.log('💰 Income distribution:', {
             setTimeout(() => {
                 loadTaskVerifications();
                 loadAdminTasks();
-                updateUserData(); // Обновляем данные пользователя
+                updateUserData();
                 console.log('✅ Интерфейс успешно обновлен после одобрения задания');
             }, 500);
             
         } else {
-            // 🔥 УЛУЧШЕННАЯ ОБРАБОТКА ОШИБОК: Пробуем принудительное одобрение
+            // Обработка ошибок
             if (result.error && (result.error.includes('скриншот') || result.error.includes('изображение'))) {
                 console.log('⚠️ Проблема со скриншотом, пробуем принудительное одобрение...');
                 await forceApproveVerification();
@@ -11381,9 +11367,50 @@ console.log('💰 Income distribution:', {
     } catch (error) {
         console.error('❌ Сетевая ошибка при одобрении:', error);
         
-        // 🔥 АВАРИЙНЫЙ РЕЖИМ: Пробуем принудительное одобрение при любых сетевых ошибках
+        // Аварийный режим
         console.log('🚨 Аварийный режим: пробуем принудительное одобрение...');
         await forceApproveVerification();
+    }
+}
+
+// 🔧 ФУНКЦИЯ ПРИНУДИТЕЛЬНОГО ОДОБРЕНИЯ ПРИ ОШИБКАХ
+async function forceApproveVerification() {
+    try {
+        console.log('🔧 Принудительное одобрение верификации:', currentVerificationId);
+        
+        const result = await makeRequest(`/api/admin/task-verifications/${currentVerificationId}/force-approve`, {
+            method: 'POST',
+            body: JSON.stringify({
+                adminId: currentUser.id,
+                reason: 'Автоматическое одобрение при ошибке загрузки скриншота'
+            })
+        });
+
+        if (result.success) {
+            showNotification('✅ Задание одобрено (автоматический режим)!', 'success');
+            
+            closeModal('verification-modal');
+            
+            setTimeout(() => {
+                loadTaskVerifications();
+                loadAdminTasks();
+                updateUserData();
+            }, 500);
+            
+        } else {
+            throw new Error('Не удалось выполнить принудительное одобрение: ' + result.error);
+        }
+        
+    } catch (forceError) {
+        console.error('❌ Ошибка принудительного одобрения:', forceError);
+        showNotification('❌ Критическая ошибка: ' + forceError.message, 'error');
+        
+        // Восстанавливаем кнопку
+        const approveBtn = document.querySelector('.btn-success');
+        if (approveBtn) {
+            approveBtn.disabled = false;
+            approveBtn.textContent = '✅ Одобрить';
+        }
     }
 }
 

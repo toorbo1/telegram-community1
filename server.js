@@ -7058,7 +7058,6 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
                 ut.user_id,
                 up.first_name as user_name,
                 up.username,
-                up.referred_by,
                 up.tasks_completed
             FROM task_verifications tv
             JOIN user_tasks ut ON tv.user_task_id = ut.id
@@ -7088,12 +7087,8 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             peopleRequired: verification.people_required,
             completedCount: verification.completed_count,
             userTasksCompleted,
-            hasScreenshot: !!verification.screenshot_url,
-            referredBy: verification.referred_by
+            hasScreenshot: !!verification.screenshot_url
         });
-
-        const userReward = Math.round(taskPrice * 0.9);
-        const referralBonusAmount = taskPrice - userReward;
 
         const client = await pool.connect();
         try {
@@ -7105,10 +7100,10 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
                 ['completed', verification.user_task_id]
             );
 
-            // 2. Начисляем 90% вознаграждения пользователю
+            // 2. Начисляем ВСЮ сумму пользователю (100%)
             await client.query(
                 'UPDATE user_profiles SET balance = balance + $1, tasks_completed = COALESCE(tasks_completed, 0) + 1 WHERE user_id = $2',
-                [userReward, userId]
+                [taskPrice, userId]
             );
 
             // 3. Обновляем счетчик выполненных заданий
@@ -7123,66 +7118,8 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
                 ['approved', adminId, verificationId]
             );
 
-            // 🔥 ОТПРАВЛЯЕМ УВЕДОМЛЕНИЕ ПОЛЬЗОВАТЕЛЮ
+            // 🔥 УВЕДОМЛЯЕМ ПОЛЬЗОВАТЕЛЯ (БЕЗ РЕФЕРАЛЬНОЙ ИНФОРМАЦИИ)
             await sendTaskNotification(userId, taskTitle, 'approved');
-
-            let referralBonus = null;
-            
-            if (verification.referred_by) {
-                const referrerId = verification.referred_by;
-                
-                const referrerCheck = await client.query(
-                    'SELECT user_id, first_name, username FROM user_profiles WHERE user_id = $1',
-                    [referrerId]
-                );
-
-                if (referrerCheck.rows.length > 0) {
-                    const referrer = referrerCheck.rows[0];
-                    const bonusAmount = Math.round(taskPrice * 0.1);
-                    
-                    console.log('👥 Реферальная система:', {
-                        referrerId: referrer.user_id,
-                        referrerName: referrer.first_name,
-                        taskPrice: taskPrice,
-                        bonusAmount: bonusAmount,
-                        calculation: `${taskPrice} * 10% = ${bonusAmount}`
-                    });
-
-                    await client.query(
-                        `UPDATE user_profiles 
-                         SET balance = balance + $1, 
-                             referral_earned = COALESCE(referral_earned, 0) + $1
-                         WHERE user_id = $2`,
-                        [bonusAmount, referrerId]
-                    );
-
-                    referralBonus = {
-                        referrerName: referrer.first_name || referrer.username || `User_${referrerId}`,
-                        bonusAmount: bonusAmount,
-                        referrerId: referrerId,
-                        taskPrice: taskPrice,
-                        userReward: userReward
-                    };
-
-                    console.log('✅ Реферальный бонус начислен:', referralBonus);
-
-                    if (bot && referrerId !== adminId) {
-                        try {
-                            await bot.sendMessage(
-                                referrerId,
-                                `💰 <b>Реферальный доход!</b>\n\n` +
-                                `Ваш реферал ${verification.user_name} выполнил задание!\n\n` +
-                                `💫 Вы получили: <b>${bonusAmount}⭐</b> (10%)\n` +
-                                `👤 Реферал получил: <b>${userReward}⭐</b> (90%)\n` +
-                                `🎯 Задание: "${taskTitle}"`,
-                                { parse_mode: 'HTML' }
-                            );
-                        } catch (botError) {
-                            console.log('⚠️ Не удалось отправить уведомление рефереру:', botError.message);
-                        }
-                    }
-                }
-            }
 
             const taskUpdateResult = await client.query(
                 'SELECT people_required, completed_count FROM tasks WHERE id = $1',
@@ -7210,17 +7147,12 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
             const response = {
                 success: true,
                 message: 'Задание успешно одобрено!',
-                amountAdded: userReward,
+                amountAdded: taskPrice, // Полная сумма
                 taskRemoved: taskRemoved,
                 taskCompleted: true,
-                userReward: userReward,
+                userReward: taskPrice,
                 originalPrice: taskPrice
             };
-
-            if (referralBonus) {
-                response.referralBonus = referralBonus;
-                response.message += ` Реферальный бонус: ${referralBonus.bonusAmount}⭐`;
-            }
 
             if (!verification.screenshot_url) {
                 response.message += " (Одобрено без скриншота)";
@@ -7251,7 +7183,6 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
         });
     }
 });
-
 // Endpoint для получения обновленного списка проверок после одобрения
 app.get('/api/admin/task-verifications/updated', async (req, res) => {
     const { adminId } = req.query;
