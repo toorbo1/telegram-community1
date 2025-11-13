@@ -5920,10 +5920,12 @@ async function ensureDatabaseConnection() {
 // Проверяем подключение каждые 10 минут
 setInterval(ensureDatabaseConnection, 10 * 60 * 1000);
 
-// В server.js - обновите endpoint отмены задания
+// Отмена задания - возврат в список доступных
 app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
     const userTaskId = req.params.userTaskId;
     const { userId } = req.body;
+    
+    console.log('🔄 Cancel task request:', { userTaskId, userId });
     
     if (!userId) {
         return res.status(400).json({
@@ -5969,7 +5971,6 @@ app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
         });
     }
 });
-
 // ==================== SUPPORT CHAT ENDPOINTS ====================
 
 // Get or create user chat - ИСПРАВЛЕННАЯ ВЕРСИЯ
