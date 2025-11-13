@@ -6105,7 +6105,7 @@ html, body {
     </div>
 </div>
 <!-- Модальное окно отмены подтверждения -->
- <div class="task-detail" id="task-modal-url">
+<!-- В модальном окне отмены подтверждения -->
 <div class="modal" id="cancel-confirmation-modal">
     <div class="confirmation-modal-content">
         <div class="confirmation-icon">⚠️</div>
@@ -6113,13 +6113,13 @@ html, body {
         <div class="confirmation-text">Вы точно не выполнили это задание?</div>
         
         <div class="confirmation-buttons">
-            <button class="confirmation-btn confirmation-no" onclick="cancelTask()">Не выполнил</button>
+            <!-- ПЕРЕДАЕМ userTaskId В ФУНКЦИЮ -->
+            <button class="confirmation-btn confirmation-no" onclick="cancelTask(selectedUserTaskId)">Не выполнил</button>
             <button class="confirmation-btn confirmation-yes" onclick="showScreenshotUpload()">Выполнил</button>
         </div>
         
         <button class="confirmation-btn confirmation-cancel" onclick="closeModal('cancel-confirmation-modal')">Отмена</button>
     </div>
-</div>
 </div>
 <!-- Модальное окно загрузки скриншота -->
  <div class="task-detail" id="task-modal-url">
@@ -16374,10 +16374,11 @@ function createTaskCard(task, category, index) {
                     <button class="task-btn" onclick="event.stopPropagation(); showScreenshotUpload(${task.user_task_id}, '${escapeHtml(task.title)}')">
                         📸 Отправить скриншот
                     </button>
-                    <button class="task-btn-cancel" onclick="event.stopPropagation(); cancelTask(${task.user_task_id})" 
-                            style="background: var(--error); color: white; padding: 8px 12px; border-radius: 6px; border: none; cursor: pointer;">
-                        ❌ Нет, не выполнил
-                    </button>
+                    <!-- В функции createTaskCard для active заданий -->
+<button class="task-btn-cancel" onclick="event.stopPropagation(); cancelTask(${task.user_task_id})" 
+        style="background: var(--error); color: white; padding: 8px 12px; border-radius: 6px; border: none; cursor: pointer;">
+    ❌ Нет, не выполнил
+</button>
                 </div>
             `;
             break;
