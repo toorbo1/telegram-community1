@@ -6105,6 +6105,7 @@ html, body {
     </div>
 </div>
 <!-- Модальное окно отмены подтверждения -->
+ <div class="task-detail" id="task-modal-url">
 <div class="modal" id="cancel-confirmation-modal">
     <div class="confirmation-modal-content">
         <div class="confirmation-icon">⚠️</div>
@@ -6112,13 +6113,13 @@ html, body {
         <div class="confirmation-text">Вы точно не выполнили это задание?</div>
         
         <div class="confirmation-buttons">
-            <!-- ПЕРЕДАЕМ userTaskId В ФУНКЦИЮ -->
-            <button class="confirmation-btn confirmation-no" onclick="cancelTask(selectedUserTaskId)">Не выполнил</button>
+            <button class="confirmation-btn confirmation-no" onclick="cancelTask()">Не выполнил</button>
             <button class="confirmation-btn confirmation-yes" onclick="showScreenshotUpload()">Выполнил</button>
         </div>
         
         <button class="confirmation-btn confirmation-cancel" onclick="closeModal('cancel-confirmation-modal')">Отмена</button>
     </div>
+</div>
 </div>
 <!-- Модальное окно загрузки скриншота -->
  <div class="task-detail" id="task-modal-url">
@@ -6215,7 +6216,7 @@ html, body {
 
 
     <script>
-let selectedUserTaskId = null;
+
   // 🔧 ПОИСКОВАЯ СИСТЕМА ДЛЯ АДМИНСКИХ ЗАДАНИЙ
 
         let allAdminTasks = []; // Глобальная переменная для хранения всех заданий
@@ -14545,40 +14546,7 @@ async function startTask() {
         showNotification('❌ Ошибка начала задания: ' + error.message, 'error');
     }
 }
-async function cancelTask(userTaskId) {
-    if (!confirm('Вы уверены, что не выполнили задание? Задание вернется в список доступных.')) {
-        return;
-    }
 
-    try {
-        console.log('🔄 Cancelling task:', userTaskId);
-        
-        const result = await makeRequest(`/api/user/tasks/${userTaskId}/cancel`, {
-            method: 'POST',
-            body: JSON.stringify({
-                userId: currentUser.id
-            })
-        });
-
-        console.log('📨 Cancel task response:', result);
-
-        if (result.success) {
-            showNotification('✅ Задание отменено и возвращено в список доступных!', 'success');
-            
-            // НЕМЕДЛЕННО обновляем списки заданий
-            setTimeout(() => {
-                loadTasks(); // Возвращаем задание в новые
-                loadUserTasksForCategory('active'); // Убираем из активных
-            }, 500);
-            
-        } else {
-            showNotification('❌ Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('💥 Error cancelling task:', error);
-        showNotification('❌ Ошибка отмены задания: ' + error.message, 'error');
-    }
-}
 // 🔧 ФУНКЦИЯ ДЛЯ ДИАГНОСТИКИ НАЧАЛА ЗАДАНИЯ
 function debugStartTask() {
     console.log('🐛 DEBUG Start Task:');
@@ -16347,42 +16315,26 @@ function createTaskCard(task, category, index) {
     let buttonHtml = '';
     switch(category) {
         case 'new':
-            buttonHtml = `
-                <button class="task-btn" onclick="event.stopPropagation(); openTaskModal(${task.id})">
-                    Начать задание
-                </button>
-                ${availableTasks > 0 ? `<div class="task-availability">${availableTasks} осталось</div>` : ''}
-            `;
+            buttonHtml = `<button class="task-btn" onclick="event.stopPropagation(); openTaskModal(${task.id})">
+                Начать задание
+            </button>`;
             break;
         case 'confirmation':
-            buttonHtml = `
-                <button class="task-btn" onclick="event.stopPropagation(); showTaskConfirmation(${task.id}, '${escapeHtml(task.title)}')">
-                    Отправить на проверку
-                </button>
-            `;
+            buttonHtml = `<button class="task-btn" onclick="event.stopPropagation(); showTaskConfirmation(${task.id}, '${escapeHtml(task.title)}')">
+                Отправить на проверку
+            </button>`;
             break;
         case 'completed':
             buttonHtml = `<div class="task-status completed">✅ Выполнено</div>`;
             break;
         case 'rejected':
             buttonHtml = `<div class="task-status rejected">❌ Отклонено</div>`;
-            case 'active':
-    buttonHtml = `
-        <div style="display: flex; flex-direction: column; gap: 8px;">
-            <button class="task-btn" onclick="event.stopPropagation(); showScreenshotUpload(${task.user_task_id}, '${escapeHtml(task.title)}')">
-                📸 Отправить скриншот
-            </button>
-            <!-- ИСПРАВЛЕННАЯ КНОПКА -->
-            <button class="task-btn-cancel" onclick="event.stopPropagation(); showCancelConfirmation(${task.user_task_id})" 
-                    style="background: var(--error); color: white; padding: 8px 12px; border-radius: 6px; border: none; cursor: pointer;">
-                ❌ Нет, не выполнил
-            </button>
-        </div>
-    `;
-    break;
+            break;
     }
     
     taskElement.innerHTML = `
+        ${availableTasks > 0 && category === 'new' ? `<div class="task-availability">${availableTasks} осталось</div>` : ''}
+        
         <div class="task-header">
             <div class="task-title">${escapeHtml(task.title)}</div>
             <div class="task-price">${task.price} ⭐</div>
@@ -16411,7 +16363,6 @@ function createTaskCard(task, category, index) {
                 ${category === 'confirmation' ? 'Ожидает подтверждения' : 
                   category === 'completed' ? 'Выполнено' :
                   category === 'rejected' ? 'Отклонено' : 
-                  category === 'active' ? 'Активное задание' :
                   task.time_to_complete || '5-10 минут'}
             </div>
             ${buttonHtml}
@@ -16421,67 +16372,13 @@ function createTaskCard(task, category, index) {
     // Добавляем обработчик клика только для новых заданий
     if (category === 'new') {
         taskElement.addEventListener('click', function(e) {
-            if (!e.target.classList.contains('task-btn') && !e.target.classList.contains('task-btn-cancel')) {
+            if (!e.target.classList.contains('task-btn')) {
                 openTaskModal(task.id);
             }
         });
     }
     
     return taskElement;
-}
-
-
-
-async function loadUserTasksForCategory(category) {
-    if (!currentUser) return;
-    
-    try {
-        const result = await makeRequest(`/api/user/${currentUser.id}/tasks?status=${category}`);
-        
-        if (result.success) {
-            displayUserTasksForCategory(result.tasks, category);
-        } else {
-            console.error('Error loading user tasks:', result.error);
-        }
-    } catch (error) {
-        console.error('Error loading user tasks:', error);
-    }
-}
-
-function displayUserTasksForCategory(tasks, category) {
-    const container = document.getElementById(category + '-tasks');
-    if (!container) return;
-
-    container.innerHTML = '';
-
-    if (!tasks || tasks.length === 0) {
-        container.innerHTML = `
-            <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
-                <div style="font-size: 48px; margin-bottom: 16px;">
-                    ${category === 'active' ? '📝' : 
-                      category === 'completed' ? '✅' : 
-                      category === 'rejected' ? '❌' : '⏳'}
-                </div>
-                <div>
-                    ${category === 'active' ? 'Нет активных заданий' : 
-                      category === 'completed' ? 'Нет выполненных заданий' : 
-                      category === 'rejected' ? 'Нет отклоненных заданий' : 
-                      'Нет заданий на проверке'}
-                </div>
-                ${category === 'active' ? `
-                    <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
-                        Начните новое задание из списка выше
-                    </div>
-                ` : ''}
-            </div>
-        `;
-        return;
-    }
-
-    tasks.forEach((task, index) => {
-        const taskElement = createTaskCard(task, category, index);
-        container.appendChild(taskElement);
-    });
 }
 // Функция для отображения заданий с изображениями
 function displayTasksWithImages(tasks, category) {
