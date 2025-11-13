@@ -5,7 +5,7 @@ const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
 const TelegramBot = require('node-telegram-bot-api');
-
+let currentUser = null;
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -1097,6 +1097,8 @@ app.post('/api/user/auth', async (req, res) => {
     try {
         const isMainAdmin = parseInt(user.id) === ADMIN_ID;
         
+        // ДОБАВЬТЕ ЭТУ СТРОЧКУ:
+        currentUser = updatedUser.rows[0];
         // Генерируем реферальный код для пользователя
         const userReferralCode = `ref_${user.id}_${Date.now()}`;
         
@@ -7014,6 +7016,19 @@ app.get('/api/admin/debug-rights', async (req, res) => {
         });
     }
 });
+
+// Добавьте эту функцию перед интервалом
+async function checkReferralEarnings() {
+    try {
+        if (!currentUser || !currentUser.id) return;
+        
+        // Ваша логика проверки реферальных начислений
+        console.log('Checking referral earnings for user:', currentUser.id);
+        
+    } catch (error) {
+        console.error('Error checking referral earnings:', error);
+    }
+}
 
 // Автоматическая проверка реферальных начислений каждые 30 секунд
 setInterval(() => {
