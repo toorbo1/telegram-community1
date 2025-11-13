@@ -5805,27 +5805,54 @@ app.get('/api/user/:userId/tasks', async (req, res) => {
     }
 });
 // Get user tasks for confirmation
+// Получение активных заданий пользователя с улучшенной обработкой
 app.get('/api/user/:userId/tasks/active', async (req, res) => {
     const userId = req.params.userId;
     
     try {
         const result = await pool.query(`
-            SELECT ut.*, t.title, t.description, t.price, t.category
+            SELECT 
+                ut.*, 
+                t.title, 
+                t.description, 
+                t.price, 
+                t.category,
+                t.time_to_complete,
+                t.difficulty,
+                t.task_url,
+                t.image_url,
+                CASE 
+                    WHEN ut.status = 'pending_review' THEN 'На проверке'
+                    WHEN ut.status = 'active' THEN 'В процессе'
+                    ELSE ut.status
+                END as status_display
             FROM user_tasks ut 
             JOIN tasks t ON ut.task_id = t.id 
-            WHERE ut.user_id = $1 AND ut.status = 'active'
-            ORDER BY ut.started_at DESC
+            WHERE ut.user_id = $1 AND ut.status IN ('active', 'pending_review')
+            ORDER BY 
+                CASE 
+                    WHEN ut.status = 'pending_review' THEN 1
+                    WHEN ut.status = 'active' THEN 2
+                    ELSE 3
+                END,
+                ut.started_at DESC
         `, [userId]);
+        
+        console.log(`✅ Found ${result.rows.length} active tasks for user ${userId}`);
         
         res.json({
             success: true,
-            tasks: result.rows
+            tasks: result.rows,
+            statistics: {
+                active: result.rows.filter(t => t.status === 'active').length,
+                pending_review: result.rows.filter(t => t.status === 'pending_review').length
+            }
         });
     } catch (error) {
         console.error('Get active tasks error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error: ' + error.message
+            error: 'Ошибка базы данных: ' + error.message
         });
     }
 });
@@ -5921,53 +5948,124 @@ async function ensureDatabaseConnection() {
 setInterval(ensureDatabaseConnection, 10 * 60 * 1000);
 
 // Отмена задания - возврат в список доступных
+// Улучшенный endpoint для отмены задания
 app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
     const userTaskId = req.params.userTaskId;
     const { userId } = req.body;
     
-    console.log('🔄 Cancel task request:', { userTaskId, userId });
+    console.log('🔄 Cancel task request received:', { userTaskId, userId });
     
     if (!userId) {
         return res.status(400).json({
             success: false,
-            error: 'Missing user ID'
+            error: 'ID пользователя обязателен'
         });
     }
     
+    const client = await pool.connect();
+    
     try {
-        // Получаем информацию о задании перед удалением
-        const taskInfo = await pool.query(`
-            SELECT task_id FROM user_tasks 
-            WHERE id = $1 AND user_id = $2 AND status = 'active'
+        await client.query('BEGIN');
+        
+        // 1. Получаем информацию о задании пользователя
+        const taskInfo = await client.query(`
+            SELECT ut.*, t.title, t.status as task_status
+            FROM user_tasks ut
+            JOIN tasks t ON ut.task_id = t.id
+            WHERE ut.id = $1 AND ut.user_id = $2
         `, [userTaskId, userId]);
         
         if (taskInfo.rows.length === 0) {
+            await client.query('ROLLBACK');
             return res.status(404).json({
                 success: false,
-                error: 'Задание не найдено или уже завершено'
+                error: 'Задание не найдено или у вас нет прав для его отмены'
             });
         }
         
-        const taskId = taskInfo.rows[0].task_id;
+        const userTask = taskInfo.rows[0];
         
-        // Удаляем запись о выполнении задания
-        await pool.query(`
+        // 2. Проверяем, можно ли отменить задание
+        if (userTask.status !== 'active') {
+            await client.query('ROLLBACK');
+            return res.status(400).json({
+                success: false,
+                error: 'Можно отменять только активные задания'
+            });
+        }
+        
+        // 3. Удаляем запись user_task
+        await client.query(`
             DELETE FROM user_tasks 
             WHERE id = $1 AND user_id = $2
         `, [userTaskId, userId]);
         
-        console.log(`✅ Task ${taskId} cancelled by user ${userId}`);
+        // 4. Если есть запись в task_verifications, удаляем и её
+        try {
+            await client.query(`
+                DELETE FROM task_verifications 
+                WHERE user_task_id = $1
+            `, [userTaskId]);
+        } catch (error) {
+            console.log('⚠️ No verification record to delete:', error.message);
+        }
+        
+        await client.query('COMMIT');
+        
+        console.log(`✅ Task ${userTaskId} cancelled successfully by user ${userId}`);
         
         res.json({
             success: true,
-            message: 'Задание отменено успешно',
-            taskId: taskId
+            message: 'Задание успешно отменено',
+            cancelledTaskId: userTaskId,
+            taskTitle: userTask.title
         });
+        
     } catch (error) {
-        console.error('Cancel task error:', error);
+        await client.query('ROLLBACK');
+        console.error('❌ Cancel task error:', error);
         res.status(500).json({
             success: false,
-            error: 'Database error: ' + error.message
+            error: 'Ошибка при отмене задания: ' + error.message
+        });
+    } finally {
+        client.release();
+    }
+});
+
+// Диагностика заданий пользователя
+app.get('/api/debug/user-tasks/:userId', async (req, res) => {
+    const userId = req.params.userId;
+    
+    try {
+        const userTasks = await pool.query(`
+            SELECT 
+                ut.id as user_task_id,
+                ut.status as user_task_status,
+                ut.started_at,
+                ut.submitted_at,
+                t.id as task_id,
+                t.title,
+                t.status as task_status,
+                tv.id as verification_id,
+                tv.status as verification_status
+            FROM user_tasks ut
+            JOIN tasks t ON ut.task_id = t.id
+            LEFT JOIN task_verifications tv ON ut.id = tv.user_task_id
+            WHERE ut.user_id = $1
+            ORDER BY ut.started_at DESC
+        `, [userId]);
+        
+        res.json({
+            success: true,
+            userTasks: userTasks.rows,
+            totalCount: userTasks.rows.length
+        });
+    } catch (error) {
+        console.error('Debug user tasks error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
         });
     }
 });
