@@ -5706,10 +5706,10 @@ app.post('/api/user/tasks/start', async (req, res) => {
     try {
         // Проверяем, выполнял ли пользователь это задание
         const existingTask = await pool.query(`
-    SELECT id FROM user_tasks 
-    WHERE user_id = $1 AND task_id = $2 
-    AND status IN ('active', 'pending_review', 'completed', 'rejected')
-`, [userId, taskId]);
+            SELECT id FROM user_tasks 
+            WHERE user_id = $1 AND task_id = $2 
+            AND status IN ('active', 'pending_review', 'completed', 'rejected')
+        `, [userId, taskId]);
         
         if (existingTask.rows.length > 0) {
             return res.status(400).json({
@@ -5738,6 +5738,9 @@ app.post('/api/user/tasks/start', async (req, res) => {
         const task = taskInfo.rows[0];
         const peopleRequired = task.people_required || 1;
         const completedCount = task.completed_count || 0;
+        const availableTasks = peopleRequired - completedCount;
+        
+        console.log(`📊 Task availability: ${completedCount}/${peopleRequired}, available: ${availableTasks}`);
         
         // 🔥 ПРОВЕРЯЕМ ДОСТИГНУТ ЛИ ЛИМИТ ИСПОЛНИТЕЛЕЙ
         if (completedCount >= peopleRequired) {
@@ -5746,6 +5749,9 @@ app.post('/api/user/tasks/start', async (req, res) => {
                 error: 'Достигнут лимит выполнения этого задания'
             });
         }
+        
+        // 🔥 ОСОБАЯ ЛОГИКА: Если задание было с "1 осталось"
+        const wasLastTask = availableTasks === 1;
         
         // Start the task
         const result = await pool.query(`
@@ -5756,11 +5762,38 @@ app.post('/api/user/tasks/start', async (req, res) => {
         
         console.log('✅ Task started successfully:', result.rows[0]);
         
+        // 🔥 ОБНОВЛЯЕМ СЧЕТЧИК В БАЗЕ ДАННЫХ
+        await pool.query(`
+            UPDATE tasks 
+            SET completed_count = COALESCE(completed_count, 0) + 1 
+            WHERE id = $1
+        `, [taskId]);
+        
+        // 🔥 ПРОВЕРЯЕМ, НУЖНО ЛИ СКРЫТЬ ЗАДАНИЕ ПОСЛЕ ЭТОГО ВЫПОЛНЕНИЯ
+        const updatedTaskInfo = await pool.query(`
+            SELECT completed_count, people_required 
+            FROM tasks 
+            WHERE id = $1
+        `, [taskId]);
+        
+        const updatedCompletedCount = updatedTaskInfo.rows[0].completed_count || 0;
+        const updatedAvailableTasks = peopleRequired - updatedCompletedCount;
+        const shouldHideTask = updatedAvailableTasks <= 0;
+        
+        console.log(`🎯 After start: completed ${updatedCompletedCount}/${peopleRequired}, hide: ${shouldHideTask}`);
+        
         res.json({
             success: true,
             message: 'Задание начато!',
-            userTaskId: result.rows[0].id
+            userTaskId: result.rows[0].id,
+            taskRemovedFromList: shouldHideTask, // 🔥 ВОЗВРАЩАЕМ ФЛАГ О ТОМ, ЧТО ЗАДАНИЕ СКРЫТО
+            wasLastTask: wasLastTask,
+            availability: {
+                before: availableTasks,
+                after: updatedAvailableTasks
+            }
         });
+        
     } catch (error) {
         console.error('❌ Start task error:', error);
         res.status(500).json({
