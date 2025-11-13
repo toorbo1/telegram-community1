@@ -16367,21 +16367,20 @@ function createTaskCard(task, category, index) {
             break;
         case 'rejected':
             buttonHtml = `<div class="task-status rejected">❌ Отклонено</div>`;
-            break;
-        case 'active':
-            buttonHtml = `
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <button class="task-btn" onclick="event.stopPropagation(); showScreenshotUpload(${task.user_task_id}, '${escapeHtml(task.title)}')">
-                        📸 Отправить скриншот
-                    </button>
-                    <!-- В функции createTaskCard для active заданий -->
-<button class="task-btn-cancel" onclick="event.stopPropagation(); cancelTask(${task.user_task_id})" 
-        style="background: var(--error); color: white; padding: 8px 12px; border-radius: 6px; border: none; cursor: pointer;">
-    ❌ Нет, не выполнил
-</button>
-                </div>
-            `;
-            break;
+            case 'active':
+    buttonHtml = `
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button class="task-btn" onclick="event.stopPropagation(); showScreenshotUpload(${task.user_task_id}, '${escapeHtml(task.title)}')">
+                📸 Отправить скриншот
+            </button>
+            <!-- ИСПРАВЛЕННАЯ КНОПКА -->
+            <button class="task-btn-cancel" onclick="event.stopPropagation(); showCancelConfirmation(${task.user_task_id})" 
+                    style="background: var(--error); color: white; padding: 8px 12px; border-radius: 6px; border: none; cursor: pointer;">
+                ❌ Нет, не выполнил
+            </button>
+        </div>
+    `;
+    break;
     }
     
     taskElement.innerHTML = `
@@ -16431,6 +16430,18 @@ function createTaskCard(task, category, index) {
     
     return taskElement;
 }
+
+function showCancelConfirmation(userTaskId) {
+    // Сохраняем ID задания для использования в модальном окне
+    selectedUserTaskId = userTaskId;
+    
+    // Закрываем предыдущее модальное окно если открыто
+    closeModal('confirmation-modal');
+    
+    // Показываем модальное окно подтверждения отмены
+    openModal('cancel-confirmation-modal');
+}
+
 async function loadUserTasksForCategory(category) {
     if (!currentUser) return;
     
