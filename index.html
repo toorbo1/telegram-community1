@@ -16431,16 +16431,7 @@ function createTaskCard(task, category, index) {
     return taskElement;
 }
 
-function showCancelConfirmation(userTaskId) {
-    // Сохраняем ID задания для использования в модальном окне
-    selectedUserTaskId = userTaskId;
-    
-    // Закрываем предыдущее модальное окно если открыто
-    closeModal('confirmation-modal');
-    
-    // Показываем модальное окно подтверждения отмены
-    openModal('cancel-confirmation-modal');
-}
+
 
 async function loadUserTasksForCategory(category) {
     if (!currentUser) return;
