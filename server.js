@@ -2874,56 +2874,196 @@ async function showUserDetailedStats(chatId, targetUserId, messageId) {
 }
 
 // В server.js добавьте этот endpoint
+// Исправленный endpoint для топа пользователей
 app.get('/api/leaderboard/top', async (req, res) => {
     try {
-        // Получаем топ 5 пользователей по количеству выполненных заданий
+        console.log('🏆 Loading leaderboard...');
+        
+        // Получаем топ 10 пользователей по количеству выполненных заданий и балансу
         const topUsers = await pool.query(`
             SELECT 
                 user_id,
                 first_name,
                 username,
-                completed_tasks,
-                balance
+                COALESCE(completed_tasks, 0) as completed_tasks,
+                COALESCE(balance, 0) as balance,
+                COALESCE(referral_count, 0) as referral_count,
+                created_at
             FROM user_profiles 
-            WHERE completed_tasks > 0
-            ORDER BY completed_tasks DESC, balance DESC
-            LIMIT 5
+            WHERE COALESCE(completed_tasks, 0) > 0 
+               OR COALESCE(balance, 0) > 0
+            ORDER BY 
+                COALESCE(completed_tasks, 0) DESC, 
+                COALESCE(balance, 0) DESC,
+                created_at ASC
+            LIMIT 10
         `);
         
         // Получаем место текущего пользователя (если передан user_id)
         const userId = req.query.userId;
         let currentUserRank = null;
+        let currentUserStats = null;
         
         if (userId) {
             const userRank = await pool.query(`
-                SELECT position FROM (
-                    SELECT 
-                        user_id,
-                        ROW_NUMBER() OVER (ORDER BY completed_tasks DESC, balance DESC) as position
-                    FROM user_profiles 
-                    WHERE completed_tasks > 0
-                ) ranked WHERE user_id = $1
+                SELECT 
+                    up.user_id,
+                    up.first_name,
+                    up.username,
+                    COALESCE(up.completed_tasks, 0) as completed_tasks,
+                    COALESCE(up.balance, 0) as balance,
+                    COALESCE(up.referral_count, 0) as referral_count,
+                    (SELECT COUNT(*) + 1 
+                     FROM user_profiles 
+                     WHERE COALESCE(completed_tasks, 0) > COALESCE(up.completed_tasks, 0)
+                        OR (COALESCE(completed_tasks, 0) = COALESCE(up.completed_tasks, 0) 
+                            AND COALESCE(balance, 0) > COALESCE(up.balance, 0))
+                    ) as position
+                FROM user_profiles up
+                WHERE up.user_id = $1
             `, [userId]);
             
             if (userRank.rows.length > 0) {
                 currentUserRank = userRank.rows[0].position;
+                currentUserStats = userRank.rows[0];
             }
         }
+        
+        console.log(`✅ Leaderboard loaded: ${topUsers.rows.length} users`);
         
         res.json({
             success: true,
             topUsers: topUsers.rows,
-            currentUserRank: currentUserRank
+            currentUserRank: currentUserRank,
+            currentUserStats: currentUserStats,
+            timestamp: new Date().toISOString()
         });
         
     } catch (error) {
-        console.error('Leaderboard error:', error);
+        console.error('❌ Leaderboard error:', error);
         res.status(500).json({
             success: false,
-            error: 'Ошибка загрузки топа пользователей'
+            error: 'Ошибка загрузки топа пользователей: ' + error.message
         });
     }
 });
+
+// Простой endpoint для тестирования топа
+app.get('/api/leaderboard/simple', async (req, res) => {
+    try {
+        const topUsers = await pool.query(`
+            SELECT 
+                user_id,
+                first_name,
+                username,
+                COALESCE(completed_tasks, 0) as completed_tasks,
+                COALESCE(balance, 0) as balance
+            FROM user_profiles 
+            ORDER BY COALESCE(completed_tasks, 0) DESC 
+            LIMIT 5
+        `);
+        
+        res.json({
+            success: true,
+            topUsers: topUsers.rows,
+            debug: {
+                total_users: topUsers.rows.length,
+                timestamp: new Date().toISOString()
+            }
+        });
+        
+    } catch (error) {
+        console.error('Simple leaderboard error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// Диагностический endpoint для топа
+app.get('/api/debug/leaderboard', async (req, res) => {
+    try {
+        // Проверяем общее количество пользователей
+        const totalUsers = await pool.query('SELECT COUNT(*) FROM user_profiles');
+        
+        // Проверяем пользователей с выполненными заданиями
+        const usersWithTasks = await pool.query(`
+            SELECT COUNT(*) 
+            FROM user_profiles 
+            WHERE COALESCE(completed_tasks, 0) > 0
+        `);
+        
+        // Проверяем структуру данных
+        const sampleUsers = await pool.query(`
+            SELECT 
+                user_id,
+                username,
+                completed_tasks,
+                balance,
+                referral_count
+            FROM user_profiles 
+            ORDER BY COALESCE(completed_tasks, 0) DESC 
+            LIMIT 5
+        `);
+        
+        res.json({
+            success: true,
+            diagnostics: {
+                total_users: parseInt(totalUsers.rows[0].count),
+                users_with_completed_tasks: parseInt(usersWithTasks.rows[0].count),
+                sample_data: sampleUsers.rows,
+                timestamp: new Date().toISOString()
+            }
+        });
+        
+    } catch (error) {
+        console.error('Leaderboard diagnostics error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+async function loadLeaderboard() {
+    try {
+        showLoading('leaderboard');
+        
+        const response = await fetch(`/api/leaderboard/top?userId=${currentUser?.id || ''}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            displayLeaderboard(result.topUsers, result.currentUserRank, result.currentUserStats);
+        } else {
+            console.error('Leaderboard error:', result.error);
+            showError('Ошибка загрузки топа');
+            
+            // Пробуем загрузить простую версию
+            await loadSimpleLeaderboard();
+        }
+    } catch (error) {
+        console.error('Failed to load leaderboard:', error);
+        showError('Не удалось загрузить топ');
+        
+        // Пробуем загрузить простую версию
+        await loadSimpleLeaderboard();
+    }
+}
+
+async function loadSimpleLeaderboard() {
+    try {
+        const response = await fetch('/api/leaderboard/simple');
+        const result = await response.json();
+        
+        if (result.success) {
+            displayLeaderboard(result.topUsers);
+        }
+    } catch (error) {
+        console.error('Failed to load simple leaderboard:', error);
+        showError('Топ временно недоступен');
+    }
+}
 
 async function toggleUserBlock(chatId, adminId, targetUserId, messageId) {
     try {
