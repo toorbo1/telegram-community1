@@ -1055,16 +1055,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                                 url: `https://t.me/share/url?url=https://t.me/LinkGoldMoney_bot?start=${userReferralCode}&text=Присоединяйся к LinkGold и начинай зарабатывать Telegram Stars! 🚀 Получи 2⭐ за регистрацию!`
                             }
                         ],
-                        [
-                            {
-                                text: '💰 Мой баланс',
-                                callback_data: 'balance'
-                            },
-                            {
-                                text: '👥 Рефералы', 
-                                callback_data: 'referral'
-                            }
-                        ]
+                        
                     ]
                 }
             }
