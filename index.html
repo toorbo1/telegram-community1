@@ -13,6 +13,35 @@
     <link rel="stylesheet" href="animations.css">
     <link rel="stylesheet" href="mobile.css">
     <style>
+        /* Стили для обновленной реферальной системы */
+.referral-stats-detailed {
+    margin: 15px 0;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.stat-row:last-child {
+    border-bottom: none;
+}
+
+.referral-instructions {
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.referral-instructions ol {
+    margin: 10px 0;
+}
+
+.referral-instructions li {
+    margin-bottom: 8px;
+}
         .amount-btn.selected {
     border-color: var(--gold);
     background: var(--gold);
@@ -273,12 +302,12 @@
         <!-- Реферальная система -->
 <!-- ОБНОВЛЕННАЯ РЕФЕРАЛЬНАЯ СИСТЕМА -->
 <div class="referral-system fade-in">
-    <div class="referral-title">Реферальная система</div>
+    <div class="referral-title">🎁 Реферальная система</div>
     
     <div class="referral-code">
         <div class="referral-label">Ваша реферальная ссылка</div>
         <input type="text" id="referral-link" readonly style="width: 100%; padding: 8px; margin: 8px 0; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); text-align: center;">
-        <button class="copy-btn" onclick="copyReferralLink()">Скопировать ссылку</button>
+        <button class="copy-btn" onclick="copyReferralLink()">📋 Копировать ссылку</button>
     </div>
     
     <div class="referral-stats">
@@ -293,12 +322,17 @@
     </div>
     
     <div class="referral-info">
-        🎁 <strong>Новая реферальная система:</strong><br>
-        • Вы получаете <strong>10%</strong> от заработка приглашённых<br>
-        • Приглашённый получает <strong>90%</strong> от своего заработка<br>
-        • Автоматически с каждого выполненного задания<br><br>
-        🔗 Просто отправьте другу эту ссылку в Telegram
+        <strong>🎯 Новая система бонусов:</strong><br>
+        • <strong>Пригласивший</strong> получает <span style="color: var(--gold); font-weight: 800;">2 звезды</span><br>
+        • <strong>Приглашённый</strong> получает <span style="color: var(--gold); font-weight: 800;">1 звезду</span><br>
+        • Бонусы начисляются сразу после регистрации<br>
+        • Без ограничений по количеству приглашений
     </div>
+    
+    <!-- Кнопка для просмотра детальной статистики -->
+    <button class="btn btn-primary" onclick="showDetailedReferrals()" style="margin-top: 15px; width: 100%;">
+        📊 Детальная статистика рефералов
+    </button>
 </div>
         <!-- В секции профиля после реферальной системы -->
 <div class="referral-system fade-in">
@@ -3635,7 +3669,6 @@ async function updateActiveTasksCount() {
 }
 
 // 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ РЕФЕРАЛЬНОЙ СИСТЕМЫ
-// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ РЕФЕРАЛЬНОЙ СИСТЕМЫ
 function updateReferralSystem() {
     if (!currentUser) return;
     
@@ -3657,19 +3690,67 @@ function updateReferralSystem() {
     const referralInfo = document.querySelector('.referral-info');
     if (referralInfo) {
         referralInfo.innerHTML = `
-            🎁 <strong>Реферальная система:</strong><br>
-            • Новый пользователь получает <strong>2⭐</strong> за переход по ссылке<br>
-            • Вы получаете <strong>90%</strong> от своего заработка<br>
-            • Пригласивший получает <strong>10%</strong> от вашего заработка<br>
-            • Автоматически с каждого выполненного задания<br>
-            • Ваш заработок с рефералов: <strong>${currentUser.referral_earned || 0} ⭐</strong><br>
-            • Приглашено друзей: <strong>${currentUser.referral_count || 0}</strong><br><br>
-            🔗 Просто отправьте другу эту ссылку в Telegram
+            <strong>🎯 Новая система бонусов:</strong><br>
+            • <strong>Пригласивший</strong> получает <span style="color: var(--gold); font-weight: 800;">2 звезды</span><br>
+            • <strong>Приглашённый</strong> получает <span style="color: var(--gold); font-weight: 800;">1 звезду</span><br>
+            • Бонусы начисляются сразу после регистрации<br>
+            • Без ограничений по количеству приглашений<br><br>
+            
+            <strong>📊 Ваша статистика:</strong><br>
+            • Приглашено друзей: <strong>${currentUser.referral_count || 0}</strong><br>
+            • Заработано с рефералов: <strong>${currentUser.referral_earned || 0} ⭐</strong>
         `;
     }
 }
 
+// 🔧 ФУНКЦИЯ ДЛЯ ПОКАЗА ДЕТАЛЬНОЙ СТАТИСТИКИ РЕФЕРАЛОВ
+function showDetailedReferrals() {
+    const modalHTML = `
+        <div class="modal active" id="detailed-referrals-modal">
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <div class="modal-title">📊 Детальная статистика рефералов</div>
+                    <button class="modal-close" onclick="closeModal('detailed-referrals-modal')">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="referral-stats-detailed">
+                        <div class="stat-row">
+                            <span>Всего приглашено:</span>
+                            <strong>${currentUser.referral_count || 0} человек</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span>Заработано с рефералов:</span>
+                            <strong style="color: var(--gold);">${currentUser.referral_earned || 0} ⭐</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span>Бонус за приглашение:</span>
+                            <strong style="color: var(--success);">+2 ⭐ вам</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span>Бонус новому пользователю:</span>
+                            <strong style="color: var(--success);">+1 ⭐ ему</strong>
+                        </div>
+                    </div>
+                    
+                    <div class="referral-instructions" style="margin-top: 20px; padding: 15px; background: var(--bg-secondary); border-radius: 10px;">
+                        <strong>💡 Как приглашать друзей:</strong>
+                        <ol style="margin: 10px 0; padding-left: 20px;">
+                            <li>Скопируйте вашу реферальную ссылку</li>
+                            <li>Отправьте её другу в Telegram</li>
+                            <li>Друг должен нажать на ссылку и начать общение с ботом</li>
+                            <li>После регистрации вы оба получите бонусы!</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
 // 🔧 ФУНКЦИЯ ДЛЯ ПРОВЕРКИ РЕФЕРАЛЬНЫХ НАЧИСЛЕНИЙ
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ДЛЯ ПРОВЕРКИ РЕФЕРАЛЬНЫХ НАЧИСЛЕНИЙ
 async function checkReferralEarnings() {
     if (!currentUser) return;
     
@@ -3677,13 +3758,15 @@ async function checkReferralEarnings() {
         const result = await makeRequest(`/api/user/${currentUser.id}/referral-earnings`);
         
         if (result.success) {
-            // Обновляем данные пользователя
+            // Обновляем данные пользователя с новой системой бонусов
             if (result.earnings) {
                 currentUser.referral_earned = result.earnings.total_earned || 0;
                 currentUser.referral_count = result.earnings.referral_count || 0;
                 
-                // Обновляем интерфейс
+                // Обновляем интерфейс с новой информацией
                 updateReferralSystem();
+                
+                console.log('✅ Реферальные начисления обновлены по новой системе');
             }
         }
     } catch (error) {
@@ -3691,6 +3774,17 @@ async function checkReferralEarnings() {
     }
 }
 
+// 🔧 АВТООБНОВЛЕНИЕ РЕФЕРАЛЬНОЙ СТАТИСТИКИ
+function startReferralAutoUpdate() {
+    setInterval(() => {
+        if (currentUser) {
+            checkReferralEarnings();
+        }
+    }, 30000); // Обновлять каждые 30 секунд
+}
+
+// Запустить при инициализации приложения
+startReferralAutoUpdate();
 
 // 🔧 ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ ДЕТАЛЬНОЙ СТАТИСТИКИ РЕФЕРАЛОВ
 async function loadDetailedReferralStats() {
