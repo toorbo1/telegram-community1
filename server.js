@@ -2749,7 +2749,19 @@ bot.onText(/\/balance/, async (msg) => {
                                 text: '👥 Пригласить друзей',
                                 callback_data: 'referral'
                             }
-                        ]
+                        ],
+                        [
+                            {
+                                text: '📂 Наши отзывы',
+                                url: 'https://t.me/repLinkGold'
+                            }
+                        ],
+                        [
+                            {
+                                text: '🖊 Гайды на задания',
+                                url: 'https://t.me/LinkGoldGuide'
+                            }
+                        ],
                     ]
                 }
             }
