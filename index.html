@@ -803,12 +803,12 @@
                     Выберите сумму для вывода:
                 </div>
 <div class="amount-buttons" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px;">
-    <button class="amount-btn" onclick="selectAmount(this, 50)">50 ⭐</button>
-    <button class="amount-btn" onclick="selectAmount(this, 100)">100 ⭐</button>
-    <button class="amount-btn" onclick="selectAmount(this, 150)">150 ⭐</button>
-    <button class="amount-btn" onclick="selectAmount(this, 200)">200 ⭐</button>
-    <button class="amount-btn" onclick="selectAmount(this, 250)">250 ⭐</button>
-    <button class="amount-btn" onclick="selectAmount(this, 300)">300 ⭐</button>
+    <button class="amount-btn" data-amount="50" onclick="selectAmount(50)">50 ⭐</button>
+    <button class="amount-btn" data-amount="100" onclick="selectAmount(100)">100 ⭐</button>
+    <button class="amount-btn" data-amount="150" onclick="selectAmount(150)">150 ⭐</button>
+    <button class="amount-btn" data-amount="200" onclick="selectAmount(200)">200 ⭐</button>
+    <button class="amount-btn" data-amount="250" onclick="selectAmount(250)">250 ⭐</button>
+    <button class="amount-btn" data-amount="300" onclick="selectAmount(300)">300 ⭐</button>
 </div>
                 
 <!-- Отображение выбранной суммы -->
@@ -1265,6 +1265,7 @@ function selectAmount(button, amount) {
 
 // 🔧 ФУНКЦИЯ ДЛЯ ОБНОВЛЕНИЯ СОСТОЯНИЯ КНОПОК СУММ
 // 🔧 ФУНКЦИЯ ДЛЯ ОБНОВЛЕНИЯ СОСТОЯНИЯ КНОПОК СУММ
+// 🔧 ФУНКЦИЯ ДЛЯ ОБНОВЛЕНИЯ СОСТОЯНИЯ КНОПОК СУММ
 function updateAmountButtonsState() {
     if (!currentUser) return;
     
@@ -1272,13 +1273,13 @@ function updateAmountButtonsState() {
     const amountButtons = document.querySelectorAll('.amount-btn');
     
     amountButtons.forEach(btn => {
-        const amount = parseInt(btn.textContent.replace('⭐', '').trim());
+        const amount = parseInt(btn.getAttribute('data-amount'));
         
         if (amount <= currentBalance) {
             btn.disabled = false;
             btn.style.opacity = '1';
             btn.style.cursor = 'pointer';
-            btn.onclick = function() { selectAmount(this, amount); };
+            btn.onclick = function() { selectAmount(amount); };
         } else {
             btn.disabled = true;
             btn.style.opacity = '0.5';
@@ -1287,6 +1288,7 @@ function updateAmountButtonsState() {
         }
     });
 }
+// 🔧 ФУНКЦИЯ СБРОСА ВЫБОРА СУММЫ
 // 🔧 ФУНКЦИЯ СБРОСА ВЫБОРА СУММЫ
 function resetAmountSelection() {
     selectedWithdrawAmount = 0;
@@ -8488,6 +8490,7 @@ setTimeout(addEmergencyButton, 2000);
 
 
 // Функция выбора суммы
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ВЫБОРА СУММЫ
 function selectAmount(amount) {
     console.log('🎯 Selecting amount:', amount);
     
@@ -8496,15 +8499,33 @@ function selectAmount(amount) {
         return;
     }
 
+    const currentBalance = currentUser.balance || 0;
+    
+    // Проверяем достаточно ли средств
+    if (amount > currentBalance) {
+        showNotification(`Недостаточно средств. Ваш баланс: ${currentBalance} ⭐`, 'error');
+        resetAmountSelection();
+        return;
+    }
+
     selectedWithdrawAmount = amount;
     
     // Снимаем выделение со всех кнопок
     document.querySelectorAll('.amount-btn').forEach(btn => {
         btn.classList.remove('selected');
+        btn.style.borderColor = 'var(--border)';
+        btn.style.background = 'var(--card-bg)';
+        btn.style.color = 'var(--text-primary)';
     });
     
     // Выделяем выбранную кнопку
-    event.target.classList.add('selected');
+    const selectedButton = document.querySelector(`.amount-btn[data-amount="${amount}"]`);
+    if (selectedButton) {
+        selectedButton.classList.add('selected');
+        selectedButton.style.borderColor = 'var(--gold)';
+        selectedButton.style.background = 'var(--gold)';
+        selectedButton.style.color = 'white';
+    }
     
     // Показываем выбранную сумму
     const display = document.getElementById('selected-amount-display');
@@ -8512,28 +8533,20 @@ function selectAmount(amount) {
     
     if (display && amountDisplay) {
         display.style.display = 'block';
-        amountDisplay.textContent = `${amount} ⭐`;
+        amountDisplay.textContent = `${amount}`; // Убрал лишние ⭐
     }
     
     // Активируем кнопку вывода
     const withdrawBtn = document.getElementById('withdraw-btn');
     if (withdrawBtn) {
-        const currentBalance = currentUser.balance || 0;
-        
-        if (amount <= currentBalance) {
-            withdrawBtn.disabled = false;
-            withdrawBtn.style.opacity = '1';
-            withdrawBtn.textContent = `Вывести ${amount} ⭐`;
-        } else {
-            withdrawBtn.disabled = true;
-            withdrawBtn.style.opacity = '0.5';
-            withdrawBtn.textContent = 'Недостаточно средств';
-        }
+        withdrawBtn.disabled = false;
+        withdrawBtn.style.opacity = '1';
+        withdrawBtn.style.cursor = 'pointer';
+        withdrawBtn.textContent = `Вывести ${amount} ⭐`;
     }
     
     console.log('✅ Amount selected:', selectedWithdrawAmount);
 }
-
 // Функция запроса вывода средств
 async function requestWithdraw() {
     if (!currentUser) {
