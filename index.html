@@ -1634,7 +1634,6 @@
     <script>
         // Функция для отображения топа с кнопками удаления
 // 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ТОПА
-// 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ТОПА
 async function displayLeaderboardWithAdminControls(topUsers, currentUserRank, currentUserStats) {
     const leaderboardElement = document.getElementById('leaderboard-content');
     
@@ -1658,8 +1657,8 @@ async function displayLeaderboardWithAdminControls(topUsers, currentUserRank, cu
         // Используем username вместо "Пользователь"
         const displayName = user.username || `user_${user.user_id}`;
         
-        // Отображаем реальные выполненные задания (гарантируем число)
-        const completedTasks = parseInt(user.completed_tasks) || 0;
+        // Отображаем реальные выполненные задания
+        const completedTasks = user.completed_tasks || 0;
         
         html += `
             <div class="leaderboard-item ${user.user_id === currentUser.id ? 'current-user' : ''}">
@@ -1691,7 +1690,7 @@ async function displayLeaderboardWithAdminControls(topUsers, currentUserRank, cu
     // Добавляем информацию о текущем пользователе
     if (currentUserRank && currentUserStats) {
         const displayName = currentUserStats.username || `user_${currentUser.id}`;
-        const userCompletedTasks = parseInt(currentUserStats.completed_tasks) || 0;
+        const userCompletedTasks = currentUserStats.completed_tasks || 0;
         
         html += `
             <div class="current-user-rank">
@@ -7592,12 +7591,13 @@ async function addTask() {
     }
 }
 // Функция для загрузки топа пользователей
-// Функция для загрузки топа пользователей
+// Проверьте корректность endpoint'а
 async function loadTopUsers() {
     try {
         console.log('🏆 Loading top users...');
         
-        const url = '/api/leaderboard/top' + (currentUser ? `?userId=${currentUser.id}` : '');
+        // Добавьте проверку URL
+        const url = '/api/leaderboard/top';
         console.log('📡 Request URL:', url);
         
         const result = await makeRequest(url);
@@ -7675,7 +7675,6 @@ function displayTopUsers(topUsers, currentUserRank) {
 }
 
 // Функция создания элемента пользователя в топе с реальными данными
-// Функция создания элемента пользователя в топе с реальными данными
 function createTopUserElement(user, rank) {
     const userElement = document.createElement('div');
     userElement.className = 'top-user-item';
@@ -7683,8 +7682,8 @@ function createTopUserElement(user, rank) {
     // Используем username вместо "Пользователь"
     const displayName = user.username || `user_${user.user_id}`;
     
-    // Реальные выполненные задания (гарантируем число)
-    const completedTasks = parseInt(user.completed_tasks) || 0;
+    // Реальные выполненные задания
+    const completedTasks = user.completed_tasks || 0;
     const balance = user.balance || 0;
     
     // Аватар из первой буквы имени
@@ -7711,7 +7710,6 @@ function createTopUserElement(user, rank) {
     
     return userElement;
 }
-
 // Функция для определения класса ранга
 function getRankClass(rank) {
     switch(rank) {
