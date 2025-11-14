@@ -12,6 +12,40 @@
     <link rel="stylesheet" href="components.css">
     <link rel="stylesheet" href="animations.css">
     <link rel="stylesheet" href="mobile.css">
+    <style>
+        .amount-btn {
+    background: var(--card-bg);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.amount-btn:hover {
+    border-color: var(--gold);
+    background: rgba(255, 215, 0, 0.1);
+}
+
+.amount-btn.selected {
+    border-color: var(--gold);
+    background: var(--gold);
+    color: white;
+}
+
+.amount-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.amount-btn:disabled:hover {
+    border-color: var(--border);
+    background: var(--card-bg);
+}
+    </style>
 </head>
 <body>
 
@@ -720,7 +754,6 @@
             </div>
         </div>
     </div>
-
 <!-- Страница вывода средств -->
 <div id="withdraw-page" class="page">
     <div class="page-header">
@@ -737,14 +770,35 @@
             <!-- Информация о минимальном выводе -->
             <div style="background: rgba(255, 215, 0, 0.1); border: 1px solid var(--gold); border-radius: 12px; padding: 12px; margin: 16px 0; text-align: center;">
                 <div style="font-size: 14px; color: var(--gold); font-weight: 600;">
-                    💫 Минимальная сумма вывода: <span style="color: white;">250 ⭐</span>
+                    💫 Доступные суммы для вывода: 50, 100, 150, 200, 250, 300 ⭐
                 </div>
                 <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
-                    Баланс будет обнулен при выводе
+                    Баланс будет уменьшен на выбранную сумму
+                </div>
+            </div>
+
+            <!-- Блок выбора суммы -->
+            <div class="amount-selector" style="margin: 20px 0;">
+                <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; text-align: center;">
+                    Выберите сумму для вывода:
+                </div>
+                <div class="amount-buttons" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px;">
+                    <button class="amount-btn" data-amount="50" onclick="selectAmount(50)">50 ⭐</button>
+                    <button class="amount-btn" data-amount="100" onclick="selectAmount(100)">100 ⭐</button>
+                    <button class="amount-btn" data-amount="150" onclick="selectAmount(150)">150 ⭐</button>
+                    <button class="amount-btn" data-amount="200" onclick="selectAmount(200)">200 ⭐</button>
+                    <button class="amount-btn" data-amount="250" onclick="selectAmount(250)">250 ⭐</button>
+                    <button class="amount-btn" data-amount="300" onclick="selectAmount(300)">300 ⭐</button>
+                </div>
+                
+                <!-- Отображение выбранной суммы -->
+                <div id="selected-amount-display" style="text-align: center; margin: 15px 0; display: none;">
+                    <div style="font-size: 14px; color: var(--text-secondary);">Выбранная сумма:</div>
+                    <div id="selected-amount" style="font-size: 24px; font-weight: bold; color: var(--gold); margin: 5px 0;"></div>
                 </div>
             </div>
             
-            <button class="withdraw-btn" onclick="requestWithdraw()" id="withdraw-btn">
+            <button class="withdraw-btn" onclick="requestWithdraw()" id="withdraw-btn" disabled>
                 Вывести средства
             </button>
         </div>
@@ -758,7 +812,6 @@
         </div>
     </div>
 </div>
-
     <!-- Страница "Как это работает" -->
     <div id="how-it-works-page" class="page">
         <div class="page-header">
@@ -1556,7 +1609,9 @@ function showWithdrawPage() {
     // Обновляем баланс на странице вывода
     updateWithdrawPage();
     loadWithdrawHistory();
-    
+        initializeWithdrawPage();
+    updateWithdrawPage();
+    loadWithdrawHistory();
     // Прокручиваем к началу
     setTimeout(scrollToTop, 100);
 }
@@ -8170,8 +8225,36 @@ setTimeout(addEmergencyButton, 2000);
                 })} (МСК)`;
             }
         }
+// Глобальная переменная для хранения выбранной суммы
+let selectedWithdrawAmount = 0;
 
-// Функция запроса вывода средств - ОБНОВЛЕННАЯ ВЕРСИЯ
+// Функция выбора суммы
+function selectAmount(amount) {
+    selectedWithdrawAmount = amount;
+    
+    // Снимаем выделение со всех кнопок
+    document.querySelectorAll('.amount-btn').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+    
+    // Выделяем выбранную кнопку
+    event.target.classList.add('selected');
+    
+    // Показываем выбранную сумму
+    const display = document.getElementById('selected-amount-display');
+    const amountDisplay = document.getElementById('selected-amount');
+    
+    display.style.display = 'block';
+    amountDisplay.textContent = `${amount} ⭐`;
+    
+    // Активируем кнопку вывода
+    const withdrawBtn = document.getElementById('withdraw-btn');
+    withdrawBtn.disabled = false;
+    withdrawBtn.style.opacity = '1';
+    withdrawBtn.textContent = `Вывести ${amount} ⭐`;
+}
+
+// Обновленная функция запроса вывода средств
 async function requestWithdraw() {
     if (!currentUser) {
         showNotification('Пользователь не авторизован', 'error');
@@ -8179,14 +8262,27 @@ async function requestWithdraw() {
     }
     
     const currentBalance = currentUser.balance || 0;
-    const MIN_WITHDRAWAL = 250; // Минимальная сумма вывода
     
-    if (currentBalance < MIN_WITHDRAWAL) {
-    showNotification(`Минимальная сумма для вывода: ${MIN_WITHDRAWAL} ⭐\n\nВаш баланс: ${currentBalance} ⭐`, 'error');
-    return;
-}
+    // Проверяем что сумма выбрана
+    if (selectedWithdrawAmount === 0) {
+        showNotification('Выберите сумму для вывода', 'error');
+        return;
+    }
     
-    if (!confirm(`Вы уверены, что хотите вывести ${currentBalance} ⭐?\n\nПосле подтверждения баланс будет обнулен и заявка отправлена администраторам.`)) {
+    // Проверяем что выбранная сумма доступна
+    if (selectedWithdrawAmount > currentBalance) {
+        showNotification(`Недостаточно средств. Ваш баланс: ${currentBalance} ⭐`, 'error');
+        return;
+    }
+    
+    // Проверяем что сумма является допустимой
+    const allowedAmounts = [50, 100, 150, 200, 250, 300];
+    if (!allowedAmounts.includes(selectedWithdrawAmount)) {
+        showNotification('Выберите допустимую сумму для вывода', 'error');
+        return;
+    }
+    
+    if (!confirm(`Вы уверены, что хотите вывести ${selectedWithdrawAmount} ⭐?\n\nПосле подтверждения сумма будет списана с баланса и заявка отправлена администраторам.`)) {
         return;
     }
     
@@ -8197,7 +8293,7 @@ async function requestWithdraw() {
             method: 'POST',
             body: JSON.stringify({
                 user_id: currentUser.id,
-                amount: currentBalance,
+                amount: selectedWithdrawAmount,
                 username: currentUser.username,
                 first_name: currentUser.firstName
             })
@@ -8206,14 +8302,18 @@ async function requestWithdraw() {
         console.log('📨 Ответ сервера:', result);
         
         if (result.success) {
-            // Обновляем баланс пользователя
-            currentUser.balance = 0;
+            // Обновляем баланс пользователя (вычитаем выбранную сумму)
+            currentUser.balance = currentBalance - selectedWithdrawAmount;
+            
+            // Сбрасываем выбранную сумму
+            selectedWithdrawAmount = 0;
             
             // Обновляем отображение
             displayUserProfile();
             updateWithdrawPage();
+            resetAmountSelection();
             
-            showNotification(`✅ Заявка на вывод ${currentBalance} ⭐ отправлена! Ожидайте подтверждения администратора.`, 'success');
+            showNotification(`✅ Заявка на вывод ${selectedWithdrawAmount} ⭐ отправлена! Ожидайте подтверждения администратора.`, 'success');
             
             // Обновляем историю операций
             setTimeout(() => {
@@ -8226,6 +8326,81 @@ async function requestWithdraw() {
     } catch (error) {
         console.error('❌ Withdrawal error:', error);
         showNotification('❌ Ошибка при выводе средств: ' + error.message, 'error');
+    }
+}
+
+// Функция сброса выбора суммы
+function resetAmountSelection() {
+    selectedWithdrawAmount = 0;
+    
+    // Снимаем выделение со всех кнопок
+    document.querySelectorAll('.amount-btn').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+    
+    // Скрываем отображение выбранной суммы
+    const display = document.getElementById('selected-amount-display');
+    display.style.display = 'none';
+    
+    // Деактивируем кнопку вывода
+    const withdrawBtn = document.getElementById('withdraw-btn');
+    withdrawBtn.disabled = true;
+    withdrawBtn.style.opacity = '0.5';
+    withdrawBtn.textContent = 'Вывести средства';
+}
+
+// Обновление страницы вывода
+function updateWithdrawPage() {
+    const balanceDisplay = document.getElementById('withdraw-balance-display');
+    const withdrawBtn = document.getElementById('withdraw-btn');
+    
+    if (balanceDisplay && currentUser) {
+        balanceDisplay.textContent = `${currentUser.balance || 0} ⭐`;
+    }
+    
+    if (withdrawBtn && currentUser) {
+        const currentBalance = currentUser.balance || 0;
+        
+        // Обновляем состояние кнопок сумм на основе баланса
+        updateAmountButtonsState(currentBalance);
+        
+        // Если сумма не выбрана или недостаточно средств - деактивируем кнопку вывода
+        if (selectedWithdrawAmount === 0 || selectedWithdrawAmount > currentBalance) {
+            withdrawBtn.disabled = true;
+            withdrawBtn.style.opacity = '0.5';
+        } else {
+            withdrawBtn.disabled = false;
+            withdrawBtn.style.opacity = '1';
+            withdrawBtn.textContent = `Вывести ${selectedWithdrawAmount} ⭐`;
+        }
+    }
+}
+
+// Функция обновления состояния кнопок сумм
+function updateAmountButtonsState(balance) {
+    const amountButtons = document.querySelectorAll('.amount-btn');
+    
+    amountButtons.forEach(btn => {
+        const amount = parseInt(btn.getAttribute('data-amount'));
+        
+        if (amount > balance) {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'not-allowed';
+        } else {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+        }
+    });
+}
+
+// При загрузке страницы вывода
+function initializeWithdrawPage() {
+    if (currentUser) {
+        const currentBalance = currentUser.balance || 0;
+        updateAmountButtonsState(currentBalance);
+        resetAmountSelection();
     }
 }
 // Функция загрузки истории выводов

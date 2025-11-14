@@ -7493,6 +7493,7 @@ async function deleteScreenshotFile(screenshotUrl) {
 // ==================== WITHDRAWAL ENDPOINTS ====================
 
 // Request withdrawal - ОБНОВЛЕННАЯ ВЕРСИЯ С ПРОВЕРКОЙ МИНИМУМА
+// Request withdrawal - ОБНОВЛЕННАЯ ВЕРСИЯ С ВЫЧИТАНИЕМ СУММЫ
 app.post('/api/withdrawal/request', async (req, res) => {
     const { user_id, amount, username, first_name } = req.body;
     
@@ -7506,7 +7507,16 @@ app.post('/api/withdrawal/request', async (req, res) => {
     }
     
     try {
-        const MIN_WITHDRAWAL = 250; // Минимальная сумма вывода
+        const allowedAmounts = [50, 100, 150, 200, 250, 300];
+        const requestAmount = parseFloat(amount);
+        
+        // Проверяем что сумма допустима
+        if (!allowedAmounts.includes(requestAmount)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Недопустимая сумма для вывода. Доступные суммы: 50, 100, 150, 200, 250, 300 ⭐'
+            });
+        }
         
         // Проверяем баланс пользователя
         const userResult = await pool.query(
@@ -7522,17 +7532,8 @@ app.post('/api/withdrawal/request', async (req, res) => {
         }
         
         const userBalance = parseFloat(userResult.rows[0].balance) || 0;
-        const requestAmount = parseFloat(amount);
         
         console.log(`💰 Баланс пользователя: ${userBalance}, Запрошено: ${requestAmount}`);
-        
-        // Проверка минимальной суммы
-        if (requestAmount < MIN_WITHDRAWAL) {
-            return res.status(400).json({
-                success: false,
-                error: `Минимальная сумма для вывода: ${MIN_WITHDRAWAL} ⭐`
-            });
-        }
         
         if (requestAmount > userBalance) {
             return res.status(400).json({
@@ -7548,10 +7549,11 @@ app.post('/api/withdrawal/request', async (req, res) => {
             });
         }
         
-        // Обнуляем баланс пользователя
+        // ВЫЧИТАЕМ сумму из баланса пользователя (не обнуляем!)
+        const newBalance = userBalance - requestAmount;
         await pool.query(
-            'UPDATE user_profiles SET balance = 0 WHERE user_id = $1',
-            [user_id]
+            'UPDATE user_profiles SET balance = $1 WHERE user_id = $2',
+            [newBalance, user_id]
         );
         
         // Создаем запрос на вывод
@@ -7563,13 +7565,13 @@ app.post('/api/withdrawal/request', async (req, res) => {
         
         const requestId = result.rows[0].id;
         
-        console.log(`✅ Запрос на вывод создан: ID ${requestId}`);
+        console.log(`✅ Запрос на вывод создан: ID ${requestId}, новый баланс: ${newBalance}`);
         
         res.json({
             success: true,
             message: 'Запрос на вывод отправлен',
             requestId: requestId,
-            newBalance: 0
+            newBalance: newBalance
         });
         
     } catch (error) {
@@ -7580,7 +7582,6 @@ app.post('/api/withdrawal/request', async (req, res) => {
         });
     }
 });
-
 // Get withdrawal history
 app.get('/api/withdraw/history/:userId', async (req, res) => {
     const userId = req.params.userId;
