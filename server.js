@@ -2875,44 +2875,44 @@ async function showUserDetailedStats(chatId, targetUserId, messageId) {
 
 // В server.js добавьте этот endpoint
 // Обновленный endpoint для топа пользователей
+// В server.js - улучшенный запрос для топа
 app.get('/api/leaderboard/top', async (req, res) => {
     try {
-        console.log('🏆 Loading leaderboard...');
+        console.log('🏆 Loading improved leaderboard...');
         
-        // Получаем топ 10 пользователей по количеству выполненных заданий и балансу
+        // Получаем топ 10 пользователей по реальным выполненным заданиям и балансу
         const topUsers = await pool.query(`
             SELECT 
                 user_id,
                 first_name,
                 username,
+                -- РЕАЛЬНЫЕ выполненные задания (не просто счетчик)
                 COALESCE(completed_tasks, 0) as completed_tasks,
                 COALESCE(balance, 0) as balance,
                 COALESCE(referral_count, 0) as referral_count,
                 created_at
             FROM user_profiles 
-            WHERE COALESCE(completed_tasks, 0) > 0 
-               OR COALESCE(balance, 0) > 0
+            WHERE COALESCE(completed_tasks, 0) > 0  -- Только пользователи с выполненными заданиями
+               OR COALESCE(balance, 0) > 0          -- Или с балансом
             ORDER BY 
-                COALESCE(completed_tasks, 0) DESC, 
-                COALESCE(balance, 0) DESC,
-                created_at ASC
+                COALESCE(completed_tasks, 0) DESC,  -- Сначала по выполненным заданиям
+                COALESCE(balance, 0) DESC,           -- Затем по балансу
+                created_at ASC                       -- Затем по дате регистрации
             LIMIT 10
         `);
         
         // Форматируем данные для отображения
         const formattedUsers = topUsers.rows.map(user => ({
             user_id: user.user_id,
-            // Используем username вместо "Пользователь"
-            username: user.username || `user_${user.user_id}`,
+            username: user.username || `user_${user.user_id}`, // username вместо "Пользователь"
             first_name: user.first_name,
-            // Реальные выполненные задания вместо 0
-            completed_tasks: user.completed_tasks || 0,
+            completed_tasks: user.completed_tasks || 0, // Реальные выполненные задания
             balance: user.balance || 0,
             referral_count: user.referral_count || 0,
             created_at: user.created_at
         }));
         
-        // Получаем место текущего пользователя (если передан user_id)
+        // Получаем место текущего пользователя
         const userId = req.query.userId;
         let currentUserRank = null;
         let currentUserStats = null;
@@ -2946,7 +2946,7 @@ app.get('/api/leaderboard/top', async (req, res) => {
             }
         }
         
-        console.log(`✅ Leaderboard loaded: ${formattedUsers.length} users`);
+        console.log(`✅ Improved leaderboard loaded: ${formattedUsers.length} users`);
         
         res.json({
             success: true,
@@ -2957,7 +2957,7 @@ app.get('/api/leaderboard/top', async (req, res) => {
         });
         
     } catch (error) {
-        console.error('❌ Leaderboard error:', error);
+        console.error('❌ Improved leaderboard error:', error);
         res.status(500).json({
             success: false,
             error: 'Ошибка загрузки топа пользователей: ' + error.message
@@ -3200,28 +3200,46 @@ app.get('/api/debug/leaderboard', async (req, res) => {
     }
 });
 
+// 🔧 ФУНКЦИЯ ЗАГРУЗКИ ТОПА
 async function loadLeaderboard() {
     try {
-        showLoading('leaderboard');
+        const leaderboardElement = document.getElementById('leaderboard-content');
+        if (!leaderboardElement) return;
+        
+        // Показываем загрузку
+        leaderboardElement.innerHTML = `
+            <div style="text-align: center; padding: 40px 20px;">
+                <div class="loading-spinner">⏳</div>
+                <div style="margin-top: 16px;">Загружаем топ пользователей...</div>
+            </div>
+        `;
         
         const response = await fetch(`/api/leaderboard/top?userId=${currentUser?.id || ''}`);
         const result = await response.json();
         
         if (result.success) {
-            displayLeaderboard(result.topUsers, result.currentUserRank, result.currentUserStats);
+            displayLeaderboardWithAdminControls(
+                result.topUsers, 
+                result.currentUserRank, 
+                result.currentUserStats
+            );
         } else {
-            console.error('Leaderboard error:', result.error);
-            showError('Ошибка загрузки топа');
-            
-            // Пробуем загрузить простую версию
-            await loadSimpleLeaderboard();
+            throw new Error(result.error);
         }
     } catch (error) {
-        console.error('Failed to load leaderboard:', error);
-        showError('Не удалось загрузить топ');
-        
-        // Пробуем загрузить простую версию
-        await loadSimpleLeaderboard();
+        console.error('Load leaderboard error:', error);
+        const leaderboardElement = document.getElementById('leaderboard-content');
+        if (leaderboardElement) {
+            leaderboardElement.innerHTML = `
+                <div style="text-align: center; padding: 40px 20px; color: var(--error);">
+                    <div>❌ Ошибка загрузки топа</div>
+                    <div style="font-size: 12px; margin-top: 8px;">${error.message}</div>
+                    <button class="btn btn-primary" onclick="loadLeaderboard()" style="margin-top: 16px;">
+                        🔄 Попробовать снова
+                    </button>
+                </div>
+            `;
+        }
     }
 }
 

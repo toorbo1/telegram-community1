@@ -13,6 +13,112 @@
     <link rel="stylesheet" href="animations.css">
     <link rel="stylesheet" href="mobile.css">
     <style>
+        /* Стили для топа пользователей */
+.leaderboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border);
+}
+
+.leaderboard-list {
+    background: var(--card-bg);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+}
+
+.leaderboard-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid var(--border);
+    transition: background-color 0.2s;
+}
+
+.leaderboard-item:last-child {
+    border-bottom: none;
+}
+
+.leaderboard-item:hover {
+    background: var(--bg-secondary);
+}
+
+.leaderboard-item.current-user {
+    background: var(--accent-light);
+    border-left: 3px solid var(--accent);
+}
+
+.leaderboard-position {
+    font-size: 18px;
+    font-weight: 700;
+    margin-right: 15px;
+    min-width: 30px;
+    text-align: center;
+}
+
+.leaderboard-user {
+    flex: 1;
+}
+
+.leaderboard-name {
+    font-weight: 600;
+    font-size: 16px;
+    margin-bottom: 5px;
+}
+
+.leaderboard-stats {
+    display: flex;
+    gap: 15px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.leaderboard-actions {
+    margin-left: 15px;
+}
+
+.current-user-rank {
+    margin-top: 20px;
+    padding: 20px;
+    background: var(--card-bg);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    text-align: center;
+}
+
+.rank-info {
+    margin-top: 10px;
+}
+
+.rank-position {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.rank-stats {
+    display: block;
+    margin-top: 8px;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.btn-refresh {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.btn-refresh:hover {
+    background: var(--accent-dark);
+}
         .leaderboard-header {
     display: flex;
     justify-content: space-between;
@@ -1498,11 +1604,12 @@
 
     <script>
         // Функция для отображения топа с кнопками удаления
+// 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ТОПА
 async function displayLeaderboardWithAdminControls(topUsers, currentUserRank, currentUserStats) {
     const leaderboardElement = document.getElementById('leaderboard-content');
     
     if (!topUsers || topUsers.length === 0) {
-        leaderboardElement.innerHTML = '<div class="no-data">Топ пользователей пуст</div>';
+        leaderboardElement.innerHTML = '<div class="no-data">🏆 Топ пользователей пуст</div>';
         return;
     }
     
@@ -1521,20 +1628,26 @@ async function displayLeaderboardWithAdminControls(topUsers, currentUserRank, cu
         // Используем username вместо "Пользователь"
         const displayName = user.username || `user_${user.user_id}`;
         
+        // Отображаем реальные выполненные задания
+        const completedTasks = user.completed_tasks || 0;
+        
         html += `
             <div class="leaderboard-item ${user.user_id === currentUser.id ? 'current-user' : ''}">
                 <div class="leaderboard-position">${medal}</div>
                 <div class="leaderboard-user">
-                    <div class="leaderboard-name">${displayName}</div>
+                    <div class="leaderboard-name">
+                        ${displayName}
+                        ${user.user_id === currentUser.id ? ' (Вы)' : ''}
+                    </div>
                     <div class="leaderboard-stats">
-                        <span class="tasks-count">✅ ${user.completed_tasks} заданий</span>
+                        <span class="tasks-count">✅ ${completedTasks} заданий</span>
                         <span class="balance">💫 ${user.balance}⭐</span>
                         ${user.referral_count > 0 ? `<span class="referrals">👥 ${user.referral_count}</span>` : ''}
                     </div>
                 </div>
                 ${currentUser.is_admin ? `
                     <div class="leaderboard-actions">
-                        <button class="btn-danger btn-sm" onclick="removeUserFromLeaderboard(${user.user_id}, '${displayName}')">
+                        <button class="btn-danger btn-sm" onclick="removeUserFromLeaderboard(${user.user_id}, '${displayName.replace(/'/g, "\\'")}')">
                             🗑️ Удалить
                         </button>
                     </div>
@@ -1548,13 +1661,15 @@ async function displayLeaderboardWithAdminControls(topUsers, currentUserRank, cu
     // Добавляем информацию о текущем пользователе
     if (currentUserRank && currentUserStats) {
         const displayName = currentUserStats.username || `user_${currentUser.id}`;
+        const userCompletedTasks = currentUserStats.completed_tasks || 0;
+        
         html += `
             <div class="current-user-rank">
-                <h4>Ваше место в рейтинге</h4>
+                <h4>📊 Ваше место в рейтинге</h4>
                 <div class="rank-info">
                     <span class="rank-position">${currentUserRank} место</span>
                     <span class="rank-stats">
-                        ✅ ${currentUserStats.completed_tasks} заданий • 
+                        ✅ ${userCompletedTasks} заданий • 
                         💫 ${currentUserStats.balance}⭐
                         ${currentUserStats.referral_count > 0 ? `• 👥 ${currentUserStats.referral_count}` : ''}
                     </span>
@@ -1565,14 +1680,21 @@ async function displayLeaderboardWithAdminControls(topUsers, currentUserRank, cu
     
     leaderboardElement.innerHTML = html;
 }
-
 // Функция удаления пользователя из топа
+// 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ УДАЛЕНИЯ ПОЛЬЗОВАТЕЛЯ ИЗ ТОПА
 async function removeUserFromLeaderboard(userId, username) {
-    if (!confirm(`Вы уверены, что хотите удалить пользователя ${username} из топа? Это сбросит всю его статистику!`)) {
+    if (!currentUser || !currentUser.is_admin) {
+        showNotification('У вас нет прав для удаления пользователей', 'error');
+        return;
+    }
+    
+    if (!confirm(`Вы уверены, что хотите удалить пользователя ${username} из топа?\n\nЭто действие:\n• Сбросит всю его статистику\n• Обнулит баланс\n• Удалит все выполненные задания\n• Удалит историю проверок`)) {
         return;
     }
     
     try {
+        showNotification('Удаляем пользователя...', 'info');
+        
         const response = await fetch('/api/admin/leaderboard/remove-user', {
             method: 'POST',
             headers: {
@@ -1587,8 +1709,9 @@ async function removeUserFromLeaderboard(userId, username) {
         const result = await response.json();
         
         if (result.success) {
-            showNotification(result.message, 'success');
-            // Обновляем топ
+            showNotification(`✅ Пользователь ${username} удален из топа!`, 'success');
+            
+            // Обновляем топ через 1 секунду
             setTimeout(() => {
                 loadLeaderboard();
             }, 1000);
@@ -1597,10 +1720,9 @@ async function removeUserFromLeaderboard(userId, username) {
         }
     } catch (error) {
         console.error('Remove user error:', error);
-        showNotification('Ошибка при удалении пользователя: ' + error.message, 'error');
+        showNotification('❌ Ошибка при удалении пользователя: ' + error.message, 'error');
     }
 }
-
 // Функция обновления топа
 async function refreshLeaderboard() {
     await loadLeaderboard();
