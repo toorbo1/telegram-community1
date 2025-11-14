@@ -791,16 +791,16 @@
                     <button class="amount-btn" data-amount="300" onclick="selectAmount(300)">300 ⭐</button>
                 </div>
                 
-                <!-- Отображение выбранной суммы -->
-                <div id="selected-amount-display" style="text-align: center; margin: 15px 0; display: none;">
-                    <div style="font-size: 14px; color: var(--text-secondary);">Выбранная сумма:</div>
-                    <div id="selected-amount" style="font-size: 24px; font-weight: bold; color: var(--gold); margin: 5px 0;"></div>
-                </div>
-            </div>
-            
-            <!-- <button class="withdraw-btn" onclick="requestWithdraw()" id="withdraw-btn" disabled>
-                Вывести средства
-            </button> -->
+                <!-- В блоке выбора суммы, после отображения выбранной суммы -->
+<div id="selected-amount-display" style="text-align: center; margin: 15px 0; display: none;">
+    <div style="font-size: 14px; color: var(--text-secondary);">Выбранная сумма:</div>
+    <div id="selected-amount" style="font-size: 24px; font-weight: bold; color: var(--gold); margin: 5px 0;"></div>
+</div>
+
+<!-- ДОБАВЬТЕ ЭТУ КНОПКУ -->
+<button id="withdraw-btn" class="withdraw-button" onclick="requestWithdraw()" disabled style="opacity: 0.5;">
+    Вывести средства
+</button>
         </div>
 
         <!-- История операций -->
@@ -8229,7 +8229,15 @@ setTimeout(addEmergencyButton, 2000);
 let selectedWithdrawAmount = 0;
 
 // Функция выбора суммы
+// Функция выбора суммы
 function selectAmount(amount) {
+    console.log('🎯 Selecting amount:', amount);
+    
+    if (!currentUser) {
+        showNotification('Пользователь не авторизован', 'error');
+        return;
+    }
+
     selectedWithdrawAmount = amount;
     
     // Снимаем выделение со всех кнопок
@@ -8244,16 +8252,30 @@ function selectAmount(amount) {
     const display = document.getElementById('selected-amount-display');
     const amountDisplay = document.getElementById('selected-amount');
     
-    display.style.display = 'block';
-    amountDisplay.textContent = `${amount} ⭐`;
+    if (display && amountDisplay) {
+        display.style.display = 'block';
+        amountDisplay.textContent = `${amount} ⭐`;
+    }
     
     // Активируем кнопку вывода
     const withdrawBtn = document.getElementById('withdraw-btn');
-    withdrawBtn.disabled = false;
-    withdrawBtn.style.opacity = '1';
-    withdrawBtn.textContent = `Вывести ${amount} ⭐`;
+    if (withdrawBtn) {
+        const currentBalance = currentUser.balance || 0;
+        
+        if (amount <= currentBalance) {
+            withdrawBtn.disabled = false;
+            withdrawBtn.style.opacity = '1';
+            withdrawBtn.textContent = `Вывести ${amount} ⭐`;
+        } else {
+            withdrawBtn.disabled = true;
+            withdrawBtn.style.opacity = '0.5';
+            withdrawBtn.textContent = 'Недостаточно средств';
+        }
+    }
+    
+    console.log('✅ Amount selected:', selectedWithdrawAmount);
 }
-
+// Обновленная функция запроса вывода средств
 // Обновленная функция запроса вывода средств
 async function requestWithdraw() {
     if (!currentUser) {
@@ -8302,6 +8324,9 @@ async function requestWithdraw() {
         console.log('📨 Ответ сервера:', result);
         
         if (result.success) {
+            // Сохраняем сумму для сообщения перед сбросом
+            const withdrawnAmount = selectedWithdrawAmount;
+            
             // Обновляем баланс пользователя (вычитаем выбранную сумму)
             currentUser.balance = currentBalance - selectedWithdrawAmount;
             
@@ -8313,7 +8338,8 @@ async function requestWithdraw() {
             updateWithdrawPage();
             resetAmountSelection();
             
-            showNotification(`✅ Заявка на вывод ${selectedWithdrawAmount} ⭐ отправлена! Ожидайте подтверждения администратора.`, 'success');
+            // ИСПРАВЛЕННАЯ СТРОКА: используем сохраненную переменную
+            showNotification(`✅ Заявка на вывод ${withdrawnAmount} ⭐ отправлена! Ожидайте подтверждения администратора.`, 'success');
             
             // Обновляем историю операций
             setTimeout(() => {
@@ -8330,6 +8356,7 @@ async function requestWithdraw() {
 }
 
 // Функция сброса выбора суммы
+// Функция сброса выбора суммы
 function resetAmountSelection() {
     selectedWithdrawAmount = 0;
     
@@ -8340,17 +8367,24 @@ function resetAmountSelection() {
     
     // Скрываем отображение выбранной суммы
     const display = document.getElementById('selected-amount-display');
-    display.style.display = 'none';
+    if (display) {
+        display.style.display = 'none';
+    }
     
     // Деактивируем кнопку вывода
     const withdrawBtn = document.getElementById('withdraw-btn');
-    withdrawBtn.disabled = true;
-    withdrawBtn.style.opacity = '0.5';
-    withdrawBtn.textContent = 'Вывести средства';
+    if (withdrawBtn) {
+        withdrawBtn.disabled = true;
+        withdrawBtn.style.opacity = '0.5';
+        withdrawBtn.textContent = 'Вывести средства';
+    }
 }
 
 // Обновление страницы вывода
+// Обновление страницы вывода
 function updateWithdrawPage() {
+    console.log('🔄 Updating withdraw page...');
+    
     const balanceDisplay = document.getElementById('withdraw-balance-display');
     const withdrawBtn = document.getElementById('withdraw-btn');
     
@@ -8368,14 +8402,18 @@ function updateWithdrawPage() {
         if (selectedWithdrawAmount === 0 || selectedWithdrawAmount > currentBalance) {
             withdrawBtn.disabled = true;
             withdrawBtn.style.opacity = '0.5';
+            withdrawBtn.textContent = 'Вывести средства';
         } else {
             withdrawBtn.disabled = false;
             withdrawBtn.style.opacity = '1';
             withdrawBtn.textContent = `Вывести ${selectedWithdrawAmount} ⭐`;
         }
     }
+    
+    // Загружаем историю выводов
+    loadWithdrawHistory();
 }
-
+// Функция обновления состояния кнопок сумм
 // Функция обновления состояния кнопок сумм
 function updateAmountButtonsState(balance) {
     const amountButtons = document.querySelectorAll('.amount-btn');
@@ -8387,10 +8425,13 @@ function updateAmountButtonsState(balance) {
             btn.disabled = true;
             btn.style.opacity = '0.5';
             btn.style.cursor = 'not-allowed';
+            btn.onclick = null; // Отключаем обработчик клика
         } else {
             btn.disabled = false;
             btn.style.opacity = '1';
             btn.style.cursor = 'pointer';
+            // Восстанавливаем обработчик клика
+            btn.onclick = function() { selectAmount(amount); };
         }
     });
 }
