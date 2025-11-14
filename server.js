@@ -882,9 +882,6 @@ async function fixWithdrawalTable() {
 // Вызовите эту функцию при инициализации сервера
 fixWithdrawalTable();
 
-// Добавьте эту функцию для проверки подписки
-// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ПРОВЕРКИ ПОДПИСКИ
-// Упрощенная проверка подписки (временно)
 async function checkSubscription(userId) {
     if (!bot) {
         console.log('⚠️ Bot not initialized, skipping subscription check');
@@ -892,7 +889,10 @@ async function checkSubscription(userId) {
     }
 
     try {
-        const chatId = '@LinkGoldChannel1'; // Замените на реальный канал
+        const chatId = '@LinkGoldChannel1'; // ✅ ПРАВИЛЬНЫЙ ID КАНАЛА (если это реальный канал)
+        // ИЛИ используйте числовой ID канала:
+        // const chatId = -1001234567890; // Пример числового ID канала
+        
         const member = await bot.getChatMember(chatId, userId);
         return ['member', 'administrator', 'creator'].includes(member.status);
     } catch (error) {
@@ -904,7 +904,6 @@ async function checkSubscription(userId) {
             return true;
         }
         
-        // При других ошибках также разрешаем регистрацию
         return true;
     }
 }
