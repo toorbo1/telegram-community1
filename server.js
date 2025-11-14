@@ -1156,12 +1156,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                     parse_mode: 'HTML',
                     reply_markup: {
                         inline_keyboard: [
-                            [
-                                {
-                                    text: '💼 НАЧАТЬ ЗАРАБАТЫВАТЬ',
-                                    web_app: { url: `${APP_URL}` }
-                                }
-                            ],
+                            
                             [
                                 {
                                     text: '📢 НАШ КАНАЛ',
@@ -1202,12 +1197,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                     parse_mode: 'HTML',
                     reply_markup: {
                         inline_keyboard: [
-                            [
-                                {
-                                    text: '💼 НАЧАТЬ ЗАРАБАТЫВАТЬ',
-                                    web_app: { url: `${APP_URL}` }
-                                }
-                            ],
+                            
                             [
                                 {
                                     text: '📢 НАШ КАНАЛ',
