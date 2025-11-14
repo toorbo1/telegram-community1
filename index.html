@@ -803,24 +803,22 @@
                     Выберите сумму для вывода:
                 </div>
                 <div class="amount-buttons" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px;">
-                    <button class="amount-btn" data-amount="50" onclick="selectAmount(this, 50)">50 ⭐</button>
-                    <button class="amount-btn" data-amount="100" onclick="selectAmount(this, 100)">100 ⭐</button>
-                    <button class="amount-btn" data-amount="150" onclick="selectAmount(this, 150)">150 ⭐</button>
-                    <button class="amount-btn" data-amount="200" onclick="selectAmount(this, 200)">200 ⭐</button>
-                    <button class="amount-btn" data-amount="250" onclick="selectAmount(this, 250)">250 ⭐</button>
-                    <button class="amount-btn" data-amount="300" onclick="selectAmount(this, 300)">300 ⭐</button>
+<button class="amount-btn" onclick="selectAmount(this, 50)">50 ⭐</button>
+<button class="amount-btn" onclick="selectAmount(this, 100)">100 ⭐</button>
+<button class="amount-btn" onclick="selectAmount(this, 150)">150 ⭐</button>
+<button class="amount-btn" onclick="selectAmount(this, 200)">200 ⭐</button>
+<button class="amount-btn" onclick="selectAmount(this, 250)">250 ⭐</button>
+<button class="amount-btn" onclick="selectAmount(this, 300)">300 ⭐</button>
                 </div>
                 
                 <!-- Отображение выбранной суммы -->
                 <div id="selected-amount-display" style="display: none; text-align: center; padding: 12px; background: var(--bg-secondary); border-radius: 8px; margin: 10px 0;">
-                    <div style="font-size: 14px; color: var(--text-secondary);">Вы выбрали:</div>
-                    <div id="selected-amount" style="font-size: 18px; font-weight: 700; color: var(--gold); margin-top: 4px;"></div>
-                </div>
-
-                <!-- Кнопка вывода -->
-                <button id="withdraw-btn" class="btn btn-primary btn-full" onclick="requestWithdraw()" disabled style="opacity: 0.5; cursor: not-allowed;">
-                    Вывести средства
-                </button>
+                   <div id="selected-amount-display" style="display: none;">
+    Вы выбрали: <span id="selected-amount"></span>
+</div>
+<button id="withdraw-btn" class="btn btn-primary" onclick="requestWithdraw()" disabled>
+    Вывести средства
+</button>
             </div>
         </div>
 
@@ -1213,6 +1211,7 @@ let selectedWithdrawAmount = 0;
 
 // 🔧 Функция выбора суммы
 // 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ВЫБОРА СУММЫ
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ВЫБОРА СУММЫ
 function selectAmount(button, amount) {
     console.log('🎯 Selecting amount:', amount);
     
@@ -1243,7 +1242,7 @@ function selectAmount(button, amount) {
     
     if (display && amountDisplay) {
         display.style.display = 'block';
-        amountDisplay.textContent = `${amount} ⭐`; // ← ИСПРАВЛЕНО: используем amount вместо button
+        amountDisplay.textContent = `${amount} ⭐`;
     }
     
     // Активируем кнопку вывода
