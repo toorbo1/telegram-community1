@@ -13,6 +13,35 @@
     <link rel="stylesheet" href="animations.css">
     <link rel="stylesheet" href="mobile.css">
     <style>
+        /* Стили для кнопок удаления в топе */
+.top-user-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+}
+
+.top-user-actions .btn-danger {
+    padding: 4px 8px;
+    font-size: 12px;
+    background: var(--error);
+    border: none;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.top-user-actions .btn-danger:hover {
+    background: #d63031;
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+    .top-user-actions .btn-danger {
+        padding: 3px 6px;
+        font-size: 10px;
+    }
+}
         /* Стили для топа пользователей */
 .leaderboard-header {
     display: flex;
@@ -1682,6 +1711,7 @@ async function displayLeaderboardWithAdminControls(topUsers, currentUserRank, cu
 }
 // Функция удаления пользователя из топа
 // 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ УДАЛЕНИЯ ПОЛЬЗОВАТЕЛЯ ИЗ ТОПА
+// Функция удаления пользователя из топа
 async function removeUserFromLeaderboard(userId, username) {
     if (!currentUser || !currentUser.is_admin) {
         showNotification('У вас нет прав для удаления пользователей', 'error');
@@ -1713,7 +1743,8 @@ async function removeUserFromLeaderboard(userId, username) {
             
             // Обновляем топ через 1 секунду
             setTimeout(() => {
-                loadLeaderboard();
+                loadTopUsers();
+                loadLeaderboard(); // Обновляем полный список если открыт
             }, 1000);
         } else {
             throw new Error(result.error);
@@ -7560,13 +7591,12 @@ async function addTask() {
     }
 }
 // Функция для загрузки топа пользователей
-// Проверьте корректность endpoint'а
+// Функция для загрузки топа пользователей
 async function loadTopUsers() {
     try {
         console.log('🏆 Loading top users...');
         
-        // Добавьте проверку URL
-        const url = '/api/leaderboard/top';
+        const url = '/api/leaderboard/top' + (currentUser ? `?userId=${currentUser.id}` : '');
         console.log('📡 Request URL:', url);
         
         const result = await makeRequest(url);
@@ -7601,21 +7631,23 @@ function showTopUsersError() {
     `;
 }
 
-// Функция отображения топа пользователей
+// Функция для отображения топа пользователей
 function displayTopUsers(topUsers, currentUserRank) {
     const container = document.getElementById('top-users-list');
     const userPosition = document.getElementById('user-position');
     
     if (!container) return;
     
-    // Если данные не загрузились, показываем заглушку
-    if (!topUsers || !Array.isArray(topUsers)) {
+    // Очищаем контейнер
+    container.innerHTML = '';
+    
+    if (!topUsers || topUsers.length === 0) {
         container.innerHTML = `
             <div class="no-top-users">
                 <div class="icon">📊</div>
-                <div>Рейтинг временно недоступен</div>
+                <div>Пока нет активных пользователей</div>
                 <div style="font-size: 12px; margin-top: 8px;">
-                    Попробуйте обновить позже
+                    Будьте первым в рейтинге!
                 </div>
             </div>
         `;
@@ -7623,8 +7655,8 @@ function displayTopUsers(topUsers, currentUserRank) {
         return;
     }
     
-    // Отображаем топ 5 пользователей
-    topUsers.forEach((user, index) => {
+    // Отображаем топ 5 пользователей с реальными данными
+    topUsers.slice(0, 5).forEach((user, index) => {
         const userElement = createTopUserElement(user, index + 1);
         container.appendChild(userElement);
     });
@@ -7641,31 +7673,42 @@ function displayTopUsers(topUsers, currentUserRank) {
     }
 }
 
-// Функция создания элемента пользователя в топе
+// Функция создания элемента пользователя в топе с реальными данными
 function createTopUserElement(user, rank) {
     const userElement = document.createElement('div');
     userElement.className = 'top-user-item';
     
-    const avatarText = user.first_name ? user.first_name.charAt(0).toUpperCase() : 'U';
-    const userName = user.first_name || `User_${user.user_id}`;
+    // Используем username вместо "Пользователь"
+    const displayName = user.username || `user_${user.user_id}`;
+    
+    // Реальные выполненные задания
     const completedTasks = user.completed_tasks || 0;
     const balance = user.balance || 0;
+    
+    // Аватар из первой буквы имени
+    const avatarText = displayName.charAt(0).toUpperCase();
     
     userElement.innerHTML = `
         <div class="user-rank ${getRankClass(rank)}">${rank}</div>
         <div class="user-avatar">${avatarText}</div>
         <div class="user-info">
-            <div class="user-name">${escapeHtml(userName)}</div>
+            <div class="user-name">${escapeHtml(displayName)}</div>
             <div class="user-stats">
                 <span class="user-tasks">${completedTasks} заданий</span>
                 <span class="user-balance">${balance} ⭐</span>
             </div>
         </div>
+        ${currentUser && currentUser.is_admin ? `
+            <div class="top-user-actions">
+                <button class="btn-danger btn-sm" onclick="removeUserFromLeaderboard(${user.user_id}, '${displayName.replace(/'/g, "\\'")}')">
+                    🗑️ Удалить
+                </button>
+            </div>
+        ` : ''}
     `;
     
     return userElement;
 }
-
 // Функция для определения класса ранга
 function getRankClass(rank) {
     switch(rank) {

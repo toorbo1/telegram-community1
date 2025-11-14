@@ -2873,20 +2873,18 @@ async function showUserDetailedStats(chatId, targetUserId, messageId) {
     }
 }
 
-// В server.js добавьте этот endpoint
-// Обновленный endpoint для топа пользователей
-// В server.js - улучшенный запрос для топа
+// Получение топа пользователей с реальными данными
 app.get('/api/leaderboard/top', async (req, res) => {
     try {
         console.log('🏆 Loading improved leaderboard...');
         
-        // Получаем топ 10 пользователей по реальным выполненным заданиям и балансу
+        // Получаем топ пользователей по реальным выполненным заданиям и балансу
         const topUsers = await pool.query(`
             SELECT 
                 user_id,
-                first_name,
                 username,
-                -- РЕАЛЬНЫЕ выполненные задания (не просто счетчик)
+                first_name,
+                -- РЕАЛЬНЫЕ выполненные задания
                 COALESCE(completed_tasks, 0) as completed_tasks,
                 COALESCE(balance, 0) as balance,
                 COALESCE(referral_count, 0) as referral_count,
@@ -2964,6 +2962,7 @@ app.get('/api/leaderboard/top', async (req, res) => {
         });
     }
 });
+// Удаление пользователя из топа (только для главного админа)
 // Удаление пользователя из топа (только для главного админа)
 app.post('/api/admin/leaderboard/remove-user', async (req, res) => {
     const { adminId, targetUserId } = req.body;
