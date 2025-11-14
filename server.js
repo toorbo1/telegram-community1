@@ -7493,7 +7493,7 @@ async function deleteScreenshotFile(screenshotUrl) {
 // ==================== WITHDRAWAL ENDPOINTS ====================
 
 // Request withdrawal - ОБНОВЛЕННАЯ ВЕРСИЯ С ПРОВЕРКОЙ МИНИМУМА
-// Request withdrawal - ОБНОВЛЕННАЯ ВЕРСИЯ С ВЫЧИТАНИЕМ СУММЫ
+// Request withdrawal - ИСПРАВЛЕННАЯ ВЕРСИЯ
 app.post('/api/withdrawal/request', async (req, res) => {
     const { user_id, amount, username, first_name } = req.body;
     
@@ -7506,25 +7506,31 @@ app.post('/api/withdrawal/request', async (req, res) => {
         });
     }
     
+    const client = await pool.connect();
+    
     try {
+        await client.query('BEGIN');
+        
         const allowedAmounts = [50, 100, 150, 200, 250, 300];
         const requestAmount = parseFloat(amount);
         
         // Проверяем что сумма допустима
         if (!allowedAmounts.includes(requestAmount)) {
+            await client.query('ROLLBACK');
             return res.status(400).json({
                 success: false,
                 error: 'Недопустимая сумма для вывода. Доступные суммы: 50, 100, 150, 200, 250, 300 ⭐'
             });
         }
         
-        // Проверяем баланс пользователя
-        const userResult = await pool.query(
-            'SELECT balance FROM user_profiles WHERE user_id = $1',
+        // Проверяем баланс пользователя (заблокированная строка для предотвращения гонки условий)
+        const userResult = await client.query(
+            'SELECT balance FROM user_profiles WHERE user_id = $1 FOR UPDATE',
             [user_id]
         );
         
         if (userResult.rows.length === 0) {
+            await client.query('ROLLBACK');
             return res.status(404).json({
                 success: false,
                 error: 'User not found'
@@ -7535,7 +7541,9 @@ app.post('/api/withdrawal/request', async (req, res) => {
         
         console.log(`💰 Баланс пользователя: ${userBalance}, Запрошено: ${requestAmount}`);
         
+        // Проверяем достаточно ли средств
         if (requestAmount > userBalance) {
+            await client.query('ROLLBACK');
             return res.status(400).json({
                 success: false,
                 error: 'Недостаточно средств на балансе'
@@ -7543,21 +7551,22 @@ app.post('/api/withdrawal/request', async (req, res) => {
         }
         
         if (requestAmount <= 0) {
+            await client.query('ROLLBACK');
             return res.status(400).json({
                 success: false,
                 error: 'Сумма должна быть положительной'
             });
         }
         
-        // ВЫЧИТАЕМ сумму из баланса пользователя (не обнуляем!)
+        // ВЫЧИТАЕМ сумму из баланса пользователя
         const newBalance = userBalance - requestAmount;
-        await pool.query(
+        await client.query(
             'UPDATE user_profiles SET balance = $1 WHERE user_id = $2',
             [newBalance, user_id]
         );
         
         // Создаем запрос на вывод
-        const result = await pool.query(`
+        const result = await client.query(`
             INSERT INTO withdrawal_requests (user_id, username, first_name, amount, status) 
             VALUES ($1, $2, $3, $4, 'pending')
             RETURNING *
@@ -7565,23 +7574,130 @@ app.post('/api/withdrawal/request', async (req, res) => {
         
         const requestId = result.rows[0].id;
         
+        await client.query('COMMIT');
+        
         console.log(`✅ Запрос на вывод создан: ID ${requestId}, новый баланс: ${newBalance}`);
         
         res.json({
             success: true,
             message: 'Запрос на вывод отправлен',
             requestId: requestId,
-            newBalance: newBalance
+            newBalance: newBalance,
+            withdrawnAmount: requestAmount
         });
         
     } catch (error) {
+        await client.query('ROLLBACK');
         console.error('❌ Withdrawal error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    } finally {
+        client.release();
+    }
+});
+
+// Проверка доступных сумм для вывода
+app.get('/api/withdrawal/available-amounts/:userId', async (req, res) => {
+    const userId = req.params.userId;
+    
+    try {
+        const userResult = await pool.query(
+            'SELECT balance FROM user_profiles WHERE user_id = $1',
+            [userId]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            });
+        }
+        
+        const userBalance = parseFloat(userResult.rows[0].balance) || 0;
+        const availableAmounts = [50, 100, 150, 200, 250, 300];
+        
+        // Фильтруем доступные суммы по балансу
+        const allowedAmounts = availableAmounts.filter(amount => amount <= userBalance);
+        
+        res.json({
+            success: true,
+            balance: userBalance,
+            availableAmounts: allowedAmounts,
+            canWithdraw: allowedAmounts.length > 0
+        });
+        
+    } catch (error) {
+        console.error('Check available amounts error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
         });
     }
 });
+
+// Отмена вывода и возврат средств
+app.post('/api/withdrawal/:requestId/cancel', async (req, res) => {
+    const requestId = req.params.requestId;
+    const { userId } = req.body;
+    
+    const client = await pool.connect();
+    
+    try {
+        await client.query('BEGIN');
+        
+        // Получаем информацию о запросе
+        const requestResult = await client.query(
+            'SELECT * FROM withdrawal_requests WHERE id = $1 AND user_id = $2 AND status = $3',
+            [requestId, userId, 'pending']
+        );
+        
+        if (requestResult.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({
+                success: false,
+                error: 'Запрос на вывод не найден или уже обработан'
+            });
+        }
+        
+        const withdrawalRequest = requestResult.rows[0];
+        const amount = withdrawalRequest.amount;
+        
+        // Возвращаем средства на баланс
+        await client.query(
+            'UPDATE user_profiles SET balance = balance + $1 WHERE user_id = $2',
+            [amount, userId]
+        );
+        
+        // Удаляем запрос на вывод
+        await client.query(
+            'DELETE FROM withdrawal_requests WHERE id = $1',
+            [requestId]
+        );
+        
+        await client.query('COMMIT');
+        
+        console.log(`✅ Вывод отменен, средства возвращены: ${amount}⭐ пользователю ${userId}`);
+        
+        res.json({
+            success: true,
+            message: 'Вывод отменен, средства возвращены на баланс',
+            returnedAmount: amount
+        });
+        
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Cancel withdrawal error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    } finally {
+        client.release();
+    }
+});
+
 // Get withdrawal history
 app.get('/api/withdraw/history/:userId', async (req, res) => {
     const userId = req.params.userId;
