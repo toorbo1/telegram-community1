@@ -1134,7 +1134,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         welcomeMessage += `• Вывод от 50 звёзд\n\n`;
 
         welcomeMessage += `👥 <b>РЕФЕРАЛЬНАЯ СИСТЕМА:</b>\n`;
-        welcomeMessage += `┌ За каждого друга: 2 звезды\n`;
+        welcomeMessage += `┌ За каждого друга: 2 звезды \n`;
         welcomeMessage += `└ Друг получает: 1 звезду\n\n`;
 
         if (referredBy && referralBonusGiven) {
