@@ -1178,10 +1178,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                                     text: '📚 ГАЙДЫ ПО ЗАДАНИЯМ',
                                     url: 'https://t.me/LinkGoldGuide'
                                 },
-                                {
-                                    text: '💰 МОЙ БАЛАНС',
-                                    callback_data: 'check_balance'
-                                }
+                               
                             ]
                         ]
                     }
@@ -1219,10 +1216,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                                     text: '📚 ГАЙДЫ ПО ЗАДАНИЯМ',
                                     url: 'https://t.me/LinkGoldGuide'
                                 },
-                                {
-                                    text: '💰 МОЙ БАЛАНС',
-                                    callback_data: 'check_balance'
-                                }
+                                
                             ]
                         ]
                     }
