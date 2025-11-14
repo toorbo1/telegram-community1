@@ -2964,6 +2964,7 @@ app.get('/api/leaderboard/top', async (req, res) => {
     }
 });
 // В server.js обновите endpoint удаления пользователя:
+// В server.js обновите endpoint удаления пользователя:
 app.post('/api/admin/leaderboard/remove-user', async (req, res) => {
     const { adminId, targetUserId } = req.body;
     
@@ -3333,6 +3334,7 @@ async function toggleUserBlock(chatId, adminId, targetUserId, messageId) {
     }
 }
 // В server.js добавьте:
+// В server.js добавьте:
 app.get('/api/debug/user-id-columns', async (req, res) => {
     try {
         const result = await pool.query(`
@@ -3359,7 +3361,7 @@ app.get('/api/debug/user-id-columns', async (req, res) => {
         });
     }
 });
-
+// В server.js добавьте эту функцию:
 // В server.js добавьте эту функцию:
 async function fixUserIdColumns() {
     try {
