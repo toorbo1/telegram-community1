@@ -7711,28 +7711,7 @@ function createTopUserElement(user, rank) {
     
     return userElement;
 }
-// Функция для обновления счетчика выполненных заданий у пользователя
-async function updateUserCompletedTasks(userId) {
-    try {
-        const result = await pool.query(`
-            UPDATE user_profiles 
-            SET completed_tasks = (
-                SELECT COUNT(*) 
-                FROM user_tasks 
-                WHERE user_id = $1 AND status = 'completed'
-            )
-            WHERE user_id = $1
-        `, [userId]);
-        
-        console.log(`✅ Updated completed tasks for user ${userId}`);
-    } catch (error) {
-        console.error('❌ Error updating completed tasks:', error);
-    }
-}
 
-// Вызывайте эту функцию при одобрении задания:
-// В endpoint одобрения задания добавьте:
-await updateUserCompletedTasks(userId);
 // Функция для определения класса ранга
 function getRankClass(rank) {
     switch(rank) {
