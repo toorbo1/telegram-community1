@@ -7,14 +7,11 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
 
-       <!-- Подключаем CSS файлы -->
+         <!-- Подключаем CSS файлы -->
     <link rel="stylesheet" href="main.css">
     <link rel="stylesheet" href="components.css">
     <link rel="stylesheet" href="animations.css">
     <link rel="stylesheet" href="mobile.css">
-
-    <!-- Оставляем критически важные стили inline для быстрой загрузки -->
-  
 </head>
 <body>
 
@@ -2671,7 +2668,8 @@ async function loadTasks(search = '', category = 'all') {
         console.log('🎯 START loadTasks with filter:', { 
             search, 
             category, 
-            userId: currentUser?.id
+            userId: currentUser?.id,
+            hasUser: !!currentUser
         });
 
         if (!currentUser) {
@@ -2691,6 +2689,9 @@ async function loadTasks(search = '', category = 'all') {
             <div class="no-tasks" style="min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
                 <div class="loading-spinner">⏳</div>
                 <div style="margin-top: 16px;">Загружаем задания...</div>
+                <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
+                    ID: ${currentUser.id}
+                </div>
             </div>
         `;
 
@@ -2713,10 +2714,11 @@ async function loadTasks(search = '', category = 'all') {
         console.log('📨 Server response:', result);
 
         if (result.success) {
-            // 🔥 ФИЛЬТРУЕМ: показываем только активные задания
-            allTasks = (result.tasks || []).filter(task => task.status === 'active');
-            console.log(`✅ Loaded ${allTasks.length} ACTIVE tasks:`, allTasks.map(t => ({id: t.id, title: t.title, status: t.status})));
+            allTasks = result.tasks || [];
+            console.log (`✅ Loaded ${allTasks.length} tasks:`, allTasks.map(t => ({id: t.id, title: t.title})));
             
+            // 🔥 ВАЖНО: Теперь сервер сам фильтрует отклоненные задания
+            // Просто отображаем то, что пришло с сервера
             displayTasks(allTasks, 'new');
             
         } else {
@@ -2745,6 +2747,7 @@ async function loadTasks(search = '', category = 'all') {
         showNotification(`Ошибка загрузки заданий: ${error.message}`, 'error');
     }
 }
+
 // 🔧 НОВАЯ ФУНКЦИЯ: Получение активных заданий пользователя
 async function getUserActiveTasks() {
     if (!currentUser) return [];
@@ -9445,16 +9448,11 @@ async function startTask() {
 
         if (result.success) {
             closeModal('task-modal');
-            
-            if (result.wasLastSlot) {
-                showNotification('🎉 Вы заняли последнее место в задании!', 'success');
-            } else {
-                showNotification('✅ Задание начато! Выполните его и вернитесь для подтверждения.', 'success');
-            }
+            showNotification('✅ Задание начато! Выполните его и вернитесь для подтверждения.', 'success');
             
             // НЕМЕДЛЕННО обновляем списки заданий
             setTimeout(() => {
-                loadTasks(); // Обновляем новые задания (убираем начатое/завершенное)
+                loadTasks(); // Обновляем новые задания (убираем начатое)
                 loadUserTasksForCategory('active'); // Добавляем в активные
             }, 500);
             
