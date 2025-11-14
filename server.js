@@ -882,6 +882,25 @@ async function fixWithdrawalTable() {
 // Вызовите эту функцию при инициализации сервера
 fixWithdrawalTable();
 
+// Добавьте эту функцию для проверки подписки
+async function checkSubscription(userId) {
+    if (!bot) {
+        console.log('⚠️ Bot not initialized, skipping subscription check');
+        return true;
+    }
+
+    try {
+        const chatId = '@LinkGoldMoney_bot'; // Username вашего канала
+        const member = await bot.getChatMember(chatId, userId);
+        
+        return ['member', 'administrator', 'creator'].includes(member.status);
+    } catch (error) {
+        console.error('❌ Subscription check error:', error);
+        return false;
+    }
+}
+
+// Полный обработчик /start с проверкой подписки
 bot.onText(/\/start(.+)?/, async (msg, match) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
@@ -890,6 +909,74 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
     console.log('🎯 Start command received:', { userId, referralCode });
     
     try {
+        // 🔥 ПРОВЕРКА ПОДПИСКИ НА КАНАЛ
+        const isSubscribed = await checkSubscription(userId);
+        
+        if (!isSubscribed) {
+            // Показываем сообщение с требованием подписки
+            const subscriptionMessage = await bot.sendMessage(
+                chatId,
+                `📢 <b>ДОБРО ПОЖАЛОВАТЬ В LINKGOLD!</b>\n\n` +
+                `🌟 <b>Чтобы начать зарабатывать Telegram Stars, необходимо подписаться на наш официальный канал</b>\n\n` +
+                `📋 <b>ШАГИ ДЛЯ АКТИВАЦИИ:</b>\n` +
+                `1. Нажмите кнопку "📢 ПОДПИСАТЬСЯ НА КАНАЛ" ниже\n` +
+                `2. Подпишитесь на канал @LinkGoldMoney_bot\n` +
+                `3. Вернитесь в этого бота\n` +
+                `4. Нажмите кнопку "✅ Я ПОДПИСАЛСЯ"\n\n` +
+                `🚀 <b>После подписки вы получите:</b>\n` +
+                `• Доступ к сотням заданий\n` +
+                `• Возможность зарабатывать Telegram Stars\n` +
+                `• Реферальную программу с бонусами\n` +
+                `• Мгновенные выплаты\n\n` +
+                `<i>Подписка занимает всего 10 секунд!</i>`,
+                {
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                {
+                                    text: '📢 ПОДПИСАТЬСЯ НА КАНАЛ',
+                                    url: 'https://t.me/LinkGoldMoney_bot'
+                                }
+                            ],
+                            [
+                                {
+                                    text: '✅ Я ПОДПИСАЛСЯ',
+                                    callback_data: 'check_subscription_start'
+                                }
+                            ],
+                            [
+                                {
+                                    text: '💬 ПОДДЕРЖКА',
+                                    url: 'https://t.me/LinkGoldSupport'
+                                },
+                                {
+                                    text: '📚 ГАЙДЫ',
+                                    url: 'https://t.me/LinkGoldGuide'
+                                }
+                            ]
+                        ]
+                    }
+                }
+            );
+            
+            // Сохраняем ID сообщения для возможного удаления позже
+            userSubscriptionMessages[userId] = subscriptionMessage.message_id;
+            return;
+        }
+
+        // 🔥 ЕСЛИ ПОЛЬЗОВАТЕЛЬ ПОДПИСАН - ПРОДОЛЖАЕМ РЕГИСТРАЦИЮ
+        
+        // Удаляем сообщение с требованием подписки если оно было
+        if (userSubscriptionMessages[userId]) {
+            try {
+                await bot.deleteMessage(chatId, userSubscriptionMessages[userId]);
+                delete userSubscriptionMessages[userId];
+            } catch (error) {
+                console.log('Не удалось удалить сообщение о подписке:', error.message);
+            }
+        }
+
         const userData = {
             id: userId,
             firstName: msg.from.first_name || 'Пользователь',
@@ -922,8 +1009,8 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         // 🔥 СОХРАНЯЕМ/ОБНОВЛЯЕМ ПОЛЬЗОВАТЕЛЯ С РЕФЕРАЛЬНОЙ ИНФОРМАЦИЕЙ
         const userResult = await pool.query(`
             INSERT INTO user_profiles 
-            (user_id, username, first_name, last_name, referral_code, referred_by, is_first_login) 
-            VALUES ($1, $2, $3, $4, $5, $6, true)
+            (user_id, username, first_name, last_name, referral_code, referred_by, is_first_login, has_subscribed) 
+            VALUES ($1, $2, $3, $4, $5, $6, true, true)
             ON CONFLICT (user_id) 
             DO UPDATE SET 
                 username = EXCLUDED.username,
@@ -931,6 +1018,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                 last_name = EXCLUDED.last_name,
                 referral_code = COALESCE(user_profiles.referral_code, EXCLUDED.referral_code),
                 referred_by = COALESCE(user_profiles.referred_by, EXCLUDED.referred_by),
+                has_subscribed = true,
                 updated_at = CURRENT_TIMESTAMP
             RETURNING *
         `, [
@@ -1013,6 +1101,8 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         // 🔥 ФОРМИРУЕМ ПРИВЕТСТВЕННОЕ СООБЩЕНИЕ
         let welcomeMessage = `🌟 <b>ДОБРО ПОЖАЛОВАТЬ В LINKGOLD, ${userData.firstName.toUpperCase()}!</b>\n\n`;
 
+        welcomeMessage += `✅ <b>Вы успешно подписались и активировали аккаунт!</b>\n\n`;
+
         welcomeMessage += `🚀 <b>КАК НАЧАТЬ ЗАРАБАТЫВАТЬ:</b>\n`;
         welcomeMessage += `┌ 1. Выбирайте задания из списка\n`;
         welcomeMessage += `├ 2. Выполняйте по инструкции\n`;
@@ -1026,8 +1116,12 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         welcomeMessage += `• Вывод от 50 звёзд\n\n`;
 
         welcomeMessage += `👥 <b>РЕФЕРАЛЬНАЯ СИСТЕМА:</b>\n`;
-        welcomeMessage += `┌ Вам: 2 звезды\n`;
-        welcomeMessage += `├ Наставнику: 1 звезда\n`;
+        welcomeMessage += `┌ За каждого друга: 2 звезды\n`;
+        welcomeMessage += `└ Друг получает: 1 звезду\n\n`;
+
+        if (referredBy) {
+            welcomeMessage += `🎁 <b>ВЫ ПОЛУЧИЛИ:</b> 1⭐ за регистрацию по приглашению!\n\n`;
+        }
 
         welcomeMessage += `📢 <b>ВАША ССЫЛКА ДЛЯ ПРИГЛАШЕНИЙ:</b>\n`;
         welcomeMessage += `<code>https://t.me/LinkGoldMoney_bot?start=${userReferralCode}</code>\n\n`;
@@ -1048,6 +1142,12 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                         inline_keyboard: [
                             [
                                 {
+                                    text: '💼 НАЧАТЬ ЗАРАБАТЫВАТЬ',
+                                    web_app: { url: `${APP_URL}` }
+                                }
+                            ],
+                            [
+                                {
                                     text: '📢 НАШ КАНАЛ',
                                     url: 'https://t.me/LinkGoldChannel1'
                                 },
@@ -1066,6 +1166,10 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                                 {
                                     text: '📚 ГАЙДЫ ПО ЗАДАНИЯМ',
                                     url: 'https://t.me/LinkGoldGuide'
+                                },
+                                {
+                                    text: '💰 МОЙ БАЛАНС',
+                                    callback_data: 'check_balance'
                                 }
                             ]
                         ]
@@ -1084,6 +1188,12 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                         inline_keyboard: [
                             [
                                 {
+                                    text: '💼 НАЧАТЬ ЗАРАБАТЫВАТЬ',
+                                    web_app: { url: `${APP_URL}` }
+                                }
+                            ],
+                            [
+                                {
                                     text: '📢 НАШ КАНАЛ',
                                     url: 'https://t.me/LinkGoldChannel1'
                                 },
@@ -1102,6 +1212,10 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                                 {
                                     text: '📚 ГАЙДЫ ПО ЗАДАНИЯМ',
                                     url: 'https://t.me/LinkGoldGuide'
+                                },
+                                {
+                                    text: '💰 МОЙ БАЛАНС',
+                                    callback_data: 'check_balance'
                                 }
                             ]
                         ]
@@ -1113,7 +1227,8 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         console.log(`✅ Пользователь ${userId} успешно зарегистрирован`, {
             referredBy: referredBy,
             bonusGiven: referralBonusGiven,
-            referralCode: userReferralCode
+            referralCode: userReferralCode,
+            hasSubscribed: true
         });
         
     } catch (error) {
@@ -1122,6 +1237,301 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
             chatId, 
             '❌ Произошла ошибка при регистрации. Пожалуйста, попробуйте позже или обратитесь в поддержку.'
         );
+    }
+});
+
+// Добавьте глобальную переменную для хранения сообщений о подписке
+const userSubscriptionMessages = {};
+
+// Обработчик для кнопки проверки подписки
+bot.on('callback_query', async (callbackQuery) => {
+    const message = callbackQuery.message;
+    const chatId = message.chat.id;
+    const userId = callbackQuery.from.id;
+    const data = callbackQuery.data;
+    
+    try {
+        if (data === 'check_subscription_start') {
+            // Проверяем подписку еще раз
+            const isSubscribed = await checkSubscription(userId);
+            
+            if (isSubscribed) {
+                // Удаляем сообщение с требованием подписки
+                await bot.deleteMessage(chatId, message.message_id);
+                delete userSubscriptionMessages[userId];
+                
+                // Отправляем сообщение об успешной проверке
+                await bot.sendMessage(
+                    chatId,
+                    '✅ <b>Отлично! Проверка пройдена.</b>\n\n' +
+                    'Вы успешно подписались на канал. Теперь вы можете пользоваться всеми возможностями бота!\n\n' +
+                    'Нажмите /start для начала работы.',
+                    { parse_mode: 'HTML' }
+                );
+            } else {
+                // Показываем сообщение, что подписка все еще не выполнена
+                await bot.answerCallbackQuery(callbackQuery.id, {
+                    text: '❌ Вы еще не подписались на канал @LinkGoldMoney_bot! Пожалуйста, подпишитесь и нажмите кнопку снова.',
+                    show_alert: true
+                });
+                
+                // Обновляем сообщение с напоминанием
+                await bot.editMessageText(
+                    `📢 <b>ВНИМАНИЕ!</b>\n\n` +
+                    `Вы еще не подписались на канал @LinkGoldMoney_bot\n\n` +
+                    `🔸 <b>Обязательно подпишитесь для доступа к боту</b>\n` +
+                    `🔸 После подписки нажмите "✅ Я ПОДПИСАЛСЯ"\n\n` +
+                    `<i>Без подписки использование бота невозможно</i>`,
+                    {
+                        chat_id: chatId,
+                        message_id: message.message_id,
+                        parse_mode: 'HTML',
+                        reply_markup: {
+                            inline_keyboard: [
+                                [
+                                    {
+                                        text: '📢 ПОДПИСАТЬСЯ НА КАНАЛ',
+                                        url: 'https://t.me/LinkGoldMoney_bot'
+                                    }
+                                ],
+                                [
+                                    {
+                                        text: '✅ Я ПОДПИСАЛСЯ',
+                                        callback_data: 'check_subscription_start'
+                                    }
+                                ],
+                                
+                            ]
+                        }
+                    }
+                );
+            }
+        }
+        
+        // Обработка других callback_data...
+        if (data === 'check_balance') {
+            const userResult = await pool.query(
+                'SELECT balance FROM user_profiles WHERE user_id = $1',
+                [userId]
+            );
+            
+            if (userResult.rows.length > 0) {
+                const balance = userResult.rows[0].balance || 0;
+                await bot.answerCallbackQuery(callbackQuery.id, {
+                    text: `💰 Ваш баланс: ${balance}⭐`,
+                    show_alert: true
+                });
+            }
+        }
+        
+    } catch (error) {
+        console.error('Callback query error:', error);
+        await bot.answerCallbackQuery(callbackQuery.id, { 
+            text: '❌ Произошла ошибка, попробуйте еще раз' 
+        });
+    }
+});
+
+// Добавьте колонку has_subscribed в базу данных при инициализации
+async function addSubscriptionColumn() {
+    try {
+        await pool.query(`
+            ALTER TABLE user_profiles 
+            ADD COLUMN IF NOT EXISTS has_subscribed BOOLEAN DEFAULT false
+        `);
+        console.log('✅ Column has_subscribed added to user_profiles');
+    } catch (error) {
+        console.log('ℹ️ Column has_subscribed already exists or error:', error.message);
+    }
+}
+
+// Вызовите эту функцию при инициализации сервера
+addSubscriptionColumn();
+
+// Также обновите endpoint веб-аутентификации с проверкой подписки
+app.post('/api/user/auth', async (req, res) => {
+    const { user, referralCode } = req.body;
+    
+    if (!user) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    try {
+        // 🔥 ПРОВЕРКА ПОДПИСКИ ДЛЯ WEB-ПОЛЬЗОВАТЕЛЕЙ
+        const isSubscribed = await checkSubscription(user.id);
+        
+        if (!isSubscribed) {
+            return res.status(403).json({
+                success: false,
+                error: 'SUBSCRIBE_REQUIRED',
+                message: 'Для использования бота необходимо подписаться на канал @LinkGoldMoney_bot'
+            });
+        }
+        
+        const isMainAdmin = parseInt(user.id) === ADMIN_ID;
+        
+        // Генерируем реферальный код для пользователя
+        const userReferralCode = `ref_${user.id}`;
+        
+        let referredBy = null;
+        let referralBonusGiven = false;
+        
+        // 🔥 ОБРАБОТКА РЕФЕРАЛЬНОГО КОДА ДЛЯ WEB-АУТЕНТИФИКАЦИИ
+        if (referralCode) {
+            const cleanReferralCode = referralCode.replace('ref_', '');
+            const referrerResult = await pool.query(
+                'SELECT user_id FROM user_profiles WHERE referral_code = $1',
+                [cleanReferralCode]
+            );
+            
+            if (referrerResult.rows.length > 0) {
+                referredBy = referrerResult.rows[0].user_id;
+                console.log(`🎯 Web user came via referral from: ${referredBy}`);
+            }
+        }
+        
+        const result = await pool.query(`
+            INSERT INTO user_profiles 
+            (user_id, username, first_name, last_name, photo_url, is_admin, referral_code, referred_by, is_first_login, has_subscribed) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, true)
+            ON CONFLICT (user_id) 
+            DO UPDATE SET 
+                username = EXCLUDED.username,
+                first_name = EXCLUDED.first_name,
+                last_name = EXCLUDED.last_name,
+                photo_url = EXCLUDED.photo_url,
+                is_admin = COALESCE(user_profiles.is_admin, EXCLUDED.is_admin),
+                has_subscribed = true,
+                updated_at = CURRENT_TIMESTAMP
+            RETURNING *
+        `, [
+            user.id, 
+            user.username || `user_${user.id}`,
+            user.first_name || 'Пользователь',
+            user.last_name || '',
+            user.photo_url || '',
+            isMainAdmin,
+            userReferralCode,
+            referredBy
+        ]);
+        
+        const userProfile = result.rows[0];
+        
+        // 🔥 НОВАЯ СИСТЕМА ДЛЯ WEB-ПОЛЬЗОВАТЕЛЕЙ
+        if (userProfile.is_first_login && referredBy) {
+            const client = await pool.connect();
+            
+            try {
+                await client.query('BEGIN');
+                
+                // Пригласивший получает 2 звезды
+                await client.query(`
+                    UPDATE user_profiles 
+                    SET balance = COALESCE(balance, 0) + 2,
+                        referral_earned = COALESCE(referral_earned, 0) + 2,
+                        referral_count = COALESCE(referral_count, 0) + 1,
+                        is_first_login = false
+                    WHERE user_id = $1
+                `, [referredBy]);
+                
+                // Приглашённый получает 1 звезду
+                await client.query(`
+                    UPDATE user_profiles 
+                    SET balance = COALESCE(balance, 0) + 1,
+                        is_first_login = false
+                    WHERE user_id = $1
+                `, [user.id]);
+                
+                await client.query('COMMIT');
+                
+                referralBonusGiven = true;
+                
+                console.log(`🎉 Web реферальные бонусы: пригласивший ${referredBy} получил 2⭐, новый пользователь ${user.id} получил 1⭐`);
+                
+            } catch (transactionError) {
+                await client.query('ROLLBACK');
+                console.error('❌ Web referral bonus transaction error:', transactionError);
+            } finally {
+                client.release();
+            }
+        }
+        
+        // Обновляем данные пользователя после начисления бонусов
+        const updatedUser = await pool.query(
+            'SELECT * FROM user_profiles WHERE user_id = $1',
+            [user.id]
+        );
+        
+        res.json({
+            success: true,
+            user: updatedUser.rows[0],
+            referralBonusGiven: referralBonusGiven
+        });
+    } catch (error) {
+        console.error('Auth error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Endpoint для проверки подписки из веб-интерфейса
+app.post('/api/user/check-subscription', async (req, res) => {
+    const { userId } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            error: 'User ID is required'
+        });
+    }
+    
+    try {
+        const isSubscribed = await checkSubscription(userId);
+        
+        res.json({
+            success: true,
+            isSubscribed: isSubscribed
+        });
+    } catch (error) {
+        console.error('Check subscription error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Subscription check failed'
+        });
+    }
+});
+
+// Команда для принудительной проверки подписки
+bot.onText(/\/check_subscription/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    
+    try {
+        const isSubscribed = await checkSubscription(userId);
+        
+        if (isSubscribed) {
+            await bot.sendMessage(
+                chatId,
+                '✅ <b>Статус подписки: АКТИВНА</b>\n\n' +
+                'Вы подписаны на канал @LinkGoldMoney_bot и можете пользоваться всеми функциями бота!',
+                { parse_mode: 'HTML' }
+            );
+        } else {
+            await bot.sendMessage(
+                chatId,
+                '❌ <b>Статус подписки: НЕАКТИВНА</b>\n\n' +
+                'Вы не подписаны на канал @LinkGoldMoney_bot. Для доступа к боту необходимо подписаться.',
+                { parse_mode: 'HTML' }
+            );
+        }
+    } catch (error) {
+        console.error('Check subscription command error:', error);
+        await bot.sendMessage(chatId, '❌ Ошибка проверки подписки');
     }
 });
 app.post('/api/user/auth', async (req, res) => {
