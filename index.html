@@ -811,16 +811,14 @@
     <button class="amount-btn" onclick="selectAmount(this, 300)">300 ⭐</button>
 </div>
                 
-                <!-- Отображение выбранной суммы -->
-                <div id="selected-amount-display" style="display: none; text-align: center; padding: 12px; background: var(--bg-secondary); border-radius: 8px; margin: 10px 0;">
-                   <div id="selected-amount-display" style="display: none;">
-    Вы выбрали: <span id="selected-amount"></span>
+<!-- Отображение выбранной суммы -->
+<div id="selected-amount-display" style="display: none; text-align: center; padding: 12px; background: var(--bg-secondary); border-radius: 8px; margin: 10px 0;">
+    Вы выбрали: <span id="selected-amount"></span> ⭐
 </div>
+
 <button id="withdraw-btn" class="btn btn-primary" onclick="requestWithdraw()" disabled>
     Вывести средства
 </button>
-            </div>
-        </div>
 
         <!-- История операций -->
         <div class="withdraw-history">
@@ -1210,11 +1208,21 @@
 let selectedWithdrawAmount = 0;
 
 // 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ВЫБОРА СУММЫ
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ВЫБОРА СУММЫ
 function selectAmount(button, amount) {
     console.log('🎯 Selecting amount:', amount);
     
     if (!currentUser) {
         showNotification('Пользователь не авторизован', 'error');
+        return;
+    }
+
+    const currentBalance = currentUser.balance || 0;
+    
+    // Проверяем достаточно ли средств
+    if (amount > currentBalance) {
+        showNotification(`Недостаточно средств. Ваш баланс: ${currentBalance} ⭐`, 'error');
+        resetAmountSelection();
         return;
     }
 
@@ -1246,24 +1254,16 @@ function selectAmount(button, amount) {
     // Активируем кнопку вывода
     const withdrawBtn = document.getElementById('withdraw-btn');
     if (withdrawBtn) {
-        const currentBalance = currentUser.balance || 0;
-        
-        if (amount <= currentBalance) {
-            withdrawBtn.disabled = false;
-            withdrawBtn.style.opacity = '1';
-            withdrawBtn.style.cursor = 'pointer';
-            withdrawBtn.textContent = `Вывести ${amount} ⭐`;
-        } else {
-            withdrawBtn.disabled = true;
-            withdrawBtn.style.opacity = '0.5';
-            withdrawBtn.style.cursor = 'not-allowed';
-            withdrawBtn.textContent = 'Недостаточно средств';
-        }
+        withdrawBtn.disabled = false;
+        withdrawBtn.style.opacity = '1';
+        withdrawBtn.style.cursor = 'pointer';
+        withdrawBtn.textContent = `Вывести ${amount} ⭐`;
     }
     
     console.log('✅ Amount selected:', selectedWithdrawAmount);
 }
 
+// 🔧 ФУНКЦИЯ ДЛЯ ОБНОВЛЕНИЯ СОСТОЯНИЯ КНОПОК СУММ
 // 🔧 ФУНКЦИЯ ДЛЯ ОБНОВЛЕНИЯ СОСТОЯНИЯ КНОПОК СУММ
 function updateAmountButtonsState() {
     if (!currentUser) return;
@@ -1287,7 +1287,6 @@ function updateAmountButtonsState() {
         }
     });
 }
-
 // 🔧 ФУНКЦИЯ СБРОСА ВЫБОРА СУММЫ
 function resetAmountSelection() {
     selectedWithdrawAmount = 0;
@@ -1317,6 +1316,7 @@ function resetAmountSelection() {
 }
 
 // 🔧 ОБНОВЛЕНИЕ СТРАНИЦЫ ВЫВОДА
+// Обновление страницы вывода
 function updateWithdrawPage() {
     console.log('🔄 Updating withdraw page...');
     
@@ -1327,7 +1327,7 @@ function updateWithdrawPage() {
         balanceDisplay.textContent = `${currentUser.balance || 0} ⭐`;
     }
     
-    // Обновляем состояние кнопок сумм
+    // Обновляем состояние кнопок сумм на основе баланса
     updateAmountButtonsState();
     
     if (withdrawBtn && currentUser) {
@@ -1337,12 +1337,10 @@ function updateWithdrawPage() {
         if (selectedWithdrawAmount === 0 || selectedWithdrawAmount > currentBalance) {
             withdrawBtn.disabled = true;
             withdrawBtn.style.opacity = '0.5';
-            withdrawBtn.style.cursor = 'not-allowed';
             withdrawBtn.textContent = 'Вывести средства';
         } else {
             withdrawBtn.disabled = false;
             withdrawBtn.style.opacity = '1';
-            withdrawBtn.style.cursor = 'pointer';
             withdrawBtn.textContent = `Вывести ${selectedWithdrawAmount} ⭐`;
         }
     }
@@ -1350,7 +1348,6 @@ function updateWithdrawPage() {
     // Загружаем историю выводов
     loadWithdrawHistory();
 }
-
 // 🔧 ФУНКЦИЯ ЗАПРОСА ВЫВОДА СРЕДСТВ
 async function requestWithdraw() {
     if (!currentUser) {
@@ -8639,60 +8636,8 @@ function resetAmountSelection() {
     }
 }
 
-// Обновление страницы вывода
-function updateWithdrawPage() {
-    console.log('🔄 Updating withdraw page...');
-    
-    const balanceDisplay = document.getElementById('withdraw-balance-display');
-    const withdrawBtn = document.getElementById('withdraw-btn');
-    
-    if (balanceDisplay && currentUser) {
-        balanceDisplay.textContent = `${currentUser.balance || 0} ⭐`;
-    }
-    
-    if (withdrawBtn && currentUser) {
-        const currentBalance = currentUser.balance || 0;
-        
-        // Обновляем состояние кнопок сумм на основе баланса
-        updateAmountButtonsState(currentBalance);
-        
-        // Если сумма не выбрана или недостаточно средств - деактивируем кнопку вывода
-        if (selectedWithdrawAmount === 0 || selectedWithdrawAmount > currentBalance) {
-            withdrawBtn.disabled = true;
-            withdrawBtn.style.opacity = '0.5';
-            withdrawBtn.textContent = 'Вывести средства';
-        } else {
-            withdrawBtn.disabled = false;
-            withdrawBtn.style.opacity = '1';
-            withdrawBtn.textContent = `Вывести ${selectedWithdrawAmount} ⭐`;
-        }
-    }
-    
-    // Загружаем историю выводов
-    loadWithdrawHistory();
-}
 
-// Функция обновления состояния кнопок сумм
-function updateAmountButtonsState(balance) {
-    const amountButtons = document.querySelectorAll('.amount-btn');
-    
-    amountButtons.forEach(btn => {
-        const amount = parseInt(btn.getAttribute('data-amount'));
-        
-        if (amount > balance) {
-            btn.disabled = true;
-            btn.style.opacity = '0.5';
-            btn.style.cursor = 'not-allowed';
-            btn.onclick = null; // Отключаем обработчик клика
-        } else {
-            btn.disabled = false;
-            btn.style.opacity = '1';
-            btn.style.cursor = 'pointer';
-            // Восстанавливаем обработчик клика
-            btn.onclick = function() { selectAmount(amount); };
-        }
-    });
-}
+
 
 // При загрузке страницы вывода
 function initializeWithdrawPage() {
@@ -9587,30 +9532,6 @@ if (allowAdminsCheckbox) {
 function showAdminPaymentsSection() {
     showAdminSection('payments');
     loadWithdrawalRequests();
-}
-       // Обновление страницы вывода
-function updateWithdrawPage() {
-    const balanceDisplay = document.getElementById('withdraw-balance-display');
-    const withdrawBtn = document.getElementById('withdraw-btn');
-    const MIN_WITHDRAWAL = 250;
-    
-    if (balanceDisplay && currentUser) {
-        balanceDisplay.textContent = `${currentUser.balance || 0} ⭐`;
-    }
-    
-    if (withdrawBtn && currentUser) {
-        const currentBalance = currentUser.balance || 0;
-        
-        if (currentBalance < MIN_WITHDRAWAL) {
-    withdrawBtn.disabled = true;
-    withdrawBtn.style.opacity = '0.5';
-    withdrawBtn.textContent = `Минимум ${MIN_WITHDRAWAL} ⭐`;
-} else {
-            withdrawBtn.disabled = false;
-            withdrawBtn.style.opacity = '1';
-            withdrawBtn.textContent = `Вывести ${currentBalance} ⭐`;
-        }
-    }
 }
 
         // Загрузка постов на главную
