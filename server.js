@@ -909,8 +909,6 @@ async function checkSubscription(userId) {
     }
 }
 
-// Полный обработчик /start с проверкой подписки
-// В обработчике /start добавьте логирование
 bot.onText(/\/start(.+)?/, async (msg, match) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
@@ -923,8 +921,10 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         username: msg.from.username 
     });
     
-    
     try {
+        // 🔥 СРАЗУ ОТПРАВЛЯЕМ ОТВЕТ ТЕЛЕГРАМУ
+        await bot.sendChatAction(chatId, 'typing');
+        
         // 🔥 ПРОВЕРКА ПОДПИСКИ НА КАНАЛ
         const isSubscribed = await checkSubscription(userId);
         
