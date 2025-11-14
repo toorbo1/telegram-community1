@@ -222,7 +222,11 @@ async function fixPromocodesTable() {
 async function initDatabase() {
     try {
         console.log('🔄 Initializing simplified database...');
-
+        // Добавляем колонку completed_tasks если ее нет
+        await pool.query(`
+            ALTER TABLE user_profiles 
+            ADD COLUMN IF NOT EXISTS completed_tasks INTEGER DEFAULT 0
+        `);
 await pool.query(`
 CREATE TABLE IF NOT EXISTS referral_links (
     id SERIAL PRIMARY KEY,
