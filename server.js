@@ -4903,6 +4903,7 @@ app.get('/api/tasks', async (req, res) => {
                        AND ut2.user_id = $1 
                        AND ut2.status IN ('active', 'pending_review', 'completed')
                    ) as user_has_task,
+                   -- ДОБАВЛЕНО: проверяем есть ли отклоненные задания у пользователя
                    EXISTS(
                        SELECT 1 FROM user_tasks ut3 
                        WHERE ut3.task_id = t.id 
@@ -4911,7 +4912,7 @@ app.get('/api/tasks', async (req, res) => {
                    ) as user_has_rejected_task
             FROM tasks t 
             LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
-            WHERE t.status = 'active'  -- 🔥 ВАЖНО: показываем только активные задания
+            WHERE t.status = 'active'
         `;
         let params = [userId];
         let paramCount = 1;
@@ -5705,10 +5706,10 @@ app.post('/api/user/tasks/start', async (req, res) => {
     try {
         // Проверяем, выполнял ли пользователь это задание
         const existingTask = await pool.query(`
-            SELECT id FROM user_tasks 
-            WHERE user_id = $1 AND task_id = $2 
-            AND status IN ('active', 'pending_review', 'completed', 'rejected')
-        `, [userId, taskId]);
+    SELECT id FROM user_tasks 
+    WHERE user_id = $1 AND task_id = $2 
+    AND status IN ('active', 'pending_review', 'completed', 'rejected')
+`, [userId, taskId]);
         
         if (existingTask.rows.length > 0) {
             return res.status(400).json({
@@ -5737,19 +5738,8 @@ app.post('/api/user/tasks/start', async (req, res) => {
         const task = taskInfo.rows[0];
         const peopleRequired = task.people_required || 1;
         const completedCount = task.completed_count || 0;
-        const availableTasks = peopleRequired - completedCount;
         
-        console.log('📊 Task availability:', {
-            peopleRequired,
-            completedCount,
-            availableTasks,
-            wasLastTask: availableTasks === 1
-        });
-        
-        // 🔥 ВАЖНОЕ ИЗМЕНЕНИЕ: Проверяем, было ли это последнее доступное задание
-        const wasLastTask = availableTasks === 1;
-        
-        // Проверяем достигнут ли лимит исполнителей
+        // 🔥 ПРОВЕРЯЕМ ДОСТИГНУТ ЛИ ЛИМИТ ИСПОЛНИТЕЛЕЙ
         if (completedCount >= peopleRequired) {
             return res.status(400).json({
                 success: false,
@@ -5766,31 +5756,11 @@ app.post('/api/user/tasks/start', async (req, res) => {
         
         console.log('✅ Task started successfully:', result.rows[0]);
         
-        // 🔥 ВАЖНОЕ ИЗМЕНЕНИЕ: Если это было последнее задание, помечаем задание как завершенное
-        let taskRemovedFromList = false;
-        if (wasLastTask) {
-            console.log('🔥 Это было последнее задание! Помечаем задание как завершенное');
-            
-            await pool.query(`
-                UPDATE tasks 
-                SET status = 'completed', completed_at = CURRENT_TIMESTAMP
-                WHERE id = $1
-            `, [taskId]);
-            
-            taskRemovedFromList = true;
-            
-            // 🔥 ОПОВЕЩАЕМ ВСЕХ ПОЛЬЗОВАТЕЛЕЙ ЧЕРЕЗ WebSocket (если реализован)
-            // notifyAllUsersTaskCompleted(taskId);
-        }
-        
         res.json({
             success: true,
             message: 'Задание начато!',
-            userTaskId: result.rows[0].id,
-            taskRemovedFromList: taskRemovedFromList, // 🔥 Новое поле
-            wasLastTask: wasLastTask // 🔥 Для отладки
+            userTaskId: result.rows[0].id
         });
-        
     } catch (error) {
         console.error('❌ Start task error:', error);
         res.status(500).json({
