@@ -2874,7 +2874,7 @@ async function showUserDetailedStats(chatId, targetUserId, messageId) {
 }
 
 // В server.js добавьте этот endpoint
-// Исправленный endpoint для топа пользователей
+// Обновленный endpoint для топа пользователей
 app.get('/api/leaderboard/top', async (req, res) => {
     try {
         console.log('🏆 Loading leaderboard...');
@@ -2898,6 +2898,19 @@ app.get('/api/leaderboard/top', async (req, res) => {
                 created_at ASC
             LIMIT 10
         `);
+        
+        // Форматируем данные для отображения
+        const formattedUsers = topUsers.rows.map(user => ({
+            user_id: user.user_id,
+            // Используем username вместо "Пользователь"
+            username: user.username || `user_${user.user_id}`,
+            first_name: user.first_name,
+            // Реальные выполненные задания вместо 0
+            completed_tasks: user.completed_tasks || 0,
+            balance: user.balance || 0,
+            referral_count: user.referral_count || 0,
+            created_at: user.created_at
+        }));
         
         // Получаем место текущего пользователя (если передан user_id)
         const userId = req.query.userId;
@@ -2925,15 +2938,19 @@ app.get('/api/leaderboard/top', async (req, res) => {
             
             if (userRank.rows.length > 0) {
                 currentUserRank = userRank.rows[0].position;
-                currentUserStats = userRank.rows[0];
+                currentUserStats = {
+                    ...userRank.rows[0],
+                    username: userRank.rows[0].username || `user_${userId}`,
+                    completed_tasks: userRank.rows[0].completed_tasks || 0
+                };
             }
         }
         
-        console.log(`✅ Leaderboard loaded: ${topUsers.rows.length} users`);
+        console.log(`✅ Leaderboard loaded: ${formattedUsers.length} users`);
         
         res.json({
             success: true,
-            topUsers: topUsers.rows,
+            topUsers: formattedUsers,
             currentUserRank: currentUserRank,
             currentUserStats: currentUserStats,
             timestamp: new Date().toISOString()
@@ -2947,7 +2964,164 @@ app.get('/api/leaderboard/top', async (req, res) => {
         });
     }
 });
-
+// Удаление пользователя из топа (только для главного админа)
+app.post('/api/admin/leaderboard/remove-user', async (req, res) => {
+    const { adminId, targetUserId } = req.body;
+    
+    console.log('🗑️ Remove user from leaderboard request:', { adminId, targetUserId });
+    
+    try {
+        // Проверяем права - только главный админ
+        if (parseInt(adminId) !== ADMIN_ID) {
+            return res.status(403).json({
+                success: false,
+                error: 'Только главный администратор может удалять пользователей из топа!'
+            });
+        }
+        
+        if (!targetUserId) {
+            return res.status(400).json({
+                success: false,
+                error: 'ID пользователя обязателен'
+            });
+        }
+        
+        // Проверяем существование пользователя
+        const userCheck = await pool.query(
+            'SELECT user_id, username, first_name FROM user_profiles WHERE user_id = $1',
+            [targetUserId]
+        );
+        
+        if (userCheck.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Пользователь не найден'
+            });
+        }
+        
+        const user = userCheck.rows[0];
+        
+        // Сбрасываем статистику пользователя (задания и баланс)
+        await pool.query(`
+            UPDATE user_profiles 
+            SET completed_tasks = 0, 
+                balance = 0,
+                referral_count = 0,
+                referral_earned = 0
+            WHERE user_id = $1
+        `, [targetUserId]);
+        
+        // Также удаляем все задания пользователя
+        await pool.query(`
+            DELETE FROM user_tasks 
+            WHERE user_id = $1
+        `, [targetUserId]);
+        
+        // Удаляем проверки заданий пользователя
+        await pool.query(`
+            DELETE FROM task_verifications 
+            WHERE user_id = $1
+        `, [targetUserId]);
+        
+        console.log(`✅ User ${user.username} (ID: ${targetUserId}) removed from leaderboard`);
+        
+        // Логируем действие
+        await pool.query(`
+            INSERT INTO admin_actions (admin_id, action_type, target_id, description) 
+            VALUES ($1, $2, $3, $4)
+        `, [adminId, 'remove_from_leaderboard', targetUserId, 
+            `Пользователь ${targetUserId} (@${user.username}) удален из топа`]);
+        
+        res.json({
+            success: true,
+            message: `Пользователь @${user.username} удален из топа!`,
+            removedUser: {
+                id: targetUserId,
+                username: user.username,
+                firstName: user.first_name
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Remove user from leaderboard error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка базы данных: ' + error.message
+        });
+    }
+});
+// Получение детальной информации о пользователе для админа
+app.get('/api/admin/leaderboard/user-info/:userId', async (req, res) => {
+    const { userId } = req.params;
+    const { adminId } = req.query;
+    
+    try {
+        // Проверяем права администратора
+        const isAdmin = await checkAdminAccess(adminId);
+        if (!isAdmin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Доступ запрещен'
+            });
+        }
+        
+        // Получаем детальную информацию о пользователе
+        const userInfo = await pool.query(`
+            SELECT 
+                up.user_id,
+                up.username,
+                up.first_name,
+                up.last_name,
+                up.balance,
+                up.completed_tasks,
+                up.referral_count,
+                up.referral_earned,
+                up.created_at,
+                up.is_admin,
+                -- Статистика заданий
+                COUNT(ut.id) as total_tasks,
+                COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_user_tasks,
+                COUNT(CASE WHEN ut.status = 'rejected' THEN 1 END) as rejected_tasks,
+                COUNT(CASE WHEN ut.status = 'pending_review' THEN 1 END) as pending_tasks,
+                -- Статистика выплат
+                COUNT(wr.id) as withdrawal_requests,
+                COUNT(CASE WHEN wr.status = 'completed' THEN 1 END) as completed_withdrawals,
+                COALESCE(SUM(CASE WHEN wr.status = 'completed' THEN wr.amount ELSE 0 END), 0) as total_withdrawn
+            FROM user_profiles up
+            LEFT JOIN user_tasks ut ON up.user_id = ut.user_id
+            LEFT JOIN withdrawal_requests wr ON up.user_id = wr.user_id
+            WHERE up.user_id = $1
+            GROUP BY up.user_id
+        `, [userId]);
+        
+        if (userInfo.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Пользователь не найден'
+            });
+        }
+        
+        const user = userInfo.rows[0];
+        
+        res.json({
+            success: true,
+            user: user,
+            statistics: {
+                total_earned: (user.balance || 0) + (user.total_withdrawn || 0),
+                task_success_rate: user.total_tasks > 0 ? 
+                    Math.round((user.completed_user_tasks / user.total_tasks) * 100) : 0,
+                registration_date: new Date(user.created_at).toLocaleDateString('ru-RU')
+            }
+        });
+        
+    } catch (error) {
+        console.error('Get user info error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
 // Простой endpoint для тестирования топа
 app.get('/api/leaderboard/simple', async (req, res) => {
     try {
