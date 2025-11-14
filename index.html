@@ -13,6 +13,26 @@
     <link rel="stylesheet" href="animations.css">
     <link rel="stylesheet" href="mobile.css">
     <style>
+        .amount-btn.selected {
+    border-color: var(--gold);
+    background: var(--gold);
+    color: white;
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+}
+
+.amount-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.amount-btn:disabled:hover {
+    border-color: var(--border);
+    background: var(--card-bg);
+    transform: none;
+}
         .amount-btn {
     background: var(--card-bg);
     border: 2px solid var(--border);
@@ -791,7 +811,18 @@
                     <button class="amount-btn" data-amount="300" onclick="selectAmount(300)">300 ⭐</button>
                 </div>
                 
-     
+                <!-- Отображение выбранной суммы -->
+                <div id="selected-amount-display" style="display: none; text-align: center; padding: 12px; background: var(--bg-secondary); border-radius: 8px; margin: 10px 0;">
+                    <div style="font-size: 14px; color: var(--text-secondary);">Вы выбрали:</div>
+                    <div id="selected-amount" style="font-size: 18px; font-weight: 700; color: var(--gold); margin-top: 4px;"></div>
+                </div>
+
+                <!-- Кнопка вывода -->
+                <button id="withdraw-btn" class="btn btn-primary btn-full" onclick="requestWithdraw()" disabled style="opacity: 0.5;">
+                    Вывести средства
+                </button>
+            </div>
+        </div>
 
         <!-- История операций -->
         <div class="withdraw-history">
@@ -846,7 +877,7 @@
                     <div>
                         <h4 style="margin-bottom: 8px;">💳 Выводите деньги</h4>
                         <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">
-                            Получайте выплаты на карту, электронные кошельки или криптовалюту. Минимальная сумма вывода - 50 рублей.
+                            Получайте выплаты на карту, электронные кошельки или криптовалюту. Минимальная сумма вывода - 50 звезд.
                         </p>
                     </div>
                 </div>
@@ -5075,6 +5106,9 @@ async function loadUserTasksForCategory(status) {
         console.error(`❌ Error loading ${status} tasks:`, error);
     }
 }
+
+
+
 // 🔧 ФУНКЦИЯ ДЛЯ ПРИНУДИТЕЛЬНОГО ИСПРАВЛЕНИЯ LAYOUT
 function fixLayoutIssues() {
     console.log('🔧 Applying layout fixes...');
@@ -8215,10 +8249,11 @@ setTimeout(addEmergencyButton, 2000);
                 })} (МСК)`;
             }
         }
+// 🔧 ФУНКЦИИ ДЛЯ СИСТЕМЫ ВЫВОДА СРЕДСТВ
+
 // Глобальная переменная для хранения выбранной суммы
 let selectedWithdrawAmount = 0;
 
-// Функция выбора суммы
 // Функция выбора суммы
 function selectAmount(amount) {
     console.log('🎯 Selecting amount:', amount);
@@ -8265,8 +8300,8 @@ function selectAmount(amount) {
     
     console.log('✅ Amount selected:', selectedWithdrawAmount);
 }
-// Обновленная функция запроса вывода средств
-// Обновленная функция запроса вывода средств
+
+// Функция запроса вывода средств
 async function requestWithdraw() {
     if (!currentUser) {
         showNotification('Пользователь не авторизован', 'error');
@@ -8328,7 +8363,6 @@ async function requestWithdraw() {
             updateWithdrawPage();
             resetAmountSelection();
             
-            // ИСПРАВЛЕННАЯ СТРОКА: используем сохраненную переменную
             showNotification(`✅ Заявка на вывод ${withdrawnAmount} ⭐ отправлена! Ожидайте подтверждения администратора.`, 'success');
             
             // Обновляем историю операций
@@ -8345,7 +8379,6 @@ async function requestWithdraw() {
     }
 }
 
-// Функция сброса выбора суммы
 // Функция сброса выбора суммы
 function resetAmountSelection() {
     selectedWithdrawAmount = 0;
@@ -8370,7 +8403,6 @@ function resetAmountSelection() {
     }
 }
 
-// Обновление страницы вывода
 // Обновление страницы вывода
 function updateWithdrawPage() {
     console.log('🔄 Updating withdraw page...');
@@ -8403,7 +8435,7 @@ function updateWithdrawPage() {
     // Загружаем историю выводов
     loadWithdrawHistory();
 }
-// Функция обновления состояния кнопок сумм
+
 // Функция обновления состояния кнопок сумм
 function updateAmountButtonsState(balance) {
     const amountButtons = document.querySelectorAll('.amount-btn');
@@ -8434,6 +8466,7 @@ function initializeWithdrawPage() {
         resetAmountSelection();
     }
 }
+
 // Функция загрузки истории выводов
 async function loadWithdrawHistory() {
     if (!currentUser) return;
@@ -8448,7 +8481,6 @@ async function loadWithdrawHistory() {
     }
 }
 
-
 // Функция отображения истории выводов
 function displayWithdrawHistory(operations) {
     const container = document.getElementById('withdraw-history-list');
@@ -8462,7 +8494,7 @@ function displayWithdrawHistory(operations) {
                 <div style="font-size: 48px; margin-bottom: 16px;">💫</div>
                 <div>Нет операций по выводу</div>
                 <div style="font-size: 12px; margin-top: 8px;">
-                    Минимальная сумма для вывода: 200 ⭐
+                    Минимальная сумма для вывода: 50 ⭐
                 </div>
             </div>
         `;
@@ -8522,6 +8554,12 @@ function displayWithdrawHistory(operations) {
         container.appendChild(operationElement);
     });
 }
+
+// 🔧 ЭКСПОРТ ФУНКЦИЙ
+window.selectAmount = selectAmount;
+window.requestWithdraw = requestWithdraw;
+window.updateWithdrawPage = updateWithdrawPage;
+window.loadWithdrawHistory = loadWithdrawHistory;
 // 🔧 ИСПРАВЛЕННАЯ функция загрузки заявок на вывод
 async function loadWithdrawalRequests() {
     console.log('🔄 Loading withdrawal requests...');
