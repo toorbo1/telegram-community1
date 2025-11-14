@@ -5699,7 +5699,7 @@ app.post('/api/user/tasks/start', async (req, res) => {
     if (!userId || !taskId) {
         return res.status(400).json({
             success: false,
-            error: 'Missing required fields'
+            error: 'Отсутствуют обязательные поля: userId и taskId'
         });
     }
     
@@ -5708,14 +5708,37 @@ app.post('/api/user/tasks/start', async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // Блокируем задание для предотвращения race condition
-        const taskLock = await client.query(`
+        // 1. Проверяем существование пользователя
+        const userCheck = await client.query(
+            'SELECT user_id, is_blocked FROM user_profiles WHERE user_id = $1',
+            [userId]
+        );
+        
+        if (userCheck.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({
+                success: false,
+                error: 'Пользователь не найден'
+            });
+        }
+        
+        const user = userCheck.rows[0];
+        if (user.is_blocked) {
+            await client.query('ROLLBACK');
+            return res.status(403).json({
+                success: false,
+                error: 'Ваш аккаунт заблокирован'
+            });
+        }
+
+        // 2. Проверяем существование задания
+        const taskCheck = await client.query(`
             SELECT * FROM tasks 
             WHERE id = $1 AND status = 'active'
             FOR UPDATE
         `, [taskId]);
 
-        if (taskLock.rows.length === 0) {
+        if (taskCheck.rows.length === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({
                 success: false,
@@ -5723,10 +5746,10 @@ app.post('/api/user/tasks/start', async (req, res) => {
             });
         }
 
-        const task = taskLock.rows[0];
+        const task = taskCheck.rows[0];
         const peopleRequired = task.people_required || 1;
 
-        // Получаем текущее количество выполненных заданий
+        // 3. Проверяем количество выполненных заданий
         const completedCountResult = await client.query(`
             SELECT COUNT(*) as count FROM user_tasks 
             WHERE task_id = $1 AND status = 'completed'
@@ -5737,85 +5760,32 @@ app.post('/api/user/tasks/start', async (req, res) => {
 
         console.log(`📊 Task ${taskId}: completed ${completedCount}, required ${peopleRequired}, available ${availableTasks}`);
 
-        // 🔥 КРИТИЧЕСКАЯ ЛОГИКА: Если осталось 1 выполнение
-        if (availableTasks === 1) {
-            console.log(`🎯 LAST SLOT: Task ${taskId} has only 1 slot left!`);
+        // 4. Проверяем, не выполнял ли пользователь уже это задание
+        const existingTask = await client.query(`
+            SELECT id, status FROM user_tasks 
+            WHERE user_id = $1 AND task_id = $2 
+            AND status IN ('active', 'pending_review', 'completed')
+        `, [userId, taskId]);
+        
+        if (existingTask.rows.length > 0) {
+            await client.query('ROLLBACK');
+            const status = existingTask.rows[0].status;
+            let errorMessage = 'Вы уже выполняете это задание';
             
-            // Проверяем, выполнял ли пользователь это задание
-            const existingTask = await client.query(`
-                SELECT id FROM user_tasks 
-                WHERE user_id = $1 AND task_id = $2 
-                AND status IN ('active', 'pending_review', 'completed')
-            `, [userId, taskId]);
-            
-            if (existingTask.rows.length > 0) {
-                await client.query('ROLLBACK');
-                return res.status(400).json({
-                    success: false,
-                    error: 'Вы уже выполняли это задание'
-                });
+            if (status === 'pending_review') {
+                errorMessage = 'Задание уже отправлено на проверку';
+            } else if (status === 'completed') {
+                errorMessage = 'Вы уже выполнили это задание';
             }
-
-            // Создаем запись о начале задания
-            const userTaskResult = await client.query(`
-                INSERT INTO user_tasks (user_id, task_id, status) 
-                VALUES ($1, $2, 'active')
-                RETURNING *
-            `, [userId, taskId]);
-
-            // 🔥 ПОМЕЧАЕМ ЗАДАНИЕ КАК ВЫПОЛНЕННОЕ - оно исчезнет у всех пользователей
-            await client.query(`
-                UPDATE tasks 
-                SET status = 'completed', 
-                    completed_at = CURRENT_TIMESTAMP,
-                    last_completed = CURRENT_TIMESTAMP
-                WHERE id = $1
-            `, [taskId]);
-
-            console.log(`✅ LAST SLOT TAKEN: Task ${taskId} marked as completed and hidden from all users`);
-
-            await client.query('COMMIT');
-
-            res.json({
-                success: true,
-                message: '✅ Задание начато! Это было последнее доступное выполнение.',
-                userTaskId: userTaskResult.rows[0].id,
-                wasLastSlot: true
-            });
-
-        } else if (availableTasks > 1) {
-            // Обычная логика для заданий с несколькими доступными выполнениями
-            const existingTask = await client.query(`
-                SELECT id FROM user_tasks 
-                WHERE user_id = $1 AND task_id = $2 
-                AND status IN ('active', 'pending_review', 'completed')
-            `, [userId, taskId]);
             
-            if (existingTask.rows.length > 0) {
-                await client.query('ROLLBACK');
-                return res.status(400).json({
-                    success: false,
-                    error: 'Вы уже выполняли это задание'
-                });
-            }
-
-            const userTaskResult = await client.query(`
-                INSERT INTO user_tasks (user_id, task_id, status) 
-                VALUES ($1, $2, 'active')
-                RETURNING *
-            `, [userId, taskId]);
-
-            await client.query('COMMIT');
-
-            res.json({
-                success: true,
-                message: 'Задание начато!',
-                userTaskId: userTaskResult.rows[0].id,
-                wasLastSlot: false
+            return res.status(400).json({
+                success: false,
+                error: errorMessage
             });
+        }
 
-        } else {
-            // Задание уже полностью выполнено
+        // 5. Если заданий не осталось
+        if (availableTasks <= 0) {
             await client.query('ROLLBACK');
             return res.status(400).json({
                 success: false,
@@ -5823,17 +5793,143 @@ app.post('/api/user/tasks/start', async (req, res) => {
             });
         }
 
+        // 6. Создаем запись о начале задания
+        const userTaskResult = await client.query(`
+            INSERT INTO user_tasks (user_id, task_id, status) 
+            VALUES ($1, $2, 'active')
+            RETURNING *
+        `, [userId, taskId]);
+
+        // 7. Если это последнее доступное выполнение - помечаем задание как выполненное
+        let wasLastSlot = false;
+        if (availableTasks === 1) {
+            await client.query(`
+                UPDATE tasks 
+                SET status = 'completed', 
+                    completed_at = CURRENT_TIMESTAMP
+                WHERE id = $1
+            `, [taskId]);
+            wasLastSlot = true;
+            console.log(`✅ LAST SLOT TAKEN: Task ${taskId} marked as completed`);
+        }
+
+        await client.query('COMMIT');
+
+        res.json({
+            success: true,
+            message: wasLastSlot ? 
+                '✅ Задание начато! Это было последнее доступное выполнение.' : 
+                '✅ Задание успешно начато!',
+            userTaskId: userTaskResult.rows[0].id,
+            wasLastSlot: wasLastSlot
+        });
+
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('❌ Start task error:', error);
+        
+        // Более детальное сообщение об ошибке
+        let errorMessage = 'Внутренняя ошибка сервера';
+        if (error.code === '23505') { // unique violation
+            errorMessage = 'Вы уже начали это задание';
+        } else if (error.code === '23503') { // foreign key violation
+            errorMessage = 'Задание или пользователь не найден';
+        }
+        
         res.status(500).json({
             success: false,
-            error: 'Database error: ' + error.message
+            error: errorMessage,
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     } finally {
         client.release();
     }
 });
+// Добавьте этот endpoint для диагностики
+app.get('/api/debug/start-task-issues', async (req, res) => {
+    const { userId, taskId } = req.query;
+    
+    try {
+        const results = {};
+        
+        // Проверка пользователя
+        const userCheck = await pool.query(
+            'SELECT user_id, username, is_blocked FROM user_profiles WHERE user_id = $1',
+            [userId]
+        );
+        results.user = userCheck.rows[0] || { error: 'User not found' };
+        
+        // Проверка задания
+        const taskCheck = await pool.query(
+            'SELECT * FROM tasks WHERE id = $1',
+            [taskId]
+        );
+        results.task = taskCheck.rows[0] || { error: 'Task not found' };
+        
+        // Проверка существующих user_tasks
+        if (userId && taskId) {
+            const existingTasks = await pool.query(`
+                SELECT * FROM user_tasks 
+                WHERE user_id = $1 AND task_id = $2
+            `, [userId, taskId]);
+            results.existing_tasks = existingTasks.rows;
+        }
+        
+        // Статистика выполнения задания
+        if (taskId) {
+            const taskStats = await pool.query(`
+                SELECT 
+                    COUNT(*) as total_attempts,
+                    COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_count,
+                    COUNT(CASE WHEN status = 'active' THEN 1 END) as active_count,
+                    COUNT(CASE WHEN status = 'pending_review' THEN 1 END) as pending_count
+                FROM user_tasks 
+                WHERE task_id = $1
+            `, [taskId]);
+            results.task_stats = taskStats.rows[0];
+        }
+        
+        res.json({
+            success: true,
+            debug: results,
+            timestamp: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        console.error('Debug start task error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+async function verifyTaskTables() {
+    try {
+        console.log('🔍 Verifying task-related tables structure...');
+        
+        // Проверяем основные колонки в tasks
+        const tasksColumns = await pool.query(`
+            SELECT column_name, data_type, is_nullable 
+            FROM information_schema.columns 
+            WHERE table_name = 'tasks' 
+            AND column_name IN ('id', 'title', 'description', 'price', 'status', 'people_required')
+        `);
+        
+        console.log('✅ Tasks table columns:', tasksColumns.rows.map(r => r.column_name));
+        
+        // Проверяем user_tasks
+        const userTasksColumns = await pool.query(`
+            SELECT column_name, data_type, is_nullable 
+            FROM information_schema.columns 
+            WHERE table_name = 'user_tasks'
+        `);
+        
+        console.log('✅ User_tasks table columns:', userTasksColumns.rows.map(r => r.column_name));
+        
+    } catch (error) {
+        console.error('❌ Error verifying tables:', error);
+    }
+}
 // Get user tasks
 app.get('/api/user/:userId/tasks', async (req, res) => {
     const userId = req.params.userId;
