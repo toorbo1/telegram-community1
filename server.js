@@ -579,6 +579,20 @@ await addMissingUserColumns();
         console.error('❌ Database initialization error:', error);
     }
 }
+// Вызовите эту функцию в initDatabase()
+await addCompletedTasksColumn();
+// В функции initDatabase() добавьте:
+async function addCompletedTasksColumn() {
+    try {
+        await pool.query(`
+            ALTER TABLE user_profiles 
+            ADD COLUMN IF NOT EXISTS completed_tasks INTEGER DEFAULT 0
+        `);
+        console.log('✅ Column completed_tasks added to user_profiles');
+    } catch (error) {
+        console.log('ℹ️ Column completed_tasks already exists or error:', error.message);
+    }
+}
 async function createPromocodesTable() {
     try {
         console.log('🔧 Creating/verifying promocodes table...');
@@ -2874,6 +2888,7 @@ async function showUserDetailedStats(chatId, targetUserId, messageId) {
 }
 
 // Получение топа пользователей с реальными данными
+// Получение топа пользователей с реальными данными
 app.get('/api/leaderboard/top', async (req, res) => {
     try {
         console.log('🏆 Loading improved leaderboard...');
@@ -2884,25 +2899,34 @@ app.get('/api/leaderboard/top', async (req, res) => {
                 user_id,
                 username,
                 first_name,
-                -- РЕАЛЬНЫЕ выполненные задания
-                COALESCE(completed_tasks, 0) as completed_tasks,
+                -- РЕАЛЬНЫЕ выполненные задания из user_tasks
+                COALESCE((
+                    SELECT COUNT(*) 
+                    FROM user_tasks ut 
+                    WHERE ut.user_id = user_profiles.user_id 
+                    AND ut.status = 'completed'
+                ), 0) as completed_tasks,
                 COALESCE(balance, 0) as balance,
                 COALESCE(referral_count, 0) as referral_count,
                 created_at
             FROM user_profiles 
-            WHERE COALESCE(completed_tasks, 0) > 0  -- Только пользователи с выполненными заданиями
-               OR COALESCE(balance, 0) > 0          -- Или с балансом
+            WHERE COALESCE(balance, 0) > 0 
+               OR EXISTS (
+                   SELECT 1 FROM user_tasks ut 
+                   WHERE ut.user_id = user_profiles.user_id 
+                   AND ut.status = 'completed'
+               )
             ORDER BY 
-                COALESCE(completed_tasks, 0) DESC,  -- Сначала по выполненным заданиям
-                COALESCE(balance, 0) DESC,           -- Затем по балансу
-                created_at ASC                       -- Затем по дате регистрации
+                completed_tasks DESC,
+                COALESCE(balance, 0) DESC,
+                created_at ASC
             LIMIT 10
         `);
         
         // Форматируем данные для отображения
         const formattedUsers = topUsers.rows.map(user => ({
             user_id: user.user_id,
-            username: user.username || `user_${user.user_id}`, // username вместо "Пользователь"
+            username: user.username || `user_${user.user_id}`,
             first_name: user.first_name,
             completed_tasks: user.completed_tasks || 0, // Реальные выполненные задания
             balance: user.balance || 0,
@@ -2921,14 +2945,40 @@ app.get('/api/leaderboard/top', async (req, res) => {
                     up.user_id,
                     up.first_name,
                     up.username,
-                    COALESCE(up.completed_tasks, 0) as completed_tasks,
+                    COALESCE((
+                        SELECT COUNT(*) 
+                        FROM user_tasks ut 
+                        WHERE ut.user_id = up.user_id 
+                        AND ut.status = 'completed'
+                    ), 0) as completed_tasks,
                     COALESCE(up.balance, 0) as balance,
                     COALESCE(up.referral_count, 0) as referral_count,
                     (SELECT COUNT(*) + 1 
-                     FROM user_profiles 
-                     WHERE COALESCE(completed_tasks, 0) > COALESCE(up.completed_tasks, 0)
-                        OR (COALESCE(completed_tasks, 0) = COALESCE(up.completed_tasks, 0) 
-                            AND COALESCE(balance, 0) > COALESCE(up.balance, 0))
+                     FROM user_profiles up2
+                     WHERE (
+                         COALESCE((
+                             SELECT COUNT(*) 
+                             FROM user_tasks ut2 
+                             WHERE ut2.user_id = up2.user_id 
+                             AND ut2.status = 'completed'
+                         ), 0) > COALESCE((
+                             SELECT COUNT(*) 
+                             FROM user_tasks ut3 
+                             WHERE ut3.user_id = up.user_id 
+                             AND ut3.status = 'completed'
+                         ), 0)
+                         OR (COALESCE((
+                             SELECT COUNT(*) 
+                             FROM user_tasks ut2 
+                             WHERE ut2.user_id = up2.user_id 
+                             AND ut2.status = 'completed'
+                         ), 0) = COALESCE((
+                             SELECT COUNT(*) 
+                             FROM user_tasks ut3 
+                             WHERE ut3.user_id = up.user_id 
+                             AND ut3.status = 'completed'
+                         ), 0) AND COALESCE(up2.balance, 0) > COALESCE(up.balance, 0))
+                     )
                     ) as position
                 FROM user_profiles up
                 WHERE up.user_id = $1
