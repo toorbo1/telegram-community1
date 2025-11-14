@@ -960,20 +960,20 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
             try {
                 await client.query('BEGIN');
                 
-                    // 1. Даем 2 звезды новому пользователю за переход по ссылке
-    await client.query(`
-        UPDATE user_profiles 
-        SET balance = COALESCE(balance, 0) + 2,
-            is_first_login = false
-        WHERE user_id = $1
-    `, [userId]);
-    
-    // 2. Обновляем счетчик рефералов у пригласившего
-    await client.query(`
-        UPDATE user_profiles 
-        SET referral_count = COALESCE(referral_count, 0) + 1
-        WHERE user_id = $1
-    `, [referredBy]);
+                // 1. Даем 2 звезды новому пользователю за переход по ссылке
+                await client.query(`
+                    UPDATE user_profiles 
+                    SET balance = COALESCE(balance, 0) + 2,
+                        is_first_login = false
+                    WHERE user_id = $1
+                `, [userId]);
+                
+                // 2. Обновляем счетчик рефералов у пригласившего
+                await client.query(`
+                    UPDATE user_profiles 
+                    SET referral_count = COALESCE(referral_count, 0) + 1
+                    WHERE user_id = $1
+                `, [referredBy]);
                 
                 await client.query('COMMIT');
                 
@@ -986,10 +986,11 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                     try {
                         await bot.sendMessage(
                             referredBy,
-                            `🎉 <b>Новый реферал!</b>\n\n` +
-                            `Пользователь ${userData.firstName} (@${userData.username}) перешел по вашей ссылке!\n\n` +
-                            `👤 Реферал получил: <b>2⭐</b> за регистрацию\n` +
-                            `💫 Теперь вы будете получать 10% от всех его заработков! 🚀`,
+                            `🎉 <b>НОВЫЙ РЕФЕРАЛ В КОМАНДЕ!</b>\n\n` +
+                            `👤 <b>${userData.firstName}</b> (@${userData.username}) присоединился по вашей ссылке!\n\n` +
+                            `✨ <b>Реферал получил:</b> 2⭐ за регистрацию\n` +
+                            `💫 <b>Ваш бонус:</b> 10% от всех его заработков!\n\n` +
+                            `🚀 Продолжайте приглашать друзей и увеличивайте свой пассивный доход!`,
                             { parse_mode: 'HTML' }
                         );
                     } catch (botError) {
@@ -1013,64 +1014,94 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         
         const finalUserProfile = updatedUser.rows[0];
         
-        // 🔥 ФОРМИРУЕМ ПРИВЕТСТВЕННОЕ СООБЩЕНИЕ
-        let welcomeMessage = `👋 <b>Добро пожаловать в LinkGold, ${userData.firstName}!</b>\n\n`;
+        // 🔥 ФОРМИРУЕМ ПРИВЕТСТВЕННОЕ СООБЩЕНИЕ С ФОТО
+        let welcomeMessage = `🌟 <b>ДОБРО ПОЖАЛОВАТЬ В LINKGOLD, ${userData.firstName.toUpperCase()}!</b>\n\n`;
         
         if (referralBonusGiven) {
-            welcomeMessage += `🎁 <b>Вы получили 2⭐ за регистрацию по реферальной ссылке!</b>\n`;
-            welcomeMessage += `💫 Ваш баланс: <b>${finalUserProfile.balance || 0}⭐</b>\n\n`;
+            welcomeMessage += `🎁 <b>БОНУС ЗА РЕГИСТРАЦИЮ: 2⭐ НА ВАШ СЧЕТ!</b>\n`;
+            welcomeMessage += `💫 <b>Текущий баланс:</b> ${finalUserProfile.balance || 0}⭐\n\n`;
         }
         
-        welcomeMessage += `🎯 <b>Как начать зарабатывать:</b>\n`;
-        welcomeMessage += `1. Выберите задание из списка\n`;
-        welcomeMessage += `2. Выполните его по инструкции\n`;
-        welcomeMessage += `3. Отправьте скриншот на проверку\n`;
-        welcomeMessage += `4. Получите оплату после одобрения\n\n`;
+        welcomeMessage += `🚀 <b>ВАШ ПУТЬ К ЗАРАБОТКУ:</b>\n`;
+        welcomeMessage += `├ 1. 📋 Выбирайте задания из списка\n`;
+        welcomeMessage += `├ 2. 📱 Выполняйте по инструкции\n`;
+        welcomeMessage += `├ 3. 🖼 Отправляйте скриншот на проверку\n`;
+        welcomeMessage += `└ 4. 💰 Получайте оплату после одобрения\n\n`;
         
-        welcomeMessage += `🎁 <b>Реферальная система:</b>\n`;
-        welcomeMessage += `• Вы получаете <b>90%</b> от своего заработка\n`;
-        welcomeMessage += `• Пригласивший получает <b>10%</b> от вашего заработка\n`;
-        welcomeMessage += `• Автоматически с каждого задания\n\n`;
+        welcomeMessage += `👥 <b>РЕФЕРАЛЬНАЯ СИСТЕМА:</b>\n`;
+        welcomeMessage += `├ 💎 <b>Вам:</b> 90% от заработка\n`;
+        welcomeMessage += `├ 🤝 <b>Пригласившему:</b> 10% от вашего заработка\n`;
+        welcomeMessage += `└ 🔄 <b>Автоматически</b> с каждого задания\n\n`;
         
-        welcomeMessage += `🔗 <b>Ваша реферальная ссылка:</b>\n`;
+        welcomeMessage += `📢 <b>ВАША ПЕРСОНАЛЬНАЯ ССЫЛКА:</b>\n`;
         welcomeMessage += `<code>https://t.me/LinkGoldMoney_bot?start=${userReferralCode}</code>`;
         
-        // Отправляем сообщение пользователю
-        await bot.sendMessage(
-            chatId,
-            welcomeMessage,
-            {
-                parse_mode: 'HTML',
-                reply_markup: {
-                    inline_keyboard: [
-                        [
-                            {
-                                text: '📢 Наш канал',
-                                url: 'https://t.me/LinkGoldChannel1'
-                            }
-                        ],
-                        [
-                            {
-                                text: '👥 Поделиться с друзьями',
-                                url: `https://t.me/share/url?url=https://t.me/LinkGoldMoney_bot?start=${userReferralCode}&text=Присоединяйся к LinkGold и начинай зарабатывать Telegram Stars! 🚀 Получи 2⭐ за регистрацию!`
-                            }
-                        ],
-                        [
-                            {
-                                text: '📂 Наши отзывы',
-                                url: 'https://t.me/repLinkGold'
-                            }
-                        ],
-                        [
-                            {
-                                text: '🖊 Гайды на задания',
-                                url: 'https://t.me/LinkGoldGuide'
-                            }
-                        ],
-                    ]
+        // Отправляем фото с приветственным сообщением
+        try {
+            // Сначала отправляем фото
+            await bot.sendPhoto(
+                chatId,
+                'https://Airbrush-IMAGE-ENHANCER-1763128623415-1763128623415.png', // Замените на реальный URL
+                {
+                    caption: welcomeMessage,
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: [
+                           
+                            [
+                                {
+                                    text: '📢 НАШ КАНАЛ',
+                                    url: 'https://t.me/LinkGoldChannel1'
+                                },
+                                {
+                                    text: '💬 ОТЗЫВЫ',
+                                    url: 'https://t.me/repLinkGold'
+                                }
+                            ],
+                            [
+                                {
+                                    text: '👥 ПРИГЛАСИТЬ ДРУЗЕЙ',
+                                    url: `https://t.me/share/url?url=https://t.me/LinkGoldMoney_bot?start=${userReferralCode}&text=🚀 Присоединяйся к LinkGold и начинай зарабатывать Telegram Stars! Получи 2⭐ за регистрацию и доступ к лучшим заданиям! 💫`
+                                }
+                            ],
+                            [
+                                {
+                                    text: '📚 ГАЙДЫ ПО ЗАДАНИЯМ',
+                                    url: 'https://t.me/LinkGoldGuide'
+                                },
+                               
+                            ]
+                        ]
+                    }
                 }
-            }
-        );
+            );
+        } catch (photoError) {
+            console.log('Не удалось отправить фото, отправляем текстовое сообщение:', photoError.message);
+            // Фолбэк на текстовое сообщение если фото не отправилось
+            await bot.sendMessage(
+                chatId,
+                welcomeMessage,
+                {
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                {
+                                    text: '🎯 НАЧАТЬ ЗАРАБАТЫВАТЬ',
+                                    callback_data: 'start_earning'
+                                }
+                            ],
+                            [
+                                {
+                                    text: '👥 ПРИГЛАСИТЬ ДРУЗЕЙ',
+                                    url: `https://t.me/share/url?url=https://t.me/LinkGoldMoney_bot?start=${userReferralCode}&text=🚀 Присоединяйся к LinkGold и начинай зарабатывать Telegram Stars!`
+                                }
+                            ]
+                        ]
+                    }
+                }
+            );
+        }
         
         console.log(`✅ Пользователь ${userId} успешно зарегистрирован`, {
             referredBy: referredBy,
@@ -1082,7 +1113,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         console.error('❌ Start command error:', error);
         await bot.sendMessage(
             chatId, 
-            '❌ Произошла ошибка при регистрации. Попробуйте позже.'
+            '❌ Произошла ошибка при регистрации. Пожалуйста, попробуйте позже или обратитесь в поддержку.'
         );
     }
 });
