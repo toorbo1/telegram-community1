@@ -2962,16 +2962,19 @@ app.get('/api/leaderboard/top', async (req, res) => {
         });
     }
 });
-// Удаление пользователя из топа (только для главного админа)
-// Удаление пользователя из топа (только для главного админа)
+// В server.js обновите endpoint удаления пользователя:
 app.post('/api/admin/leaderboard/remove-user', async (req, res) => {
     const { adminId, targetUserId } = req.body;
     
     console.log('🗑️ Remove user from leaderboard request:', { adminId, targetUserId });
     
     try {
+        // Преобразуем ID в числа для сравнения
+        const adminIdNum = parseInt(adminId);
+        const targetUserIdNum = parseInt(targetUserId);
+        
         // Проверяем права - только главный админ
-        if (parseInt(adminId) !== ADMIN_ID) {
+        if (adminIdNum !== ADMIN_ID) {
             return res.status(403).json({
                 success: false,
                 error: 'Только главный администратор может удалять пользователей из топа!'
@@ -2988,7 +2991,7 @@ app.post('/api/admin/leaderboard/remove-user', async (req, res) => {
         // Проверяем существование пользователя
         const userCheck = await pool.query(
             'SELECT user_id, username, first_name FROM user_profiles WHERE user_id = $1',
-            [targetUserId]
+            [targetUserIdNum] // Используем числовое значение
         );
         
         if (userCheck.rows.length === 0) {
@@ -3000,7 +3003,7 @@ app.post('/api/admin/leaderboard/remove-user', async (req, res) => {
         
         const user = userCheck.rows[0];
         
-        // Сбрасываем статистику пользователя (задания и баланс)
+        // Сбрасываем статистику пользователя
         await pool.query(`
             UPDATE user_profiles 
             SET completed_tasks = 0, 
@@ -3008,28 +3011,21 @@ app.post('/api/admin/leaderboard/remove-user', async (req, res) => {
                 referral_count = 0,
                 referral_earned = 0
             WHERE user_id = $1
-        `, [targetUserId]);
+        `, [targetUserIdNum]); // Используем числовое значение
         
         // Также удаляем все задания пользователя
         await pool.query(`
             DELETE FROM user_tasks 
             WHERE user_id = $1
-        `, [targetUserId]);
+        `, [targetUserIdNum]);
         
         // Удаляем проверки заданий пользователя
         await pool.query(`
             DELETE FROM task_verifications 
             WHERE user_id = $1
-        `, [targetUserId]);
+        `, [targetUserIdNum]);
         
         console.log(`✅ User ${user.username} (ID: ${targetUserId}) removed from leaderboard`);
-        
-        // Логируем действие
-        await pool.query(`
-            INSERT INTO admin_actions (admin_id, action_type, target_id, description) 
-            VALUES ($1, $2, $3, $4)
-        `, [adminId, 'remove_from_leaderboard', targetUserId, 
-            `Пользователь ${targetUserId} (@${user.username}) удален из топа`]);
         
         res.json({
             success: true,
@@ -3333,6 +3329,103 @@ async function toggleUserBlock(chatId, adminId, targetUserId, messageId) {
             '❌ Ошибка при изменении статуса блокировки',
             { chat_id: chatId, message_id: messageId }
         );
+    }
+}
+// В server.js добавьте:
+app.get('/api/debug/user-id-columns', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                table_name,
+                column_name,
+                data_type,
+                is_nullable
+            FROM information_schema.columns 
+            WHERE table_name IN ('user_profiles', 'user_tasks', 'task_verifications', 'withdrawal_requests', 'support_chats', 'support_messages')
+            AND column_name LIKE '%user%id%'
+            ORDER BY table_name, column_name
+        `);
+        
+        res.json({
+            success: true,
+            columns: result.rows
+        });
+    } catch (error) {
+        console.error('User ID columns debug error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// В server.js добавьте эту функцию:
+async function fixUserIdColumns() {
+    try {
+        console.log('🔧 Fixing user_id columns to BIGINT...');
+        
+        const tablesToFix = [
+            'user_profiles',
+            'user_tasks', 
+            'task_verifications',
+            'withdrawal_requests',
+            'support_chats',
+            'support_messages',
+            'admin_permissions',
+            'referral_links',
+            'referral_link_clicks',
+            'referral_activations',
+            'admin_notifications',
+            'admin_actions'
+        ];
+        
+        for (const table of tablesToFix) {
+            try {
+                // Проверяем существование таблицы
+                const tableExists = await pool.query(`
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_name = $1
+                    )
+                `, [table]);
+                
+                if (!tableExists.rows[0].exists) {
+                    console.log(`ℹ️ Table ${table} doesn't exist, skipping`);
+                    continue;
+                }
+                
+                // Проверяем колонки с user_id
+                const columns = await pool.query(`
+                    SELECT column_name, data_type 
+                    FROM information_schema.columns 
+                    WHERE table_name = $1 
+                    AND (column_name = 'user_id' OR column_name LIKE '%user%id%')
+                `, [table]);
+                
+                for (const column of columns.rows) {
+                    if (column.data_type === 'integer') {
+                        console.log(`🔄 Changing ${table}.${column.column_name} from integer to bigint...`);
+                        
+                        try {
+                            await pool.query(`
+                                ALTER TABLE ${table} 
+                                ALTER COLUMN ${column.column_name} TYPE BIGINT
+                            `);
+                            console.log(`✅ ${table}.${column.column_name} changed to BIGINT`);
+                        } catch (alterError) {
+                            console.log(`⚠️ Could not alter ${table}.${column.column_name}:`, alterError.message);
+                        }
+                    }
+                }
+                
+            } catch (error) {
+                console.log(`⚠️ Error processing table ${table}:`, error.message);
+            }
+        }
+        
+        console.log('✅ User ID columns fixed');
+    } catch (error) {
+        console.error('❌ Error fixing user_id columns:', error);
     }
 }
 
@@ -9372,6 +9465,14 @@ app.use('/api/*', (req, res) => {
         error: 'API endpoint not found'
     });
 });
+
+async function initializeServer() {
+    await initDatabase();
+    await fixUserIdColumns(); // Добавьте эту строку
+    await createSampleTasks();
+    
+    console.log('✅ Server initialization complete');
+}
 
 // Замените текущий app.listen на этот:
 app.listen(PORT, '0.0.0.0', async () => {
