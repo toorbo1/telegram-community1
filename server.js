@@ -1291,7 +1291,7 @@ bot.on('callback_query', async (callbackQuery) => {
                                 [
                                     {
                                         text: '📢 ПОДПИСАТЬСЯ НА КАНАЛ',
-                                        url: 'https://t.me/LinkGoldMoney_bot'
+                                        url: 'https://t.me/LinkGoldChannel1'
                                     }
                                 ],
                                 [
