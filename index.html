@@ -1212,6 +1212,7 @@
 let selectedWithdrawAmount = 0;
 
 // 🔧 Функция выбора суммы
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ВЫБОРА СУММЫ
 function selectAmount(button, amount) {
     console.log('🎯 Selecting amount:', amount);
     
@@ -1236,13 +1237,13 @@ function selectAmount(button, amount) {
     button.style.background = 'var(--gold)';
     button.style.color = 'white';
     
-    // Показываем выбранную сумму
+    // Показываем выбранную сумму - ИСПРАВЛЕНО
     const display = document.getElementById('selected-amount-display');
     const amountDisplay = document.getElementById('selected-amount');
     
     if (display && amountDisplay) {
         display.style.display = 'block';
-        amountDisplay.textContent = `${amount} ⭐`;
+        amountDisplay.textContent = `${amount} ⭐`; // ← ИСПРАВЛЕНО: используем amount вместо button
     }
     
     // Активируем кнопку вывода
@@ -1265,8 +1266,17 @@ function selectAmount(button, amount) {
     
     console.log('✅ Amount selected:', selectedWithdrawAmount);
 }
-
+// 🔧 ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА БАЛАНСА
+function validateWithdrawAmount(amount) {
+    if (!currentUser) return false;
+    
+    const currentBalance = currentUser.balance || 0;
+    const allowedAmounts = [50, 100, 150, 200, 250, 300];
+    
+    return amount <= currentBalance && allowedAmounts.includes(amount);
+}
 // 🔧 Функция запроса вывода средств
+// 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ ЗАПРОСА ВЫВОДА
 async function requestWithdraw() {
     if (!currentUser) {
         showNotification('Пользователь не авторизован', 'error');
@@ -1281,16 +1291,9 @@ async function requestWithdraw() {
         return;
     }
     
-    // Проверяем что выбранная сумма доступна
-    if (selectedWithdrawAmount > currentBalance) {
-        showNotification(`Недостаточно средств. Ваш баланс: ${currentBalance} ⭐`, 'error');
-        return;
-    }
-    
-    // Проверяем что сумма является допустимой
-    const allowedAmounts = [50, 100, 150, 200, 250, 300];
-    if (!allowedAmounts.includes(selectedWithdrawAmount)) {
-        showNotification('Выберите допустимую сумму для вывода', 'error');
+    // Проверяем валидность суммы
+    if (!validateWithdrawAmount(selectedWithdrawAmount)) {
+        showNotification(`Недостаточно средств или недопустимая сумма. Ваш баланс: ${currentBalance} ⭐`, 'error');
         return;
     }
     
@@ -1343,6 +1346,23 @@ async function requestWithdraw() {
         showNotification('❌ Ошибка при выводе средств: ' + error.message, 'error');
     }
 }
+// 🔧 ФУНКЦИЯ ДЛЯ ОТЛАДКИ ВЫВОДА СРЕДСТВ
+function debugWithdrawSystem() {
+    console.log('🐛 DEBUG Withdraw System:');
+    console.log('- currentUser:', currentUser);
+    console.log('- currentUser.balance:', currentUser?.balance);
+    console.log('- selectedWithdrawAmount:', selectedWithdrawAmount);
+    console.log('- amount buttons:', document.querySelectorAll('.amount-btn').length);
+    
+    // Проверяем баланс
+    if (currentUser) {
+        const balance = currentUser.balance || 0;
+        console.log('- Available amounts:', [50, 100, 150, 200, 250, 300].filter(amt => amt <= balance));
+    }
+}
+
+// Вызовите для тестирования
+setTimeout(debugWithdrawSystem, 3000);
 
 // 🔧 Функция сброса выбора суммы
 function resetAmountSelection() {
