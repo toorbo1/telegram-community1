@@ -884,6 +884,7 @@ fixWithdrawalTable();
 
 // Добавьте эту функцию для проверки подписки
 // 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ПРОВЕРКИ ПОДПИСКИ
+// Упрощенная проверка подписки (временно)
 async function checkSubscription(userId) {
     if (!bot) {
         console.log('⚠️ Bot not initialized, skipping subscription check');
@@ -891,21 +892,20 @@ async function checkSubscription(userId) {
     }
 
     try {
-        // ЗАМЕНИТЕ НА РЕАЛЬНЫЙ USERNAME ВАШЕГО КАНАЛА
-        const chatId = '@LinkGoldChannel1'; // Исправьте на ваш реальный канал
+        const chatId = '@LinkGoldChannel1'; // Замените на реальный канал
         const member = await bot.getChatMember(chatId, userId);
-        
         return ['member', 'administrator', 'creator'].includes(member.status);
     } catch (error) {
         console.error('❌ Subscription check error:', error);
         
-        // Если канал не найден или нет прав, возвращаем true чтобы не блокировать пользователей
+        // Временно разрешаем регистрацию при ошибке проверки
         if (error.response && error.response.statusCode === 404) {
-            console.log('⚠️ Channel not found, skipping subscription check');
+            console.log('⚠️ Channel not found, allowing registration');
             return true;
         }
         
-        return false;
+        // При других ошибках также разрешаем регистрацию
+        return true;
     }
 }
 
