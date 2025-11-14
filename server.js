@@ -1015,34 +1015,40 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         const finalUserProfile = updatedUser.rows[0];
         
         // 🔥 ФОРМИРУЕМ ПРИВЕТСТВЕННОЕ СООБЩЕНИЕ С ФОТО
-        let welcomeMessage = `🌟 <b>ДОБРО ПОЖАЛОВАТЬ В LINKGOLD, ${userData.firstName.toUpperCase()}!</b>\n\n`;
-        
-        if (referralBonusGiven) {
-            welcomeMessage += `🎁 <b>БОНУС ЗА РЕГИСТРАЦИЮ: 2⭐ НА ВАШ СЧЕТ!</b>\n`;
-            welcomeMessage += `💫 <b>Текущий баланс:</b> ${finalUserProfile.balance || 0}⭐\n\n`;
-        }
-        
-        welcomeMessage += `🚀 <b>ВАШ ПУТЬ К ЗАРАБОТКУ:</b>\n`;
-        welcomeMessage += `├ 1. 📋 Выбирайте задания из списка\n`;
-        welcomeMessage += `├ 2. 📱 Выполняйте по инструкции\n`;
-        welcomeMessage += `├ 3. 🖼 Отправляйте скриншот на проверку\n`;
-        welcomeMessage += `└ 4. 💰 Получайте оплату после одобрения\n\n`;
-        
-        welcomeMessage += `👥 <b>РЕФЕРАЛЬНАЯ СИСТЕМА:</b>\n`;
-        welcomeMessage += `├ 💎 <b>Вам:</b> 90% от заработка\n`;
-        welcomeMessage += `├ 🤝 <b>Пригласившему:</b> 10% от вашего заработка\n`;
-        welcomeMessage += `└ 🔄 <b>Автоматически</b> с каждого задания\n\n`;
-        
-        welcomeMessage += `📢 <b>ВАША ПЕРСОНАЛЬНАЯ ССЫЛКА:</b>\n`;
-        welcomeMessage += `<code>https://t.me/LinkGoldMoney_bot?start=${userReferralCode}</code>`;
-        
-        // Отправляем фото с приветственным сообщением
-        try {
-            // Сначала отправляем фото
-            await bot.sendPhoto(
-                chatId,
-                'https://Airbrush-IMAGE-ENHANCER-1763128623415-1763128623415.png', // Замените на реальный URL
-                {
+// 🔥 ФОРМИРУЕМ ПРИВЕТСТВЕННОЕ СООБЩЕНИЕ С ФОТО
+let welcomeMessage = `🌟 <b>ДОБРО ПОЖАЛОВАТЬ В LINKGOLD, ${userData.firstName.toUpperCase()}!</b>\n\n`;
+
+welcomeMessage += `🚀 <b>КАК НАЧАТЬ ЗАРАБАТЫВАТЬ:</b>\n`;
+welcomeMessage += `┌ 1. Выбирайте задания из списка\n`;
+welcomeMessage += `├ 2. Выполняйте по инструкции\n`;
+welcomeMessage += `├ 3. Отправляйте скриншот\n`;
+welcomeMessage += `└ 4. Получайте звёзды после проверки\n\n`;
+
+welcomeMessage += `💎 <b>ДОХОДНОСТЬ ЗАДАНИЙ:</b>\n`;
+welcomeMessage += `• Простые: 10-50 звёзд\n`;
+welcomeMessage += `• Средние: 50-200 звёзд\n`;
+welcomeMessage += `• Сложные: 200-1000 звёзд\n`;
+welcomeMessage += `• Вывод от 100 звёзд\n\n`;
+
+welcomeMessage += `👥 <b>РЕФЕРАЛЬНАЯ СИСТЕМА:</b>\n`;
+welcomeMessage += `┌ Вам: 90% от заработка\n`;
+welcomeMessage += `├ Наставнику: 10% от вас\n`;
+welcomeMessage += `└ Автоматически с каждого задания\n\n`;
+
+welcomeMessage += `📢 <b>ВАША ССЫЛКА ДЛЯ ПРИГЛАШЕНИЙ:</b>\n`;
+welcomeMessage += `<code>https://t.me/LinkGoldMoney_bot?start=${userReferralCode}</code>\n\n`;
+
+welcomeMessage += `✨ <b>Приглашайте друзей и увеличивайте доход!</b>`;
+
+// Отправляем фото с приветственным сообщением
+try {
+    // Читаем фото из корня проекта
+    const photoPath = './Airbrush-IMAGE-ENHANCER-1763128623415-1763128623415.png';
+    
+    await bot.sendPhoto(
+        chatId,
+        photoPath, // Используем локальный путь к файлу
+        {
                     caption: welcomeMessage,
                     parse_mode: 'HTML',
                     reply_markup: {
@@ -1087,15 +1093,26 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                         inline_keyboard: [
                             [
                                 {
-                                    text: '🎯 НАЧАТЬ ЗАРАБАТЫВАТЬ',
-                                    callback_data: 'start_earning'
+                                    text: '📢 НАШ КАНАЛ',
+                                    url: 'https://t.me/LinkGoldChannel1'
+                                },
+                                {
+                                    text: '💬 ОТЗЫВЫ',
+                                    url: 'https://t.me/repLinkGold'
                                 }
                             ],
                             [
                                 {
                                     text: '👥 ПРИГЛАСИТЬ ДРУЗЕЙ',
-                                    url: `https://t.me/share/url?url=https://t.me/LinkGoldMoney_bot?start=${userReferralCode}&text=🚀 Присоединяйся к LinkGold и начинай зарабатывать Telegram Stars!`
+                                    url: `https://t.me/share/url?url=https://t.me/LinkGoldMoney_bot?start=${userReferralCode}&text=🚀 Присоединяйся к LinkGold и начинай зарабатывать Telegram Stars! Получи 2⭐ за регистрацию и доступ к лучшим заданиям! 💫`
                                 }
+                            ],
+                            [
+                                {
+                                    text: '📚 ГАЙДЫ ПО ЗАДАНИЯМ',
+                                    url: 'https://t.me/LinkGoldGuide'
+                                },
+                               
                             ]
                         ]
                     }
@@ -2781,29 +2798,28 @@ bot.onText(/\/balance/, async (msg) => {
                     inline_keyboard: [
               
                         [
-                            {
-                                text: '📢 Наш канал',
-                                url: 'https://t.me/LinkGoldChannel1'
-                            }
-                        ],
-                        [
-                            {
-                                text: '👥 Пригласить друзей',
-                                callback_data: 'referral'
-                            }
-                        ],
-                        [
-                            {
-                                text: '📂 Наши отзывы',
-                                url: 'https://t.me/repLinkGold'
-                            }
-                        ],
-                        [
-                            {
-                                text: '🖊 Гайды на задания',
-                                url: 'https://t.me/LinkGoldGuide'
-                            }
-                        ],
+                                {
+                                    text: '📢 НАШ КАНАЛ',
+                                    url: 'https://t.me/LinkGoldChannel1'
+                                },
+                                {
+                                    text: '💬 ОТЗЫВЫ',
+                                    url: 'https://t.me/repLinkGold'
+                                }
+                            ],
+                            [
+                                {
+                                    text: '👥 ПРИГЛАСИТЬ ДРУЗЕЙ',
+                                    url: `https://t.me/share/url?url=https://t.me/LinkGoldMoney_bot?start=${userReferralCode}&text=🚀 Присоединяйся к LinkGold и начинай зарабатывать Telegram Stars! Получи 2⭐ за регистрацию и доступ к лучшим заданиям! 💫`
+                                }
+                            ],
+                            [
+                                {
+                                    text: '📚 ГАЙДЫ ПО ЗАДАНИЯМ',
+                                    url: 'https://t.me/LinkGoldGuide'
+                                },
+                               
+                            ]
                     ]
                 }
             }
