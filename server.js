@@ -1160,12 +1160,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                     parse_mode: 'HTML',
                     reply_markup: {
                         inline_keyboard: [
-                            [
-                                {
-                                    text: '💫 ВЫПОЛНИТЬ ЗАДАНИЯ',
-                                    web_app: { url: `${APP_URL}/tasks.html` }
-                                }
-                            ],
+                           
                             [
                                 {
                                     text: '📢 НАШ КАНАЛ',
@@ -1187,10 +1182,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                                     text: '📚 ГАЙДЫ ПО ЗАДАНИЯМ',
                                     url: 'https://t.me/LinkGoldGuide'
                                 },
-                                {
-                                    text: '💰 МОЙ БАЛАНС',
-                                    callback_data: 'show_balance'
-                                }
+                               
                             ]
                         ]
                     }
@@ -1206,12 +1198,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                     parse_mode: 'HTML',
                     reply_markup: {
                         inline_keyboard: [
-                            [
-                                {
-                                    text: '💫 ВЫПОЛНИТЬ ЗАДАНИЯ',
-                                    web_app: { url: `${APP_URL}/tasks.html` }
-                                }
-                            ],
+                            
                             [
                                 {
                                     text: '📢 НАШ КАНАЛ',
@@ -1233,10 +1220,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                                     text: '📚 ГАЙДЫ ПО ЗАДАНИЯМ',
                                     url: 'https://t.me/LinkGoldGuide'
                                 },
-                                {
-                                    text: '💰 МОЙ БАЛАНС',
-                                    callback_data: 'show_balance'
-                                }
+                             
                             ]
                         ]
                     }
