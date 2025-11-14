@@ -13,6 +13,174 @@
     <link rel="stylesheet" href="animations.css">
     <link rel="stylesheet" href="mobile.css">
     <style>
+        /* Стили для топа пользователей */
+.top-users-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 20px;
+    margin: 15px 0;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.top-users-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.top-users-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.view-full-list-btn {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.view-full-list-btn:hover {
+    background: var(--accent);
+    color: white;
+}
+
+.top-users-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.top-user-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.top-user-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.user-rank {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.rank-1 {
+    background: var(--gold-gradient);
+    color: #000;
+}
+
+.rank-2 {
+    background: #C0C0C0;
+    color: #000;
+}
+
+.rank-3 {
+    background: #CD7F32;
+    color: #000;
+}
+
+.rank-other {
+    background: var(--border);
+    color: var(--text-primary);
+}
+
+.user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    margin-right: 12px;
+    flex-shrink: 0;
+    background: var(--purple-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.user-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.user-name {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-stats {
+    display: flex;
+    gap: 15px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.user-tasks {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.user-balance {
+    color: var(--gold);
+    font-weight: 600;
+}
+
+.position-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 15px 0;
+}
+
+.current-user-position {
+    text-align: center;
+    padding: 10px;
+    background: rgba(99, 102, 241, 0.1);
+    border-radius: 8px;
+    border: 1px solid var(--accent-light);
+}
+
+.position-text {
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.no-top-users {
+    text-align: center;
+    padding: 30px 20px;
+    color: var(--text-secondary);
+}
+
+.no-top-users .icon {
+    font-size: 48px;
+    margin-bottom: 10px;
+}
         /* Стили для обновленной реферальной системы */
 .referral-stats-detailed {
     margin: 15px 0;
@@ -136,7 +304,43 @@
                 <div class="stat-value">24/7</div>
             </div>
         </div>
+<!-- Топ пользователей -->
+<div class="top-users-card fade-in">
+    <div class="top-users-header">
+        <div class="top-users-title">🏆 Топ исполнителей</div>
+        <button class="view-full-list-btn" onclick="showFullLeaderboard()">Полный список</button>
+    </div>
+    
+    <div class="top-users-list" id="top-users-list">
+        <!-- Топ 5 пользователей будет загружен здесь -->
+        <div class="loading">Загрузка топа...</div>
+    </div>
+    
+    <!-- Место текущего пользователя -->
+    <div class="user-position" id="user-position" style="display: none;">
+        <div class="position-divider"></div>
+        <div class="current-user-position">
+            <span class="position-text">Ваше место: <strong id="user-rank">-</strong></span>
+        </div>
+    </div>
+</div>
+<!-- После этого блока -->
+<div class="stats-grid fade-in">
+    <div class="stat-card balance-card" onclick="showBalanceModal()">
+        <!-- ... существующий код баланса ... -->
+    </div>
+    
+    <div class="stat-card support-card" onclick="openAdminChat()">
+        <!-- ... существующий код поддержки ... -->
+    </div>
+</div>
 
+<!-- ДОБАВЬТЕ ЗДЕСЬ блок топа пользователей -->
+
+<!-- Перед этим блоком -->
+<div class="exchange-card fade-in" onclick="showHowItWorksPage()">
+    <!-- ... существующий код "Как работает" ... -->
+</div>
         <!-- Как работает -->
         <div class="exchange-card fade-in" onclick="showHowItWorksPage()">
             <div class="exchange-icon">
@@ -7062,6 +7266,160 @@ async function addTask() {
         showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
     }
 }
+// Функция для загрузки топа пользователей
+async function loadTopUsers() {
+    try {
+        console.log('🏆 Loading top users...');
+        
+        const result = await makeRequest('/api/leaderboard/top');
+        
+        if (result.success) {
+            displayTopUsers(result.topUsers, result.currentUserRank);
+        } else {
+            console.error('Error loading top users:', result.error);
+            showTopUsersError();
+        }
+    } catch (error) {
+        console.error('Error loading top users:', error);
+        showTopUsersError();
+    }
+}
+
+// Функция отображения топа пользователей
+function displayTopUsers(topUsers, currentUserRank) {
+    const container = document.getElementById('top-users-list');
+    const userPosition = document.getElementById('user-position');
+    
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!topUsers || topUsers.length === 0) {
+        container.innerHTML = `
+            <div class="no-top-users">
+                <div class="icon">📊</div>
+                <div>Пока нет статистики</div>
+                <div style="font-size: 12px; margin-top: 8px;">
+                    Выполняйте задания чтобы попасть в топ!
+                </div>
+            </div>
+        `;
+        userPosition.style.display = 'none';
+        return;
+    }
+    
+    // Отображаем топ 5 пользователей
+    topUsers.forEach((user, index) => {
+        const userElement = createTopUserElement(user, index + 1);
+        container.appendChild(userElement);
+    });
+    
+    // Показываем место текущего пользователя
+    if (currentUserRank) {
+        const userRankElement = document.getElementById('user-rank');
+        if (userRankElement) {
+            userRankElement.textContent = currentUserRank;
+        }
+        userPosition.style.display = 'block';
+    } else {
+        userPosition.style.display = 'none';
+    }
+}
+
+// Функция создания элемента пользователя в топе
+function createTopUserElement(user, rank) {
+    const userElement = document.createElement('div');
+    userElement.className = 'top-user-item';
+    
+    const avatarText = user.first_name ? user.first_name.charAt(0).toUpperCase() : 'U';
+    const userName = user.first_name || `User_${user.user_id}`;
+    const completedTasks = user.completed_tasks || 0;
+    const balance = user.balance || 0;
+    
+    userElement.innerHTML = `
+        <div class="user-rank ${getRankClass(rank)}">${rank}</div>
+        <div class="user-avatar">${avatarText}</div>
+        <div class="user-info">
+            <div class="user-name">${escapeHtml(userName)}</div>
+            <div class="user-stats">
+                <span class="user-tasks">${completedTasks} заданий</span>
+                <span class="user-balance">${balance} ⭐</span>
+            </div>
+        </div>
+    `;
+    
+    return userElement;
+}
+
+// Функция для определения класса ранга
+function getRankClass(rank) {
+    switch(rank) {
+        case 1: return 'rank-1';
+        case 2: return 'rank-2';
+        case 3: return 'rank-3';
+        default: return 'rank-other';
+    }
+}
+
+// Функция показа ошибки загрузки топа
+function showTopUsersError() {
+    const container = document.getElementById('top-users-list');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div class="no-top-users">
+            <div class="icon">❌</div>
+            <div>Ошибка загрузки</div>
+            <button class="view-full-list-btn" onclick="loadTopUsers()" style="margin-top: 10px;">
+                Повторить
+            </button>
+        </div>
+    `;
+}
+
+// Функция показа полного списка лидеров
+function showFullLeaderboard() {
+    // Здесь можно реализовать переход на полную страницу лидерборда
+    // Пока просто покажем уведомление
+    showNotification('📊 Полный список лидеров скоро будет доступен!', 'info');
+}
+
+// Обновляем функцию initializeApp для загрузки топа при старте
+// НАЙДИТЕ функцию initializeApp и добавьте вызов loadTopUsers():
+async function initializeApp() {
+    console.log('🎮 Initializing LinkGold app...');
+    
+    // ... существующий код инициализации ...
+    
+    // Загружаем топ пользователей
+    loadTopUsers();
+    
+    // ... остальной код инициализации ...
+}
+
+// Также обновляем функцию showMainTab для обновления топа при переходе на главную
+function showMainTab() {
+    hideAllTabs();
+    document.getElementById('main-tab').classList.add('active');
+    updateNavState('main');
+    
+    // Обновляем топ пользователей
+    loadTopUsers();
+    
+    // Прокручиваем к началу
+    setTimeout(scrollToTop, 100);
+}
+
+// Автообновление топа каждые 30 секунд
+setInterval(() => {
+    if (document.getElementById('main-tab').classList.contains('active')) {
+        loadTopUsers();
+    }
+}, 30000);
+
+// 🔧 ЭКСПОРТ ФУНКЦИЙ
+window.loadTopUsers = loadTopUsers;
+window.showFullLeaderboard = showFullLeaderboard;
 // Добавьте эту функцию для отладки
 function debugTaskCreation() {
     

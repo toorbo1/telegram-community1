@@ -2869,6 +2869,58 @@ async function showUserDetailedStats(chatId, targetUserId, messageId) {
     }
 }
 
+// В server.js добавьте этот endpoint
+app.get('/api/leaderboard/top', async (req, res) => {
+    try {
+        // Получаем топ 5 пользователей по количеству выполненных заданий
+        const topUsers = await pool.query(`
+            SELECT 
+                user_id,
+                first_name,
+                username,
+                completed_tasks,
+                balance
+            FROM user_profiles 
+            WHERE completed_tasks > 0
+            ORDER BY completed_tasks DESC, balance DESC
+            LIMIT 5
+        `);
+        
+        // Получаем место текущего пользователя (если передан user_id)
+        const userId = req.query.userId;
+        let currentUserRank = null;
+        
+        if (userId) {
+            const userRank = await pool.query(`
+                SELECT position FROM (
+                    SELECT 
+                        user_id,
+                        ROW_NUMBER() OVER (ORDER BY completed_tasks DESC, balance DESC) as position
+                    FROM user_profiles 
+                    WHERE completed_tasks > 0
+                ) ranked WHERE user_id = $1
+            `, [userId]);
+            
+            if (userRank.rows.length > 0) {
+                currentUserRank = userRank.rows[0].position;
+            }
+        }
+        
+        res.json({
+            success: true,
+            topUsers: topUsers.rows,
+            currentUserRank: currentUserRank
+        });
+        
+    } catch (error) {
+        console.error('Leaderboard error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка загрузки топа пользователей'
+        });
+    }
+});
+
 async function toggleUserBlock(chatId, adminId, targetUserId, messageId) {
     try {
         const userResult = await pool.query(
