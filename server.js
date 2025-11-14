@@ -883,6 +883,7 @@ async function fixWithdrawalTable() {
 fixWithdrawalTable();
 
 // Добавьте эту функцию для проверки подписки
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ПРОВЕРКИ ПОДПИСКИ
 async function checkSubscription(userId) {
     if (!bot) {
         console.log('⚠️ Bot not initialized, skipping subscription check');
@@ -890,23 +891,38 @@ async function checkSubscription(userId) {
     }
 
     try {
-        const chatId = '@LinkGoldMoney_bot'; // Username вашего канала
+        // ЗАМЕНИТЕ НА РЕАЛЬНЫЙ USERNAME ВАШЕГО КАНАЛА
+        const chatId = '@LinkGoldChannel1'; // Исправьте на ваш реальный канал
         const member = await bot.getChatMember(chatId, userId);
         
         return ['member', 'administrator', 'creator'].includes(member.status);
     } catch (error) {
         console.error('❌ Subscription check error:', error);
+        
+        // Если канал не найден или нет прав, возвращаем true чтобы не блокировать пользователей
+        if (error.response && error.response.statusCode === 404) {
+            console.log('⚠️ Channel not found, skipping subscription check');
+            return true;
+        }
+        
         return false;
     }
 }
 
 // Полный обработчик /start с проверкой подписки
+// В обработчике /start добавьте логирование
 bot.onText(/\/start(.+)?/, async (msg, match) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
     const referralCode = match[1] ? match[1].trim() : null;
     
-    console.log('🎯 Start command received:', { userId, referralCode });
+    console.log('🎯 Start command received:', { 
+        userId, 
+        chatId, 
+        referralCode,
+        username: msg.from.username 
+    });
+    
     
     try {
         // 🔥 ПРОВЕРКА ПОДПИСКИ НА КАНАЛ
@@ -1244,6 +1260,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
 const userSubscriptionMessages = {};
 
 // Обработчик для кнопки проверки подписки
+// 🔧 ДОБАВЬТЕ ЭТО В ОБРАБОТЧИК CALLBACK_QUERY
 bot.on('callback_query', async (callbackQuery) => {
     const message = callbackQuery.message;
     const chatId = message.chat.id;
@@ -1251,16 +1268,23 @@ bot.on('callback_query', async (callbackQuery) => {
     const data = callbackQuery.data;
     
     try {
+        // Обработка проверки подписки
         if (data === 'check_subscription_start') {
-            // Проверяем подписку еще раз
+            console.log('🔍 Checking subscription for user:', userId);
+            
             const isSubscribed = await checkSubscription(userId);
             
             if (isSubscribed) {
                 // Удаляем сообщение с требованием подписки
-                await bot.deleteMessage(chatId, message.message_id);
+                try {
+                    await bot.deleteMessage(chatId, message.message_id);
+                } catch (deleteError) {
+                    console.log('Cannot delete message:', deleteError.message);
+                }
+                
                 delete userSubscriptionMessages[userId];
                 
-                // Отправляем сообщение об успешной проверке
+                // Продолжаем регистрацию
                 await bot.sendMessage(
                     chatId,
                     '✅ <b>Отлично! Проверка пройдена.</b>\n\n' +
@@ -1268,69 +1292,74 @@ bot.on('callback_query', async (callbackQuery) => {
                     'Нажмите /start для начала работы.',
                     { parse_mode: 'HTML' }
                 );
+                
+                // Автоматически запускаем команду /start
+                setTimeout(() => {
+                    bot.sendMessage(chatId, 'Запускаю регистрацию...').then(() => {
+                        // Имитируем команду /start
+                        const startMsg = {
+                            chat: { id: chatId },
+                            from: callbackQuery.from,
+                            text: '/start'
+                        };
+                        bot.processUpdate({ message: startMsg });
+                    });
+                }, 1000);
+                
             } else {
-                // Показываем сообщение, что подписка все еще не выполнена
+                // Показываем сообщение об ошибке
                 await bot.answerCallbackQuery(callbackQuery.id, {
-                    text: '❌ Вы еще не подписались на канал @LinkGoldMoney_bot! Пожалуйста, подпишитесь и нажмите кнопку снова.',
+                    text: '❌ Вы еще не подписались на канал! Пожалуйста, подпишитесь и нажмите кнопку снова.',
                     show_alert: true
                 });
                 
                 // Обновляем сообщение с напоминанием
-                await bot.editMessageText(
-                    `📢 <b>ВНИМАНИЕ!</b>\n\n` +
-                    `Вы еще не подписались на канал @LinkGoldMoney_bot\n\n` +
-                    `🔸 <b>Обязательно подпишитесь для доступа к боту</b>\n` +
-                    `🔸 После подписки нажмите "✅ Я ПОДПИСАЛСЯ"\n\n` +
-                    `<i>Без подписки использование бота невозможно</i>`,
-                    {
-                        chat_id: chatId,
-                        message_id: message.message_id,
-                        parse_mode: 'HTML',
-                        reply_markup: {
-                            inline_keyboard: [
-                                [
-                                    {
-                                        text: '📢 ПОДПИСАТЬСЯ НА КАНАЛ',
-                                        url: 'https://t.me/LinkGoldChannel1'
-                                    }
-                                ],
-                                [
-                                    {
-                                        text: '✅ Я ПОДПИСАЛСЯ',
-                                        callback_data: 'check_subscription_start'
-                                    }
-                                ],
-                                
-                            ]
+                try {
+                    await bot.editMessageText(
+                        `📢 <b>ВНИМАНИЕ!</b>\n\n` +
+                        `Вы еще не подписались на канал!\n\n` +
+                        `🔸 <b>Обязательно подпишитесь для доступа к боту</b>\n` +
+                        `🔸 После подписки нажмите "✅ Я ПОДПИСАЛСЯ"\n\n` +
+                        `<i>Без подписки использование бота невозможно</i>`,
+                        {
+                            chat_id: chatId,
+                            message_id: message.message_id,
+                            parse_mode: 'HTML',
+                            reply_markup: {
+                                inline_keyboard: [
+                                    [
+                                        {
+                                            text: '📢 ПОДПИСАТЬСЯ НА КАНАЛ',
+                                            url: 'https://t.me/LinkGoldChannel1' // Исправьте ссылку
+                                        }
+                                    ],
+                                    [
+                                        {
+                                            text: '✅ Я ПОДПИСАЛСЯ',
+                                            callback_data: 'check_subscription_start'
+                                        }
+                                    ]
+                                ]
+                            }
                         }
-                    }
-                );
+                    );
+                } catch (editError) {
+                    console.log('Cannot edit message:', editError.message);
+                }
             }
         }
         
-        // Обработка других callback_data...
-        if (data === 'check_balance') {
-            const userResult = await pool.query(
-                'SELECT balance FROM user_profiles WHERE user_id = $1',
-                [userId]
-            );
-            
-            if (userResult.rows.length > 0) {
-                const balance = userResult.rows[0].balance || 0;
-                await bot.answerCallbackQuery(callbackQuery.id, {
-                    text: `💰 Ваш баланс: ${balance}⭐`,
-                    show_alert: true
-                });
-            }
-        }
+        // ... остальные обработчики callback_data
         
     } catch (error) {
-        console.error('Callback query error:', error);
-        await bot.answerCallbackQuery(callbackQuery.id, { 
-            text: '❌ Произошла ошибка, попробуйте еще раз' 
+        console.error('❌ Callback query error:', error);
+        await bot.answerCallbackQuery(callbackQuery.id, {
+            text: '❌ Произошла ошибка, попробуйте еще раз'
         });
     }
 });
+
+
 
 // Добавьте колонку has_subscribed в базу данных при инициализации
 async function addSubscriptionColumn() {
