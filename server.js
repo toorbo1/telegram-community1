@@ -5706,10 +5706,10 @@ app.post('/api/user/tasks/start', async (req, res) => {
     try {
         // Проверяем, выполнял ли пользователь это задание
         const existingTask = await pool.query(`
-            SELECT id FROM user_tasks 
-            WHERE user_id = $1 AND task_id = $2 
-            AND status IN ('active', 'pending_review', 'completed', 'rejected')
-        `, [userId, taskId]);
+    SELECT id FROM user_tasks 
+    WHERE user_id = $1 AND task_id = $2 
+    AND status IN ('active', 'pending_review', 'completed', 'rejected')
+`, [userId, taskId]);
         
         if (existingTask.rows.length > 0) {
             return res.status(400).json({
@@ -5738,9 +5738,6 @@ app.post('/api/user/tasks/start', async (req, res) => {
         const task = taskInfo.rows[0];
         const peopleRequired = task.people_required || 1;
         const completedCount = task.completed_count || 0;
-        const availableTasks = peopleRequired - completedCount;
-        
-        console.log(`📊 Task availability: ${completedCount}/${peopleRequired}, available: ${availableTasks}`);
         
         // 🔥 ПРОВЕРЯЕМ ДОСТИГНУТ ЛИ ЛИМИТ ИСПОЛНИТЕЛЕЙ
         if (completedCount >= peopleRequired) {
@@ -5749,9 +5746,6 @@ app.post('/api/user/tasks/start', async (req, res) => {
                 error: 'Достигнут лимит выполнения этого задания'
             });
         }
-        
-        // 🔥 ВАЖНО: Проверяем, было ли это последнее доступное задание
-        const wasLastTask = availableTasks === 1;
         
         // Start the task
         const result = await pool.query(`
@@ -5762,35 +5756,10 @@ app.post('/api/user/tasks/start', async (req, res) => {
         
         console.log('✅ Task started successfully:', result.rows[0]);
         
-        // 🔥 ЕСЛИ ЭТО БЫЛО ПОСЛЕДНЕЕ ЗАДАНИЕ - ОБНОВЛЯЕМ СТАТУС
-        let taskRemoved = false;
-        if (wasLastTask) {
-            // Обновляем счетчик выполнений
-            const newCompletedCount = completedCount + 1;
-            
-            // Если достигли лимита - помечаем задание как выполненное
-            if (newCompletedCount >= peopleRequired) {
-                await pool.query(
-                    'UPDATE tasks SET status = $1 WHERE id = $2',
-                    ['completed', taskId]
-                );
-                taskRemoved = true;
-                console.log(`🎯 Task ${taskId} completed and removed from active list`);
-            }
-        }
-        
         res.json({
             success: true,
             message: 'Задание начато!',
-            userTaskId: result.rows[0].id,
-            taskRemoved: taskRemoved,
-            wasLastTask: wasLastTask,
-            availability: {
-                before: availableTasks,
-                after: availableTasks - 1,
-                completed: completedCount + 1,
-                required: peopleRequired
-            }
+            userTaskId: result.rows[0].id
         });
     } catch (error) {
         console.error('❌ Start task error:', error);
