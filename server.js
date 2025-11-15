@@ -3206,10 +3206,14 @@ app.get('/api/debug/leaderboard', async (req, res) => {
 
 // 🔧 ФУНКЦИЯ ЗАГРУЗКИ ТОПА
 // 🔧 ФУНКЦИЯ ЗАГРУЗКИ ЛИДЕРБОРДА
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ ЛИДЕРБОРДА
 async function loadLeaderboard() {
     try {
         const leaderboardElement = document.getElementById('leaderboard-content');
-        if (!leaderboardElement) return;
+        if (!leaderboardElement) {
+            console.error('❌ Leaderboard element not found');
+            return;
+        }
         
         // Показываем загрузку
         leaderboardElement.innerHTML = `
@@ -3219,20 +3223,36 @@ async function loadLeaderboard() {
             </div>
         `;
         
+        console.log('🔄 Loading leaderboard...');
+        
         const response = await fetch(`/api/leaderboard/top?userId=${currentUser?.id || ''}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        // Проверяем, что ответ - JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('❌ Server returned non-JSON response:', text.substring(0, 200));
+            throw new Error('Server returned HTML instead of JSON. Check endpoint URL.');
+        }
+        
         const result = await response.json();
         
         if (result.success) {
+            console.log('✅ Leaderboard loaded successfully');
             displayLeaderboardWithAdminControls(
                 result.topUsers, 
                 result.currentUserRank, 
                 result.currentUserStats
             );
         } else {
-            throw new Error(result.error);
+            throw new Error(result.error || 'Failed to load leaderboard');
         }
     } catch (error) {
-        console.error('Load leaderboard error:', error);
+        console.error('❌ Load leaderboard error:', error);
         const leaderboardElement = document.getElementById('leaderboard-content');
         if (leaderboardElement) {
             leaderboardElement.innerHTML = `
@@ -3246,6 +3266,113 @@ async function loadLeaderboard() {
             `;
         }
     }
+}
+// 🔧 ФУНКЦИЯ ДЛЯ КНОПКИ "УЗНАТЬ МОЕ МЕСТО"
+async function showMyRank() {
+    try {
+        if (!currentUser) {
+            showNotification('Пожалуйста, войдите в систему', 'error');
+            return;
+        }
+        
+        console.log('🎯 Loading user rank...');
+        
+        const response = await fetch(`/api/user/${currentUser.id}/rank`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('Invalid response format');
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showRankDetailsModal(result);
+        } else {
+            throw new Error(result.error || 'Failed to load rank');
+        }
+    } catch (error) {
+        console.error('❌ Load rank error:', error);
+        showNotification('Ошибка загрузки данных о ранге: ' + error.message, 'error');
+    }
+}
+
+// 🔧 ФУНКЦИЯ ДЛЯ ПОКАЗА ДЕТАЛЕЙ РАНГА
+function showRankDetailsModal(rankData) {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    `;
+    
+    modal.innerHTML = `
+        <div class="modal-content" style="
+            background: var(--card-bg);
+            padding: 24px;
+            border-radius: 12px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            border: 2px solid var(--gold);
+        ">
+            <h3 style="margin-bottom: 16px; color: var(--gold);">🏆 Ваше место в рейтинге</h3>
+            
+            <div style="font-size: 48px; margin: 20px 0; color: var(--gold);">
+                ${rankData.rank}
+            </div>
+            
+            <div style="text-align: left; margin: 20px 0;">
+                <div style="margin-bottom: 8px;">✅ Выполнено заданий: <strong>${rankData.completed_tasks}</strong></div>
+                <div style="margin-bottom: 8px;">💫 Баланс: <strong>${rankData.balance}⭐</strong></div>
+                <div style="margin-bottom: 8px;">👥 Приглашено друзей: <strong>${rankData.referral_count}</strong></div>
+            </div>
+            
+            <div style="
+                background: var(--bg-secondary);
+                padding: 12px;
+                border-radius: 8px;
+                margin: 16px 0;
+                font-size: 14px;
+            ">
+                ${rankData.next_rank_info}
+            </div>
+            
+            <button onclick="this.closest('.modal').remove()" style="
+                background: var(--gold);
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 16px;
+                width: 100%;
+            ">
+                Понятно
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Закрытие по клику вне модального окна
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
 }
 
 // 🔧 ФУНКЦИЯ ЗАГРУЗКИ ТОПА ДЛЯ ГЛАВНОЙ СТРАНИЦЫ
