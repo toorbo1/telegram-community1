@@ -1221,8 +1221,8 @@
         Хочешь узнать, какое место ты занимаешь в общем рейтинге?
     </div>
     <button class="check-position-btn" onclick="showUserRankDetails()">
-        Узнать мое место
-    </button>
+    Узнать мое место
+</button>
 </div>
 
 <!-- Модальное окно с детальной информацией о ранге -->
@@ -10327,7 +10327,65 @@ setTimeout(addEmergencyButton, 2000);
         }
 // 🔧 ФУНКЦИИ ДЛЯ СИСТЕМЫ ВЫВОДА СРЕДСТВ
 
+// 🔧 РЕЗЕРВНАЯ ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ РАНГА
+async function getUserRankFallback() {
+    try {
+        // Пробуем получить ранг из существующего endpoint'а топа
+        const response = await fetch(`/api/leaderboard/top?userId=${currentUser.id}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            return {
+                rank: result.currentUserRank || 'Не в топе',
+                tasks: result.currentUserStats?.completed_tasks || 0,
+                balance: result.currentUserStats?.balance || 0,
+                referrals: result.currentUserStats?.referral_count || 0
+            };
+        }
+    } catch (error) {
+        console.error('Fallback also failed:', error);
+    }
+    
+    return null;
+}
+// 🔧 ДИАГНОСТИКА ENDPOINT'А РАНГА
+async function debugRankEndpoint() {
+    if (!currentUser) {
+        console.log('❌ No current user');
+        return;
+    }
+    
+    try {
+        console.log('🔍 Testing rank endpoint...');
+        
+        const testUrl = `/api/user/${currentUser.id}/rank`;
+        console.log('📡 Testing URL:', testUrl);
+        
+        const response = await fetch(testUrl);
+        console.log('📊 Response status:', response.status);
+        console.log('📊 Response ok:', response.ok);
+        
+        const contentType = response.headers.get('content-type');
+        console.log('📄 Content-Type:', contentType);
+        
+        const text = await response.text();
+        console.log('📝 Response text (first 200 chars):', text.substring(0, 200));
+        
+        if (contentType && contentType.includes('application/json')) {
+            const data = JSON.parse(text);
+            console.log('✅ Valid JSON response:', data);
+        } else {
+            console.error('❌ Invalid response - expected JSON but got:', contentType);
+            console.error('📝 Full response:', text);
+        }
+        
+    } catch (error) {
+        console.error('💥 Debug error:', error);
+    }
+}
 
+// Вызовите для тестирования
+// setTimeout(debugRankEndpoint, 3000);
 
 // Функция выбора суммы
 // 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ВЫБОРА СУММЫ
@@ -11958,7 +12016,7 @@ app.get('/api/user/:userId/rank', async (req, res) => {
     }
 });
 // Функция для показа деталей ранга пользователя
-// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ДЛЯ ПОКАЗА ДЕТАЛЕЙ РАНГА ПОЛЬЗОВАТЕЛЯ
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ДЛЯ ПОКАЗА ДЕТАЛЕЙ РАНГА
 async function showUserRankDetails() {
     if (!currentUser) {
         showNotification('Пожалуйста, войдите в систему', 'error');
@@ -11968,14 +12026,14 @@ async function showUserRankDetails() {
     try {
         console.log('🎯 Loading user rank details for:', currentUser.id);
         
-        // Показываем загрузку в модальном окне
+        // Показываем загрузку
         document.getElementById('user-rank-number').textContent = '...';
         document.getElementById('user-tasks-count').textContent = '...';
         document.getElementById('user-balance-count').textContent = '...';
         document.getElementById('user-referrals-count').textContent = '...';
         document.getElementById('next-rank-info').textContent = 'Загружаем информацию...';
 
-        // Открываем модальное окно (используем правильный ID)
+        // Открываем модальное окно
         document.getElementById('user-rank-modal').style.display = 'block';
 
         // Загружаем данные о ранге
@@ -11989,7 +12047,8 @@ async function showUserRankDetails() {
 
         if (result.success) {
             // Заполняем данные
-            document.getElementById('user-rank-number').textContent = result.rank || '-';
+            const rankDisplay = result.rank ? result.rank : 'Не в топе';
+            document.getElementById('user-rank-number').textContent = rankDisplay;
             document.getElementById('user-tasks-count').textContent = result.completed_tasks || 0;
             document.getElementById('user-balance-count').textContent = result.balance || 0;
             document.getElementById('user-referrals-count').textContent = result.referral_count || 0;
@@ -11997,8 +12056,10 @@ async function showUserRankDetails() {
             // Показываем информацию о следующем месте
             if (result.next_rank_info) {
                 document.getElementById('next-rank-info').innerHTML = result.next_rank_info;
+            } else if (result.message) {
+                document.getElementById('next-rank-info').innerHTML = result.message;
             } else {
-                document.getElementById('next-rank-info').textContent = 'Вы на максимальной позиции!';
+                document.getElementById('next-rank-info').textContent = 'Выполните задания чтобы попасть в рейтинг!';
             }
 
             console.log('✅ Rank details loaded successfully');
@@ -12009,17 +12070,29 @@ async function showUserRankDetails() {
 
     } catch (error) {
         console.error('❌ Error loading rank details:', error);
-        document.getElementById('next-rank-info').textContent = 'Ошибка загрузки данных';
-        showNotification('Ошибка загрузки данных о ранге: ' + error.message, 'error');
         
         // Показываем заглушки при ошибке
-        document.getElementById('user-rank-number').textContent = '-';
+        document.getElementById('user-rank-number').textContent = 'Ошибка';
         document.getElementById('user-tasks-count').textContent = '0';
         document.getElementById('user-balance-count').textContent = '0';
         document.getElementById('user-referrals-count').textContent = '0';
+        document.getElementById('next-rank-info').textContent = 'Ошибка загрузки данных';
+        
+        showNotification('Ошибка загрузки данных о ранге: ' + error.message, 'error');
     }
 }
+// 🔧 ФУНКЦИЯ ДЛЯ ЗАКРЫТИЯ МОДАЛЬНОГО ОКНА РАНГА
+function closeRankModal() {
+    document.getElementById('user-rank-modal').style.display = 'none';
+}
 
+// 🔧 ОБРАБОТЧИК КЛИКА ВНЕ МОДАЛЬНОГО ОКНА
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('user-rank-modal');
+    if (event.target === modal) {
+        closeRankModal();
+    }
+});
 // 🔧 ФУНКЦИЯ ДЛЯ ЗАКРЫТИЯ МОДАЛЬНОГО ОКНА РАНГА
 function closeRankModal() {
     document.getElementById('user-rank-modal').style.display = 'none';
