@@ -5131,6 +5131,54 @@ app.get('/api/user/:userId/rank', async (req, res) => {
         });
     }
 });
+// 🔧 ПРОСТОЙ ENDPOINT ДЛЯ ПОЛУЧЕНИЯ РАНГА ПОЛЬЗОВАТЕЛЯ
+app.get('/api/user/:userId/simple-rank', async (req, res) => {
+    const userId = req.params.userId;
+    
+    try {
+        // Получаем позицию пользователя в рейтинге
+        const rankResult = await pool.query(`
+            WITH user_ranking AS (
+                SELECT 
+                    up.user_id,
+                    COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_tasks,
+                    COALESCE(up.balance, 0) as balance,
+                    ROW_NUMBER() OVER (
+                        ORDER BY 
+                            COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) DESC,
+                            COALESCE(up.balance, 0) DESC,
+                            up.created_at ASC
+                    ) as position
+                FROM user_profiles up
+                LEFT JOIN user_tasks ut ON up.user_id = ut.user_id AND ut.status = 'completed'
+                GROUP BY up.user_id, up.balance, up.created_at
+                HAVING COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) > 0
+                   OR COALESCE(up.balance, 0) > 0
+            )
+            SELECT position FROM user_ranking WHERE user_id = $1
+        `, [userId]);
+        
+        if (rankResult.rows.length === 0) {
+            return res.json({
+                success: true,
+                rank: null,
+                message: 'Пользователь не в рейтинге'
+            });
+        }
+        
+        res.json({
+            success: true,
+            rank: rankResult.rows[0].position
+        });
+        
+    } catch (error) {
+        console.error('Get simple rank error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка получения ранга: ' + error.message
+        });
+    }
+});
 // Создание реферальной ссылки с базовой статистикой
 app.post('/api/admin/links/create', async (req, res) => {
     const { adminId, name, description, createdBy } = req.body;

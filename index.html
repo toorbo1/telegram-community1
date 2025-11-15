@@ -3160,16 +3160,50 @@ function showProfileTab() {
     }, 100);
 }
 
-// 🔧 ДОБАВЛЕНИЕ ПРОКРУТКИ К СУЩЕСТВУЮЩИМ ФУНКЦИЯМ
 function showMainTab() {
     hideAllTabs();
     document.getElementById('main-tab').classList.add('active');
     updateNavState('main');
     
+    // Быстрая загрузка ранга
+    loadUserRankFast();
+    
+    // Полная загрузка топа (может быть медленнее)
+    setTimeout(() => {
+        loadTopUsers();
+    }, 1000);
+    
     // Прокручиваем к началу
     setTimeout(scrollToTop, 100);
 }
 
+// 🔧 АВТООБНОВЛЕНИЕ РАНГА КАЖДЫЕ 30 СЕКУНД
+function startRankAutoUpdate() {
+    setInterval(() => {
+        if (document.getElementById('main-tab').classList.contains('active')) {
+            loadUserRankFast();
+        }
+    }, 30000);
+}
+
+// Запустите при инициализации
+startRankAutoUpdate();
+// 🔧 БЫСТРАЯ ФУНКЦИЯ ДЛЯ ЗАГРУЗКИ ТОЛЬКО РАНГА
+async function loadUserRankFast() {
+    if (!currentUser) return;
+    
+    try {
+        const response = await fetch(`/api/user/${currentUser.id}/simple-rank`);
+        const result = await response.json();
+        
+        if (result.success) {
+            updateSimpleRankDisplay(result.rank);
+        }
+    } catch (error) {
+        console.error('Fast rank load error:', error);
+        updateSimpleRankDisplay(null);
+    }
+}
 function showTasksTab() {
     console.log('🎯 ПЕРЕХОД НА ВКЛАДКУ ЗАДАНИЙ');
     
@@ -6510,12 +6544,12 @@ function formatCategory(category) {
 async function initializeApp() {
     console.log('🎮 Initializing LinkGold app...');
     // Загружаем топ пользователей с обработкой ошибок
+        // Загружаем топ пользователей с обработкой ошибок
     try {
         await loadTopUsers();
     } catch (error) {
         console.error('Failed to load top users:', error);
     }
-    
     // Применяем исправления layout сразу
     fixLayoutIssues();
     // Применяем исправления layout сразу
@@ -7032,7 +7066,7 @@ app.get('/api/leaderboard/next-rank', async (req, res) => {
 });
 
 // Обновленная функция для загрузки топа
-// 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ ТОПА ПОЛЬЗОВАТЕЛЕЙ
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ ТОПА ПОЛЬЗОВАТЕЛЕЙ
 async function loadTopUsers() {
     try {
         console.log('🏆 Loading top users...');
@@ -7047,7 +7081,10 @@ async function loadTopUsers() {
         const result = await response.json();
         
         if (result.success) {
-            displayTopUsers(result.topUsers, result.currentUserRank, result.currentUserStats);
+            displayTopUsers(result.topUsers);
+            
+            // Обновляем простое отображение ранга
+            updateSimpleRankDisplay(result.currentUserRank);
             
             // Сохраняем статистику пользователя для использования в других функциях
             if (result.currentUserStats) {
@@ -7063,17 +7100,69 @@ async function loadTopUsers() {
         showNotification('Ошибка загрузки рейтинга: ' + error.message, 'error');
     }
 }
-// Обновление топа при каждом переходе на главную вкладку
-function showMainTab() {
-    hideAllTabs();
-    document.getElementById('main-tab').classList.add('active');
-    updateNavState('main');
+
+// 🔧 ФУНКЦИЯ ОБНОВЛЕНИЯ ПРОСТОГО ОТОБРАЖЕНИЯ РАНГА
+function updateSimpleRankDisplay(rank) {
+    const rankElement = document.getElementById('user-rank-simple');
+    if (rankElement) {
+        if (rank) {
+            rankElement.textContent = `#${rank}`;
+            rankElement.style.fontSize = '32px';
+            rankElement.style.fontWeight = '800';
+            rankElement.style.color = 'var(--gold)';
+        } else {
+            rankElement.textContent = '—';
+            rankElement.style.fontSize = '24px';
+            rankElement.style.color = 'var(--text-secondary)';
+        }
+    }
+}
+
+// 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ТОПА
+function displayTopUsers(topUsers) {
+    const topUsersElement = document.getElementById('top-users-list');
+    if (!topUsersElement) return;
     
-    // Обновляем топ пользователей с улучшенным дизайном
-    loadTopUsers();
+    if (!topUsers || topUsers.length === 0) {
+        topUsersElement.innerHTML = '<div class="no-data">🏆 Топ пользователей пуст</div>';
+        return;
+    }
     
-    // Прокручиваем к началу
-    setTimeout(scrollToTop, 100);
+    let html = '<div class="top-users-grid">';
+    
+    topUsers.slice(0, 5).forEach((user, index) => {
+        const position = index + 1;
+        const medal = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : `${position}.`;
+        
+        const displayName = user.username || `user_${user.user_id}`;
+        const completedTasks = user.completed_tasks || 0;
+        
+        html += `
+            <div class="top-user-item ${user.user_id === currentUser?.id ? 'current-user' : ''}">
+                <div class="top-user-position">${medal}</div>
+                <div class="top-user-info">
+                    <div class="top-user-name">${displayName}</div>
+                    <div class="top-user-stats">
+                        <span class="tasks-count">✅ ${completedTasks}</span>
+                        <span class="balance">💫 ${user.balance}⭐</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    
+    // Добавляем кнопку для просмотра полного топа
+    html += `
+        <div class="view-full-leaderboard">
+            <button class="btn btn-primary" onclick="showLeaderboardPage()">
+                📊 Узнать мое место
+            </button>
+        </div>
+    `;
+    
+    topUsersElement.innerHTML = html;
 }
 
         // Обновленная функция загрузки заданий пользователя
@@ -8575,47 +8664,7 @@ async function addTask() {
         showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
     }
 }
-// Функция для загрузки топа пользователей
-// Проверьте корректность endpoint'а
-async function loadTopUsers() {
-    try {
-        console.log('🏆 Loading top users...');
-        
-        // Добавьте проверку URL
-        const url = '/api/leaderboard/top';
-        console.log('📡 Request URL:', url);
-        
-        const result = await makeRequest(url);
-        
-        if (result.success) {
-            displayTopUsers(result.topUsers, result.currentUserRank);
-        } else {
-            console.error('Error loading top users:', result.error);
-            showTopUsersError();
-        }
-    } catch (error) {
-        console.error('Error loading top users:', error);
-        showTopUsersError();
-    }
-}
 
-function showTopUsersError() {
-    const container = document.getElementById('top-users-list');
-    if (!container) return;
-    
-    container.innerHTML = `
-        <div class="no-top-users">
-            <div class="icon">❌</div>
-            <div>Ошибка загрузки</div>
-            <div style="font-size: 12px; color: var(--text-secondary); margin: 8px 0;">
-                Не удалось загрузить рейтинг
-            </div>
-            <button class="view-full-list-btn" onclick="loadTopUsers()" style="margin-top: 10px;">
-                Повторить
-            </button>
-        </div>
-    `;
-}
 
 // Функция для отображения топа пользователей
 function displayTopUsers(topUsers, currentUserRank) {
@@ -8706,21 +8755,32 @@ function getRankClass(rank) {
 }
 
 // Функция показа ошибки загрузки топа
+// 🔧 ФУНКЦИЯ ПОКАЗА ОШИБКИ ТОПА
 function showTopUsersError() {
     const container = document.getElementById('top-users-list');
-    if (!container) return;
+    const rankElement = document.getElementById('user-rank-simple');
     
-    container.innerHTML = `
-        <div class="no-top-users">
-            <div class="icon">❌</div>
-            <div>Ошибка загрузки</div>
-            <button class="view-full-list-btn" onclick="loadTopUsers()" style="margin-top: 10px;">
-                Повторить
-            </button>
-        </div>
-    `;
+    if (container) {
+        container.innerHTML = `
+            <div class="no-top-users">
+                <div class="icon">❌</div>
+                <div>Ошибка загрузки</div>
+                <div style="font-size: 12px; color: var(--text-secondary); margin: 8px 0;">
+                    Не удалось загрузить рейтинг
+                </div>
+                <button class="view-full-list-btn" onclick="loadTopUsers()" style="margin-top: 10px;">
+                    Повторить
+                </button>
+            </div>
+        `;
+    }
+    
+    if (rankElement) {
+        rankElement.textContent = '—';
+        rankElement.style.fontSize = '24px';
+        rankElement.style.color = 'var(--text-secondary)';
+    }
 }
-
 // Функция показа полного списка лидеров
 function showFullLeaderboard() {
     // Здесь можно реализовать переход на полную страницу лидерборда
@@ -8730,29 +8790,7 @@ function showFullLeaderboard() {
 
 
 
-// Также обновляем функцию showMainTab для обновления топа при переходе на главную
-function showMainTab() {
-    hideAllTabs();
-    document.getElementById('main-tab').classList.add('active');
-    updateNavState('main');
-    
-    // Обновляем топ пользователей
-    loadTopUsers();
-    
-    // Прокручиваем к началу
-    setTimeout(scrollToTop, 100);
-}
 
-// Автообновление топа каждые 30 секунд
-setInterval(() => {
-    if (document.getElementById('main-tab').classList.contains('active')) {
-        loadTopUsers();
-    }
-}, 30000);
-
-// 🔧 ЭКСПОРТ ФУНКЦИЙ
-window.loadTopUsers = loadTopUsers;
-window.showFullLeaderboard = showFullLeaderboard;
 // Добавьте эту функцию для отладки
 function debugTaskCreation() {
     
@@ -9508,18 +9546,6 @@ function showTasksTab() {
             currentChatId = null;
         }
 
-        // 🔧 ФУНКЦИИ НАВИГАЦИИ
-        function showMainTab() {
-            hideAllTabs();
-            document.getElementById('main-tab').classList.add('active');
-            updateNavState('main');
-        }
-
-        function showTasksTab() {
-            hideAllTabs();
-            document.getElementById('tasks-tab').classList.add('active');
-            updateNavState('tasks');
-        }
 
 
 // 🔧 ФУНКЦИЯ УДАЛЕНИЯ ЗАДАНИЯ
@@ -10709,47 +10735,7 @@ function updateSimpleRankDisplay() {
     }
 }
 
-// Обновляем отображение при загрузке топа
-async function loadTopUsers() {
-    try {
-        console.log('🏆 Loading top users...');
-        
-        const userId = currentUser?.id || '';
-        const response = await fetch(`/api/leaderboard/top?userId=${userId}`);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            displayTopUsers(result.topUsers, result.currentUserRank, result.currentUserStats);
-            
-            // Сохраняем статистику пользователя
-            if (result.currentUserStats) {
-                window.currentUserStats = result.currentUserStats;
-                window.currentUserRank = result.currentUserRank;
-                
-                // Обновляем простое отображение ранга
-                updateSimpleRankDisplay();
-            }
-        } else {
-            throw new Error(result.error || 'Failed to load top users');
-        }
-    } catch (error) {
-        console.error('❌ Error loading top users:', error);
-        showTopUsersError();
-        
-        // Показываем ошибку в отображении ранга
-        const rankElement = document.getElementById('user-rank-simple');
-        if (rankElement) {
-            rankElement.textContent = '—';
-            rankElement.style.fontSize = '24px';
-            rankElement.style.color = 'var(--text-secondary)';
-        }
-    }
-}
+
 // 🔧 ФУНКЦИЯ ОТМЕНЫ ВЫПЛАТЫ
 async function cancelWithdrawal(requestId) {
     if (!confirm('Вы уверены, что хотите отменить эту выплату?\n\nСредства будут возвращены на баланс пользователя.')) {
