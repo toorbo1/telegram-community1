@@ -13952,32 +13952,22 @@ function createTaskCard(task, category, index) {
     
     // Определяем текст кнопки в зависимости от категории
     let buttonHtml = '';
-    let statusText = '';
-    
     switch(category) {
         case 'new':
             buttonHtml = `<button class="task-btn" onclick="event.stopPropagation(); openTaskModal(${task.id})">
                 Начать задание
             </button>`;
-            statusText = task.time_to_complete || '5-10 минут';
             break;
-            
         case 'confirmation':
-            // Для заданий на подтверждение показываем статус "Ожидает проверки"
             buttonHtml = `<button class="task-btn" onclick="event.stopPropagation(); showTaskConfirmation(${task.id}, '${escapeHtml(task.title)}')">
-                Проверить статус
+                Отправить на проверку
             </button>`;
-            statusText = '⏳ Ожидает проверки';
             break;
-            
         case 'completed':
             buttonHtml = `<div class="task-status completed">✅ Выполнено</div>`;
-            statusText = '✅ Проверено';
             break;
-            
         case 'rejected':
             buttonHtml = `<div class="task-status rejected">❌ Отклонено</div>`;
-            statusText = '❌ Отклонено';
             break;
     }
     
@@ -14009,7 +13999,10 @@ function createTaskCard(task, category, index) {
         
         <div class="task-footer">
             <div class="task-time">
-                ${statusText}
+                ${category === 'confirmation' ? 'Ожидает подтверждения' : 
+                  category === 'completed' ? 'Выполнено' :
+                  category === 'rejected' ? 'Отклонено' : 
+                  task.time_to_complete || '5-10 минут'}
             </div>
             ${buttonHtml}
         </div>
