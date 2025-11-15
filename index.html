@@ -14,6 +14,235 @@
     <link rel="stylesheet" href="mobile.css">
     <style>
         
+/* CSS переменные для адаптивной производительности */
+:root {
+    --transition-duration: 0.3s;
+    --shadow-intensity: 0.3;
+}
+
+.card, .task-card, .stat-card, .btn {
+    transition: all var(--transition-duration) ease;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, var(--shadow-intensity));
+}
+
+/* Упрощенные анимации для всех мобильных */
+@media (max-width: 768px) {
+    :root {
+        --transition-duration: 0.2s;
+        --shadow-intensity: 0.2;
+    }
+    
+    /* Дополнительные оптимизации */
+    .task-card, .stat-card {
+        will-change: transform;
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+    }
+}
+
+/* Самый безопасный вариант - плавные анимации только для десктопа */
+@media (min-width: 769px) {
+    .card:hover, .task-card:hover, .stat-card:hover {
+        transform: translateY(-3px);
+        transition: all 0.3s ease;
+    }
+}
+
+@media (max-width: 768px) {
+    /* На мобильных - только минимальные анимации */
+    .card:active, .task-card:active, .stat-card:active {
+        transform: scale(0.98);
+        transition: transform 0.1s ease;
+    }
+}
+        /* Базовые плавные анимации для всех устройств */
+.card, .task-card, .stat-card, .btn {
+    transition: all 0.3s ease;
+}
+
+/* Оптимизированные анимации для слабых устройств */
+@media (prefers-reduced-motion: reduce), (max-width: 768px) {
+    /* Отключаем сложные анимации */
+    .card:hover, .task-card:hover, .stat-card:hover {
+        transform: none !important;
+    }
+    
+    /* Упрощаем переходы */
+    .card, .task-card, .stat-card, .btn {
+        transition: 
+            box-shadow 0.2s ease,
+            opacity 0.2s ease !important;
+    }
+    
+    /* Упрощаем тени для лучшей производительности */
+    .card, .task-card, .stat-card, .top-users-card {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+    }
+    
+    .card:hover, .task-card:hover, .stat-card:hover {
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25) !important;
+    }
+    
+    /* Отключаем сложные градиентные анимации */
+    .btn-primary, .btn-gold {
+        background: var(--primary) !important;
+    }
+    
+    .btn-gold {
+        background: var(--gold) !important;
+    }
+    
+    /* Упрощаем анимации появления */
+    .fade-in {
+        animation: simpleFadeIn 0.3s ease !important;
+    }
+    
+    @keyframes simpleFadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+}
+
+/* Детектор слабых устройств */
+@media (max-width: 768px) and (hover: none) and (pointer: coarse) {
+    /* Для тач-устройств с ограниченной производительностью */
+    
+    /* Отключаем все ховер-эффекты */
+    .card:hover, .task-card:hover, .stat-card:hover,
+    .btn:hover, .nav-item:hover {
+        transform: none !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+    }
+    
+    /* Упрощенные анимации для тапов */
+    .card:active, .task-card:active, .stat-card:active {
+        transform: scale(0.98) !important;
+        transition: transform 0.1s ease !important;
+    }
+    
+    .btn:active {
+        transform: scale(0.95) !important;
+        transition: transform 0.1s ease !important;
+    }
+    
+    /* Минимальные тени для производительности */
+    .card, .task-card, .stat-card {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+    }
+}
+
+        /* Яркие тени для всех блоков */
+.card, .task-card, .stat-card, .top-users-card, 
+.post-promo, .exchange-card, .profile-section,
+.admin-section, .modal-content, .level-progress,
+.referral-system, .withdraw-history, .check-position-card {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Усиление теней при наведении */
+.card:hover, .task-card:hover, .stat-card:hover {
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4) !important;
+    transform: translateY(-3px);
+}
+
+/* Яркие тени для кнопок */
+.btn, .task-btn, .admin-btn, .filter-btn,
+.amount-btn, .copy-btn, .admin-submit {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
+}
+
+.btn:hover, .task-btn:hover, .admin-btn:hover {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Особо яркие тени для основных кнопок */
+.btn-primary, .btn-gold {
+    box-shadow: 0 5px 20px rgba(99, 102, 241, 0.4) !important;
+}
+
+.btn-primary:hover, .btn-gold:hover {
+    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5) !important;
+}
+
+/* Яркие тени для навигации */
+.bottom-nav {
+    box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.3) !important;
+}
+
+.header {
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Усиление теней для модальных окон */
+.modal-content {
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Яркие тени для элементов форм */
+.admin-input, .search-input, .admin-textarea {
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Усиление контраста текста */
+.stat-value, .task-price, .profile-stat .stat-value,
+.referral-value, .withdraw-balance {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Более яркие градиенты */
+.btn-primary {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+}
+
+.btn-gold {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b) !important;
+}
+
+.stat-card::before {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b) !important;
+}
+
+/* Усиление видимости границ */
+.card, .task-card, .stat-card {
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Более контрастный ховер-эффект */
+.card:hover, .task-card:hover {
+    border-color: rgba(99, 102, 241, 0.5) !important;
+}
+
+/* Яркие тени для иконок и аватаров */
+.stat-icon, .nav-icon, .profile-avatar,
+.user-avatar, .verification-avatar {
+    filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.2));
+}
+
+/* Усиление теней для прогресс-баров */
+.progress-bar {
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+.progress-fill {
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3) !important;
+}
+
+/* Яркие тени для активных элементов */
+.nav-item.active {
+    filter: drop-shadow(0 3px 10px rgba(99, 102, 241, 0.4));
+}
+
+.task-tab.active, .filter-btn.active {
+    box-shadow: 0 3px 12px rgba(99, 102, 241, 0.3) !important;
+}
+
+/* Усиление видимости разделителей */
+.position-divider {
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent) !important;
+    height: 2px !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
         /* Плавная прокрутка для всего сайта */
 html {
     scroll-behavior: smooth;
@@ -2354,7 +2583,60 @@ body {
 
 
     <script>
+        // Функция для определения производительности устройства
+function isLowPerformanceDevice() {
+    // Проверяем различные признаки слабого устройства
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isSlowConnection = navigator.connection && (
+        navigator.connection.saveData || 
+        navigator.connection.effectiveType === 'slow-2g' ||
+        navigator.connection.effectiveType === '2g'
+    );
+    const hasLowMemory = navigator.deviceMemory && navigator.deviceMemory < 4;
+    
+    return isMobile && (isSlowConnection || hasLowMemory);
+}
+
+// Применяем упрощенные стили для слабых устройств
+if (isLowPerformanceDevice()) {
+    document.documentElement.classList.add('low-performance');
+    
+    // Динамически добавляем упрощенные стили
+    const style = document.createElement('style');
+    style.textContent = `
+        .low-performance .card,
+        .low-performance .task-card,
+        .low-performance .stat-card,
+        .low-performance .btn {
+            transition: none !important;
+            transform: none !important;
+        }
         
+        .low-performance .card:hover,
+        .low-performance .task-card:hover,
+        .low-performance .stat-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+        }
+        
+        .low-performance .fade-in {
+            animation: none !important;
+            opacity: 1 !important;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Альтернативный простой способ - по ширине экрана и типу устройства
+function applyPerformanceOptimizations() {
+    const isMobile = window.innerWidth <= 768;
+    const isTouchDevice = 'ontouchstart' in window;
+    
+    if (isMobile && isTouchDevice) {
+        // Упрощаем анимации для мобильных тач-устройств
+        document.documentElement.style.setProperty('--transition-duration', '0.2s');
+        document.documentElement.style.setProperty('--shadow-intensity', '0.15');
+    }
+}
         // Функция для прокрутки страницы к началу
 function scrollToTop() {
     window.scrollTo({
