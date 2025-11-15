@@ -5036,7 +5036,269 @@ app.get('/api/admin/users-detailed-stats', async (req, res) => {
         });
     }
 });
+// В server.js добавьте этот endpoint для начала задания с автоматическим скрытием
+app.post('/api/user/tasks/start-with-hide', async (req, res) => {
+    const { userId, taskId } = req.body;
+    
+    console.log('🚀 Start task with hide request:', { userId, taskId });
+    
+    if (!userId || !taskId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    const client = await pool.connect();
+    
+    try {
+        await client.query('BEGIN');
 
+        // 1. Проверяем, выполнял ли пользователь это задание
+        const existingTask = await client.query(`
+            SELECT id FROM user_tasks 
+            WHERE user_id = $1 AND task_id = $2 
+            AND status IN ('active', 'pending_review', 'completed', 'rejected')
+        `, [userId, taskId]);
+        
+        if (existingTask.rows.length > 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({
+                success: false,
+                error: 'Вы уже выполняли это задание'
+            });
+        }
+        
+        // 2. Проверяем лимит выполнений задания
+        const taskInfo = await client.query(`
+            SELECT t.*, 
+                   COUNT(ut.id) as completed_count
+            FROM tasks t
+            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
+            WHERE t.id = $1 AND t.status = 'active'
+            GROUP BY t.id
+        `, [taskId]);
+        
+        if (taskInfo.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({
+                success: false,
+                error: 'Задание не найдено или недоступно'
+            });
+        }
+        
+        const task = taskInfo.rows[0];
+        const peopleRequired = task.people_required || 1;
+        const completedCount = task.completed_count || 0;
+        const remainingSlots = peopleRequired - completedCount;
+        
+        console.log(`📊 Task slots: ${completedCount}/${peopleRequired}, remaining: ${remainingSlots}`);
+        
+        // 3. Если это последний слот - помечаем задание как выполненное
+        let taskHidden = false;
+        if (remainingSlots === 1) {
+            console.log(`🎯 Last slot taken! Hiding task ${taskId} for all users`);
+            
+            await client.query(`
+                UPDATE tasks 
+                SET status = 'completed' 
+                WHERE id = $1
+            `, [taskId]);
+            
+            taskHidden = true;
+        }
+        
+        // 4. Start the task for user
+        const result = await client.query(`
+            INSERT INTO user_tasks (user_id, task_id, status) 
+            VALUES ($1, $2, 'active')
+            RETURNING *
+        `, [userId, taskId]);
+        
+        await client.query('COMMIT');
+        
+        console.log('✅ Task started successfully:', {
+            userTaskId: result.rows[0].id,
+            taskHidden: taskHidden,
+            remainingSlotsBefore: remainingSlots
+        });
+        
+        res.json({
+            success: true,
+            message: taskHidden ? 
+                'Задание начато! Это был последний доступный слот - задание скрыто для других пользователей.' : 
+                'Задание начато!',
+            userTaskId: result.rows[0].id,
+            taskHidden: taskHidden,
+            remainingSlots: remainingSlots - 1
+        });
+        
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('❌ Start task with hide error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    } finally {
+        client.release();
+    }
+});
+
+// Также обновите основной endpoint получения заданий чтобы сразу скрывать заполненные
+app.get('/api/tasks-with-auto-hide', async (req, res) => {
+    const { search, category, userId } = req.query;
+    
+    console.log('📥 Получен запрос на задания с авто-скрытием:', { search, category, userId });
+    
+    try {
+        let query = `
+            SELECT t.*, 
+                   COUNT(ut.id) as completed_count,
+                   EXISTS(
+                       SELECT 1 FROM user_tasks ut2 
+                       WHERE ut2.task_id = t.id 
+                       AND ut2.user_id = $1 
+                       AND ut2.status IN ('active', 'pending_review', 'completed')
+                   ) as user_has_task,
+                   EXISTS(
+                       SELECT 1 FROM user_tasks ut3 
+                       WHERE ut3.task_id = t.id 
+                       AND ut3.user_id = $1 
+                       AND ut3.status = 'rejected'
+                   ) as user_has_rejected_task
+            FROM tasks t 
+            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
+            WHERE t.status = 'active'
+        `;
+        let params = [userId];
+        let paramCount = 1;
+        
+        if (search) {
+            paramCount++;
+            query += ` AND (t.title ILIKE $${paramCount} OR t.description ILIKE $${paramCount + 1})`;
+            params.push(`%${search}%`, `%${search}%`);
+            paramCount += 2;
+        }
+        
+        if (category && category !== 'all') {
+            paramCount++;
+            query += ` AND t.category = $${paramCount}`;
+            params.push(category);
+        }
+        
+        query += ` GROUP BY t.id ORDER BY t.created_at DESC`;
+        
+        console.log('📊 Выполняем запрос с авто-скрытием');
+        
+        const result = await pool.query(query, params);
+        
+        // 🔥 АВТОМАТИЧЕСКИ СКРЫВАЕМ ЗАПОЛНЕННЫЕ ЗАДАНИЯ
+        const tasksToHide = [];
+        const availableTasks = result.rows.filter(task => {
+            const completedCount = task.completed_count || 0;
+            const peopleRequired = task.people_required || 1;
+            const isAvailableByLimit = completedCount < peopleRequired;
+            
+            // Если задание заполнено - помечаем для скрытия
+            if (!isAvailableByLimit) {
+                tasksToHide.push(task.id);
+            }
+            
+            return isAvailableByLimit;
+        });
+        
+        // 🔥 СКРЫВАЕМ ЗАПОЛНЕННЫЕ ЗАДАНИЯ В БАЗЕ
+        if (tasksToHide.length > 0) {
+            console.log(`🎯 Авто-скрытие заполненных заданий: ${tasksToHide.join(', ')}`);
+            
+            await pool.query(`
+                UPDATE tasks 
+                SET status = 'completed' 
+                WHERE id = ANY($1) AND status = 'active'
+            `, [tasksToHide]);
+        }
+        
+        // 🔥 ФИЛЬТРУЕМ задания которые пользователь уже начал ИЛИ ОТКЛОНЕНЫ
+        const filteredTasks = availableTasks.filter(task => {
+            const hasActiveTask = task.user_has_task;
+            const hasRejectedTask = task.user_has_rejected_task;
+            
+            return !hasActiveTask && !hasRejectedTask;
+        });
+        
+        console.log(`✅ Найдено заданий: ${result.rows.length}, доступно: ${availableTasks.length}, для пользователя: ${filteredTasks.length}, скрыто: ${tasksToHide.length}`);
+        
+        res.json({
+            success: true,
+            tasks: filteredTasks,
+            stats: {
+                totalCount: result.rows.length,
+                availableByLimit: availableTasks.length,
+                availableCount: filteredTasks.length,
+                hiddenCount: tasksToHide.length
+            }
+        });
+    } catch (error) {
+        console.error('❌ Get tasks with auto-hide error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Добавьте также endpoint для принудительной проверки и скрытия заданий
+app.post('/api/admin/hide-completed-tasks', async (req, res) => {
+    const { adminId } = req.body;
+    
+    console.log('🔧 Принудительное скрытие заполненных заданий админом:', adminId);
+    
+    try {
+        // Находим задания которые достигли лимита
+        const completedTasks = await pool.query(`
+            SELECT t.id, t.title, t.people_required, COUNT(ut.id) as completed_count
+            FROM tasks t
+            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
+            WHERE t.status = 'active'
+            GROUP BY t.id, t.title, t.people_required
+            HAVING COUNT(ut.id) >= t.people_required
+        `);
+        
+        if (completedTasks.rows.length === 0) {
+            return res.json({
+                success: true,
+                message: 'Нет заданий для скрытия',
+                hiddenCount: 0
+            });
+        }
+        
+        const taskIds = completedTasks.rows.map(task => task.id);
+        
+        // Скрываем задания
+        await pool.query(`
+            UPDATE tasks 
+            SET status = 'completed' 
+            WHERE id = ANY($1)
+        `, [taskIds]);
+        
+        console.log(`✅ Скрыто заданий: ${taskIds.join(', ')}`);
+        
+        res.json({
+            success: true,
+            message: `Скрыто ${taskIds.length} заполненных заданий`,
+            hiddenTasks: completedTasks.rows,
+            hiddenCount: taskIds.length
+        });
+        
+    } catch (error) {
+        console.error('❌ Hide completed tasks error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
 // Endpoint для получения ранга пользователя
 app.get('/api/user/:userId/rank', async (req, res) => {
     const userId = req.params.userId;
