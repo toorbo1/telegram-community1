@@ -3177,7 +3177,33 @@ function showMainTab() {
     setTimeout(scrollToTop, 100);
 }
 
+// 🔧 АВТООБНОВЛЕНИЕ РАНГА КАЖДЫЕ 30 СЕКУНД
+function startRankAutoUpdate() {
+    setInterval(() => {
+        if (document.getElementById('main-tab').classList.contains('active')) {
+            loadUserRankFast();
+        }
+    }, 30000);
+}
 
+// Запустите при инициализации
+startRankAutoUpdate();
+// 🔧 БЫСТРАЯ ФУНКЦИЯ ДЛЯ ЗАГРУЗКИ ТОЛЬКО РАНГА
+async function loadUserRankFast() {
+    if (!currentUser) return;
+    
+    try {
+        const response = await fetch(`/api/user/${currentUser.id}/simple-rank`);
+        const result = await response.json();
+        
+        if (result.success) {
+            updateSimpleRankDisplay(result.rank);
+        }
+    } catch (error) {
+        console.error('Fast rank load error:', error);
+        updateSimpleRankDisplay(null);
+    }
+}
 function showTasksTab() {
     console.log('🎯 ПЕРЕХОД НА ВКЛАДКУ ЗАДАНИЙ');
     
@@ -11691,7 +11717,7 @@ function showAdminPaymentsSection() {
             document.getElementById(modalId).classList.remove('active');
         }
 
-// В index.html - обновите функцию начала задания
+// В функции startTask() добавьте проверку на последнее выполнение
 async function startTask() {
     console.log('🎯 Starting task...', { selectedTaskId, currentUser });
     
@@ -11717,6 +11743,15 @@ async function startTask() {
             closeModal('task-modal');
             showNotification('✅ Задание начато! Выполните его и вернитесь для подтверждения.', 'success');
             
+            // 🔥 ПРОВЕРКА: ЯВЛЯЕТСЯ ЛИ ЭТО ПОСЛЕДНИМ ВЫПОЛНЕНИЕМ
+            if (result.isLastCompletion) {
+                console.log('🔥 Это последнее выполнение задания! Задание будет удалено после завершения.');
+                showNotification('⚠️ Внимание! Это последнее доступное выполнение задания. После завершения задание будет удалено.', 'warning');
+                
+                // Сохраняем информацию о последнем выполнении
+                window.lastCompletionTaskId = selectedTaskId;
+            }
+            
             // НЕМЕДЛЕННО обновляем списки заданий
             setTimeout(() => {
                 loadTasks(); // Обновляем новые задания (убираем начатое)
@@ -11732,6 +11767,138 @@ async function startTask() {
     }
 }
 
+// В функции approveVerification() добавьте логику удаления задания при последнем выполнении
+async function approveVerification() {
+    if (!currentVerificationId) {
+        showNotification('❌ ID верификации не найден', 'error');
+        return;
+    }
+
+    if (!currentUser) {
+        showNotification('❌ Пользователь не авторизован', 'error');
+        return;
+    }
+
+    try {
+        console.log(`🔄 Начинаем одобрение верификации:`, {
+            verificationId: currentVerificationId,
+            adminId: currentUser.id
+        });
+
+        // Показываем индикатор загрузки
+        const approveBtn = document.querySelector('.btn-success');
+        if (approveBtn) {
+            approveBtn.disabled = true;
+            approveBtn.textContent = 'Одобряем...';
+        }
+
+        // Отправляем запрос на одобрение
+        const result = await makeRequest(`/api/admin/task-verifications/${currentVerificationId}/approve`, {
+            method: 'POST',
+            body: JSON.stringify({
+                adminId: currentUser.id,
+                forceApprove: true
+            })
+        });
+
+        console.log('📨 Ответ сервера при одобрении:', result);
+
+        if (result.success) {
+            let message = `✅ Задание одобрено! Пользователь получил ${result.amountAdded}⭐`;
+            
+            // 🔥 ПРОВЕРКА: УДАЛЯЕМ ЛИ ЗАДАНИЕ ПОСЛЕ ПОСЛЕДНЕГО ВЫПОЛНЕНИЯ
+            if (result.taskRemoved || result.taskCompleted) {
+                message += "\n\n🎯 Задание автоматически удалено - достигнут лимит исполнителей!";
+                
+                // Принудительно обновляем список заданий у всех пользователей
+                setTimeout(() => {
+                    console.log('🔄 Принудительное обновление заданий после удаления');
+                    loadTasks(); // Обновляем список заданий
+                    loadAdminTasks(); // Обновляем список в админке
+                    
+                    // Если мы на вкладке заданий, показываем уведомление
+                    if (document.getElementById('tasks-tab').classList.contains('active')) {
+                        showNotification('📋 Список заданий обновлен. Одно задание было удалено.', 'info');
+                    }
+                }, 1000);
+            }
+            
+            showNotification(message, 'success');
+            
+            closeModal('verification-modal');
+            
+            setTimeout(() => {
+                loadTaskVerifications();
+                loadAdminTasks();
+                updateUserData();
+                console.log('✅ Интерфейс успешно обновлен после одобрения задания');
+            }, 500);
+            
+        } else {
+            if (result.error && (result.error.includes('скриншот') || result.error.includes('изображение'))) {
+                console.log('⚠️ Проблема со скриншотом, пробуем принудительное одобрение...');
+                await forceApproveVerification();
+            } else {
+                throw new Error(result.error || 'Неизвестная ошибка сервера');
+            }
+        }
+
+    } catch (error) {
+        console.error('❌ Сетевая ошибка при одобрении:', error);
+        console.log('🚨 Аварийный режим: пробуем принудительное одобрение...');
+        await forceApproveVerification();
+    }
+}
+
+// Функция для принудительного обновления списка заданий у всех клиентов
+function broadcastTaskUpdate() {
+    // Эта функция может использоваться для уведомления всех подключенных клиентов
+    // о необходимости обновить список заданий
+    console.log('📢 Рассылка обновления заданий всем клиентам');
+    
+    // В реальном приложении здесь может быть WebSocket соединение
+    // Для этого примера просто обновляем локально
+    if (document.getElementById('tasks-tab').classList.contains('active')) {
+        loadTasks();
+    }
+}
+
+// Дополнительная функция для проверки статуса задания
+async function checkTaskStatus(taskId) {
+    try {
+        const result = await makeRequest(`/api/tasks/${taskId}/status`);
+        if (result.success) {
+            const task = result.task;
+            const availableTasks = (task.people_required || 1) - (task.completed_count || 0);
+            
+            if (availableTasks <= 0) {
+                console.log(`🎯 Задание ${taskId} завершено, удаляем из списка`);
+                // Удаляем задание из локального списка
+                allTasks = allTasks.filter(t => t.id !== taskId);
+                // Обновляем отображение
+                displayTasks(allTasks, 'new');
+            }
+        }
+    } catch (error) {
+        console.error('Error checking task status:', error);
+    }
+}
+
+// Автоматическая проверка статуса заданий при загрузке
+setInterval(() => {
+    if (document.getElementById('tasks-tab').classList.contains('active')) {
+        // Проверяем статус всех заданий в списке
+        allTasks.forEach(task => {
+            const availableTasks = (task.people_required || 1) - (task.completed_count || 0);
+            if (availableTasks <= 0) {
+                console.log(`🔄 Автоматическое удаление завершенного задания: ${task.title}`);
+                allTasks = allTasks.filter(t => t.id !== task.id);
+            }
+        });
+        // Обновляем отображение
+        displayTasks(allTasks, 'new');
+    }
+}, 30000); // Проверяем каждые 30 секунд
 // 🔧 ФУНКЦИЯ ДЛЯ ДИАГНОСТИКИ НАЧАЛА ЗАДАНИЯ
 function debugStartTask() {
     console.log('🐛 DEBUG Start Task:');

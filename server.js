@@ -8459,7 +8459,48 @@ app.post('/api/admin/task-verifications/:verificationId/force-approve', async (r
     }
 });
 
+// Endpoint для проверки статуса задания
+app.get('/api/tasks/:taskId/status', async (req, res) => {
+    const { taskId } = req.params;
 
+    try {
+        const result = await pool.query(`
+            SELECT 
+                id,
+                title,
+                people_required,
+                completed_count,
+                status,
+                (people_required - COALESCE(completed_count, 0)) as available_tasks
+            FROM tasks 
+            WHERE id = $1
+        `, [taskId]);
+
+        if (result.rows.length === 0) {
+            return res.json({
+                success: false,
+                error: 'Задание не найдено'
+            });
+        }
+
+        const task = result.rows[0];
+        const isCompleted = task.available_tasks <= 0;
+
+        res.json({
+            success: true,
+            task: task,
+            isCompleted: isCompleted,
+            availableTasks: Math.max(0, task.available_tasks)
+        });
+
+    } catch (error) {
+        console.error('Task status error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
 
 // В server.js добавьте:
 app.get('/api/user/:userId/referral-earnings', async (req, res) => {
