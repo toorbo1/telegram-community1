@@ -3017,7 +3017,7 @@ app.get('/api/tasks/:taskId/availability', async (req, res) => {
     }
 });
 
-// Обновленный endpoint начала задания с мгновенным скрытием
+// 🔧 ОБНОВЛЕННЫЙ ENDPOINT НАЧАЛА ЗАДАНИЯ С УВЕДОМЛЕНИЕМ
 app.post('/api/user/tasks/start', async (req, res) => {
     const { userId, taskId } = req.body;
     
@@ -3097,28 +3097,21 @@ app.post('/api/user/tasks/start', async (req, res) => {
         const newAvailableTasks = availableTasks - 1;
         const isLastTask = newAvailableTasks === 0;
         
-        // 6. Если это была последняя копия - помечаем задание как выполненное
-        if (isLastTask) {
-            await client.query(`
-                UPDATE tasks 
-                SET status = 'completed' 
-                WHERE id = $1
-            `, [taskId]);
-            
-            console.log(`🎯 Task ${taskId} marked as completed - last copy taken`);
-        }
-        
         await client.query('COMMIT');
         
         console.log(`✅ Task started: ${taskId}, available now: ${newAvailableTasks}, isLast: ${isLastTask}`);
+        
+        // 🔥 ОТПРАВЛЯЕМ УВЕДОМЛЕНИЕ ВСЕМ ПОЛЬЗОВАТЕЛЯМ
+        if (isLastTask) {
+            notifyAllUsersTaskTaken(taskId, task.title);
+        }
         
         res.json({
             success: true,
             message: 'Задание начато!',
             userTaskId: startResult.rows[0].id,
             available_tasks: newAvailableTasks,
-            is_last_task: isLastTask,
-            task_removed: isLastTask // Флаг что задание должно исчезнуть
+            is_last_task: isLastTask
         });
         
     } catch (error) {
@@ -6053,7 +6046,6 @@ app.delete('/api/posts/:id', async (req, res) => {
 // ==================== TASKS ENDPOINTS ====================
 
 // Получение заданий с правильной фильтрацией отклоненных заданий
-// В endpoint /api/tasks добавьте фильтрацию
 app.get('/api/tasks', async (req, res) => {
     const { search, category, userId } = req.query;
     
@@ -6069,6 +6061,7 @@ app.get('/api/tasks', async (req, res) => {
                        AND ut2.user_id = $1 
                        AND ut2.status IN ('active', 'pending_review', 'completed')
                    ) as user_has_task,
+                   -- ДОБАВЛЕНО: проверяем есть ли отклоненные задания у пользователя
                    EXISTS(
                        SELECT 1 FROM user_tasks ut3 
                        WHERE ut3.task_id = t.id 
@@ -6077,7 +6070,7 @@ app.get('/api/tasks', async (req, res) => {
                    ) as user_has_rejected_task
             FROM tasks t 
             LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
-            WHERE t.status = 'active'  -- ТОЛЬКО АКТИВНЫЕ ЗАДАНИЯ
+            WHERE t.status = 'active'
         `;
         let params = [userId];
         let paramCount = 1;
@@ -6101,11 +6094,11 @@ app.get('/api/tasks', async (req, res) => {
         
         const result = await pool.query(query, params);
         
-        // 🔥 ФИЛЬТРУЕМ ЗАДАНИЯ: показываем только активные и не достигшие лимита
+        // 🔥 ФИЛЬТРУЕМ ЗАДАНИЯ: показываем только те, которые не достигли лимита исполнителей
         const availableTasks = result.rows.filter(task => {
             const completedCount = task.completed_count || 0;
             const peopleRequired = task.people_required || 1;
-            return completedCount < peopleRequired && task.status === 'active';
+            return completedCount < peopleRequired;
         });
         
         // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Фильтруем задания, которые пользователь уже начал ИЛИ ОТКЛОНЕНЫ
