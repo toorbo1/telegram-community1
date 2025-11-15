@@ -9050,53 +9050,7 @@ function getRankClass(rank) {
     }
 }
 
-// На клиенте - обновляем список заданий каждые 10 секунд
-let currentTasks = [];
 
-function startTaskAutoRefresh() {
-    setInterval(() => {
-        loadTasks(); // Ваша существующая функция загрузки заданий
-    }, 10000); // 10 секунд
-}
-
-// В функции начала задания на клиенте
-async function startTask(taskId) {
-    try {
-        const response = await fetch('/api/user/tasks/start', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: currentUser.id, taskId: taskId })
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            if (result.task_removed) {
-                // Мгновенно удаляем задание у всех пользователей
-                removeTaskFromUI(taskId);
-                showNotification('Задание начато! Это была последняя копия.', 'success');
-            } else {
-                showNotification('Задание начато!', 'success');
-            }
-        } else {
-            showNotification(result.error, 'error');
-        }
-    } catch (error) {
-        console.error('Start task error:', error);
-        showNotification('Ошибка при начале задания', 'error');
-    }
-}
-
-function removeTaskFromUI(taskId) {
-    const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
-    if (taskElement) {
-        taskElement.style.opacity = '0';
-        setTimeout(() => {
-            taskElement.remove();
-            updateTasksCounter(); // Обновляем счетчик заданий
-        }, 300);
-    }
-}
 
 // Функция показа ошибки загрузки топа
 // 🔧 ФУНКЦИЯ ПОКАЗА ОШИБКИ ТОПА
