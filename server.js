@@ -6681,7 +6681,7 @@ app.get('/api/debug/admin-tasks', async (req, res) => {
 
 
 // Get user tasks
-app.get('/api/user/:userId/tasks', async (req, res) => {
+app.get('/api/user/:userId/tasks', async ( req, res) => {
     const userId = req.params.userId;
     const { status } = req.query;
     
