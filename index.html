@@ -2485,38 +2485,7 @@ function showNotification(message, type = 'info') {
     // Твоя реализация показа уведомлений
     console.log(`${type.toUpperCase()}: ${message}`);
 }
-// Подключение WebSocket при загрузке приложения
-let ws = null;
 
-function connectWebSocket(userId) {
-    const wsUrl = `ws://${window.location.host}?userId=${userId}`;
-    ws = new WebSocket(wsUrl);
-
-    ws.onopen = () => {
-        console.log('WebSocket connected');
-    };
-
-    ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        
-        // Обработка события скрытия задания
-        if (data.type === 'TASK_HIDDEN') {
-            hideTask(data.taskId);
-        }
-    };
-
-    ws.onclose = () => {
-        console.log('WebSocket disconnected, reconnecting...');
-        setTimeout(() => connectWebSocket(userId), 3000);
-    };
-
-    ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-    };
-}
-
-// Вызови при инициализации приложения
-connectWebSocket(currentUser.id);
         // Функция для прокрутки страницы к началу
 function scrollToTop() {
     window.scrollTo({
