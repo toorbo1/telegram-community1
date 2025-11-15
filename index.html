@@ -4532,7 +4532,36 @@ function initializeSearch() {
 // 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ПОКАЗА КАТЕГОРИИ ЗАДАНИЙ
 function showTaskCategory(category) {
     console.log('🔄 Switching to category:', category);
+        // Скрываем все категории
+    document.querySelectorAll('.tasks-category').forEach(cat => {
+        cat.style.display = 'none';
+    });
     
+    // Убираем активный класс со всех кнопок
+    document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Показываем выбранную категорию
+    const categoryElement = document.getElementById(category + '-tasks');
+    if (categoryElement) {
+        categoryElement.style.display = 'block';
+    }
+    
+    // Активируем кнопку
+    const activeButton = document.querySelector(`.category-btn[onclick*="${category}"]`);
+    if (activeButton) {
+        activeButton.classList.add('active');
+    }
+    
+    // Загружаем данные для категории
+    if (category === 'confirmation') {
+        loadTasksForConfirmation();
+    } else {
+        loadUserTasksForCategory(category);
+    }
+    
+    console.log(`📁 Showing category: ${category}`);
     // Скрываем все вкладки
     const tabs = document.querySelectorAll('.task-tab');
     const containers = document.querySelectorAll('.tasks-grid');
@@ -7483,39 +7512,46 @@ function showScreenshotUpload() {
             document.getElementById('cancel-confirmation-modal').classList.add('active');
         }
 
-        async function submitScreenshot() {
-    const fileInput = document.getElementById('screenshot-file');
-    if (!fileInput.files[0]) {
-        showNotification('Выберите файл скриншота', 'error');
+async function submitScreenshot() {
+    const fileInput = document.getElementById('screenshot-upload');
+    const userTaskId = window.currentUserTaskId;
+    
+    if (!fileInput || !fileInput.files[0] || !userTaskId) {
+        showNotification('Выберите скриншот для отправки', 'error');
         return;
     }
 
-    const formData = new FormData();
-    formData.append('screenshot', fileInput.files[0]);
-    formData.append('userId', currentUser.id);
-
     try {
-        const response = await fetch(`${API_BASE_URL}/api/user/tasks/${currentUserTaskId}/submit`, {
+        const formData = new FormData();
+        formData.append('screenshot', fileInput.files[0]);
+        formData.append('userId', currentUser.id);
+
+        showNotification('📤 Отправляем задание на проверку...', 'info');
+
+        const result = await makeRequest(`/api/user/tasks/${userTaskId}/submit`, {
             method: 'POST',
             body: formData
-            // Не устанавливаем Content-Type, браузер сам установит с boundary
         });
 
-        const result = await response.json();
-
         if (result.success) {
-            showNotification('Скриншот отправлен на проверку!', 'success');
-            closeModal('screenshot-modal');
-            loadUserTasks();
+            showNotification('✅ Задание отправлено на проверку!', 'success');
+            closeModal('screenshot-upload-modal');
+            
+            // Обновляем все списки заданий
+            setTimeout(() => {
+                loadUserTasksForCategory('active'); // Убираем из активных
+                loadTasksForConfirmation(); // Добавляем в подтверждение
+                loadTasks(); // Обновляем новые задания
+            }, 1000);
+            
         } else {
-            showNotification('Ошибка: ' + result.error, 'error');
+            throw new Error(result.error);
         }
     } catch (error) {
-        console.error('Error submitting screenshot:', error);
-        showNotification('Ошибка отправки скриншота', 'error');
+        console.error('Submit screenshot error:', error);
+        showNotification('❌ Ошибка отправки: ' + error.message, 'error');
     }
 }
-
 // Обновите функцию отмены задания
 async function cancelTask() {
     if (!currentUserTaskId) return;
@@ -13952,22 +13988,32 @@ function createTaskCard(task, category, index) {
     
     // Определяем текст кнопки в зависимости от категории
     let buttonHtml = '';
+    let statusText = '';
+    
     switch(category) {
         case 'new':
             buttonHtml = `<button class="task-btn" onclick="event.stopPropagation(); openTaskModal(${task.id})">
                 Начать задание
             </button>`;
+            statusText = task.time_to_complete || '5-10 минут';
             break;
+            
         case 'confirmation':
+            // Для заданий на подтверждение показываем статус "Ожидает проверки"
             buttonHtml = `<button class="task-btn" onclick="event.stopPropagation(); showTaskConfirmation(${task.id}, '${escapeHtml(task.title)}')">
-                Отправить на проверку
+                Проверить статус
             </button>`;
+            statusText = '⏳ Ожидает проверки';
             break;
+            
         case 'completed':
             buttonHtml = `<div class="task-status completed">✅ Выполнено</div>`;
+            statusText = '✅ Проверено';
             break;
+            
         case 'rejected':
             buttonHtml = `<div class="task-status rejected">❌ Отклонено</div>`;
+            statusText = '❌ Отклонено';
             break;
     }
     
@@ -13999,10 +14045,7 @@ function createTaskCard(task, category, index) {
         
         <div class="task-footer">
             <div class="task-time">
-                ${category === 'confirmation' ? 'Ожидает подтверждения' : 
-                  category === 'completed' ? 'Выполнено' :
-                  category === 'rejected' ? 'Отклонено' : 
-                  task.time_to_complete || '5-10 минут'}
+                ${statusText}
             </div>
             ${buttonHtml}
         </div>
@@ -14018,6 +14061,70 @@ function createTaskCard(task, category, index) {
     }
     
     return taskElement;
+}
+
+async function loadTasksForConfirmation() {
+    if (!currentUser) return;
+    
+    try {
+        console.log('🔄 Loading tasks for confirmation...');
+        
+        const result = await makeRequest(`/api/user/${currentUser.id}/tasks?status=pending_review`);
+        
+        if (result.success) {
+            displayUserTasksForCategory(result.tasks, 'confirmation');
+            console.log(`✅ Loaded ${result.tasks.length} tasks for confirmation`);
+        } else {
+            console.error('Error loading confirmation tasks:', result.error);
+        }
+    } catch (error) {
+        console.error('Load confirmation tasks error:', error);
+    }
+}
+function displayUserTasksForCategory(tasks, category) {
+    const container = document.getElementById(category + '-tasks');
+    if (!container) {
+        console.error('Container not found for category:', category);
+        return;
+    }
+
+    container.innerHTML = '';
+
+    if (!tasks || tasks.length === 0) {
+        let message = '';
+        switch(category) {
+            case 'active':
+                message = 'Нет активных заданий';
+                break;
+            case 'confirmation':
+                message = 'Нет заданий на подтверждение';
+                break;
+            case 'completed':
+                message = 'Нет выполненных заданий';
+                break;
+            case 'rejected':
+                message = 'Нет отклоненных заданий';
+                break;
+        }
+        
+        container.innerHTML = `
+            <div class="no-tasks" style="text-align: center; padding: 40px 20px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
+                <div>${message}</div>
+                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
+                    ${category === 'confirmation' ? 'Задания появятся здесь после отправки на проверку' : 'Новые задания появятся позже'}
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    console.log(`🎯 Displaying ${tasks.length} tasks for category: ${category}`);
+
+    tasks.forEach((task, index) => {
+        const taskElement = createTaskCard(task, category, index);
+        container.appendChild(taskElement);
+    });
 }
 // Функция для отображения заданий с изображениями
 function displayTasksWithImages(tasks, category) {

@@ -6892,7 +6892,8 @@ app.get('/api/user/:userId/tasks', async (req, res) => {
     
     try {
         let query = `
-            SELECT ut.*, t.title, t.description, t.price, t.category
+            SELECT ut.*, t.title, t.description, t.price, t.category, t.image_url,
+                   t.time_to_complete, t.difficulty, t.people_required
             FROM user_tasks ut 
             JOIN tasks t ON ut.task_id = t.id 
             WHERE ut.user_id = $1
