@@ -13,6 +13,370 @@
     <link rel="stylesheet" href="animations.css">
     <link rel="stylesheet" href="mobile.css">
     <style>
+        /* Стили для карточки проверки позиции */
+.check-position-card {
+    background: linear-gradient(135deg, #ff6b6b, #ffa500);
+    border-radius: 20px;
+    padding: 20px;
+    margin: 15px 0;
+    color: white;
+    text-align: center;
+    box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
+    border: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.check-position-card::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    right: -20px;
+    width: 80px;
+    height: 80px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+}
+
+.check-position-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.check-position-title {
+    font-size: 18px;
+    font-weight: 700;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.check-position-icon {
+    font-size: 24px;
+    animation: bounce 2s infinite;
+}
+
+.check-position-text {
+    font-size: 14px;
+    margin-bottom: 15px;
+    opacity: 0.9;
+}
+
+.check-position-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 25px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    width: 100%;
+}
+
+.check-position-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+}
+
+/* Анимация для иконки */
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-5px);
+    }
+    60% {
+        transform: translateY(-3px);
+    }
+}
+
+/* Стили для модального окна ранга */
+.rank-details-content {
+    text-align: center;
+}
+
+.rank-main-info {
+    margin-bottom: 30px;
+}
+
+.rank-number {
+    font-size: 72px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 10px;
+}
+
+.rank-label {
+    font-size: 18px;
+    color: var(--text-secondary);
+}
+
+.rank-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.rank-stat-item {
+    background: var(--bg-secondary);
+    border-radius: 15px;
+    padding: 20px;
+    text-align: center;
+    border: 1px solid var(--border);
+    transition: transform 0.3s ease;
+}
+
+.rank-stat-item:hover {
+    transform: translateY(-5px);
+}
+
+.stat-icon {
+    font-size: 32px;
+    margin-bottom: 10px;
+}
+
+.stat-info .stat-value {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 5px;
+}
+
+.stat-info .stat-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.rank-progress-section {
+    background: var(--bg-secondary);
+    border-radius: 15px;
+    padding: 25px;
+    border: 1px solid var(--border);
+}
+
+.rank-progress-section h4 {
+    margin-bottom: 15px;
+    color: var(--text-primary);
+}
+
+.progress-info {
+    margin-bottom: 20px;
+    font-size: 16px;
+    color: var(--text-secondary);
+}
+
+.progress-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+@media (max-width: 768px) {
+    .rank-stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .progress-actions {
+        flex-direction: column;
+    }
+    
+    .rank-number {
+        font-size: 48px;
+    }
+}
+        /* ЯРКИЙ ДИЗАЙН ТОПА ПОЛЬЗОВАТЕЛЕЙ */
+.top-users-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 20px;
+    padding: 20px;
+    margin: 15px 0;
+    border: none;
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.top-users-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
+    border-radius: 50%;
+}
+
+.top-users-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 2;
+}
+
+.top-users-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.view-full-list-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.view-full-list-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.top-users-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.top-user-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    z-index: 2;
+}
+
+.top-user-item:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+}
+
+.user-rank {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 800;
+    margin-right: 15px;
+    flex-shrink: 0;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.rank-1 {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+}
+
+.rank-2 {
+    background: linear-gradient(135deg, #C0C0C0, #A0A0A0);
+    box-shadow: 0 4px 15px rgba(192, 192, 192, 0.4);
+}
+
+.rank-3 {
+    background: linear-gradient(135deg, #CD7F32, #A0522D);
+    box-shadow: 0 4px 15px rgba(205, 127, 50, 0.4);
+}
+
+.rank-other {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.user-avatar {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    margin-right: 15px;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #ff6b6b, #ffa500);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.user-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.user-name {
+    font-weight: 700;
+    font-size: 16px;
+    margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.user-stats {
+    display: flex;
+    gap: 15px;
+    font-size: 13px;
+}
+
+.user-tasks {
+    color: #4cd137;
+    font-weight: 700;
+    background: rgba(76, 209, 55, 0.2);
+    padding: 4px 10px;
+    border-radius: 15px;
+    border: 1px solid rgba(76, 209, 55, 0.3);
+}
+
+.user-balance {
+    color: #ffd700;
+    font-weight: 700;
+    background: rgba(255, 215, 0, 0.2);
+    padding: 4px 10px;
+    border-radius: 15px;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.user-referrals {
+    color: #00a8ff;
+    font-weight: 700;
+    background: rgba(0, 168, 255, 0.2);
+    padding: 4px 10px;
+    border-radius: 15px;
+    border: 1px solid rgba(0, 168, 255, 0.3);
+}
         /* Стили для топа пользователей */
 .top-users-card {
     background: var(--card-bg);
@@ -847,50 +1211,65 @@
         </div>
     </div>
 </div>
+<!-- Кнопка для проверки своего места -->
+<div class="check-position-card fade-in">
+    <div class="check-position-header">
+        <div class="check-position-title">🎯 Узнай свое место</div>
+        <div class="check-position-icon">🔍</div>
+    </div>
+    <div class="check-position-text">
+        Хочешь узнать, какое место ты занимаешь в общем рейтинге?
+    </div>
+    <button class="check-position-btn" onclick="showUserRankDetails()">
+        Узнать мое место
+    </button>
+</div>
 
-<!-- Модальное окно детальной информации о ранге -->
-<div id="rank-details-modal" class="modal" style="display: none;">
+<!-- Модальное окно с детальной информацией о ранге -->
+<div id="user-rank-modal" class="modal" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>📊 Ваше место в рейтинге</h3>
-            <span class="close" onclick="closeRankDetails()">&times;</span>
+            <h3>🏆 Ваше место в рейтинге</h3>
+            <span class="close" onclick="closeModal('user-rank-modal')">&times;</span>
         </div>
         <div class="modal-body">
-            <div class="rank-details">
-                <div class="rank-main">
-                    <div class="rank-number" id="modal-rank">-</div>
-                    <div class="rank-label">место в общем рейтинге</div>
+            <div class="rank-details-content">
+                <div class="rank-main-info">
+                    <div class="rank-number" id="user-rank-number">-</div>
+                    <div class="rank-label">место в общем зачете</div>
                 </div>
+                
                 <div class="rank-stats-grid">
-                    <div class="rank-stat-card">
+                    <div class="rank-stat-item">
                         <div class="stat-icon">✅</div>
                         <div class="stat-info">
-                            <div class="stat-value" id="modal-completed-tasks">0</div>
+                            <div class="stat-value" id="user-tasks-count">0</div>
                             <div class="stat-label">выполнено заданий</div>
                         </div>
                     </div>
-                    <div class="rank-stat-card">
+                    <div class="rank-stat-item">
                         <div class="stat-icon">💫</div>
                         <div class="stat-info">
-                            <div class="stat-value" id="modal-balance">0</div>
+                            <div class="stat-value" id="user-balance-count">0</div>
                             <div class="stat-label">текущий баланс</div>
                         </div>
                     </div>
-                    <div class="rank-stat-card">
+                    <div class="rank-stat-item">
                         <div class="stat-icon">👥</div>
                         <div class="stat-info">
-                            <div class="stat-value" id="modal-referrals">0</div>
+                            <div class="stat-value" id="user-referrals-count">0</div>
                             <div class="stat-label">приглашено друзей</div>
                         </div>
                     </div>
                 </div>
-                <div class="rank-progress">
+                
+                <div class="rank-progress-section">
                     <h4>🎯 До следующего места</h4>
-                    <div class="progress-info">
-                        <span id="next-rank-info">-</span>
+                    <div class="progress-info" id="next-rank-info">
+                        Загружаем информацию...
                     </div>
                     <div class="progress-actions">
-                        <button class="btn-primary" onclick="loadTasksForCategory('new')">
+                        <button class="btn-primary" onclick="showTasksTab()">
                             🚀 Выполнить задания
                         </button>
                         <button class="btn-secondary" onclick="showReferralTab()">
@@ -11461,7 +11840,159 @@ setTimeout(addStartTaskDebugButton, 3000);
                 container.appendChild(chatElement);
             });
         }
+// Endpoint для получения ранга пользователя
+app.get('/api/user/:userId/rank', async (req, res) => {
+    const userId = req.params.userId;
+    
+    try {
+        // Получаем позицию пользователя в рейтинге
+        const rankResult = await pool.query(`
+            WITH user_ranking AS (
+                SELECT 
+                    up.user_id,
+                    COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_tasks,
+                    COALESCE(up.balance, 0) as balance,
+                    up.referral_count,
+                    ROW_NUMBER() OVER (
+                        ORDER BY 
+                            COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) DESC,
+                            COALESCE(up.balance, 0) DESC,
+                            up.created_at ASC
+                    ) as position
+                FROM user_profiles up
+                LEFT JOIN user_tasks ut ON up.user_id = ut.user_id AND ut.status = 'completed'
+                GROUP BY up.user_id, up.balance, up.referral_count, up.created_at
+                HAVING COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) > 0
+                   OR COALESCE(up.balance, 0) > 0
+            )
+            SELECT * FROM user_ranking WHERE user_id = $1
+        `, [userId]);
+        
+        if (rankResult.rows.length === 0) {
+            return res.json({
+                success: true,
+                rank: 'Не в топе',
+                completed_tasks: 0,
+                balance: 0,
+                referral_count: 0,
+                next_rank_info: 'Выполните первое задание, чтобы попасть в рейтинг!'
+            });
+        }
+        
+        const userRank = rankResult.rows[0];
+        
+        // Получаем информацию о следующем месте
+        const nextRankResult = await pool.query(`
+            WITH user_ranking AS (
+                SELECT 
+                    up.user_id,
+                    COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_tasks,
+                    COALESCE(up.balance, 0) as balance,
+                    ROW_NUMBER() OVER (
+                        ORDER BY 
+                            COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) DESC,
+                            COALESCE(up.balance, 0) DESC,
+                            up.created_at ASC
+                    ) as position
+                FROM user_profiles up
+                LEFT JOIN user_tasks ut ON up.user_id = ut.user_id AND ut.status = 'completed'
+                GROUP BY up.user_id, up.balance, up.created_at
+                HAVING COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) > 0
+                   OR COALESCE(up.balance, 0) > 0
+            )
+            SELECT * FROM user_ranking WHERE position = $1
+        `, [userRank.position - 1]);
+        
+        let nextRankInfo = 'Вы на максимальной позиции!';
+        
+        if (nextRankResult.rows.length > 0) {
+            const nextUser = nextRankResult.rows[0];
+            const tasksNeeded = nextUser.completed_tasks - userRank.completed_tasks;
+            const balanceNeeded = nextUser.balance - userRank.balance;
+            
+            if (tasksNeeded > 0) {
+                nextRankInfo = `Выполните еще ${tasksNeeded} заданий чтобы подняться на ${userRank.position - 1} место`;
+            } else if (balanceNeeded > 0) {
+                nextRankInfo = `Заработайте еще ${balanceNeeded}⭐ чтобы подняться на ${userRank.position - 1} место`;
+            }
+        }
+        
+        res.json({
+            success: true,
+            rank: userRank.position,
+            completed_tasks: userRank.completed_tasks,
+            balance: userRank.balance,
+            referral_count: userRank.referral_count,
+            next_rank_info: nextRankInfo
+        });
+        
+    } catch (error) {
+        console.error('Get user rank error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+// Функция для показа деталей ранга пользователя
+async function showUserRankDetails() {
+    if (!currentUser) {
+        showNotification('Пожалуйста, войдите в систему', 'error');
+        return;
+    }
 
+    try {
+        // Показываем загрузку
+        document.getElementById('user-rank-number').textContent = '...';
+        document.getElementById('user-tasks-count').textContent = '...';
+        document.getElementById('user-balance-count').textContent = '...';
+        document.getElementById('user-referrals-count').textContent = '...';
+        document.getElementById('next-rank-info').textContent = 'Загружаем информацию...';
+
+        // Открываем модальное окно
+        document.getElementById('user-rank-modal').style.display = 'block';
+
+        // Загружаем данные о ранге
+        const response = await fetch(`/api/user/${currentUser.id}/rank`);
+        const result = await response.json();
+
+        if (result.success) {
+            // Заполняем данные
+            document.getElementById('user-rank-number').textContent = result.rank || '-';
+            document.getElementById('user-tasks-count').textContent = result.completed_tasks || 0;
+            document.getElementById('user-balance-count').textContent = result.balance || 0;
+            document.getElementById('user-referrals-count').textContent = result.referral_count || 0;
+
+            // Показываем информацию о следующем месте
+            if (result.next_rank_info) {
+                document.getElementById('next-rank-info').innerHTML = result.next_rank_info;
+            } else {
+                document.getElementById('next-rank-info').textContent = 'Вы на максимальной позиции!';
+            }
+
+        } else {
+            throw new Error(result.error || 'Не удалось загрузить данные');
+        }
+
+    } catch (error) {
+        console.error('Error loading rank details:', error);
+        document.getElementById('next-rank-info').textContent = 'Ошибка загрузки данных';
+        showNotification('Ошибка загрузки данных о ранге', 'error');
+    }
+}
+
+// Функция для закрытия модального окна
+function closeRankModal() {
+    document.getElementById('user-rank-modal').style.display = 'none';
+}
+
+// Обработчик клика вне модального окна
+window.onclick = function(event) {
+    const modal = document.getElementById('user-rank-modal');
+    if (event.target === modal) {
+        closeRankModal();
+    }
+}
         // Создание элемента чата
         function createChatElement(chat, listType) {
             const chatElement = document.createElement('div');
