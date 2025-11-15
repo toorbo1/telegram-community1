@@ -3206,6 +3206,7 @@ app.get('/api/debug/leaderboard', async (req, res) => {
 });
 
 // 🔧 ФУНКЦИЯ ЗАГРУЗКИ ТОПА
+// 🔧 ФУНКЦИЯ ЗАГРУЗКИ ЛИДЕРБОРДА
 async function loadLeaderboard() {
     try {
         const leaderboardElement = document.getElementById('leaderboard-content');
@@ -3245,6 +3246,22 @@ async function loadLeaderboard() {
                 </div>
             `;
         }
+    }
+}
+
+// 🔧 ФУНКЦИЯ ЗАГРУЗКИ ТОПА ДЛЯ ГЛАВНОЙ СТРАНИЦЫ
+async function loadTopUsers() {
+    try {
+        const response = await fetch('/api/leaderboard/top');
+        const result = await response.json();
+        
+        if (result.success) {
+            displayTopUsers(result.topUsers);
+        } else {
+            console.error('Failed to load top users:', result.error);
+        }
+    } catch (error) {
+        console.error('Failed to load top users:', error);
     }
 }
 
@@ -4377,6 +4394,8 @@ bot.on('message', async (msg) => {
     }
 });
 
+
+
 // Health check с информацией о конфигурации
 // Улучшенный health check
 app.get('/api/health', async (req, res) => {
@@ -5018,10 +5037,101 @@ app.get('/api/admin/users-detailed-stats', async (req, res) => {
     }
 });
 
-// 🔗 ENDPOINTS ДЛЯ РЕФЕРАЛЬНЫХ ССЫЛОК
-
-// Создание реферальной ссылки
-// Создание реферальной ссылки - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// Endpoint для получения ранга пользователя
+app.get('/api/user/:userId/rank', async (req, res) => {
+    const userId = req.params.userId;
+    
+    try {
+        console.log('🎯 Getting user rank for:', userId);
+        
+        // Получаем позицию пользователя в рейтинге
+        const rankResult = await pool.query(`
+            WITH user_ranking AS (
+                SELECT 
+                    up.user_id,
+                    COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_tasks,
+                    COALESCE(up.balance, 0) as balance,
+                    up.referral_count,
+                    ROW_NUMBER() OVER (
+                        ORDER BY 
+                            COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) DESC,
+                            COALESCE(up.balance, 0) DESC,
+                            up.created_at ASC
+                    ) as position
+                FROM user_profiles up
+                LEFT JOIN user_tasks ut ON up.user_id = ut.user_id AND ut.status = 'completed'
+                GROUP BY up.user_id, up.balance, up.referral_count, up.created_at
+                HAVING COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) > 0
+                   OR COALESCE(up.balance, 0) > 0
+            )
+            SELECT * FROM user_ranking WHERE user_id = $1
+        `, [userId]);
+        
+        if (rankResult.rows.length === 0) {
+            return res.json({
+                success: true,
+                rank: null,
+                completed_tasks: 0,
+                balance: 0,
+                referral_count: 0,
+                message: 'Вы еще не в рейтинге. Выполните первое задание!'
+            });
+        }
+        
+        const userRank = rankResult.rows[0];
+        
+        // Получаем информацию о следующем месте
+        const nextRankResult = await pool.query(`
+            WITH user_ranking AS (
+                SELECT 
+                    up.user_id,
+                    COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_tasks,
+                    COALESCE(up.balance, 0) as balance,
+                    ROW_NUMBER() OVER (
+                        ORDER BY 
+                            COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) DESC,
+                            COALESCE(up.balance, 0) DESC,
+                            up.created_at ASC
+                    ) as position
+                FROM user_profiles up
+                LEFT JOIN user_tasks ut ON up.user_id = ut.user_id AND ut.status = 'completed'
+                GROUP BY up.user_id, up.balance, up.created_at
+                HAVING COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) > 0
+                   OR COALESCE(up.balance, 0) > 0
+            )
+            SELECT * FROM user_ranking WHERE position = $1
+        `, [userRank.position - 1]);
+        
+        let nextRankInfo = 'Вы на первой позиции! 🎉';
+        
+        if (nextRankResult.rows.length > 0) {
+            const nextUser = nextRankResult.rows[0];
+            const tasksNeeded = nextUser.completed_tasks - userRank.completed_tasks;
+            
+            if (tasksNeeded > 0) {
+                nextRankInfo = `Выполните еще ${tasksNeeded} заданий чтобы подняться на ${userRank.position - 1} место`;
+            } else {
+                nextRankInfo = 'Вы на максимальной позиции!';
+            }
+        }
+        
+        res.json({
+            success: true,
+            rank: userRank.position,
+            completed_tasks: userRank.completed_tasks,
+            balance: userRank.balance,
+            referral_count: userRank.referral_count,
+            next_rank_info: nextRankInfo
+        });
+        
+    } catch (error) {
+        console.error('❌ Get user rank error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка получения ранга: ' + error.message
+        });
+    }
+});
 // Создание реферальной ссылки с базовой статистикой
 app.post('/api/admin/links/create', async (req, res) => {
     const { adminId, name, description, createdBy } = req.body;
