@@ -13,38 +13,7 @@
     <link rel="stylesheet" href="animations.css">
     <link rel="stylesheet" href="mobile.css">
     <style>
-        /* 🔥 СТИЛИ ДЛЯ АНИМАЦИЙ */
-.task-card {
-    transition: all 0.3s ease;
-    position: relative;
-}
-
-.task-card.removing {
-    opacity: 0;
-    transform: translateY(-20px);
-    max-height: 0;
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-}
-
-.last-task {
-    border: 2px solid var(--gold);
-    box-shadow: 0 0 20px rgba(255, 193, 7, 0.3);
-    animation: pulse-gold 2s infinite;
-}
-
-.last-available {
-    background: linear-gradient(45deg, var(--gold), #ff6b00);
-    color: white;
-    font-weight: 800;
-}
-
-@keyframes pulse-gold {
-    0% { box-shadow: 0 0 20px rgba(255, 193, 7, 0.3); }
-    50% { box-shadow: 0 0 30px rgba(255, 193, 7, 0.6); }
-    100% { box-shadow: 0 0 20px rgba(255, 193, 7, 0.3); }
-}
+        
         /* 🔥 СТИЛИ ДЛЯ ПОСЛЕДНЕГО ДОСТУПНОГО ЗАДАНИЯ */
 .last-task {
     border: 2px solid var(--gold);
@@ -9050,7 +9019,6 @@ function getRankClass(rank) {
     }
 }
 
-
 // Функция показа ошибки загрузки топа
 // 🔧 ФУНКЦИЯ ПОКАЗА ОШИБКИ ТОПА
 function showTopUsersError() {
@@ -12043,7 +12011,7 @@ async function startTask() {
             showNotification('✅ Задание начато!', 'success');
             closeModal('task-modal');
             
-            // 🔥 НЕМЕДЛЕННО СКРЫВАЕМ ЗАДАНИЕ У ВСЕХ ПОЛЬЗОВАТЕЛЕЙ
+            // 🔥 НЕМЕДЛЕННО СКРЫВАЕМ ЗАДАНИЕ У ВСЕХ ПОЛЬЗОВАТЕЛЕВ
             if (result.is_last_task) {
                 removeTaskFromUI(selectedTaskId);
                 showNotification('🎯 Это была последняя копия задания!', 'info');
@@ -12054,9 +12022,11 @@ async function startTask() {
                 loadTasks();
                 loadUserTasks();
             }, 500);
+            
         } else {
             throw new Error(result.error || 'Не удалось начать задание');
         }
+
     } catch (error) {
         console.error('❌ Start task error:', error);
         showNotification(`Ошибка: ${error.message}`, 'error');
@@ -12113,6 +12083,7 @@ function removeTaskFromUI(taskId) {
 // 🔧 ПРИНУДИТЕЛЬНОЕ УДАЛЕНИЕ ЗАДАНИЯ
 function forceRemoveTask(taskId) {
     console.log('🔧 Force removing task:', taskId);
+    
     // Перезагружаем список заданий полностью
     loadTasks();
 }
@@ -12138,8 +12109,12 @@ function updateTasksCounters() {
     
     const taskCards = tasksContainer.querySelectorAll('.task-card');
     const availableTasksCount = taskCards.length;
+    
     console.log(`📊 Total available tasks: ${availableTasksCount}`);
 }
+
+// 🔧 СИСТЕМА ПЕРИОДИЧЕСКОЙ ПРОВЕРКИ ДОСТУПНОСТИ
+let taskCheckInterval = null;
 
 function startTaskAvailabilityChecker() {
     // Останавливаем предыдущий интервал
