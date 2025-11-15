@@ -4369,147 +4369,6 @@ bot.on('message', async (msg) => {
     }
 });
 
-
-// Обновленный endpoint для начала задания
-app.post('/api/user/tasks/start', async (req, res) => {
-    const { userId, taskId } = req.body;
-    
-    console.log('🚀 Start task request:', { userId, taskId });
-    
-    if (!userId || !taskId) {
-        return res.status(400).json({
-            success: false,
-            error: 'Missing required fields'
-        });
-    }
-    
-    const client = await pool.connect();
-    
-    try {
-        await client.query('BEGIN');
-
-        // 🔒 Блокируем строку для предотвращения гонки условий
-        const taskInfo = await client.query(`
-            SELECT t.*, 
-                   COUNT(ut.id) as completed_count
-            FROM tasks t
-            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
-            WHERE t.id = $1 AND t.status = 'active'
-            GROUP BY t.id
-            FOR UPDATE
-        `, [taskId]);
-        
-        if (taskInfo.rows.length === 0) {
-            await client.query('ROLLBACK');
-            return res.status(404).json({
-                success: false,
-                error: 'Задание не найдено или недоступно'
-            });
-        }
-        
-        const task = taskInfo.rows[0];
-        const peopleRequired = task.people_required || 1;
-        const completedCount = task.completed_count || 0;
-        const availableTasks = Math.max(0, peopleRequired - completedCount);
-        
-        console.log('📊 Task availability:', {
-            taskId,
-            peopleRequired,
-            completedCount,
-            availableTasks
-        });
-
-        // 🔥 ВАЖНО: Проверяем, выполнял ли пользователь это задание
-        const existingTask = await client.query(`
-            SELECT id FROM user_tasks 
-            WHERE user_id = $1 AND task_id = $2 
-            AND status IN ('active', 'pending_review', 'completed', 'rejected')
-        `, [userId, taskId]);
-        
-        if (existingTask.rows.length > 0) {
-            await client.query('ROLLBACK');
-            return res.status(400).json({
-                success: false,
-                error: 'Вы уже выполняли это задание'
-            });
-        }
-        
-        // 🔥 ПРОВЕРЯЕМ ДОСТИГНУТ ЛИ ЛИМИТ ИСПОЛНИТЕЛЕЙ
-        if (completedCount >= peopleRequired) {
-            await client.query('ROLLBACK');
-            return res.status(400).json({
-                success: false,
-                error: 'Достигнут лимит выполнения этого задания'
-            });
-        }
-
-        // 🎯 КРИТИЧЕСКАЯ ЛОГИКА: Если осталась 1 попытка - задание должно исчезнуть у всех
-        const isLastAttempt = (availableTasks === 1);
-        
-        // Start the task
-        const result = await client.query(`
-            INSERT INTO user_tasks (user_id, task_id, status) 
-            VALUES ($1, $2, 'active')
-            RETURNING *
-        `, [userId, taskId]);
-        
-        // 🔥 ЕСЛИ ЭТО ПОСЛЕДНЯЯ ПОПЫТКА - СРАЗУ ОБНОВЛЯЕМ СЧЕТЧИК
-        if (isLastAttempt) {
-            console.log('🎯 Last attempt taken - updating completed count immediately');
-            await client.query(`
-                UPDATE tasks 
-                SET completed_count = completed_count + 1
-                WHERE id = $1
-            `, [taskId]);
-            
-            // 🔥 ПРОВЕРЯЕМ НУЖНО ЛИ ПОЛНОСТЬЮ ЗАВЕРШИТЬ ЗАДАНИЕ
-            const updatedTask = await client.query(`
-                SELECT completed_count, people_required 
-                FROM tasks 
-                WHERE id = $1
-            `, [taskId]);
-            
-            if (updatedTask.rows.length > 0) {
-                const updated = updatedTask.rows[0];
-                if (updated.completed_count >= updated.people_required) {
-                    await client.query(`
-                        UPDATE tasks 
-                        SET status = 'completed' 
-                        WHERE id = $1
-                    `, [taskId]);
-                    console.log('✅ Task fully completed and hidden from all users');
-                }
-            }
-        }
-        
-        await client.query('COMMIT');
-        
-        console.log('✅ Task started successfully:', {
-            userTaskId: result.rows[0].id,
-            isLastAttempt: isLastAttempt,
-            remainingAttempts: availableTasks - 1
-        });
-        
-        res.json({
-            success: true,
-            message: 'Задание начато!',
-            userTaskId: result.rows[0].id,
-            isLastAttempt: isLastAttempt,
-            remainingAttempts: availableTasks - 1
-        });
-        
-    } catch (error) {
-        await client.query('ROLLBACK');
-        console.error('❌ Start task error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    } finally {
-        client.release();
-    }
-});
-
 // Health check с информацией о конфигурации
 // Улучшенный health check
 app.get('/api/health', async (req, res) => {
@@ -6018,7 +5877,6 @@ app.delete('/api/posts/:id', async (req, res) => {
 // ==================== TASKS ENDPOINTS ====================
 
 // Получение заданий с правильной фильтрацией отклоненных заданий
-// В функции получения заданий убедитесь, что используется актуальный completed_count
 app.get('/api/tasks', async (req, res) => {
     const { search, category, userId } = req.query;
     
@@ -6027,13 +5885,14 @@ app.get('/api/tasks', async (req, res) => {
     try {
         let query = `
             SELECT t.*, 
-                   COALESCE(t.completed_count, 0) as completed_count, // 🔥 ИСПОЛЬЗУЕМ АКТУАЛЬНЫЙ СЧЕТЧИК
+                   COUNT(ut.id) as completed_count,
                    EXISTS(
                        SELECT 1 FROM user_tasks ut2 
                        WHERE ut2.task_id = t.id 
                        AND ut2.user_id = $1 
                        AND ut2.status IN ('active', 'pending_review', 'completed')
                    ) as user_has_task,
+                   -- ДОБАВЛЕНО: проверяем есть ли отклоненные задания у пользователя
                    EXISTS(
                        SELECT 1 FROM user_tasks ut3 
                        WHERE ut3.task_id = t.id 
@@ -6041,6 +5900,7 @@ app.get('/api/tasks', async (req, res) => {
                        AND ut3.status = 'rejected'
                    ) as user_has_rejected_task
             FROM tasks t 
+            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
             WHERE t.status = 'active'
         `;
         let params = [userId];
@@ -6059,7 +5919,7 @@ app.get('/api/tasks', async (req, res) => {
             params.push(category);
         }
         
-        query += ` ORDER BY t.created_at DESC`;
+        query += ` GROUP BY t.id ORDER BY t.created_at DESC`;
         
         console.log('📊 Выполняем запрос:', query, params);
         
@@ -6072,19 +5932,36 @@ app.get('/api/tasks', async (req, res) => {
             return completedCount < peopleRequired;
         });
         
-        // 🔥 ФИЛЬТРУЕМ задания, которые пользователь уже начал ИЛИ ОТКЛОНЕНЫ
+        // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Фильтруем задания, которые пользователь уже начал ИЛИ ОТКЛОНЕНЫ
         const filteredTasks = availableTasks.filter(task => {
             const hasActiveTask = task.user_has_task;
             const hasRejectedTask = task.user_has_rejected_task;
+            
+            // Не показываем задание если:
+            // 1. Пользователь уже начал это задание (активное, на проверке или выполненное)
+            // 2. Пользователь уже имеет отклоненную версию этого задания
             return !hasActiveTask && !hasRejectedTask;
         });
         
-        console.log(`✅ Найдено заданий: ${result.rows.length}, доступно: ${filteredTasks.length}`);
+        // 🔧 ИСПРАВЛЕНИЕ: Обеспечиваем правильные URL для изображений
+        const tasksWithCorrectedImages = filteredTasks.map(task => {
+            if (task.image_url) {
+                if (!task.image_url.startsWith('http')) {
+                    task.image_url = `${APP_URL}${task.image_url}`;
+                }
+                task.image_url += `${task.image_url.includes('?') ? '&' : '?'}t=${Date.now()}`;
+            }
+            return task;
+        });
+        
+        console.log(`✅ Найдено заданий: ${result.rows.length}, доступно по лимиту: ${availableTasks.length}, доступно пользователю: ${filteredTasks.length}`);
+        console.log(`🎯 Отклоненные задания отфильтрованы: ${availableTasks.length - filteredTasks.length} заданий скрыто`);
         
         res.json({
             success: true,
-            tasks: filteredTasks,
+            tasks: tasksWithCorrectedImages,
             totalCount: result.rows.length,
+            availableByLimit: availableTasks.length,
             availableCount: filteredTasks.length
         });
     } catch (error) {

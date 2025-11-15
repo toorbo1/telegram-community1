@@ -10639,23 +10639,18 @@ function showAdminPaymentsSection() {
         }
 
 // В index.html - обновите функцию начала задания
-// 🔥 ОБНОВЛЕННАЯ ФУНКЦИЯ НАЧАЛА ЗАДАНИЯ
 async function startTask() {
-    console.log('🎯 Starting task:', selectedTaskId);
+    console.log('🎯 Starting task...', { selectedTaskId, currentUser });
     
-    if (!selectedTaskId || !currentUser) {
-        showNotification('Ошибка: задание не выбрано', 'error');
+    if (!currentUser || !selectedTaskId) {
+        showNotification('Ошибка: пользователь не авторизован или задание не выбрано', 'error');
         return;
     }
 
     try {
-        const startButton = document.querySelector('.task-modal-start');
-        if (startButton) {
-            startButton.disabled = true;
-            startButton.textContent = 'Запускаем...';
-        }
-
-        const result = await makeRequest('/user/tasks/start', {
+        console.log('📤 Sending start task request...');
+        
+        const result = await makeRequest('/api/user/tasks/start', {
             method: 'POST',
             body: JSON.stringify({
                 userId: currentUser.id,
@@ -10663,77 +10658,26 @@ async function startTask() {
             })
         });
 
+        console.log('📨 Start task response:', result);
+
         if (result.success) {
-            showNotification('✅ Задание начато!', 'success');
-            
-            // 🔥 ЕСЛИ ЭТО БЫЛА ПОСЛЕДНЯЯ ПОПЫТКА - СРАЗУ ОБНОВЛЯЕМ ИНТЕРФЕЙС
-            if (result.isLastAttempt) {
-                console.log('🎯 Это была последняя попытка - обновляем список заданий');
-                
-                // Немедленно обновляем список заданий для всех пользователей
-                setTimeout(() => {
-                    loadTasks(); // Обновляем список новых заданий
-                    
-                    // Показываем уведомление о том, что задание занято
-                    showNotification('🎯 Вы успешно заняли последнюю попытку! Задание скрыто для других пользователей.', 'success');
-                }, 500);
-            }
-            
-            // Сохраняем ID задания пользователя
-            currentUserTaskId = result.userTaskId;
-            
-            // Закрываем модальное окно
             closeModal('task-modal');
+            showNotification('✅ Задание начато! Выполните его и вернитесь для подтверждения.', 'success');
             
-            // Показываем уведомление о подтверждении
+            // НЕМЕДЛЕННО обновляем списки заданий
             setTimeout(() => {
-                showTaskConfirmation(result.userTaskId, document.getElementById('task-modal-title').textContent);
-            }, 1000);
+                loadTasks(); // Обновляем новые задания (убираем начатое)
+                loadUserTasksForCategory('active'); // Добавляем в активные
+            }, 500);
             
         } else {
-            throw new Error(result.error);
+            showNotification('❌ Ошибка: ' + result.error, 'error');
         }
-
     } catch (error) {
-        console.error('❌ Start task error:', error);
-        showNotification('Ошибка начала задания: ' + error.message, 'error');
-        
-        // Восстанавливаем кнопку
-        const startButton = document.querySelector('.task-modal-start');
-        if (startButton) {
-            startButton.disabled = false;
-            startButton.textContent = 'Начать задание';
-        }
+        console.error('💥 Error starting task:', error);
+        showNotification('❌ Ошибка начала задания: ' + error.message, 'error');
     }
 }
-
-// 🔧 ФУНКЦИЯ ДЛЯ ПРИНУДИТЕЛЬНОГО ОБНОВЛЕНИЯ ЗАДАНИЙ У ВСЕХ ПОЛЬЗОВАТЕЛЕЙ
-function forceRefreshTasksForAllUsers() {
-    console.log('🔄 Принудительное обновление заданий для всех пользователей');
-    
-    // Здесь можно добавить логику отправки уведомлений через WebSocket
-    // или другие механизмы реального времени
-    
-    // Пока просто логируем
-    console.log('✅ Задания обновлены для всех активных сессий');
-}
-
-// 🔧 АВТООБНОВЛЕНИЕ СПИСКА ЗАДАНИЙ КАЖДЫЕ 10 СЕКУНД
-function startTasksAutoRefresh() {
-    setInterval(() => {
-        if (document.getElementById('tasks-tab').classList.contains('active')) {
-            const activeCategory = document.querySelector('.task-tab.active');
-            if (activeCategory && activeCategory.textContent.includes('Новые')) {
-                console.log('🔄 Автообновление списка заданий');
-                loadTasks();
-            }
-        }
-    }, 10000); // 10 секунд
-}
-
-// Запустить при инициализации приложения
-startTasksAutoRefresh();
-
 
 // 🔧 ФУНКЦИЯ ДЛЯ ДИАГНОСТИКИ НАЧАЛА ЗАДАНИЯ
 function debugStartTask() {
