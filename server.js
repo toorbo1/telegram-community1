@@ -5131,54 +5131,6 @@ app.get('/api/user/:userId/rank', async (req, res) => {
         });
     }
 });
-// 🔧 ПРОСТОЙ ENDPOINT ДЛЯ ПОЛУЧЕНИЯ РАНГА ПОЛЬЗОВАТЕЛЯ
-app.get('/api/user/:userId/simple-rank', async (req, res) => {
-    const userId = req.params.userId;
-    
-    try {
-        // Получаем позицию пользователя в рейтинге
-        const rankResult = await pool.query(`
-            WITH user_ranking AS (
-                SELECT 
-                    up.user_id,
-                    COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_tasks,
-                    COALESCE(up.balance, 0) as balance,
-                    ROW_NUMBER() OVER (
-                        ORDER BY 
-                            COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) DESC,
-                            COALESCE(up.balance, 0) DESC,
-                            up.created_at ASC
-                    ) as position
-                FROM user_profiles up
-                LEFT JOIN user_tasks ut ON up.user_id = ut.user_id AND ut.status = 'completed'
-                GROUP BY up.user_id, up.balance, up.created_at
-                HAVING COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) > 0
-                   OR COALESCE(up.balance, 0) > 0
-            )
-            SELECT position FROM user_ranking WHERE user_id = $1
-        `, [userId]);
-        
-        if (rankResult.rows.length === 0) {
-            return res.json({
-                success: true,
-                rank: null,
-                message: 'Пользователь не в рейтинге'
-            });
-        }
-        
-        res.json({
-            success: true,
-            rank: rankResult.rows[0].position
-        });
-        
-    } catch (error) {
-        console.error('Get simple rank error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Ошибка получения ранга: ' + error.message
-        });
-    }
-});
 // Создание реферальной ссылки с базовой статистикой
 app.post('/api/admin/links/create', async (req, res) => {
     const { adminId, name, description, createdBy } = req.body;
@@ -6845,46 +6797,84 @@ app.get('/api/debug/admin-tasks', async (req, res) => {
 });
 
 // В server.js - обновите endpoint начала задания
-// Эндпоинт для начала задания с проверкой на последнее выполнение
 app.post('/api/user/tasks/start', async (req, res) => {
     const { userId, taskId } = req.body;
     
+    console.log('🚀 Start task request:', { userId, taskId });
+    
+    if (!userId || !taskId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
     try {
-        // Получаем информацию о задании
-        const taskResult = await pool.query(
-            'SELECT people_required, completed_count FROM tasks WHERE id = $1',
-            [taskId]
-        );
+        // Проверяем, выполнял ли пользователь это задание
+        const existingTask = await pool.query(`
+    SELECT id FROM user_tasks 
+    WHERE user_id = $1 AND task_id = $2 
+    AND status IN ('active', 'pending_review', 'completed', 'rejected')
+`, [userId, taskId]);
         
-        if (taskResult.rows.length === 0) {
-            return res.json({
+        if (existingTask.rows.length > 0) {
+            return res.status(400).json({
                 success: false,
-                error: 'Задание не найдено'
+                error: 'Вы уже выполняли это задание'
             });
         }
         
-        const task = taskResult.rows[0];
-        const availableTasks = task.people_required - (task.completed_count || 0);
-        const isLastCompletion = availableTasks === 1;
+        // Проверяем лимит выполнений
+        const taskInfo = await pool.query(`
+            SELECT t.*, 
+                   COUNT(ut.id) as completed_count
+            FROM tasks t
+            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
+            WHERE t.id = $1 AND t.status = 'active'
+            GROUP BY t.id
+        `, [taskId]);
         
-        // Здесь логика начала задания...
+        if (taskInfo.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Задание не найдено или недоступно'
+            });
+        }
+        
+        const task = taskInfo.rows[0];
+        const peopleRequired = task.people_required || 1;
+        const completedCount = task.completed_count || 0;
+        
+        // 🔥 ПРОВЕРЯЕМ ДОСТИГНУТ ЛИ ЛИМИТ ИСПОЛНИТЕЛЕЙ
+        if (completedCount >= peopleRequired) {
+            return res.status(400).json({
+                success: false,
+                error: 'Достигнут лимит выполнения этого задания'
+            });
+        }
+        
+        // Start the task
+        const result = await pool.query(`
+            INSERT INTO user_tasks (user_id, task_id, status) 
+            VALUES ($1, $2, 'active')
+            RETURNING *
+        `, [userId, taskId]);
+        
+        console.log('✅ Task started successfully:', result.rows[0]);
         
         res.json({
             success: true,
-            isLastCompletion: isLastCompletion,
-            message: 'Задание начато'
+            message: 'Задание начато!',
+            userTaskId: result.rows[0].id
         });
-        
     } catch (error) {
-        console.error('Start task error:', error);
+        console.error('❌ Start task error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
         });
     }
 });
-
-
 // Get user tasks
 app.get('/api/user/:userId/tasks', async (req, res) => {
     const userId = req.params.userId;
@@ -6892,8 +6882,7 @@ app.get('/api/user/:userId/tasks', async (req, res) => {
     
     try {
         let query = `
-            SELECT ut.*, t.title, t.description, t.price, t.category, t.image_url,
-                   t.time_to_complete, t.difficulty, t.people_required
+            SELECT ut.*, t.title, t.description, t.price, t.category
             FROM user_tasks ut 
             JOIN tasks t ON ut.task_id = t.id 
             WHERE ut.user_id = $1
@@ -6915,77 +6904,6 @@ app.get('/api/user/:userId/tasks', async (req, res) => {
         });
     } catch (error) {
         console.error('Get user tasks error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
-// Endpoint для отправки задания на проверку с файлом
-app.post('/api/user/tasks/submit-with-screenshot', upload.single('screenshot'), async (req, res) => {
-    const { userId, userTaskId } = req.body;
-    
-    if (!userId || !userTaskId) {
-        return res.status(400).json({
-            success: false,
-            error: 'Missing required fields'
-        });
-    }
-    
-    if (!req.file) {
-        return res.status(400).json({
-            success: false,
-            error: 'No screenshot uploaded'
-        });
-    }
-    
-    const screenshotUrl = `/uploads/${req.file.filename}`;
-    
-    try {
-        // Обновляем статус задания пользователя
-        await pool.query(`
-            UPDATE user_tasks 
-            SET status = 'pending_review', 
-                screenshot_url = $1, 
-                submitted_at = CURRENT_TIMESTAMP 
-            WHERE id = $2 AND user_id = $3
-        `, [screenshotUrl, userTaskId, userId]);
-        
-        // Получаем информацию для верификации
-        const taskInfo = await pool.query(`
-            SELECT ut.task_id, t.title, t.price, u.first_name, u.username
-            FROM user_tasks ut
-            JOIN tasks t ON ut.task_id = t.id
-            JOIN user_profiles u ON ut.user_id = u.user_id
-            WHERE ut.id = $1 AND ut.user_id = $2
-        `, [userTaskId, userId]);
-        
-        if (taskInfo.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'Task not found'
-            });
-        }
-        
-        const task = taskInfo.rows[0];
-        const userName = task.first_name || `user_${userId}`;
-        
-        // Создаем запись верификации
-        await pool.query(`
-            INSERT INTO task_verifications 
-            (user_task_id, user_id, task_id, user_name, user_username, task_title, task_price, screenshot_url, status) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
-        `, [userTaskId, userId, task.task_id, userName, task.username, task.title, task.price, screenshotUrl]);
-        
-        console.log(`✅ Task ${userTaskId} submitted for verification by user ${userId}`);
-        
-        res.json({
-            success: true,
-            message: 'Task submitted for verification'
-        });
-        
-    } catch (error) {
-        console.error('Submit with screenshot error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
@@ -8229,9 +8147,8 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
     const { verificationId } = req.params;
     const { adminId, forceApprove = false } = req.body;
 
-    console.log(`🎯 Approving verification:`, { verificationId, adminId, forceApprove });
+    console.log('🔄 Admin approving verification:', { verificationId, adminId, forceApprove });
 
-    // Проверяем права администратора
     if (!adminId) {
         return res.status(400).json({
             success: false,
@@ -8240,7 +8157,6 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
     }
 
     try {
-        // Проверяем права доступа
         const adminCheck = await pool.query(
             'SELECT is_admin FROM user_profiles WHERE user_id = $1',
             [adminId]
@@ -8249,163 +8165,132 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
         if (adminCheck.rows.length === 0 || !adminCheck.rows[0].is_admin) {
             return res.status(403).json({
                 success: false,
-                error: 'Доступ запрещен. Только администратор может одобрять задания.'
+                error: 'Недостаточно прав. Только администратор может одобрять задания.'
             });
         }
 
-        // Получаем информацию о верификации
         const verificationResult = await pool.query(`
             SELECT 
-                vt.id,
-                vt.user_id,
-                vt.task_id,
-                vt.screenshot_url,
-                vt.status,
-                t.title as task_title,
+                tv.*,
                 t.price as task_price,
+                t.title as task_title,
                 t.people_required,
                 t.completed_count,
-                t.created_by as task_creator_id,
-                up.username as user_username,
+                ut.user_id,
                 up.first_name as user_name,
-                up.balance as user_balance,
-                up.referred_by
-            FROM verification_tasks vt
-            JOIN tasks t ON vt.task_id = t.id
-            JOIN user_profiles up ON vt.user_id = up.user_id
-            WHERE vt.id = $1 AND vt.status = 'pending'
+                up.username,
+                up.tasks_completed
+            FROM task_verifications tv
+            JOIN user_tasks ut ON tv.user_task_id = ut.id
+            JOIN tasks t ON ut.task_id = t.id
+            JOIN user_profiles up ON ut.user_id = up.user_id
+            WHERE tv.id = $1
         `, [verificationId]);
 
         if (verificationResult.rows.length === 0) {
-            return res.json({
+            return res.status(404).json({
                 success: false,
-                error: 'Верификация не найдена или уже обработана'
+                error: 'Проверка задания не найдена'
             });
         }
 
         const verification = verificationResult.rows[0];
         const userId = verification.user_id;
-        const taskId = verification.task_id;
         const taskPrice = verification.task_price;
-        const peopleRequired = verification.people_required;
-        const completedCount = verification.completed_count || 0;
+        const taskId = verification.task_id;
+        const taskTitle = verification.task_title;
+        const userTasksCompleted = verification.tasks_completed || 0;
 
-        // Начинаем транзакцию
+        console.log('📊 Verification details:', {
+            userId,
+            taskPrice,
+            taskTitle,
+            peopleRequired: verification.people_required,
+            completedCount: verification.completed_count,
+            userTasksCompleted,
+            hasScreenshot: !!verification.screenshot_url
+        });
+
         const client = await pool.connect();
-        
         try {
             await client.query('BEGIN');
 
-            // 1. Обновляем статус верификации
+            // 1. Обновляем статус user_task на 'completed'
             await client.query(
-                'UPDATE verification_tasks SET status = $1, reviewed_at = NOW(), reviewed_by = $2 WHERE id = $3',
+                'UPDATE user_tasks SET status = $1, completed_at = NOW() WHERE id = $2',
+                ['completed', verification.user_task_id]
+            );
+
+            // 2. Начисляем ВСЮ сумму пользователю (100%)
+            await client.query(
+                'UPDATE user_profiles SET balance = balance + $1, tasks_completed = COALESCE(tasks_completed, 0) + 1 WHERE user_id = $2',
+                [taskPrice, userId]
+            );
+
+            // 3. Обновляем счетчик выполненных заданий
+            await client.query(
+                'UPDATE tasks SET completed_count = COALESCE(completed_count, 0) + 1 WHERE id = $1',
+                [taskId]
+            );
+
+            // 4. Помечаем верификацию как обработанную
+            await client.query(
+                'UPDATE task_verifications SET status = $1, reviewed_at = NOW(), reviewed_by = $2 WHERE id = $3',
                 ['approved', adminId, verificationId]
             );
 
-            // 2. Обновляем статус user_tasks
-            await client.query(
-                'UPDATE user_tasks SET status = $1, completed_at = NOW() WHERE user_id = $2 AND task_id = $3 AND status = $4',
-                ['completed', userId, taskId, 'in_progress']
+            // 🔥 УВЕДОМЛЯЕМ ПОЛЬЗОВАТЕЛЯ (БЕЗ РЕФЕРАЛЬНОЙ ИНФОРМАЦИИ)
+            await sendTaskNotification(userId, taskTitle, 'approved');
+
+            const taskUpdateResult = await client.query(
+                'SELECT people_required, completed_count FROM tasks WHERE id = $1',
+                [taskId]
             );
 
-            // 3. Начисляем вознаграждение пользователю
-            const newBalance = parseFloat(verification.user_balance) + taskPrice;
-            await client.query(
-                'UPDATE user_profiles SET balance = $1, tasks_completed = COALESCE(tasks_completed, 0) + 1 WHERE user_id = $2',
-                [newBalance, userId]
-            );
+            let taskRemoved = false;
+            if (taskUpdateResult.rows.length > 0) {
+                const task = taskUpdateResult.rows[0];
+                const peopleRequired = task.people_required || 1;
+                const completedCount = task.completed_count || 0;
 
-            // 4. Обновляем счетчик выполненных заданий
-            const newCompletedCount = completedCount + 1;
-            await client.query(
-                'UPDATE tasks SET completed_count = $1 WHERE id = $2',
-                [newCompletedCount, taskId]
-            );
-
-            // 5. Проверяем реферальную систему и начисляем бонус пригласившему
-            if (verification.referred_by) {
-                const referrerBonus = Math.floor(taskPrice * 0.1); // 10% от суммы задания
-                
-                if (referrerBonus > 0) {
-                    // Получаем текущий баланс пригласившего
-                    const referrerResult = await client.query(
-                        'SELECT balance FROM user_profiles WHERE user_id = $1',
-                        [verification.referred_by]
+                if (completedCount >= peopleRequired) {
+                    await client.query(
+                        'UPDATE tasks SET status = $1 WHERE id = $2',
+                        ['completed', taskId]
                     );
-                    
-                    if (referrerResult.rows.length > 0) {
-                        const referrerNewBalance = parseFloat(referrerResult.rows[0].balance) + referrerBonus;
-                        
-                        // Обновляем баланс пригласившего
-                        await client.query(
-                            'UPDATE user_profiles SET balance = $1, referral_earned = COALESCE(referral_earned, 0) + $2 WHERE user_id = $3',
-                            [referrerNewBalance, referrerBonus, verification.referred_by]
-                        );
-                        
-                        console.log(`💰 Реферальный бонус: ${referrerBonus}⭐ пользователю ${verification.referred_by}`);
-                    }
+                    taskRemoved = true;
+                    console.log('🎯 Task completed and removed:', taskId);
                 }
             }
 
-            // 6. Проверяем, является ли это последним выполнением задания
-            const taskRemoved = newCompletedCount >= peopleRequired;
-            let taskUpdateMessage = '';
-
-            if (taskRemoved) {
-                // Помечаем задание как завершенное
-                await client.query(
-                    'UPDATE tasks SET status = $1 WHERE id = $2',
-                    ['completed', taskId]
-                );
-                taskUpdateMessage = 'Задание завершено (достигнут лимит исполнителей)';
-                
-                console.log(`🎯 Задание ${taskId} завершено. Выполнено: ${newCompletedCount}/${peopleRequired}`);
-            }
-
-            // 7. Добавляем запись в историю транзакций
-            await client.query(
-                `INSERT INTO transactions (user_id, amount, type, description, task_id) 
-                 VALUES ($1, $2, $3, $4, $5)`,
-                [userId, taskPrice, 'task_reward', `Выполнение задания: ${verification.task_title}`, taskId]
-            );
-
-            // 8. Обновляем статистику пользователя
-            await client.query(
-                `UPDATE user_profiles 
-                 SET completed_tasks = COALESCE(completed_tasks, 0) + 1,
-                     last_activity = NOW()
-                 WHERE user_id = $1`,
-                [userId]
-            );
-
-            // Фиксируем транзакцию
             await client.query('COMMIT');
 
-            console.log(`✅ Задание одобрено:`, {
-                userId: userId,
-                taskId: taskId,
-                amount: taskPrice,
-                newBalance: newBalance,
-                taskRemoved: taskRemoved
-            });
-
-            res.json({
+            const response = {
                 success: true,
-                message: `Задание одобрено! Пользователь получил ${taskPrice}⭐` + 
-                        (taskRemoved ? '. Задание завершено.' : ''),
-                amountAdded: taskPrice,
+                message: 'Задание успешно одобрено!',
+                amountAdded: taskPrice, // Полная сумма
                 taskRemoved: taskRemoved,
-                taskCompleted: taskRemoved,
-                userNewBalance: newBalance,
-                completedCount: newCompletedCount,
-                peopleRequired: peopleRequired
-            });
+                taskCompleted: true,
+                userReward: taskPrice,
+                originalPrice: taskPrice
+            };
+
+            if (!verification.screenshot_url) {
+                response.message += " (Одобрено без скриншота)";
+            }
+
+            console.log('✅ Verification approved successfully:', response);
+
+            res.json(response);
 
         } catch (transactionError) {
-            // Откатываем транзакцию при ошибке
             await client.query('ROLLBACK');
             console.error('❌ Transaction error:', transactionError);
-            throw transactionError;
+            
+            res.status(500).json({
+                success: false,
+                error: 'Внутренняя ошибка сервера'
+            });
         } finally {
             client.release();
         }
@@ -8413,21 +8298,9 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
     } catch (error) {
         console.error('❌ Approve verification error:', error);
         
-        // Проверяем различные типы ошибок
-        let errorMessage = 'Ошибка при одобрении задания';
-        
-        if (error.message.includes('timeout')) {
-            errorMessage = 'Таймаут операции. Попробуйте снова.';
-        } else if (error.message.includes('connection')) {
-            errorMessage = 'Ошибка соединения с базой данных.';
-        } else if (error.message.includes('foreign key')) {
-            errorMessage = 'Ошибка целостности данных.';
-        }
-
         res.status(500).json({
             success: false,
-            error: errorMessage,
-            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+            error: 'Внутренняя ошибка сервера'
         });
     }
 });
@@ -8472,182 +8345,66 @@ app.get('/api/admin/task-verifications/updated', async (req, res) => {
 });
 
 // 🔧 ENDPOINT ДЛЯ ПРИНУДИТЕЛЬНОГО ОДОБРЕНИЯ БЕЗ СКРИНШОТА
-// Дополнительный endpoint для принудительного одобрения (при проблемах со скриншотом)
 app.post('/api/admin/task-verifications/:verificationId/force-approve', async (req, res) => {
     const { verificationId } = req.params;
     const { adminId, reason } = req.body;
 
-    console.log(`🔧 Force approving verification:`, { verificationId, adminId, reason });
+    console.log('🔧 Force approving verification:', { verificationId, adminId, reason });
 
     try {
-        // Проверяем права администратора
-        const adminCheck = await pool.query(
-            'SELECT is_admin FROM user_profiles WHERE user_id = $1',
-            [adminId]
-        );
-
-        if (adminCheck.rows.length === 0 || !adminCheck.rows[0].is_admin) {
-            return res.status(403).json({
-                success: false,
-                error: 'Доступ запрещен'
-            });
-        }
-
-        // Обновляем верификацию с пометкой о принудительном одобрении
-        const result = await pool.query(
-            `UPDATE verification_tasks 
-             SET status = 'approved', 
-                 reviewed_at = NOW(), 
-                 reviewed_by = $1,
-                 admin_notes = COALESCE(admin_notes, '') || ' Принудительно одобрено: ' || $2
-             WHERE id = $3 
-             RETURNING *`,
-            [adminId, reason || 'Причина не указана', verificationId]
-        );
+        // Используем основную функцию с флагом forceApprove
+        const result = await pool.query(`
+            SELECT tv.*, ut.user_id, t.price, t.id as task_id
+            FROM task_verifications tv
+            JOIN user_tasks ut ON tv.user_task_id = ut.id
+            JOIN tasks t ON ut.task_id = t.id
+            WHERE tv.id = $1
+        `, [verificationId]);
 
         if (result.rows.length === 0) {
-            return res.json({
+            return res.status(404).json({
                 success: false,
-                error: 'Верификация не найдена'
+                error: 'Проверка не найдена'
             });
         }
 
-        // Вызываем основной метод одобрения
-        // Здесь можно добавить логику для выполнения остальных действий
-        // (начисление средств, обновление статистики и т.д.)
+        const verification = result.rows[0];
 
-        res.json({
-            success: true,
-            message: 'Задание принудительно одобрено',
-            verification: result.rows[0]
+        // Вызываем основной endpoint с флагом forceApprove
+        const approveResult = await fetch(`http://localhost:${PORT}/api/admin/task-verifications/${verificationId}/approve`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                adminId: adminId,
+                forceApprove: true
+            })
         });
+
+        const data = await approveResult.json();
+
+        if (data.success) {
+            // Логируем принудительное одобрение
+            await pool.query(`
+                INSERT INTO admin_actions (admin_id, action_type, target_id, description) 
+                VALUES ($1, $2, $3, $4)
+            `, [adminId, 'force_approve', verificationId, reason || 'Автоматическое одобрение при ошибке скриншота']);
+
+            res.json({
+                success: true,
+                message: 'Задание одобрено в принудительном режиме',
+                ...data
+            });
+        } else {
+            throw new Error(data.error);
+        }
 
     } catch (error) {
         console.error('❌ Force approve error:', error);
         res.status(500).json({
             success: false,
             error: 'Ошибка принудительного одобрения: ' + error.message
-        });
-    }
-});
-
-// Endpoint для проверки статуса задания
-app.get('/api/tasks/:taskId/status', async (req, res) => {
-    const { taskId } = req.params;
-
-    try {
-        const result = await pool.query(`
-            SELECT 
-                id,
-                title,
-                people_required,
-                completed_count,
-                status,
-                (people_required - COALESCE(completed_count, 0)) as available_tasks
-            FROM tasks 
-            WHERE id = $1
-        `, [taskId]);
-
-        if (result.rows.length === 0) {
-            return res.json({
-                success: false,
-                error: 'Задание не найдено'
-            });
-        }
-
-        const task = result.rows[0];
-        const isCompleted = task.available_tasks <= 0;
-
-        res.json({
-            success: true,
-            task: task,
-            isCompleted: isCompleted,
-            availableTasks: Math.max(0, task.available_tasks)
-        });
-
-    } catch (error) {
-        console.error('Task status error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
-// 🔧 ДИАГНОСТИЧЕСКИЙ ENDPOINT ДЛЯ ПРОВЕРКИ СТАТУСОВ ЗАДАНИЙ
-app.get('/api/debug/user-tasks-status/:userId', async (req, res) => {
-    const userId = req.params.userId;
-    
-    try {
-        const result = await pool.query(`
-            SELECT 
-                status,
-                COUNT(*) as count,
-                ARRAY_AGG(CONCAT(task_id, ' (user_task:', id, ')')) as task_ids
-            FROM user_tasks 
-            WHERE user_id = $1
-            GROUP BY status
-            ORDER BY status
-        `, [userId]);
-        
-        res.json({
-            success: true,
-            user_id: userId,
-            task_statuses: result.rows,
-            total_tasks: result.rows.reduce((sum, row) => sum + parseInt(row.count), 0)
-        });
-        
-    } catch (error) {
-        console.error('Debug user tasks error:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-
-// 🔧 ENDPOINT ДЛЯ ПРОВЕРКИ ПРОЦЕССА ВЫПОЛНЕНИЯ ЗАДАНИЙ
-app.get('/api/debug/task-flow/:userId', async (req, res) => {
-    const userId = req.params.userId;
-    
-    try {
-        // Получаем все задания пользователя с детальной информацией
-        const userTasks = await pool.query(`
-            SELECT 
-                ut.id as user_task_id,
-                ut.task_id,
-                ut.status as user_task_status,
-                ut.started_at,
-                ut.submitted_at,
-                ut.completed_at,
-                t.title,
-                t.status as task_status,
-                tv.id as verification_id,
-                tv.status as verification_status
-            FROM user_tasks ut
-            JOIN tasks t ON ut.task_id = t.id
-            LEFT JOIN task_verifications tv ON ut.id = tv.user_task_id
-            WHERE ut.user_id = $1
-            ORDER BY ut.started_at DESC
-        `, [userId]);
-        
-        res.json({
-            success: true,
-            user_id: userId,
-            tasks: userTasks.rows,
-            summary: {
-                total: userTasks.rows.length,
-                by_status: userTasks.rows.reduce((acc, task) => {
-                    acc[task.user_task_status] = (acc[task.user_task_status] || 0) + 1;
-                    return acc;
-                }, {})
-            }
-        });
-        
-    } catch (error) {
-        console.error('Debug task flow error:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
         });
     }
 });
