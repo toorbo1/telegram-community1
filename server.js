@@ -5,8 +5,10 @@ const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
 const TelegramBot = require('node-telegram-bot-api');
+const WebSocket = require('ws'); // Добавьте эту строку
+
 let currentUser = null;
-const app = express();
+
 const PORT = process.env.PORT || 3000;
 
 // Конфигурация для Railway
@@ -5880,8 +5882,6 @@ app.delete('/api/posts/:id', async (req, res) => {
 app.get('/api/tasks', async (req, res) => {
     const { search, category, userId } = req.query;
     
-    console.log('📥 Получен запрос на задания:', { search, category, userId });
-    
     try {
         let query = `
             SELECT t.*, 
@@ -5891,17 +5891,10 @@ app.get('/api/tasks', async (req, res) => {
                        WHERE ut2.task_id = t.id 
                        AND ut2.user_id = $1 
                        AND ut2.status IN ('active', 'pending_review', 'completed')
-                   ) as user_has_task,
-                   -- ДОБАВЛЕНО: проверяем есть ли отклоненные задания у пользователя
-                   EXISTS(
-                       SELECT 1 FROM user_tasks ut3 
-                       WHERE ut3.task_id = t.id 
-                       AND ut3.user_id = $1 
-                       AND ut3.status = 'rejected'
-                   ) as user_has_rejected_task
+                   ) as user_has_task
             FROM tasks t 
             LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
-            WHERE t.status = 'active'
+            WHERE t.status = 'active'  // ВАЖНО: только активные задания
         `;
         let params = [userId];
         let paramCount = 1;
@@ -6679,7 +6672,6 @@ app.get('/api/debug/admin-tasks', async (req, res) => {
     }
 });
 
-// В server.js - обновите endpoint начала задания
 app.post('/api/user/tasks/start', async (req, res) => {
     const { userId, taskId } = req.body;
     
@@ -6692,70 +6684,117 @@ app.post('/api/user/tasks/start', async (req, res) => {
         });
     }
     
+    const client = await pool.connect();
+    
     try {
-        // Проверяем, выполнял ли пользователь это задание
-        const existingTask = await pool.query(`
-    SELECT id FROM user_tasks 
-    WHERE user_id = $1 AND task_id = $2 
-    AND status IN ('active', 'pending_review', 'completed', 'rejected')
-`, [userId, taskId]);
+        await client.query('BEGIN');
         
-        if (existingTask.rows.length > 0) {
-            return res.status(400).json({
-                success: false,
-                error: 'Вы уже выполняли это задание'
-            });
-        }
-        
-        // Проверяем лимит выполнений
-        const taskInfo = await pool.query(`
-            SELECT t.*, 
-                   COUNT(ut.id) as completed_count
+        // 1. Проверяем доступность задания с блокировкой
+        const taskCheck = await client.query(`
+            SELECT 
+                t.*,
+                COUNT(ut.id) as completed_count
             FROM tasks t
             LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
             WHERE t.id = $1 AND t.status = 'active'
             GROUP BY t.id
+            FOR UPDATE
         `, [taskId]);
         
-        if (taskInfo.rows.length === 0) {
+        if (taskCheck.rows.length === 0) {
+            await client.query('ROLLBACK');
             return res.status(404).json({
                 success: false,
                 error: 'Задание не найдено или недоступно'
             });
         }
         
-        const task = taskInfo.rows[0];
+        const task = taskCheck.rows[0];
         const peopleRequired = task.people_required || 1;
         const completedCount = task.completed_count || 0;
+        const availableTasks = peopleRequired - completedCount;
         
-        // 🔥 ПРОВЕРЯЕМ ДОСТИГНУТ ЛИ ЛИМИТ ИСПОЛНИТЕЛЕЙ
-        if (completedCount >= peopleRequired) {
+        console.log(`📊 Task ${taskId} availability check: ${availableTasks} available`);
+        
+        // 2. Проверяем, есть ли еще доступные копии
+        if (availableTasks <= 0) {
+            await client.query('ROLLBACK');
             return res.status(400).json({
                 success: false,
                 error: 'Достигнут лимит выполнения этого задания'
             });
         }
         
-        // Start the task
-        const result = await pool.query(`
+        // 3. Проверяем, не выполнял ли пользователь уже это задание
+        const existingTask = await client.query(`
+            SELECT id FROM user_tasks 
+            WHERE user_id = $1 AND task_id = $2 
+            AND status IN ('active', 'pending_review', 'completed', 'rejected')
+        `, [userId, taskId]);
+        
+        if (existingTask.rows.length > 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({
+                success: false,
+                error: 'Вы уже выполняли это задание'
+            });
+        }
+        
+        // 4. Создаем запись о начале задания
+        const startResult = await client.query(`
             INSERT INTO user_tasks (user_id, task_id, status) 
             VALUES ($1, $2, 'active')
             RETURNING *
         `, [userId, taskId]);
         
-        console.log('✅ Task started successfully:', result.rows[0]);
+        // 5. Проверяем, была ли это последняя доступная копия
+        const newAvailableTasks = availableTasks - 1;
+        const isLastTask = newAvailableTasks === 0;
+        
+        // 6. Если это была последняя копия - СКРЫВАЕМ ЗАДАНИЕ У ВСЕХ
+        if (isLastTask) {
+            console.log(`🎯 Last task taken! Hiding task ${taskId} from all users`);
+            
+            // Обновляем статус задания
+            await client.query(`
+                UPDATE tasks 
+                SET status = 'completed' 
+                WHERE id = $1
+            `, [taskId]);
+            
+            // 🔥 ОТПРАВЛЯЕМ УВЕДОМЛЕНИЕ ВСЕМ ПОЛЬЗОВАТЕЛЯМ ЧЕРЕЗ WEBSOCKET
+            broadcastToAllUsers({
+                type: 'TASK_HIDDEN',
+                taskId: parseInt(taskId),
+                taskTitle: task.title,
+                message: `Задание "${task.title}" больше недоступно`,
+                timestamp: Date.now()
+            });
+            
+            console.log(`📢 WebSocket notification sent for task ${taskId}`);
+        }
+        
+        await client.query('COMMIT');
+        
+        console.log(`✅ Task started: ${taskId}, available now: ${newAvailableTasks}, isLast: ${isLastTask}`);
         
         res.json({
             success: true,
             message: 'Задание начато!',
-            userTaskId: result.rows[0].id
+            userTaskId: startResult.rows[0].id,
+            available_tasks: newAvailableTasks,
+            is_last_task: isLastTask
         });
+        
     } catch (error) {
+        await client.query('ROLLBACK');
         console.error('❌ Start task error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
         });
+    } finally {
+        client.release();
     }
 });
 // Get user tasks
@@ -9477,22 +9516,100 @@ async function initializeServer() {
     console.log('✅ Server initialization complete');
 }
 
-// Замените текущий app.listen на этот:
-app.listen(PORT, '0.0.0.0', async () => {
+const app = express();
+
+// Создаем WebSocket сервер
+const wss = new WebSocket.Server({ noServer: true });
+
+// Хранилище подключений по userId
+const userConnections = new Map();
+
+// Функция для отправки сообщения всем подключенным пользователям
+function broadcastToAllUsers(message) {
+    const data = JSON.stringify(message);
+    userConnections.forEach((ws, userId) => {
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.send(data);
+        }
+    });
+}
+
+// Функция для отправки сообщения конкретному пользователю
+function sendToUser(userId, message) {
+    const ws = userConnections.get(parseInt(userId));
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(message));
+    }
+}
+
+// Обработчик WebSocket соединений
+wss.on('connection', (ws, request) => {
+    console.log('✅ New WebSocket connection');
+    
+    // Извлекаем userId из URL query parameters
+    const url = new URL(request.url, `http://${request.headers.host}`);
+    const userId = url.searchParams.get('userId');
+    
+    if (userId) {
+        userConnections.set(parseInt(userId), ws);
+        console.log(`🔗 User ${userId} connected via WebSocket`);
+    }
+    
+    ws.on('message', (message) => {
+        try {
+            const data = JSON.parse(message);
+            console.log('📨 WebSocket message:', data);
+            
+            // Обработка ping сообщений для поддержания соединения
+            if (data.type === 'ping') {
+                ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
+            }
+        } catch (error) {
+            console.error('❌ WebSocket message error:', error);
+        }
+    });
+    
+    ws.on('close', () => {
+        // Удаляем соединение из хранилища
+        if (userId) {
+            userConnections.delete(parseInt(userId));
+            console.log(`🔌 User ${userId} disconnected from WebSocket`);
+        }
+        console.log('❌ WebSocket connection closed');
+    });
+    
+    ws.on('error', (error) => {
+        console.error('❌ WebSocket error:', error);
+        if (userId) {
+            userConnections.delete(parseInt(userId));
+        }
+    });
+    
+    // Отправляем приветственное сообщение
+    ws.send(JSON.stringify({
+        type: 'connected',
+        message: 'WebSocket connected successfully',
+        timestamp: Date.now()
+    }));
+});
+
+// Интеграция WebSocket с HTTP сервером
+const server = app.listen(PORT, '0.0.0.0', async () => {
     console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`🔗 WebSocket server ready on ws://localhost:${PORT}`);
     console.log(`📊 Health: http://localhost:${PORT}/api/health`);
     console.log(`🔐 Admin ID: ${ADMIN_ID}`);
     
-    // Инициализируем базу данных с заданиями
     await initializeWithTasks();
-    
-    // Принудительно исправляем структуру таблиц
-    try {
-        await fixWithdrawalTable();
-        await fixTasksTable();
-        await fixReferralLinksTable(); // Добавьте эту строку
-        console.log('✅ All table structures verified');
-    } catch (error) {
-        console.error('❌ Error fixing table structures:', error);
-    }
+    await fixWithdrawalTable();
+    await fixTasksTable();
+    await fixReferralLinksTable();
+    console.log('✅ All table structures verified');
+});
+
+// Привязываем WebSocket сервер к HTTP серверу
+server.on('upgrade', (request, socket, head) => {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit('connection', ws, request);
+    });
 });

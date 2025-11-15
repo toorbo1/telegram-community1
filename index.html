@@ -2384,7 +2384,139 @@ body {
 
 
     <script>
+        function hideTask(taskId) {
+    // Найти элемент задания в DOM
+    const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+    
+    if (taskElement) {
+        // Анимация скрытия
+        taskElement.style.transition = 'all 0.3s ease';
+        taskElement.style.opacity = '0';
+        taskElement.style.transform = 'translateX(-100%)';
         
+        // Полное удаление из DOM после анимации
+        setTimeout(() => {
+            taskElement.remove();
+            
+            // Обновить счетчик заданий
+            updateTasksCounter();
+            
+            // Показать уведомление
+            showNotification('Задание больше недоступно', 'info');
+        }, 300);
+    }
+    
+    // Также удалить из всех списков заданий
+    removeTaskFromAllLists(taskId);
+}
+
+function removeTaskFromAllLists(taskId) {
+    // Удалить задание из всех возможных контейнеров
+    const selectors = [
+        '#tasks-container',
+        '#available-tasks',
+        '#tasks-list',
+        '.task-card'
+    ];
+    
+    selectors.forEach(selector => {
+        const elements = document.querySelectorAll(`${selector} [data-task-id="${taskId}"]`);
+        elements.forEach(el => el.remove());
+    });
+}
+
+async function startTask(taskId) {
+    try {
+        const response = await fetch('/api/user/tasks/start', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: currentUser.id,
+                taskId: taskId
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            // Показать сообщение об успехе
+            showNotification('Задание начато!', 'success');
+            
+            // Если это было последнее задание - оно автоматически скроется через WebSocket
+            if (result.is_last_task) {
+                showNotification('Вы взяли последнее доступное задание!', 'warning');
+            }
+            
+            // Обновить интерфейс
+            loadTasks();
+            
+        } else {
+            showNotification(result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error starting task:', error);
+        showNotification('Ошибка при начале задания', 'error');
+    }
+}
+// Делегирование событий для динамически создаваемых кнопок
+document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('start-task-btn') || e.target.closest('.start-task-btn')) {
+        const button = e.target.classList.contains('start-task-btn') ? e.target : e.target.closest('.start-task-btn');
+        const taskId = button.dataset.taskId;
+        
+        // Блокировка кнопки на время запроса
+        button.disabled = true;
+        button.textContent = 'Запускаем...';
+        
+        startTask(taskId);
+    }
+});
+function updateTasksCounter() {
+    const taskCount = document.querySelectorAll('[data-task-id]').length;
+    const counterElement = document.getElementById('tasks-count');
+    if (counterElement) {
+        counterElement.textContent = taskCount;
+    }
+}
+
+function showNotification(message, type = 'info') {
+    // Твоя реализация показа уведомлений
+    console.log(`${type.toUpperCase()}: ${message}`);
+}
+// Подключение WebSocket при загрузке приложения
+let ws = null;
+
+function connectWebSocket(userId) {
+    const wsUrl = `ws://${window.location.host}?userId=${userId}`;
+    ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+        console.log('WebSocket connected');
+    };
+
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        // Обработка события скрытия задания
+        if (data.type === 'TASK_HIDDEN') {
+            hideTask(data.taskId);
+        }
+    };
+
+    ws.onclose = () => {
+        console.log('WebSocket disconnected, reconnecting...');
+        setTimeout(() => connectWebSocket(userId), 3000);
+    };
+
+    ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+    };
+}
+
+// Вызови при инициализации приложения
+connectWebSocket(currentUser.id);
         // Функция для прокрутки страницы к началу
 function scrollToTop() {
     window.scrollTo({
@@ -11283,7 +11415,24 @@ function displayReferralLinksList(links) {
         container.appendChild(linkElement);
     });
 }
-
+async function loadTasks() {
+    try {
+        const response = await fetch(`/api/tasks?userId=${currentUser.id}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            displayTasks(result.tasks);
+            
+            // Сохраняем текущие задания для сравнения
+            window.currentTasks = result.tasks;
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        console.error('Error loading tasks:', error);
+        showNotification('Ошибка загрузки заданий', 'error');
+    }
+}
 // Создать упрощенный элемент ссылки (только подсчет приглашенных)
 function createSimplifiedLinkElement(link) {
     const linkElement = document.createElement('div');
