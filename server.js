@@ -80,7 +80,55 @@ const upload = multer({
         }
     }
 });
+const WebSocket = require('ws');
+const wss = new WebSocket.Server({ noServer: true });
 
+// Хранилище подключений
+const connections = new Map();
+
+wss.on('connection', (ws, request) => {
+    const userId = request.url.split('?userId=')[1];
+    if (userId) {
+        connections.set(userId, ws);
+        console.log(`🔗 WebSocket connected for user ${userId}`);
+    }
+
+    ws.on('close', () => {
+        if (userId) {
+            connections.delete(userId);
+            console.log(`🔗 WebSocket disconnected for user ${userId}`);
+        }
+    });
+});
+
+// Функция для отправки уведомления всем пользователям
+function broadcastTaskUpdate(taskId, action) {
+    const message = JSON.stringify({
+        type: 'TASK_UPDATED',
+        taskId: taskId,
+        action: action,
+        timestamp: new Date().toISOString()
+    });
+    
+    connections.forEach((ws, userId) => {
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.send(message);
+            console.log(`📢 Sent task update to user ${userId}`);
+        }
+    });
+}
+
+// Интеграция WebSocket с Express
+app.server = app.listen(PORT, '0.0.0.0', async () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    await initializeWithTasks();
+});
+
+app.server.on('upgrade', (request, socket, head) => {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit('connection', ws, request);
+    });
+});
 // Функция для отправки уведомления пользователю
 async function sendTaskNotification(userId, taskTitle, status, adminComment = '') {
     if (!bot) {
@@ -6003,13 +6051,13 @@ app.get('/api/tasks', async (req, res) => {
         let query = `
             SELECT t.*, 
                    COUNT(ut.id) as completed_count,
+                   (t.people_required - COUNT(ut.id)) as remaining_slots,
                    EXISTS(
                        SELECT 1 FROM user_tasks ut2 
                        WHERE ut2.task_id = t.id 
                        AND ut2.user_id = $1 
                        AND ut2.status IN ('active', 'pending_review', 'completed')
                    ) as user_has_task,
-                   -- ДОБАВЛЕНО: проверяем есть ли отклоненные задания у пользователя
                    EXISTS(
                        SELECT 1 FROM user_tasks ut3 
                        WHERE ut3.task_id = t.id 
@@ -6046,17 +6094,15 @@ app.get('/api/tasks', async (req, res) => {
         const availableTasks = result.rows.filter(task => {
             const completedCount = task.completed_count || 0;
             const peopleRequired = task.people_required || 1;
-            return completedCount < peopleRequired;
+            const remainingSlots = peopleRequired - completedCount;
+            return remainingSlots > 0;
         });
         
-        // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Фильтруем задания, которые пользователь уже начал ИЛИ ОТКЛОНЕНЫ
+        // 🔥 ФИЛЬТРУЕМ задания, которые пользователь уже начал ИЛИ ОТКЛОНЕНЫ
         const filteredTasks = availableTasks.filter(task => {
             const hasActiveTask = task.user_has_task;
             const hasRejectedTask = task.user_has_rejected_task;
             
-            // Не показываем задание если:
-            // 1. Пользователь уже начал это задание (активное, на проверке или выполненное)
-            // 2. Пользователь уже имеет отклоненную версию этого задания
             return !hasActiveTask && !hasRejectedTask;
         });
         
@@ -6068,11 +6114,14 @@ app.get('/api/tasks', async (req, res) => {
                 }
                 task.image_url += `${task.image_url.includes('?') ? '&' : '?'}t=${Date.now()}`;
             }
+            
+            // 🔥 ДОБАВЛЯЕМ ИНФОРМАЦИЮ О СТАТУСЕ "ПОСЛЕДНИЙ СЛОТ"
+            task.is_last_slot = task.remaining_slots === 1;
+            
             return task;
         });
         
         console.log(`✅ Найдено заданий: ${result.rows.length}, доступно по лимиту: ${availableTasks.length}, доступно пользователю: ${filteredTasks.length}`);
-        console.log(`🎯 Отклоненные задания отфильтрованы: ${availableTasks.length - filteredTasks.length} заданий скрыто`);
         
         res.json({
             success: true,
@@ -6809,32 +6858,24 @@ app.post('/api/user/tasks/start', async (req, res) => {
         });
     }
     
+    const client = await pool.connect();
+    
     try {
-        // Проверяем, выполнял ли пользователь это задание
-        const existingTask = await pool.query(`
-    SELECT id FROM user_tasks 
-    WHERE user_id = $1 AND task_id = $2 
-    AND status IN ('active', 'pending_review', 'completed', 'rejected')
-`, [userId, taskId]);
-        
-        if (existingTask.rows.length > 0) {
-            return res.status(400).json({
-                success: false,
-                error: 'Вы уже выполняли это задание'
-            });
-        }
-        
-        // Проверяем лимит выполнений
-        const taskInfo = await pool.query(`
+        await client.query('BEGIN');
+
+        // 🔒 БЛОКИРУЕМ задание для предотвращения гонки условий
+        const taskInfo = await client.query(`
             SELECT t.*, 
                    COUNT(ut.id) as completed_count
             FROM tasks t
             LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
             WHERE t.id = $1 AND t.status = 'active'
             GROUP BY t.id
+            FOR UPDATE
         `, [taskId]);
         
         if (taskInfo.rows.length === 0) {
+            await client.query('ROLLBACK');
             return res.status(404).json({
                 success: false,
                 error: 'Задание не найдено или недоступно'
@@ -6844,35 +6885,99 @@ app.post('/api/user/tasks/start', async (req, res) => {
         const task = taskInfo.rows[0];
         const peopleRequired = task.people_required || 1;
         const completedCount = task.completed_count || 0;
+        const remainingSlots = peopleRequired - completedCount;
         
+        console.log(`📊 Task slots: ${completedCount}/${peopleRequired}, remaining: ${remainingSlots}`);
+
         // 🔥 ПРОВЕРЯЕМ ДОСТИГНУТ ЛИ ЛИМИТ ИСПОЛНИТЕЛЕЙ
-        if (completedCount >= peopleRequired) {
+        if (remainingSlots <= 0) {
+            await client.query('ROLLBACK');
             return res.status(400).json({
                 success: false,
                 error: 'Достигнут лимит выполнения этого задания'
             });
         }
+
+        // 🔥 ПРОВЕРЯЕМ, ВЫПОЛНЯЛ ЛИ ПОЛЬЗОВАТЕЛЬ ЭТО ЗАДАНИЕ
+        const existingTask = await client.query(`
+            SELECT id FROM user_tasks 
+            WHERE user_id = $1 AND task_id = $2 
+            AND status IN ('active', 'pending_review', 'completed', 'rejected')
+        `, [userId, taskId]);
         
+        if (existingTask.rows.length > 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({
+                success: false,
+                error: 'Вы уже выполняли это задание'
+            });
+        }
+
+        // 🔥 ЕСЛИ ОСТАЛСЯ 1 СЛОТ - ПРОВЕРЯЕМ КТО ПЕРВЫЙ
+        if (remainingSlots === 1) {
+            console.log(`🎯 Last slot available for task ${taskId}, user ${userId} is trying to claim it`);
+            
+            // Двойная проверка - снова считаем completed_count с блокировкой
+            const finalCheck = await client.query(`
+                SELECT COUNT(*) as current_completed
+                FROM user_tasks 
+                WHERE task_id = $1 AND status = 'completed'
+            `, [taskId]);
+            
+            const currentCompleted = parseInt(finalCheck.rows[0].current_completed);
+            
+            if (currentCompleted >= peopleRequired) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({
+                    success: false,
+                    error: 'Задание только что было занято другим пользователем'
+                });
+            }
+        }
+
         // Start the task
-        const result = await pool.query(`
+        const result = await client.query(`
             INSERT INTO user_tasks (user_id, task_id, status) 
             VALUES ($1, $2, 'active')
             RETURNING *
         `, [userId, taskId]);
         
         console.log('✅ Task started successfully:', result.rows[0]);
+
+        // 🔥 ПРОВЕРЯЕМ, НЕ ЗАВЕРШИЛОСЬ ЛИ ЗАДАНИЕ ПОСЛЕ НАШЕЙ РЕГИСТРАЦИИ
+        const updatedCount = await client.query(`
+            SELECT COUNT(*) as new_completed_count
+            FROM user_tasks 
+            WHERE task_id = $1 AND status = 'completed'
+        `, [taskId]);
+        
+        const newCompletedCount = parseInt(updatedCount.rows[0].new_completed_count);
+        
+        if (newCompletedCount >= peopleRequired) {
+            console.log(`🎯 Task ${taskId} completed after user ${userId} started it`);
+            await client.query(`
+                UPDATE tasks SET status = 'completed' WHERE id = $1
+            `, [taskId]);
+        }
+        
+        await client.query('COMMIT');
         
         res.json({
             success: true,
             message: 'Задание начато!',
-            userTaskId: result.rows[0].id
+            userTaskId: result.rows[0].id,
+            remainingSlots: peopleRequired - newCompletedCount - 1 // -1 потому что мы только что добавили
         });
+        
     } catch (error) {
+        await client.query('ROLLBACK');
         console.error('❌ Start task error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
         });
+    } finally {
+        client.release();
     }
 });
 // Get user tasks
@@ -8148,7 +8253,12 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
     const { adminId, forceApprove = false } = req.body;
 
     console.log('🔄 Admin approving verification:', { verificationId, adminId, forceApprove });
-
+// После успешного одобрения задания добавьте:
+if (taskRemoved) {
+    // 🔥 ОТПРАВЛЯЕМ УВЕДОМЛЕНИЕ ВСЕМ ПОЛЬЗОВАТЕЛЯМ
+    broadcastTaskUpdate(taskId, 'COMPLETED');
+    console.log(`📢 Broadcast: task ${taskId} completed and removed`);
+}
     if (!adminId) {
         return res.status(400).json({
             success: false,

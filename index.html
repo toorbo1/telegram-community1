@@ -13,7 +13,34 @@
     <link rel="stylesheet" href="animations.css">
     <link rel="stylesheet" href="mobile.css">
     <style>
-        
+        .last-slot {
+    border: 2px solid #ff6b35;
+    position: relative;
+}
+
+.last-slot-badge {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: #ff6b35;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: bold;
+    animation: pulse 2s infinite;
+}
+
+.last-slot-text {
+    color: #ff6b35;
+    font-weight: bold;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
         /* Плавная прокрутка для всего сайта */
 html {
     scroll-behavior: smooth;
@@ -6609,6 +6636,34 @@ function getActiveCategoryName(activeTab) {
     return 'new';
 }
 
+function displayTasks(tasks) {
+    const tasksContainer = document.getElementById('tasks-container');
+    
+    tasks.forEach(task => {
+        const remainingSlots = task.people_required - task.completed_count;
+        const isLastSlot = remainingSlots === 1;
+        
+        const taskElement = `
+            <div class="task-card ${isLastSlot ? 'last-slot' : ''}">
+                ${isLastSlot ? '<div class="last-slot-badge">🔥 Последний слот!</div>' : ''}
+                <h3>${task.title}</h3>
+                <p>${task.description}</p>
+                <div class="task-meta">
+                    <span class="price">${task.price} ⭐</span>
+                    <span class="slots ${isLastSlot ? 'last-slot-text' : ''}">
+                        ${isLastSlot ? '1 осталось' : `Осталось мест: ${remainingSlots}`}
+                    </span>
+                </div>
+                <button class="btn btn-primary" onclick="startTask(${task.id})" 
+                        ${isLastSlot ? 'style="background: #ff6b35;"' : ''}>
+                    ${isLastSlot ? '🔥 Начать задание' : 'Начать задание'}
+                </button>
+            </div>
+        `;
+        
+        tasksContainer.innerHTML += taskElement;
+    });
+}
 
 function displayTasks(tasks, category) {
     console.log(`🎯 START displayTasks: ${tasks?.length} tasks for ${category}`);
@@ -7665,6 +7720,42 @@ async function cancelTask() {
         console.error('Error cancelling task:', error);
         showNotification('Ошибка отмены задания', 'error');
     }
+}
+// Подключение к WebSocket
+function connectWebSocket(userId) {
+    const ws = new WebSocket(`ws://${window.location.host}?userId=${userId}`);
+    
+    ws.onopen = () => {
+        console.log('🔗 WebSocket connected');
+    };
+    
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'TASK_UPDATED') {
+            console.log('📢 Received task update:', data);
+            
+            // Показываем уведомление
+            showNotification('Задание было обновлено', 'info');
+            
+            // Обновляем список заданий
+            if (currentPage === 'tasks') {
+                loadTasks();
+            }
+        }
+    };
+    
+    ws.onclose = () => {
+        console.log('🔗 WebSocket disconnected, reconnecting...');
+        setTimeout(() => connectWebSocket(userId), 3000);
+    };
+    
+    return ws;
+}
+
+// Инициализация при загрузке страницы
+if (currentUser && currentUser.id) {
+    connectWebSocket(currentUser.id);
 }
 // 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ ПРОВЕРОК
 async function loadTaskVerifications() {
