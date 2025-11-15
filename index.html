@@ -6843,7 +6843,6 @@ function displayUserTasksForCategory(tasks, status) {
 
 // Функция для отображения топа пользователей с улучшенным дизайном
 // 🔧 ФУНКЦИЯ ОТОБРАЖЕНИЯ ТОПА ПОЛЬЗОВАТЕЛЕЙ
-// 🔧 ФУНКЦИЯ ОТОБРАЖЕНИЯ ТОПА ПОЛЬЗОВАТЕЛЕЙ
 function displayTopUsers(topUsers) {
     const topUsersElement = document.getElementById('top-users-list');
     if (!topUsersElement) return;
@@ -6878,10 +6877,10 @@ function displayTopUsers(topUsers) {
     
     html += '</div>';
     
-    // ОБНОВЛЕННАЯ КНОПКА - используем showMyRank вместо showLeaderboardPage
+    // Добавляем кнопку для просмотра полного топа
     html += `
         <div class="view-full-leaderboard">
-            <button class="btn btn-primary" onclick="showMyRank()">
+            <button class="btn btn-primary" onclick="showLeaderboardPage()">
                 📊 Узнать мое место
             </button>
         </div>
@@ -11863,7 +11862,8 @@ setTimeout(addStartTaskDebugButton, 3000);
                 container.appendChild(chatElement);
             });
         }
-// 🔧 ENDPOINT ДЛЯ ПОЛУЧЕНИЯ РАНГА ПОЛЬЗОВАТЕЛЯ
+// Endpoint для получения ранга пользователя
+// Endpoint для получения ранга пользователя
 app.get('/api/user/:userId/rank', async (req, res) => {
     const userId = req.params.userId;
     
@@ -11957,34 +11957,6 @@ app.get('/api/user/:userId/rank', async (req, res) => {
         });
     }
 });
-// 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ ДЛЯ ВЫПОЛНЕНИЯ ЗАПРОСОВ
-async function makeRequest(url, options = {}) {
-    try {
-        const response = await fetch(url, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            },
-            ...options
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-            const text = await response.text();
-            console.error('❌ Non-JSON response:', text.substring(0, 200));
-            throw new Error('Server returned non-JSON response');
-        }
-        
-        return await response.json();
-    } catch (error) {
-        console.error(`❌ Request failed: ${url}`, error);
-        throw error;
-    }
-}
 // Функция для показа деталей ранга пользователя
 // 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ДЛЯ ПОКАЗА ДЕТАЛЕЙ РАНГА ПОЛЬЗОВАТЕЛЯ
 async function showUserRankDetails() {
