@@ -2874,40 +2874,38 @@ async function showUserDetailedStats(chatId, targetUserId, messageId) {
     }
 }
 
-// Получение топа пользователей с реальными данными о выполненных заданиях
+// Получение топа пользователей с реальными данными
 app.get('/api/leaderboard/top', async (req, res) => {
     try {
-        console.log('🏆 Loading improved leaderboard with real task counts...');
+        console.log('🏆 Loading improved leaderboard...');
         
-        // Получаем топ пользователей по реальным выполненным заданиям
+        // Получаем топ пользователей по реальным выполненным заданиям и балансу
         const topUsers = await pool.query(`
             SELECT 
-                up.user_id,
-                up.username,
-                up.first_name,
-                -- РЕАЛЬНЫЕ выполненные задания из user_tasks
-                COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_tasks,
-                COALESCE(up.balance, 0) as balance,
-                COALESCE(up.referral_count, 0) as referral_count,
-                up.created_at
-            FROM user_profiles up
-            LEFT JOIN user_tasks ut ON up.user_id = ut.user_id AND ut.status = 'completed'
-            GROUP BY up.user_id, up.username, up.first_name, up.balance, up.referral_count, up.created_at
-            HAVING COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) > 0  -- Только пользователи с выполненными заданиями
-               OR COALESCE(up.balance, 0) > 0          -- Или с балансом
+                user_id,
+                username,
+                first_name,
+                -- РЕАЛЬНЫЕ выполненные задания
+                COALESCE(completed_tasks, 0) as completed_tasks,
+                COALESCE(balance, 0) as balance,
+                COALESCE(referral_count, 0) as referral_count,
+                created_at
+            FROM user_profiles 
+            WHERE COALESCE(completed_tasks, 0) > 0  -- Только пользователи с выполненными заданиями
+               OR COALESCE(balance, 0) > 0          -- Или с балансом
             ORDER BY 
-                completed_tasks DESC,  -- Сначала по выполненным заданиям
-                COALESCE(up.balance, 0) DESC,           -- Затем по балансу
-                up.created_at ASC                       -- Затем по дате регистрации
+                COALESCE(completed_tasks, 0) DESC,  -- Сначала по выполненным заданиям
+                COALESCE(balance, 0) DESC,           -- Затем по балансу
+                created_at ASC                       -- Затем по дате регистрации
             LIMIT 10
         `);
         
         // Форматируем данные для отображения
         const formattedUsers = topUsers.rows.map(user => ({
             user_id: user.user_id,
-            username: user.username || `user_${user.user_id}`,
+            username: user.username || `user_${user.user_id}`, // username вместо "Пользователь"
             first_name: user.first_name,
-            completed_tasks: parseInt(user.completed_tasks) || 0, // Реальные выполненные задания
+            completed_tasks: user.completed_tasks || 0, // Реальные выполненные задания
             balance: user.balance || 0,
             referral_count: user.referral_count || 0,
             created_at: user.created_at
@@ -2920,26 +2918,21 @@ app.get('/api/leaderboard/top', async (req, res) => {
         
         if (userId) {
             const userRank = await pool.query(`
-                WITH user_ranking AS (
-                    SELECT 
-                        up.user_id,
-                        up.first_name,
-                        up.username,
-                        COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_tasks,
-                        COALESCE(up.balance, 0) as balance,
-                        ROW_NUMBER() OVER (
-                            ORDER BY 
-                                COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) DESC,
-                                COALESCE(up.balance, 0) DESC,
-                                up.created_at ASC
-                        ) as position
-                    FROM user_profiles up
-                    LEFT JOIN user_tasks ut ON up.user_id = ut.user_id AND ut.status = 'completed'
-                    GROUP BY up.user_id, up.username, up.first_name, up.balance, up.created_at
-                    HAVING COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) > 0
-                       OR COALESCE(up.balance, 0) > 0
-                )
-                SELECT * FROM user_ranking WHERE user_id = $1
+                SELECT 
+                    up.user_id,
+                    up.first_name,
+                    up.username,
+                    COALESCE(up.completed_tasks, 0) as completed_tasks,
+                    COALESCE(up.balance, 0) as balance,
+                    COALESCE(up.referral_count, 0) as referral_count,
+                    (SELECT COUNT(*) + 1 
+                     FROM user_profiles 
+                     WHERE COALESCE(completed_tasks, 0) > COALESCE(up.completed_tasks, 0)
+                        OR (COALESCE(completed_tasks, 0) = COALESCE(up.completed_tasks, 0) 
+                            AND COALESCE(balance, 0) > COALESCE(up.balance, 0))
+                    ) as position
+                FROM user_profiles up
+                WHERE up.user_id = $1
             `, [userId]);
             
             if (userRank.rows.length > 0) {
@@ -2947,12 +2940,12 @@ app.get('/api/leaderboard/top', async (req, res) => {
                 currentUserStats = {
                     ...userRank.rows[0],
                     username: userRank.rows[0].username || `user_${userId}`,
-                    completed_tasks: parseInt(userRank.rows[0].completed_tasks) || 0
+                    completed_tasks: userRank.rows[0].completed_tasks || 0
                 };
             }
         }
         
-        console.log(`✅ Improved leaderboard loaded: ${formattedUsers.length} users with real task counts`);
+        console.log(`✅ Improved leaderboard loaded: ${formattedUsers.length} users`);
         
         res.json({
             success: true,
@@ -2970,169 +2963,7 @@ app.get('/api/leaderboard/top', async (req, res) => {
         });
     }
 });
-
-// 🔧 ENDPOINT ДЛЯ ПРОВЕРКИ ДОСТУПНОСТИ ЗАДАНИЯ
-// 🔧 ENDPOINT ДЛЯ ПРОВЕРКИ ДОСТУПНОСТИ ЗАДАНИЯ С WebSocket уведомлением
-app.get('/api/tasks/:taskId/availability', async (req, res) => {
-    const taskId = req.params.taskId;
-    
-    try {
-        const result = await pool.query(`
-            SELECT 
-                t.*,
-                COUNT(ut.id) as completed_count,
-                t.people_required,
-                (t.people_required - COUNT(ut.id)) as available_count
-            FROM tasks t
-            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
-            WHERE t.id = $1 AND t.status = 'active'
-            GROUP BY t.id
-        `, [taskId]);
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'Задание не найдено'
-            });
-        }
-        
-        const task = result.rows[0];
-        const availableCount = Math.max(0, task.people_required - task.completed_count);
-        
-        res.json({
-            success: true,
-            task: {
-                ...task,
-                available_count: availableCount
-            },
-            available_tasks: availableCount
-        });
-        
-    } catch (error) {
-        console.error('Get task availability error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
-
-// 🔧 ОБНОВЛЕННЫЙ ENDPOINT НАЧАЛА ЗАДАНИЯ С УВЕДОМЛЕНИЕМ
-app.post('/api/user/tasks/start', async (req, res) => {
-    const { userId, taskId } = req.body;
-    
-    console.log('🚀 Start task request:', { userId, taskId });
-    
-    if (!userId || !taskId) {
-        return res.status(400).json({
-            success: false,
-            error: 'Missing required fields'
-        });
-    }
-    
-    const client = await pool.connect();
-    
-    try {
-        await client.query('BEGIN');
-        
-        // 1. Проверяем доступность задания с блокировкой
-        const taskCheck = await client.query(`
-            SELECT 
-                t.*,
-                COUNT(ut.id) as completed_count
-            FROM tasks t
-            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
-            WHERE t.id = $1 AND t.status = 'active'
-            GROUP BY t.id
-            FOR UPDATE
-        `, [taskId]);
-        
-        if (taskCheck.rows.length === 0) {
-            await client.query('ROLLBACK');
-            return res.status(404).json({
-                success: false,
-                error: 'Задание не найдено или недоступно'
-            });
-        }
-        
-        const task = taskCheck.rows[0];
-        const peopleRequired = task.people_required || 1;
-        const completedCount = task.completed_count || 0;
-        const availableTasks = peopleRequired - completedCount;
-        
-        console.log(`📊 Task ${taskId} availability check: ${availableTasks} available`);
-        
-        // 2. Проверяем, есть ли еще доступные копии
-        if (availableTasks <= 0) {
-            await client.query('ROLLBACK');
-            return res.status(400).json({
-                success: false,
-                error: 'Достигнут лимит выполнения этого задания'
-            });
-        }
-        
-        // 3. Проверяем, не выполнял ли пользователь уже это задание
-        const existingTask = await client.query(`
-            SELECT id FROM user_tasks 
-            WHERE user_id = $1 AND task_id = $2 
-            AND status IN ('active', 'pending_review', 'completed', 'rejected')
-        `, [userId, taskId]);
-        
-        if (existingTask.rows.length > 0) {
-            await client.query('ROLLBACK');
-            return res.status(400).json({
-                success: false,
-                error: 'Вы уже выполняли это задание'
-            });
-        }
-        
-        // 4. Создаем запись о начале задания
-        const startResult = await client.query(`
-            INSERT INTO user_tasks (user_id, task_id, status) 
-            VALUES ($1, $2, 'active')
-            RETURNING *
-        `, [userId, taskId]);
-        
-        // 5. Проверяем, была ли это последняя доступная копия
-        const newAvailableTasks = availableTasks - 1;
-        const isLastTask = newAvailableTasks === 0;
-        
-        await client.query('COMMIT');
-        
-        console.log(`✅ Task started: ${taskId}, available now: ${newAvailableTasks}, isLast: ${isLastTask}`);
-        
-        // 🔥 ОТПРАВЛЯЕМ УВЕДОМЛЕНИЕ ВСЕМ ПОЛЬЗОВАТЕЛЯМ
-        if (isLastTask) {
-            notifyAllUsersTaskTaken(taskId, task.title);
-        }
-        
-        res.json({
-            success: true,
-            message: 'Задание начато!',
-            userTaskId: startResult.rows[0].id,
-            available_tasks: newAvailableTasks,
-            is_last_task: isLastTask
-        });
-        
-    } catch (error) {
-        await client.query('ROLLBACK');
-        console.error('❌ Start task error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    } finally {
-        client.release();
-    }
-});
-
-// 🔧 ФУНКЦИЯ УВЕДОМЛЕНИЯ ВСЕХ ПОЛЬЗОВАТЕЛЕЙ
-function notifyAllUsersTaskTaken(taskId, taskTitle) {
-    console.log(`📢 Notifying all users: task ${taskId} is taken`);
-    
-    // Здесь можно добавить WebSocket или Server-Sent Events
-    // Пока используем периодический опрос с клиента
-}
+// В server.js обновите endpoint удаления пользователя:
 // В server.js обновите endpoint удаления пользователя:
 app.post('/api/admin/leaderboard/remove-user', async (req, res) => {
     const { adminId, targetUserId } = req.body;
