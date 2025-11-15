@@ -9,11 +9,12 @@ const TelegramBot = require('node-telegram-bot-api');
 let currentUser = null;
 const app = express();
 const PORT = process.env.PORT || 3000;
+console.log(`Starting server on port ${PORT}`);;
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server is running on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', async () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    // остальная инициализация...
 });
-
 // Конфигурация для Railway
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -4400,30 +4401,24 @@ bot.on('message', async (msg) => {
 
 
 
-// Health check с информацией о конфигурации
 // Улучшенный health check
 app.get('/api/health', async (req, res) => {
     try {
-        // Проверяем подключение к БД
-        const dbResult = await pool.query('SELECT 1');
-        const dbStatus = dbResult ? 'connected' : 'disconnected';
+        // Проверяем подключение к базе данных
+        await pool.query('SELECT 1');
         
-        const healthInfo = {
+        res.status(200).json({
             status: 'OK',
             timestamp: new Date().toISOString(),
-            database: dbStatus,
-            uptime: process.uptime(),
-            memory: process.memoryUsage(),
-            environment: process.env.NODE_ENV || 'development'
-        };
-        
-        res.json(healthInfo);
+            database: 'connected',
+            uptime: process.uptime()
+        });
     } catch (error) {
         console.error('Health check failed:', error);
         res.status(500).json({
             status: 'ERROR',
-            message: 'Database connection failed',
-            error: error.message
+            timestamp: new Date().toISOString(),
+            error: 'Database connection failed'
         });
     }
 });
@@ -9601,27 +9596,22 @@ async function initializeServer() {
 
 // Замените текущий app.listen на этот:
 app.listen(PORT, '0.0.0.0', async () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📊 Health: http://localhost:${PORT}/api/health`);
-    console.log(`🔐 Admin ID: ${ADMIN_ID}`);
-    
-    // Инициализируем базу данных с заданиями
-    await initializeWithTasks();
-    
-    // Принудительно исправляем структуру таблиц
     try {
+        console.log(`🚀 Server starting on port ${PORT}`);
+        
+        // Инициализируем базу данных
+        await initializeWithTasks();
+        
+        // Принудительно исправляем структуру таблиц
         await fixWithdrawalTable();
         await fixTasksTable();
-        await fixReferralLinksTable(); // Добавьте эту строку
-        console.log('✅ All table structures verified');
+        await fixReferralLinksTable();
+        
+        console.log('✅ Server initialization complete');
+        console.log(`📊 Health: http://localhost:${PORT}/api/health`);
+        console.log(`🔐 Admin ID: ${ADMIN_ID}`);
     } catch (error) {
-        console.error('❌ Error fixing table structures:', error);
+        console.error('❌ Server startup failed:', error);
+        process.exit(1);
     }
-});
-// Добавьте в server.js
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString() 
-  });
 });
