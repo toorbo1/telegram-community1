@@ -2874,38 +2874,40 @@ async function showUserDetailedStats(chatId, targetUserId, messageId) {
     }
 }
 
-// Получение топа пользователей с реальными данными
+// Получение топа пользователей с реальными данными о выполненных заданиях
 app.get('/api/leaderboard/top', async (req, res) => {
     try {
-        console.log('🏆 Loading improved leaderboard...');
+        console.log('🏆 Loading improved leaderboard with real task counts...');
         
-        // Получаем топ пользователей по реальным выполненным заданиям и балансу
+        // Получаем топ пользователей по реальным выполненным заданиям
         const topUsers = await pool.query(`
             SELECT 
-                user_id,
-                username,
-                first_name,
-                -- РЕАЛЬНЫЕ выполненные задания
-                COALESCE(completed_tasks, 0) as completed_tasks,
-                COALESCE(balance, 0) as balance,
-                COALESCE(referral_count, 0) as referral_count,
-                created_at
-            FROM user_profiles 
-            WHERE COALESCE(completed_tasks, 0) > 0  -- Только пользователи с выполненными заданиями
-               OR COALESCE(balance, 0) > 0          -- Или с балансом
+                up.user_id,
+                up.username,
+                up.first_name,
+                -- РЕАЛЬНЫЕ выполненные задания из user_tasks
+                COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_tasks,
+                COALESCE(up.balance, 0) as balance,
+                COALESCE(up.referral_count, 0) as referral_count,
+                up.created_at
+            FROM user_profiles up
+            LEFT JOIN user_tasks ut ON up.user_id = ut.user_id AND ut.status = 'completed'
+            GROUP BY up.user_id, up.username, up.first_name, up.balance, up.referral_count, up.created_at
+            HAVING COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) > 0  -- Только пользователи с выполненными заданиями
+               OR COALESCE(up.balance, 0) > 0          -- Или с балансом
             ORDER BY 
-                COALESCE(completed_tasks, 0) DESC,  -- Сначала по выполненным заданиям
-                COALESCE(balance, 0) DESC,           -- Затем по балансу
-                created_at ASC                       -- Затем по дате регистрации
+                completed_tasks DESC,  -- Сначала по выполненным заданиям
+                COALESCE(up.balance, 0) DESC,           -- Затем по балансу
+                up.created_at ASC                       -- Затем по дате регистрации
             LIMIT 10
         `);
         
         // Форматируем данные для отображения
         const formattedUsers = topUsers.rows.map(user => ({
             user_id: user.user_id,
-            username: user.username || `user_${user.user_id}`, // username вместо "Пользователь"
+            username: user.username || `user_${user.user_id}`,
             first_name: user.first_name,
-            completed_tasks: user.completed_tasks || 0, // Реальные выполненные задания
+            completed_tasks: parseInt(user.completed_tasks) || 0, // Реальные выполненные задания
             balance: user.balance || 0,
             referral_count: user.referral_count || 0,
             created_at: user.created_at
@@ -2918,21 +2920,26 @@ app.get('/api/leaderboard/top', async (req, res) => {
         
         if (userId) {
             const userRank = await pool.query(`
-                SELECT 
-                    up.user_id,
-                    up.first_name,
-                    up.username,
-                    COALESCE(up.completed_tasks, 0) as completed_tasks,
-                    COALESCE(up.balance, 0) as balance,
-                    COALESCE(up.referral_count, 0) as referral_count,
-                    (SELECT COUNT(*) + 1 
-                     FROM user_profiles 
-                     WHERE COALESCE(completed_tasks, 0) > COALESCE(up.completed_tasks, 0)
-                        OR (COALESCE(completed_tasks, 0) = COALESCE(up.completed_tasks, 0) 
-                            AND COALESCE(balance, 0) > COALESCE(up.balance, 0))
-                    ) as position
-                FROM user_profiles up
-                WHERE up.user_id = $1
+                WITH user_ranking AS (
+                    SELECT 
+                        up.user_id,
+                        up.first_name,
+                        up.username,
+                        COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_tasks,
+                        COALESCE(up.balance, 0) as balance,
+                        ROW_NUMBER() OVER (
+                            ORDER BY 
+                                COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) DESC,
+                                COALESCE(up.balance, 0) DESC,
+                                up.created_at ASC
+                        ) as position
+                    FROM user_profiles up
+                    LEFT JOIN user_tasks ut ON up.user_id = ut.user_id AND ut.status = 'completed'
+                    GROUP BY up.user_id, up.username, up.first_name, up.balance, up.created_at
+                    HAVING COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) > 0
+                       OR COALESCE(up.balance, 0) > 0
+                )
+                SELECT * FROM user_ranking WHERE user_id = $1
             `, [userId]);
             
             if (userRank.rows.length > 0) {
@@ -2940,12 +2947,12 @@ app.get('/api/leaderboard/top', async (req, res) => {
                 currentUserStats = {
                     ...userRank.rows[0],
                     username: userRank.rows[0].username || `user_${userId}`,
-                    completed_tasks: userRank.rows[0].completed_tasks || 0
+                    completed_tasks: parseInt(userRank.rows[0].completed_tasks) || 0
                 };
             }
         }
         
-        console.log(`✅ Improved leaderboard loaded: ${formattedUsers.length} users`);
+        console.log(`✅ Improved leaderboard loaded: ${formattedUsers.length} users with real task counts`);
         
         res.json({
             success: true,
@@ -4368,6 +4375,27 @@ bot.on('message', async (msg) => {
         }
     }
 });
+
+// Закрытие модального окна при клике вне его
+window.addEventListener('click', function(event) {
+    const modal = document.getElementById('rank-details-modal');
+    if (event.target === modal) {
+        closeRankDetails();
+    }
+});
+
+// Обновление топа при каждом переходе на главную вкладку
+function showMainTab() {
+    hideAllTabs();
+    document.getElementById('main-tab').classList.add('active');
+    updateNavState('main');
+    
+    // Обновляем топ пользователей с улучшенным дизайном
+    loadTopUsers();
+    
+    // Прокручиваем к началу
+    setTimeout(scrollToTop, 100);
+}
 
 // Health check с информацией о конфигурации
 // Улучшенный health check

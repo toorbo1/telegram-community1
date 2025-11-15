@@ -13,6 +13,305 @@
     <link rel="stylesheet" href="animations.css">
     <link rel="stylesheet" href="mobile.css">
     <style>
+        /* Стили для топа пользователей */
+.top-users-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.top-users-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.top-users-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.view-full-list-btn {
+    background: transparent;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.view-full-list-btn:hover {
+    background: var(--gold);
+    color: white;
+}
+
+.top-user-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-light);
+    position: relative;
+}
+
+.top-user-item:last-child {
+    border-bottom: none;
+}
+
+.user-rank {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.user-rank.rank-1 {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: white;
+}
+
+.user-rank.rank-2 {
+    background: linear-gradient(135deg, #C0C0C0, #A0A0A0);
+    color: white;
+}
+
+.user-rank.rank-3 {
+    background: linear-gradient(135deg, #CD7F32, #A0522D);
+    color: white;
+}
+
+.user-rank.rank-other {
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--gold));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.user-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.user-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-stats {
+    display: flex;
+    gap: 12px;
+    font-size: 12px;
+}
+
+.user-tasks {
+    color: var(--success);
+    font-weight: 700;
+    background: rgba(34, 197, 94, 0.1);
+    padding: 2px 8px;
+    border-radius: 12px;
+    border: 1px solid var(--success);
+}
+
+.user-balance {
+    color: var(--gold);
+    font-weight: 600;
+}
+
+.user-referrals {
+    color: var(--accent);
+}
+
+/* Позиция пользователя */
+.user-position {
+    margin-top: 16px;
+}
+
+.position-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 16px 0;
+}
+
+.current-user-position {
+    background: rgba(59, 130, 246, 0.05);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.position-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.position-text {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.position-details-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.position-details-btn:hover {
+    background: var(--accent-dark);
+}
+
+.position-stats {
+    border-top: 1px solid var(--border-light);
+    padding-top: 12px;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.stat-item:last-child {
+    margin-bottom: 0;
+}
+
+.stat-label {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.stat-value {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Модальное окно ранга */
+.rank-details {
+    text-align: center;
+}
+
+.rank-main {
+    margin-bottom: 24px;
+}
+
+.rank-number {
+    font-size: 48px;
+    font-weight: 900;
+    color: var(--gold);
+    margin-bottom: 8px;
+}
+
+.rank-label {
+    color: var(--text-secondary);
+    font-size: 16px;
+}
+
+.rank-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.rank-stat-card {
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    border: 1px solid var(--border);
+}
+
+.stat-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.stat-info .stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.stat-info .stat-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.rank-progress {
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid var(--border);
+}
+
+.rank-progress h4 {
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+
+.progress-info {
+    margin-bottom: 16px;
+}
+
+.progress-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .rank-stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .progress-actions {
+        flex-direction: column;
+    }
+    
+    .top-users-header {
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
+    }
+}
         /* Стили для кнопок удаления в топе */
 .top-user-actions {
     margin-left: auto;
@@ -522,15 +821,87 @@
         <div class="loading">Загрузка топа...</div>
     </div>
     
-    <!-- Место текущего пользователя -->
-    <div class="user-position" id="user-position" style="display: none;">
-        <div class="position-divider"></div>
-        <div class="current-user-position">
+ <!-- Место текущего пользователя -->
+<div class="user-position" id="user-position" style="display: none;">
+    <div class="position-divider"></div>
+    <div class="current-user-position">
+        <div class="position-info">
             <span class="position-text">Ваше место: <strong id="user-rank">-</strong></span>
+            <button class="position-details-btn" onclick="showUserRankDetails()">
+                ℹ️ Подробнее
+            </button>
+        </div>
+        <div class="position-stats" id="position-stats" style="display: none;">
+            <div class="stat-item">
+                <span class="stat-label">Выполнено заданий:</span>
+                <span class="stat-value" id="user-completed-tasks">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Баланс:</span>
+                <span class="stat-value" id="user-balance">0 ⭐</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">До следующего места:</span>
+                <span class="stat-value" id="next-rank-diff">-</span>
+            </div>
         </div>
     </div>
 </div>
 
+<!-- Модальное окно детальной информации о ранге -->
+<div id="rank-details-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>📊 Ваше место в рейтинге</h3>
+            <span class="close" onclick="closeRankDetails()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="rank-details">
+                <div class="rank-main">
+                    <div class="rank-number" id="modal-rank">-</div>
+                    <div class="rank-label">место в общем рейтинге</div>
+                </div>
+                <div class="rank-stats-grid">
+                    <div class="rank-stat-card">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="modal-completed-tasks">0</div>
+                            <div class="stat-label">выполнено заданий</div>
+                        </div>
+                    </div>
+                    <div class="rank-stat-card">
+                        <div class="stat-icon">💫</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="modal-balance">0</div>
+                            <div class="stat-label">текущий баланс</div>
+                        </div>
+                    </div>
+                    <div class="rank-stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="modal-referrals">0</div>
+                            <div class="stat-label">приглашено друзей</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="rank-progress">
+                    <h4>🎯 До следующего места</h4>
+                    <div class="progress-info">
+                        <span id="next-rank-info">-</span>
+                    </div>
+                    <div class="progress-actions">
+                        <button class="btn-primary" onclick="loadTasksForCategory('new')">
+                            🚀 Выполнить задания
+                        </button>
+                        <button class="btn-secondary" onclick="showReferralTab()">
+                            👥 Пригласить друзей
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
         <!-- Как работает -->
         <div class="exchange-card fade-in" onclick="showHowItWorksPage()">
             <div class="exchange-icon">
@@ -6089,6 +6460,254 @@ function displayUserTasksForCategory(tasks, status) {
         const taskElement = createTaskCardWithImage(task, status, index);
         container.appendChild(taskElement);
     });
+}
+
+// Функция для отображения топа пользователей с улучшенным дизайном
+function displayTopUsers(topUsers, currentUserRank, currentUserStats) {
+    const container = document.getElementById('top-users-list');
+    const userPosition = document.getElementById('user-position');
+    
+    if (!container) return;
+    
+    // Очищаем контейнер
+    container.innerHTML = '';
+    
+    if (!topUsers || topUsers.length === 0) {
+        container.innerHTML = `
+            <div class="no-top-users">
+                <div class="icon">📊</div>
+                <div>Пока нет активных пользователей</div>
+                <div style="font-size: 12px; margin-top: 8px;">
+                    Будьте первым в рейтинге!
+                </div>
+            </div>
+        `;
+        userPosition.style.display = 'none';
+        return;
+    }
+    
+    // Отображаем топ 5 пользователей с реальными данными
+    topUsers.slice(0, 5).forEach((user, index) => {
+        const userElement = createTopUserElement(user, index + 1);
+        container.appendChild(userElement);
+    });
+    
+    // Показываем место текущего пользователя
+    if (currentUserRank && currentUserStats) {
+        displayUserPosition(currentUserRank, currentUserStats);
+    } else {
+        userPosition.style.display = 'none';
+    }
+}
+
+// Функция создания элемента пользователя в топе с улучшенным дизайном
+function createTopUserElement(user, rank) {
+    const userElement = document.createElement('div');
+    userElement.className = 'top-user-item';
+    
+    // Используем username вместо "Пользователь"
+    const displayName = user.username || `user_${user.user_id}`;
+    
+    // Реальные выполненные задания
+    const completedTasks = user.completed_tasks || 0;
+    const balance = user.balance || 0;
+    
+    // Аватар из первой буквы имени
+    const avatarText = displayName.charAt(0).toUpperCase();
+    
+    userElement.innerHTML = `
+        <div class="user-rank ${getRankClass(rank)}">${rank}</div>
+        <div class="user-avatar">${avatarText}</div>
+        <div class="user-info">
+            <div class="user-name">${escapeHtml(displayName)}</div>
+            <div class="user-stats">
+                <span class="user-tasks">${completedTasks} заданий</span>
+                <span class="user-balance">${balance} ⭐</span>
+                ${user.referral_count > 0 ? `<span class="user-referrals">👥 ${user.referral_count}</span>` : ''}
+            </div>
+        </div>
+        ${currentUser && currentUser.is_admin ? `
+            <div class="top-user-actions">
+                <button class="btn-danger btn-sm" onclick="removeUserFromLeaderboard(${user.user_id}, '${displayName.replace(/'/g, "\\'")}')">
+                    🗑️ Удалить
+                </button>
+            </div>
+        ` : ''}
+    `;
+    
+    return userElement;
+}
+
+// Функция отображения позиции пользователя
+function displayUserPosition(rank, stats) {
+    const userPosition = document.getElementById('user-position');
+    const userRankElement = document.getElementById('user-rank');
+    const userCompletedTasks = document.getElementById('user-completed-tasks');
+    const userBalance = document.getElementById('user-balance');
+    
+    if (userRankElement) {
+        userRankElement.textContent = rank;
+    }
+    
+    if (userCompletedTasks && stats) {
+        userCompletedTasks.textContent = stats.completed_tasks || 0;
+    }
+    
+    if (userBalance && stats) {
+        userBalance.textContent = `${stats.balance || 0} ⭐`;
+    }
+    
+    userPosition.style.display = 'block';
+    
+    // Загружаем информацию о следующем месте
+    loadNextRankInfo(rank, stats);
+}
+
+// Функция загрузки информации о следующем месте
+async function loadNextRankInfo(currentRank, currentStats) {
+    try {
+        const response = await fetch(`/api/leaderboard/next-rank?userId=${currentUser.id}&currentRank=${currentRank}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            const nextRankDiff = document.getElementById('next-rank-diff');
+            if (nextRankDiff) {
+                if (result.nextUser) {
+                    const tasksDiff = result.nextUser.completed_tasks - (currentStats.completed_tasks || 0);
+                    if (tasksDiff > 0) {
+                        nextRankDiff.textContent = `+${tasksDiff} заданий`;
+                    } else {
+                        nextRankDiff.textContent = 'Вы на максимальном месте!';
+                    }
+                } else {
+                    nextRankDiff.textContent = 'Вы на максимальном месте!';
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error loading next rank info:', error);
+    }
+}
+
+// Функция показа деталей ранга
+function showUserRankDetails() {
+    const stats = currentUserStats; // Должна быть установлена при загрузке топа
+    
+    if (!stats) return;
+    
+    // Заполняем модальное окно данными
+    document.getElementById('modal-rank').textContent = currentUserRank;
+    document.getElementById('modal-completed-tasks').textContent = stats.completed_tasks || 0;
+    document.getElementById('modal-balance').textContent = `${stats.balance || 0} ⭐`;
+    document.getElementById('modal-referrals').textContent = stats.referral_count || 0;
+    
+    // Загружаем информацию о следующем месте для модального окна
+    loadNextRankInfoForModal(currentUserRank, stats);
+    
+    // Показываем модальное окно
+    document.getElementById('rank-details-modal').style.display = 'block';
+}
+
+// Функция загрузки информации о следующем месте для модального окна
+async function loadNextRankInfoForModal(currentRank, currentStats) {
+    try {
+        const response = await fetch(`/api/leaderboard/next-rank?userId=${currentUser.id}&currentRank=${currentRank}`);
+        const result = await response.json();
+        
+        const nextRankInfo = document.getElementById('next-rank-info');
+        if (nextRankInfo) {
+            if (result.nextUser && result.nextUser.completed_tasks > currentStats.completed_tasks) {
+                const tasksNeeded = result.nextUser.completed_tasks - currentStats.completed_tasks;
+                nextRankInfo.textContent = `Выполните еще ${tasksNeeded} заданий чтобы подняться на ${currentRank - 1} место`;
+            } else {
+                nextRankInfo.textContent = 'Вы на максимальном месте! Продолжайте в том же духе!';
+            }
+        }
+    } catch (error) {
+        console.error('Error loading next rank info for modal:', error);
+    }
+}
+
+// Функция закрытия модального окна
+function closeRankDetails() {
+    document.getElementById('rank-details-modal').style.display = 'none';
+}
+
+// Функция переключения отображения статистики
+function togglePositionStats() {
+    const stats = document.getElementById('position-stats');
+    if (stats.style.display === 'none') {
+        stats.style.display = 'block';
+    } else {
+        stats.style.display = 'none';
+    }
+}
+
+// Добавьте новый endpoint в server.js для получения информации о следующем месте
+app.get('/api/leaderboard/next-rank', async (req, res) => {
+    const { userId, currentRank } = req.query;
+    
+    try {
+        // Получаем пользователя, который на одну позицию выше
+        const nextUserResult = await pool.query(`
+            WITH user_ranking AS (
+                SELECT 
+                    up.user_id,
+                    COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_tasks,
+                    COALESCE(up.balance, 0) as balance,
+                    ROW_NUMBER() OVER (
+                        ORDER BY 
+                            COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) DESC,
+                            COALESCE(up.balance, 0) DESC,
+                            up.created_at ASC
+                    ) as position
+                FROM user_profiles up
+                LEFT JOIN user_tasks ut ON up.user_id = ut.user_id AND ut.status = 'completed'
+                GROUP BY up.user_id, up.balance, up.created_at
+                HAVING COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) > 0
+                   OR COALESCE(up.balance, 0) > 0
+            )
+            SELECT * FROM user_ranking WHERE position = $1
+        `, [parseInt(currentRank) - 1]);
+        
+        res.json({
+            success: true,
+            nextUser: nextUserResult.rows.length > 0 ? nextUserResult.rows[0] : null,
+            currentRank: parseInt(currentRank)
+        });
+        
+    } catch (error) {
+        console.error('Next rank info error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Обновленная функция для загрузки топа
+async function loadTopUsers() {
+    try {
+        console.log('🏆 Loading top users with improved design...');
+        
+        const response = await fetch(`/api/leaderboard/top?userId=${currentUser?.id || ''}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            displayTopUsers(result.topUsers, result.currentUserRank, result.currentUserStats);
+            
+            // Сохраняем статистику пользователя для использования в других функциях
+            if (result.currentUserStats) {
+                window.currentUserStats = result.currentUserStats;
+                window.currentUserRank = result.currentUserRank;
+            }
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        console.error('Error loading top users:', error);
+        showTopUsersError();
+    }
 }
 
         // Обновленная функция загрузки заданий пользователя
