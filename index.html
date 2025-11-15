@@ -7666,44 +7666,7 @@ async function cancelTask() {
         showNotification('Ошибка отмены задания', 'error');
     }
 }
-// Подключение к WebSocket
-function connectWebSocket(userId) {
-    const ws = new WebSocket(`ws://${window.location.host}/ws?userId=${userId}`);
-    
-    ws.onopen = () => {
-        console.log('🔗 WebSocket connected');
-    };
-    
-    ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        
-        if (data.type === 'TASK_UPDATED') {
-            console.log('📢 Received task update:', data);
-            
-            // Если задание было захвачено - обновляем список
-            if (data.action === 'LAST_SLOT_TAKEN') {
-                showNotification('Одно из заданий было занято другим пользователем', 'info');
-                
-                // Перезагружаем список заданий
-                setTimeout(() => {
-                    loadTasks();
-                }, 1000);
-            }
-        }
-    };
-    
-    ws.onclose = () => {
-        console.log('🔌 WebSocket disconnected, reconnecting...');
-        setTimeout(() => connectWebSocket(userId), 5000);
-    };
-    
-    return ws;
-}
 
-// Инициализация при загрузке страницы
-if (currentUser && currentUser.id) {
-    connectWebSocket(currentUser.id);
-}
 // 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ ПРОВЕРОК
 async function loadTaskVerifications() {
     if (!currentUser) return;

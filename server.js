@@ -5,8 +5,6 @@ const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
 const TelegramBot = require('node-telegram-bot-api');
-const WebSocket = require('ws'); // ← ДОБАВЬТЕ ЭТУ СТРОКУ
-
 let currentUser = null;
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -5340,66 +5338,7 @@ app.post('/api/admin/links/recover', async (req, res) => {
         });
     }
 });
-// ... существующий код конфигурации ...
 
-
-
-// 🔥 ДОБАВЬТЕ WEB SOCKET СЕРВЕР ЗДЕСЬ
-const wss = new WebSocket.Server({ noServer: true });
-const connectedClients = new Map();
-
-// WebSocket соединения
-wss.on('connection', (ws, request) => {
-    const urlParams = new URLSearchParams(request.url.split('?')[1]);
-    const userId = urlParams.get('userId');
-    
-    if (userId) {
-        connectedClients.set(userId, ws);
-        console.log(`🔗 WebSocket connected: ${userId}, total clients: ${connectedClients.size}`);
-    }
-
-    ws.on('close', () => {
-        if (userId) {
-            connectedClients.delete(userId);
-            console.log(`🔌 WebSocket disconnected: ${userId}, remaining clients: ${connectedClients.size}`);
-        }
-    });
-
-    ws.on('error', (error) => {
-        console.error(`❌ WebSocket error for user ${userId}:`, error);
-        if (userId) {
-            connectedClients.delete(userId);
-        }
-    });
-});
-
-// Функция для уведомления всех клиентов об изменении задания
-function broadcastTaskUpdate(taskId, action, data = {}) {
-    const message = JSON.stringify({
-        type: 'TASK_UPDATED',
-        taskId: taskId,
-        action: action,
-        data: data,
-        timestamp: new Date().toISOString()
-    });
-    
-    let sentCount = 0;
-    connectedClients.forEach((ws, userId) => {
-        if (ws.readyState === WebSocket.OPEN) {
-            try {
-                ws.send(message);
-                sentCount++;
-            } catch (error) {
-                console.error(`❌ Failed to send WS message to user ${userId}:`, error);
-                connectedClients.delete(userId);
-            }
-        }
-    });
-    
-    console.log(`📢 Broadcast task update: ${action} for task ${taskId}, sent to ${sentCount} clients`);
-}
-
-// ... продолжение существующего кода ...
 // Удаление ссылки
 app.post('/api/admin/links/delete', async (req, res) => {
     const { adminId, code } = req.body;
@@ -6819,6 +6758,18 @@ app.post('/api/user/tasks/start', async (req, res) => {
             RETURNING *
         `, [userId, taskId]);
         
+        // 🔥 ЕСЛИ ЭТО ПОСЛЕДНИЙ СЛОТ - СРАЗУ ЖЕ СКРЫВАЕМ ЗАДАНИЕ
+        if (isLastSlot) {
+            console.log(`🎯 Последний слот захвачен! Скрываем задание ${taskId} для всех пользователей`);
+            
+            // Можно либо пометить задание как completed, либо оставить active но фильтровать на фронтенде
+            // Лучше оставить active, но фронтенд будет знать что слотов не осталось
+            // await client.query(
+            //     'UPDATE tasks SET status = $1 WHERE id = $2',
+            //     ['completed', taskId]
+            // );
+        }
+        
         await client.query('COMMIT');
         
         console.log('✅ Task started successfully:', {
@@ -6826,24 +6777,6 @@ app.post('/api/user/tasks/start', async (req, res) => {
             isLastSlot: isLastSlot,
             remainingSlots: isLastSlot ? 0 : remainingSlots - 1
         });
-        
-        // 🔥 УВЕДОМЛЯЕМ ВСЕХ ПОЛЬЗОВАТЕЛЕЙ ЧЕРЕЗ WEB SOCKET
-        if (isLastSlot) {
-            console.log(`🎯 Последний слот захвачен! Уведомляем всех пользователей`);
-            
-            broadcastTaskUpdate(taskId, 'LAST_SLOT_TAKEN', {
-                taskId: taskId,
-                taskTitle: task.title,
-                takenByUserId: userId,
-                remainingSlots: 0
-            });
-        } else {
-            // Также уведомляем об обновлении счетчика
-            broadcastTaskUpdate(taskId, 'SLOT_TAKEN', {
-                taskId: taskId,
-                remainingSlots: remainingSlots - 1
-            });
-        }
         
         res.json({
             success: true,
@@ -6865,34 +6798,6 @@ app.post('/api/user/tasks/start', async (req, res) => {
     } finally {
         client.release();
     }
-});
-// 🔥 ДОБАВЬТЕ endpoint для проверки WebSocket
-app.get('/api/websocket/test', (req, res) => {
-    res.json({
-        success: true,
-        connectedClients: connectedClients.size,
-        message: 'WebSocket server is running'
-    });
-});
-
-// 🔥 ДОБАВЬТЕ endpoint для ручной отправки уведомления (для тестирования)
-app.post('/api/websocket/broadcast', (req, res) => {
-    const { taskId, action } = req.body;
-    
-    if (!taskId || !action) {
-        return res.status(400).json({
-            success: false,
-            error: 'Task ID and action are required'
-        });
-    }
-    
-    broadcastTaskUpdate(taskId, action);
-    
-    res.json({
-        success: true,
-        message: `Broadcast sent to ${connectedClients.size} clients`,
-        clientsCount: connectedClients.size
-    });
 });
 // Get user tasks
 app.get('/api/user/:userId/tasks', async (req, res) => {
@@ -9614,14 +9519,10 @@ async function initializeServer() {
 }
 
 // Замените текущий app.listen на этот:
-// ... весь остальной код ...
-
-// 🔥 ЗАМЕНИТЕ текущий app.listen на ЭТОТ ВАРИАНТ:
-const server = app.listen(PORT, '0.0.0.0', async () => {
+app.listen(PORT, '0.0.0.0', async () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📊 Health: http://localhost:${PORT}/api/health`);
     console.log(`🔐 Admin ID: ${ADMIN_ID}`);
-    console.log(`🔗 WebSocket server ready on port ${PORT}`);
     
     // Инициализируем базу данных с заданиями
     await initializeWithTasks();
@@ -9630,36 +9531,9 @@ const server = app.listen(PORT, '0.0.0.0', async () => {
     try {
         await fixWithdrawalTable();
         await fixTasksTable();
-        await fixReferralLinksTable();
+        await fixReferralLinksTable(); // Добавьте эту строку
         console.log('✅ All table structures verified');
     } catch (error) {
         console.error('❌ Error fixing table structures:', error);
     }
-});
-
-// 🔥 ДОБАВЬТЕ WebSocket upgrade обработчик
-server.on('upgrade', (request, socket, head) => {
-    try {
-        wss.handleUpgrade(request, socket, head, (ws) => {
-            wss.emit('connection', ws, request);
-        });
-    } catch (error) {
-        console.error('❌ WebSocket upgrade error:', error);
-        socket.destroy();
-    }
-});
-
-// Обработка graceful shutdown
-process.on('SIGTERM', () => {
-    console.log('🔻 Received SIGTERM, shutting down gracefully...');
-    
-    // Закрываем WebSocket соединения
-    connectedClients.forEach((ws, userId) => {
-        ws.close(1001, 'Server shutdown');
-    });
-    
-    server.close(() => {
-        console.log('✅ Server closed');
-        process.exit(0);
-    });
 });
