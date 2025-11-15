@@ -4368,7 +4368,441 @@ bot.on('message', async (msg) => {
         }
     }
 });
+// ==================== TASK LIMIT LOGIC ====================
 
+// Функция для проверки и обновления статуса задания при начале выполнения
+async function updateTaskAvailability(taskId) {
+    const client = await pool.connect();
+    
+    try {
+        await client.query('BEGIN');
+        
+        // Получаем актуальную информацию о задании
+        const taskResult = await client.query(`
+            SELECT 
+                t.people_required,
+                t.status,
+                COUNT(ut.id) as completed_count
+            FROM tasks t
+            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
+            WHERE t.id = $1
+            GROUP BY t.id
+            FOR UPDATE
+        `, [taskId]);
+        
+        if (taskResult.rows.length === 0) {
+            throw new Error('Task not found');
+        }
+        
+        const task = taskResult.rows[0];
+        const peopleRequired = task.people_required || 1;
+        const completedCount = task.completed_count || 0;
+        const remainingSlots = peopleRequired - completedCount;
+        
+        console.log(`📊 Task ${taskId} status:`, {
+            peopleRequired,
+            completedCount,
+            remainingSlots,
+            currentStatus: task.status
+        });
+        
+        // Если осталось 0 слотов, помечаем задание как выполненное
+        if (remainingSlots <= 0 && task.status === 'active') {
+            await client.query(
+                'UPDATE tasks SET status = $1 WHERE id = $2',
+                ['completed', taskId]
+            );
+            console.log(`🎯 Task ${taskId} marked as completed - no more slots available`);
+        }
+        
+        // 🔥 ОСНОВНАЯ ЛОГИКА: Если остался 1 слот и задание активно
+        if (remainingSlots === 1 && task.status === 'active') {
+            console.log(`🚨 CRITICAL: Task ${taskId} has only 1 slot remaining!`);
+            
+            // Здесь можно добавить дополнительную логику:
+            // - Уведомление администраторов
+            // - Логирование события
+            // - etc.
+        }
+        
+        await client.query('COMMIT');
+        
+        return {
+            remainingSlots,
+            isAvailable: remainingSlots > 0 && task.status === 'active'
+        };
+        
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Update task availability error:', error);
+        throw error;
+    } finally {
+        client.release();
+    }
+}
+
+// Обновленный endpoint начала задания с проверкой доступности
+app.post('/api/user/tasks/start', async (req, res) => {
+    const { userId, taskId } = req.body;
+    
+    console.log('🚀 Start task request with availability check:', { userId, taskId });
+    
+    if (!userId || !taskId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    const client = await pool.connect();
+    
+    try {
+        await client.query('BEGIN');
+        
+        // 🔒 Блокируем запись для предотвращения гонки условий
+        const taskCheck = await client.query(`
+            SELECT 
+                t.*,
+                COUNT(ut_completed.id) as completed_count
+            FROM tasks t
+            LEFT JOIN user_tasks ut_completed ON t.id = ut_completed.task_id AND ut_completed.status = 'completed'
+            WHERE t.id = $1 AND t.status = 'active'
+            GROUP BY t.id
+            FOR UPDATE
+        `, [taskId]);
+        
+        if (taskCheck.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({
+                success: false,
+                error: 'Задание не найдено или недоступно'
+            });
+        }
+        
+        const task = taskCheck.rows[0];
+        const peopleRequired = task.people_required || 1;
+        const completedCount = task.completed_count || 0;
+        const remainingSlots = peopleRequired - completedCount;
+        
+        console.log(`📊 Task ${taskId} slots:`, {
+            required: peopleRequired,
+            completed: completedCount,
+            remaining: remainingSlots
+        });
+        
+        // Проверяем лимит выполнений ДО начала задания
+        if (remainingSlots <= 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({
+                success: false,
+                error: 'Достигнут лимит выполнения этого задания'
+            });
+        }
+        
+        // Проверяем, выполнял ли пользователь это задание
+        const existingTask = await client.query(`
+            SELECT id FROM user_tasks 
+            WHERE user_id = $1 AND task_id = $2 
+            AND status IN ('active', 'pending_review', 'completed', 'rejected')
+        `, [userId, taskId]);
+        
+        if (existingTask.rows.length > 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({
+                success: false,
+                error: 'Вы уже выполняли это задание'
+            });
+        }
+        
+        // Start the task
+        const result = await client.query(`
+            INSERT INTO user_tasks (user_id, task_id, status) 
+            VALUES ($1, $2, 'active')
+            RETURNING *
+        `, [userId, taskId]);
+        
+        // 🔥 ПРОВЕРЯЕМ СТАЛ ЛИ ПОСЛЕДНИМ ИСПОЛНИТЕЛЕМ
+        const newRemainingSlots = remainingSlots - 1;
+        
+        if (newRemainingSlots === 0) {
+            // ПОСЛЕДНИЙ ИСПОЛНИТЕЛЬ - закрываем задание
+            await client.query(
+                'UPDATE tasks SET status = $1 WHERE id = $2',
+                ['completed', taskId]
+            );
+            console.log(`🎯 Task ${taskId} COMPLETED by user ${userId} - last slot taken!`);
+        }
+        
+        await client.query('COMMIT');
+        
+        console.log('✅ Task started successfully:', {
+            userTaskId: result.rows[0].id,
+            remainingSlots: newRemainingSlots,
+            taskStatus: newRemainingSlots === 0 ? 'completed' : 'active'
+        });
+        
+        res.json({
+            success: true,
+            message: newRemainingSlots === 0 
+                ? 'Задание начато! Вы последний исполнитель!' 
+                : 'Задание начато!',
+            userTaskId: result.rows[0].id,
+            remainingSlots: newRemainingSlots,
+            wasLastSlot: newRemainingSlots === 0
+        });
+        
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('❌ Start task error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    } finally {
+        client.release();
+    }
+});
+
+// Функция для принудительной проверки всех заданий на доступность
+async function checkAllTasksAvailability() {
+    try {
+        console.log('🔍 Checking all tasks availability...');
+        
+        const activeTasks = await pool.query(`
+            SELECT 
+                t.id,
+                t.title,
+                t.people_required,
+                t.status,
+                COUNT(ut.id) as completed_count
+            FROM tasks t
+            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
+            WHERE t.status = 'active'
+            GROUP BY t.id
+        `);
+        
+        let updatedCount = 0;
+        
+        for (const task of activeTasks.rows) {
+            const peopleRequired = task.people_required || 1;
+            const completedCount = task.completed_count || 0;
+            
+            if (completedCount >= peopleRequired) {
+                await pool.query(
+                    'UPDATE tasks SET status = $1 WHERE id = $2',
+                    ['completed', task.id]
+                );
+                updatedCount++;
+                console.log(`🔄 Task ${task.id} "${task.title}" auto-completed`);
+            }
+        }
+        
+        console.log(`✅ Availability check completed: ${updatedCount} tasks updated`);
+        
+        return updatedCount;
+    } catch (error) {
+        console.error('Check tasks availability error:', error);
+        return 0;
+    }
+}
+
+// Endpoint для принудительной проверки доступности заданий (для админов)
+app.post('/api/admin/check-tasks-availability', async (req, res) => {
+    const { adminId } = req.body;
+    
+    const isAdmin = await checkAdminAccess(adminId);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен'
+        });
+    }
+    
+    try {
+        const updatedCount = await checkAllTasksAvailability();
+        
+        res.json({
+            success: true,
+            message: `Проверка завершена: ${updatedCount} заданий обновлено`,
+            updatedCount: updatedCount
+        });
+    } catch (error) {
+        console.error('Admin check availability error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// WebSocket или Server-Sent Events для реального обновления списка заданий
+// (опционально - для мгновенного обновления у всех пользователей)
+
+// Endpoint для подписки на обновления заданий
+app.get('/api/tasks/updates', async (req, res) => {
+    const { userId } = req.query;
+    
+    // Настройка Server-Sent Events
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+    });
+    
+    // Отправляем начальное состояние
+    const sendUpdate = async () => {
+        try {
+            const tasksCount = await pool.query(
+                'SELECT COUNT(*) FROM tasks WHERE status = $1',
+                ['active']
+            );
+            
+            res.write(`data: ${JSON.stringify({
+                type: 'tasks_count',
+                count: parseInt(tasksCount.rows[0].count),
+                timestamp: new Date().toISOString()
+            })}\n\n`);
+        } catch (error) {
+            console.error('Send tasks update error:', error);
+        }
+    };
+    
+    // Отправляем обновление каждые 30 секунд
+    const interval = setInterval(sendUpdate, 30000);
+    
+    // Обработка закрытия соединения
+    req.on('close', () => {
+        clearInterval(interval);
+        res.end();
+    });
+});
+
+// Функция для отправки уведомления о изменении доступности задания
+async function notifyTaskCompletion(taskId) {
+    try {
+        const taskResult = await pool.query(
+            'SELECT title FROM tasks WHERE id = $1',
+            [taskId]
+        );
+        
+        if (taskResult.rows.length > 0) {
+            const taskTitle = taskResult.rows[0].title;
+            
+            // Здесь можно добавить:
+            // - Уведомление в Telegram канал
+            // - Push-уведомления
+            // - Обновление через WebSocket
+            console.log(`📢 Task "${taskTitle}" (ID: ${taskId}) has been completed!`);
+        }
+    } catch (error) {
+        console.error('Notify task completion error:', error);
+    }
+}
+
+// Обновленный endpoint получения заданий с улучшенной фильтрацией
+app.get('/api/tasks', async (req, res) => {
+    const { search, category, userId } = req.query;
+    
+    console.log('📥 Получен запрос на задания с улучшенной фильтрацией:', { search, category, userId });
+    
+    try {
+        let query = `
+            SELECT t.*, 
+                   COUNT(ut.id) as completed_count,
+                   (t.people_required - COUNT(ut.id)) as remaining_slots,
+                   EXISTS(
+                       SELECT 1 FROM user_tasks ut2 
+                       WHERE ut2.task_id = t.id 
+                       AND ut2.user_id = $1 
+                       AND ut2.status IN ('active', 'pending_review', 'completed')
+                   ) as user_has_task,
+                   EXISTS(
+                       SELECT 1 FROM user_tasks ut3 
+                       WHERE ut3.task_id = t.id 
+                       AND ut3.user_id = $1 
+                       AND ut3.status = 'rejected'
+                   ) as user_has_rejected_task
+            FROM tasks t 
+            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
+            WHERE t.status = 'active'
+        `;
+        let params = [userId];
+        let paramCount = 1;
+        
+        if (search) {
+            paramCount++;
+            query += ` AND (t.title ILIKE $${paramCount} OR t.description ILIKE $${paramCount})`;
+            params.push(`%${search}%`);
+        }
+        
+        if (category && category !== 'all') {
+            paramCount++;
+            query += ` AND t.category = $${paramCount}`;
+            params.push(category);
+        }
+        
+        query += ` GROUP BY t.id ORDER BY t.created_at DESC`;
+        
+        console.log('📊 Выполняем запрос с подсчетом оставшихся слотов');
+        
+        const result = await pool.query(query, params);
+        
+        // 🔥 УЛУЧШЕННАЯ ФИЛЬТРАЦИЯ: показываем только задания с доступными слотами
+        const availableTasks = result.rows.filter(task => {
+            const completedCount = task.completed_count || 0;
+            const peopleRequired = task.people_required || 1;
+            const remainingSlots = peopleRequired - completedCount;
+            
+            return remainingSlots > 0; // Только задания со свободными слотами
+        });
+        
+        // Фильтруем задания, которые пользователь уже начал или которые отклонены
+        const filteredTasks = availableTasks.filter(task => {
+            const hasActiveTask = task.user_has_task;
+            const hasRejectedTask = task.user_has_rejected_task;
+            
+            return !hasActiveTask && !hasRejectedTask;
+        });
+        
+        // Добавляем информацию о критических заданиях (остался 1 слот)
+        const tasksWithCriticalFlag = filteredTasks.map(task => {
+            const completedCount = task.completed_count || 0;
+            const peopleRequired = task.people_required || 1;
+            const remainingSlots = peopleRequired - completedCount;
+            
+            return {
+                ...task,
+                remaining_slots: remainingSlots,
+                is_critical: remainingSlots === 1, // 🔥 КРИТИЧЕСКИЙ ФЛАГ
+                slots_info: {
+                    total: peopleRequired,
+                    completed: completedCount,
+                    remaining: remainingSlots
+                }
+            };
+        });
+        
+        console.log(`✅ Найдено заданий: ${result.rows.length}, доступно по слотам: ${availableTasks.length}, доступно пользователю: ${filteredTasks.length}`);
+        console.log(`🎯 Критических заданий (1 слот): ${tasksWithCriticalFlag.filter(t => t.is_critical).length}`);
+        
+        res.json({
+            success: true,
+            tasks: tasksWithCriticalFlag,
+            statistics: {
+                totalCount: result.rows.length,
+                availableByLimit: availableTasks.length,
+                availableCount: filteredTasks.length,
+                criticalTasks: tasksWithCriticalFlag.filter(t => t.is_critical).length
+            }
+        });
+    } catch (error) {
+        console.error('❌ Get tasks error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
 // Health check с информацией о конфигурации
 // Улучшенный health check
 app.get('/api/health', async (req, res) => {

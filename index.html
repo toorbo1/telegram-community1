@@ -13,6 +13,47 @@
     <link rel="stylesheet" href="animations.css">
     <link rel="stylesheet" href="mobile.css">
     <style>
+        /* Стили для мгновенного удаления заданий */
+.task-card.removing {
+    transition: all 0.3s ease;
+    opacity: 0;
+    transform: translateX(-100%);
+    height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.last-chance-warning {
+    background: linear-gradient(45deg, #ff6b6b, #ff8e53);
+    color: white;
+    padding: 12px;
+    border-radius: 10px;
+    margin: 10px 0;
+    text-align: center;
+    font-weight: 600;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+/* Стили для счетчиков заданий */
+.tasks-counter {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background: var(--accent);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 600;
+    z-index: 1000;
+}
         /* Стили для кнопок удаления в топе */
 .top-user-actions {
     margin-left: auto;
@@ -10637,6 +10678,359 @@ function showAdminPaymentsSection() {
         function closeModal(modalId) {
             document.getElementById(modalId).classList.remove('active');
         }
+
+
+// 🔥 ФУНКЦИЯ ДЛЯ МГНОВЕННОГО УДАЛЕНИЯ ЗАДАНИЯ ПРИ ОСТАТКЕ 1
+function handleTaskStartWithOneLeft(taskId) {
+    console.log('🔥 Проверяем задание с 1 остатком:', taskId);
+    
+    // Находим задание в списке
+    const task = allTasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    const peopleRequired = task.people_required || 1;
+    const completedCount = task.completed_count || 0;
+    const availableTasks = Math.max(0, peopleRequired - completedCount);
+    
+    console.log('📊 Статистика задания:', {
+        taskId,
+        peopleRequired,
+        completedCount,
+        availableTasks
+    });
+    
+    // Если осталось 1 задание - мгновенно удаляем у всех пользователей
+    if (availableTasks === 1) {
+        console.log('🚨 Задание с 1 остатком - мгновенное удаление!');
+        
+        // 1. Удаляем из DOM
+        removeTaskFromDOM(taskId);
+        
+        // 2. Удаляем из массива allTasks
+        allTasks = allTasks.filter(t => t.id !== taskId);
+        
+        // 3. Показываем уведомление пользователю
+        showNotification('🔥 Задание было мгновенно забронировано другим пользователем!', 'warning');
+        
+        // 4. Отправляем событие на сервер для уведомления других клиентов
+        notifyTaskTaken(taskId);
+        
+        // 5. Обновляем счетчики
+        updateTaskCounters();
+    }
+}
+
+// 🔧 ФУНКЦИЯ УДАЛЕНИЯ ЗАДАНИЯ ИЗ DOM
+function removeTaskFromDOM(taskId) {
+    // Удаляем из всех возможных контейнеров
+    const containers = [
+        'new-tasks',
+        'confirmation-tasks', 
+        'completed-tasks',
+        'rejected-tasks'
+    ];
+    
+    containers.forEach(containerId => {
+        const container = document.getElementById(containerId);
+        if (container) {
+            const taskElement = container.querySelector(`[data-task-id="${taskId}"]`);
+            if (taskElement) {
+                // Добавляем анимацию исчезновения
+                taskElement.style.transition = 'all 0.3s ease';
+                taskElement.style.opacity = '0';
+                taskElement.style.transform = 'translateX(-100%)';
+                
+                setTimeout(() => {
+                    taskElement.remove();
+                }, 300);
+            }
+        }
+    });
+    
+    console.log('✅ Задание удалено из DOM:', taskId);
+}
+
+// 🔧 ФУНКЦИЯ УВЕДОМЛЕНИЯ СЕРВЕРА
+async function notifyTaskTaken(taskId) {
+    try {
+        await fetch('/api/tasks/task-taken', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                taskId: taskId,
+                timestamp: new Date().toISOString()
+            })
+        });
+        console.log('📢 Сервер уведомлен о взятии задания:', taskId);
+    } catch (error) {
+        console.error('❌ Ошибка уведомления сервера:', error);
+    }
+}
+
+// 🔧 ОБНОВЛЕНИЕ СЧЕТЧИКОВ
+function updateTaskCounters() {
+    // Обновляем счетчик доступных заданий
+    const availableTasksCount = allTasks.filter(task => {
+        const available = Math.max(0, (task.people_required || 1) - (task.completed_count || 0));
+        return available > 0;
+    }).length;
+    
+    // Можно обновить badge в навигации
+    updateTasksBadge(availableTasksCount);
+}
+
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ НАЧАЛА ЗАДАНИЯ
+async function startTask() {
+    console.log('🎯 Starting task...', { selectedTaskId, currentUser });
+    
+    if (!currentUser || !selectedTaskId) {
+        showNotification('Ошибка: пользователь не авторизован или задание не выбрано', 'error');
+        return;
+    }
+
+    try {
+        console.log('📤 Sending start task request...');
+        
+        const result = await makeRequest('/api/user/tasks/start', {
+            method: 'POST',
+            body: JSON.stringify({
+                userId: currentUser.id,
+                taskId: selectedTaskId
+            })
+        });
+
+        console.log('📨 Start task response:', result);
+
+        if (result.success) {
+            // 🔥 ВАЖНО: Проверяем остаток перед закрытием модального окна
+            handleTaskStartWithOneLeft(selectedTaskId);
+            
+            closeModal('task-modal');
+            showNotification('✅ Задание начато! Выполните его и вернитесь для подтверждения.', 'success');
+            
+            // Обновляем списки заданий
+            setTimeout(() => {
+                loadTasks();
+                loadUserTasksForCategory('active');
+            }, 500);
+            
+        } else {
+            showNotification('❌ Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('💥 Error starting task:', error);
+        showNotification('❌ Ошибка начала задания: ' + error.message, 'error');
+    }
+}
+
+// 🔧 ФУНКЦИЯ ДЛЯ REAL-TIME ОБНОВЛЕНИЯ (WebSockets или Polling)
+function initTaskUpdates() {
+    // Вариант 1: Polling каждые 5 секунд
+    setInterval(() => {
+        if (document.getElementById('tasks-tab').classList.contains('active')) {
+            checkForTaskUpdates();
+        }
+    }, 5000);
+    
+    // Вариант 2: WebSocket подключение
+    initTaskWebSocket();
+}
+
+// 🔧 ПРОВЕРКА ОБНОВЛЕНИЙ ЗАДАНИЙ
+async function checkForTaskUpdates() {
+    try {
+        const result = await makeRequest('/api/tasks/updates?lastCheck=' + lastUpdateTime);
+        if (result.success && result.updatedTasks) {
+            result.updatedTasks.forEach(task => {
+                if (task.available_tasks === 0) {
+                    removeTaskFromDOM(task.id);
+                }
+            });
+            lastUpdateTime = result.timestamp;
+        }
+    } catch (error) {
+        console.error('Error checking task updates:', error);
+    }
+}
+
+// 🔧 WebSocket ДЛЯ МГНОВЕННЫХ ОБНОВЛЕНИЙ
+function initTaskWebSocket() {
+    try {
+        const ws = new WebSocket(`wss://${window.location.host}/ws/tasks`);
+        
+        ws.onopen = function() {
+            console.log('🔌 WebSocket connected for task updates');
+        };
+        
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'task_taken' && data.taskId) {
+                console.log('📢 WebSocket: задание забрали:', data.taskId);
+                removeTaskFromDOM(data.taskId);
+                showNotification('⚠️ Задание было забронировано другим пользователем', 'info');
+            }
+            
+            if (data.type === 'task_completed' && data.taskId) {
+                console.log('📢 WebSocket: задание завершено:', data.taskId);
+                // Можно обновить прогресс задания
+                updateTaskProgress(data.taskId, data.completedCount);
+            }
+        };
+        
+        ws.onclose = function() {
+            console.log('🔌 WebSocket disconnected, reconnecting...');
+            setTimeout(initTaskWebSocket, 3000);
+        };
+        
+    } catch (error) {
+        console.error('WebSocket error:', error);
+    }
+}
+
+// 🔧 ОБНОВЛЕНИЕ ПРОГРЕССА ЗАДАНИЯ
+function updateTaskProgress(taskId, completedCount) {
+    const taskElements = document.querySelectorAll(`[data-task-id="${taskId}"]`);
+    
+    taskElements.forEach(element => {
+        const progressBar = element.querySelector('.task-progress-bar');
+        const progressText = element.querySelector('.task-progress-text');
+        const availabilityBadge = element.querySelector('.task-availability, .task-badge');
+        
+        if (progressBar && progressText) {
+            const task = allTasks.find(t => t.id === taskId);
+            if (task) {
+                const peopleRequired = task.people_required || 1;
+                const progressPercentage = Math.min(100, (completedCount / peopleRequired) * 100);
+                
+                progressBar.style.width = `${progressPercentage}%`;
+                progressText.textContent = `Выполнено: ${completedCount}/${peopleRequired}`;
+                
+                // Обновляем бейдж доступности
+                const availableTasks = Math.max(0, peopleRequired - completedCount);
+                if (availabilityBadge) {
+                    if (availableTasks === 0) {
+                        availabilityBadge.remove();
+                    } else {
+                        availabilityBadge.textContent = `${availableTasks} осталось`;
+                    }
+                }
+                
+                // Если заданий не осталось - удаляем
+                if (availableTasks === 0) {
+                    setTimeout(() => removeTaskFromDOM(taskId), 1000);
+                }
+            }
+        }
+    });
+}
+
+// 🔧 ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ СТРАНИЦЫ
+document.addEventListener('DOMContentLoaded', function() {
+    initTaskUpdates();
+    
+    // Глобальная переменная для отслеживания времени последнего обновления
+    window.lastUpdateTime = Date.now();
+});
+
+// 🔧 ФУНКЦИЯ ДЛЯ ОБРАБОТКИ "ПОСЛЕДНЕГО ШАНСА"
+function showLastChanceWarning(taskId) {
+    const task = allTasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    const peopleRequired = task.people_required || 1;
+    const completedCount = task.completed_count || 0;
+    const availableTasks = Math.max(0, peopleRequired - completedCount);
+    
+    if (availableTasks === 1) {
+        // Показываем специальное предупреждение в модальном окне
+        const modal = document.getElementById('task-modal');
+        if (modal && modal.classList.contains('active')) {
+            const warningElement = document.createElement('div');
+            warningElement.className = 'last-chance-warning';
+            warningElement.innerHTML = `
+                <div style="
+                    background: linear-gradient(45deg, #ff6b6b, #ff8e53);
+                    color: white;
+                    padding: 12px;
+                    border-radius: 10px;
+                    margin: 10px 0;
+                    text-align: center;
+                    font-weight: 600;
+                    animation: pulse 2s infinite;
+                ">
+                    ⚡ ПОСЛЕДНИЙ ШАНС! ⚡<br>
+                    Это последнее доступное задание!
+                </div>
+            `;
+            
+            const modalBody = modal.querySelector('.modal-body');
+            if (modalBody) {
+                const existingWarning = modalBody.querySelector('.last-chance-warning');
+                if (existingWarning) {
+                    existingWarning.remove();
+                }
+                modalBody.insertBefore(warningElement, modalBody.firstChild);
+            }
+        }
+    }
+}
+
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОТКРЫТИЯ МОДАЛЬНОГО ОКНА
+function openTaskModal(taskId) {
+    console.log('📖 Opening task modal for task:', taskId);
+    
+    selectedTaskId = taskId;
+    
+    const task = allTasks.find(t => t.id === taskId);
+    if (task) {
+        // ... существующий код заполнения модального окна ...
+        
+        // 🔥 ДОБАВЛЯЕМ ПРОВЕРКУ "ПОСЛЕДНЕГО ШАНСА"
+        showLastChanceWarning(taskId);
+        
+        document.getElementById('task-modal').classList.add('active');
+    }
+}
+
+// 🔧 CSS АНИМАЦИИ ДЛЯ ПРЕДУПРЕЖДЕНИЙ
+const taskAnimations = `
+    <style>
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .last-chance-warning {
+            animation: pulse 2s infinite;
+        }
+        
+        .task-card.removing {
+            animation: slideOut 0.3s ease forwards;
+        }
+        
+        @keyframes slideOut {
+            to {
+                opacity: 0;
+                transform: translateX(-100%);
+                height: 0;
+                margin: 0;
+                padding: 0;
+            }
+        }
+    </style>
+`;
+
+// Добавляем стили в документ
+document.head.insertAdjacentHTML('beforeend', taskAnimations);
+
+// 🔧 ЭКСПОРТ ФУНКЦИЙ
+window.handleTaskStartWithOneLeft = handleTaskStartWithOneLeft;
+window.removeTaskFromDOM = removeTaskFromDOM;
+window.startTask = startTask;
 
 // В index.html - обновите функцию начала задания
 async function startTask() {
