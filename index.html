@@ -6842,41 +6842,63 @@ function displayUserTasksForCategory(tasks, status) {
 }
 
 // Функция для отображения топа пользователей с улучшенным дизайном
-function displayTopUsers(topUsers, currentUserRank, currentUserStats) {
-    const container = document.getElementById('top-users-list');
-    const userPosition = document.getElementById('user-position');
-    
-    if (!container) return;
-    
-    // Очищаем контейнер
-    container.innerHTML = '';
+// 🔧 ФУНКЦИЯ ОТОБРАЖЕНИЯ ТОПА ПОЛЬЗОВАТЕЛЕЙ
+function displayTopUsers(topUsers) {
+    const topUsersElement = document.getElementById('top-users-list');
+    if (!topUsersElement) return;
     
     if (!topUsers || topUsers.length === 0) {
-        container.innerHTML = `
-            <div class="no-top-users">
-                <div class="icon">📊</div>
-                <div>Пока нет активных пользователей</div>
-                <div style="font-size: 12px; margin-top: 8px;">
-                    Будьте первым в рейтинге!
-                </div>
-            </div>
-        `;
-        userPosition.style.display = 'none';
+        topUsersElement.innerHTML = '<div class="no-data">🏆 Топ пользователей пуст</div>';
         return;
     }
     
-    // Отображаем топ 5 пользователей с реальными данными
+    let html = '<div class="top-users-grid">';
+    
     topUsers.slice(0, 5).forEach((user, index) => {
-        const userElement = createTopUserElement(user, index + 1);
-        container.appendChild(userElement);
+        const position = index + 1;
+        const medal = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : `${position}.`;
+        
+        const displayName = user.username || `user_${user.user_id}`;
+        const completedTasks = user.completed_tasks || 0;
+        
+        html += `
+            <div class="top-user-item ${user.user_id === currentUser?.id ? 'current-user' : ''}">
+                <div class="top-user-position">${medal}</div>
+                <div class="top-user-info">
+                    <div class="top-user-name">${displayName}</div>
+                    <div class="top-user-stats">
+                        <span class="tasks-count">✅ ${completedTasks}</span>
+                        <span class="balance">💫 ${user.balance}⭐</span>
+                    </div>
+                </div>
+            </div>
+        `;
     });
     
-    // Показываем место текущего пользователя
-    if (currentUserRank && currentUserStats) {
-        displayUserPosition(currentUserRank, currentUserStats);
-    } else {
-        userPosition.style.display = 'none';
-    }
+    html += '</div>';
+    
+    // Добавляем кнопку для просмотра полного топа
+    html += `
+        <div class="view-full-leaderboard">
+            <button class="btn btn-primary" onclick="showLeaderboardPage()">
+                📊 Узнать мое место
+            </button>
+        </div>
+    `;
+    
+    topUsersElement.innerHTML = html;
+}
+
+// 🔧 ФУНКЦИЯ ДЛЯ ПОКАЗА СТРАНИЦЫ ЛИДЕРБОРДА
+function showLeaderboardPage() {
+    hideAllTabs();
+    document.getElementById('leaderboard-page').classList.add('active');
+    
+    // Загружаем данные лидерборда
+    setTimeout(() => {
+        loadLeaderboard();
+        scrollToTop();
+    }, 100);
 }
 
 // Функция создания элемента пользователя в топе с улучшенным дизайном

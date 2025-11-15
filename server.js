@@ -3205,6 +3205,7 @@ app.get('/api/debug/leaderboard', async (req, res) => {
 });
 
 // 🔧 ФУНКЦИЯ ЗАГРУЗКИ ТОПА
+// 🔧 ФУНКЦИЯ ЗАГРУЗКИ ЛИДЕРБОРДА
 async function loadLeaderboard() {
     try {
         const leaderboardElement = document.getElementById('leaderboard-content');
@@ -3247,19 +3248,22 @@ async function loadLeaderboard() {
     }
 }
 
-async function loadSimpleLeaderboard() {
+// 🔧 ФУНКЦИЯ ЗАГРУЗКИ ТОПА ДЛЯ ГЛАВНОЙ СТРАНИЦЫ
+async function loadTopUsers() {
     try {
-        const response = await fetch('/api/leaderboard/simple');
+        const response = await fetch('/api/leaderboard/top');
         const result = await response.json();
         
         if (result.success) {
-            displayLeaderboard(result.topUsers);
+            displayTopUsers(result.topUsers);
+        } else {
+            console.error('Failed to load top users:', result.error);
         }
     } catch (error) {
-        console.error('Failed to load simple leaderboard:', error);
-        showError('Топ временно недоступен');
+        console.error('Failed to load top users:', error);
     }
 }
+
 
 async function toggleUserBlock(chatId, adminId, targetUserId, messageId) {
     try {
