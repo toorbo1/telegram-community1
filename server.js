@@ -1266,7 +1266,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         console.error('❌ Start command error:', error);
         await bot.sendMessage(
             chatId, 
-            '❌ Произошла ошибка при регистрации. Пожалуйста, попробуйте еще раз.'
+            ''
         );
     }
 });
