@@ -80,55 +80,7 @@ const upload = multer({
         }
     }
 });
-const WebSocket = require('ws');
-const wss = new WebSocket.Server({ noServer: true });
 
-// Хранилище подключений
-const connections = new Map();
-
-wss.on('connection', (ws, request) => {
-    const userId = request.url.split('?userId=')[1];
-    if (userId) {
-        connections.set(userId, ws);
-        console.log(`🔗 WebSocket connected for user ${userId}`);
-    }
-
-    ws.on('close', () => {
-        if (userId) {
-            connections.delete(userId);
-            console.log(`🔗 WebSocket disconnected for user ${userId}`);
-        }
-    });
-});
-
-// Функция для отправки уведомления всем пользователям
-function broadcastTaskUpdate(taskId, action) {
-    const message = JSON.stringify({
-        type: 'TASK_UPDATED',
-        taskId: taskId,
-        action: action,
-        timestamp: new Date().toISOString()
-    });
-    
-    connections.forEach((ws, userId) => {
-        if (ws.readyState === WebSocket.OPEN) {
-            ws.send(message);
-            console.log(`📢 Sent task update to user ${userId}`);
-        }
-    });
-}
-
-// Интеграция WebSocket с Express
-app.server = app.listen(PORT, '0.0.0.0', async () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    await initializeWithTasks();
-});
-
-app.server.on('upgrade', (request, socket, head) => {
-    wss.handleUpgrade(request, socket, head, (ws) => {
-        wss.emit('connection', ws, request);
-    });
-});
 // Функция для отправки уведомления пользователю
 async function sendTaskNotification(userId, taskTitle, status, adminComment = '') {
     if (!bot) {
@@ -8253,12 +8205,7 @@ app.post('/api/admin/task-verifications/:verificationId/approve', async (req, re
     const { adminId, forceApprove = false } = req.body;
 
     console.log('🔄 Admin approving verification:', { verificationId, adminId, forceApprove });
-// После успешного одобрения задания добавьте:
-if (taskRemoved) {
-    // 🔥 ОТПРАВЛЯЕМ УВЕДОМЛЕНИЕ ВСЕМ ПОЛЬЗОВАТЕЛЯМ
-    broadcastTaskUpdate(taskId, 'COMPLETED');
-    console.log(`📢 Broadcast: task ${taskId} completed and removed`);
-}
+
     if (!adminId) {
         return res.status(400).json({
             success: false,
