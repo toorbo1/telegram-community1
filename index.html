@@ -1183,7 +1183,7 @@
     <div class="top-users-list" id="top-users-list">
         <!-- Топ 5 пользователей будет загружен здесь -->
         <div class="loading">Загрузка топа...</div>
-    </div>
+    
     
  <!-- Место текущего пользователя -->
 <div class="user-position" id="user-position" style="display: none;">
@@ -1223,7 +1223,7 @@
     <button class="check-position-btn" onclick="showUserRankDetails()">
         Узнать мое место
     </button>
-</div>
+</div></div>
 
 <!-- Модальное окно с детальной информацией о ранге -->
 <div id="user-rank-modal" class="modal" style="display: none;">
@@ -1280,7 +1280,7 @@
             </div>
         </div>
     </div>
-</div>
+</div></div>
         <!-- Как работает -->
         <div class="exchange-card fade-in" onclick="showHowItWorksPage()">
             <div class="exchange-icon">
@@ -7065,11 +7065,18 @@ app.get('/api/leaderboard/next-rank', async (req, res) => {
 });
 
 // Обновленная функция для загрузки топа
+// 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ ТОПА ПОЛЬЗОВАТЕЛЕЙ
 async function loadTopUsers() {
     try {
-        console.log('🏆 Loading top users with improved design...');
+        console.log('🏆 Loading top users...');
         
-        const response = await fetch(`/api/leaderboard/top?userId=${currentUser?.id || ''}`);
+        const userId = currentUser?.id || '';
+        const response = await fetch(`/api/leaderboard/top?userId=${userId}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const result = await response.json();
         
         if (result.success) {
@@ -7081,21 +7088,14 @@ async function loadTopUsers() {
                 window.currentUserRank = result.currentUserRank;
             }
         } else {
-            throw new Error(result.error);
+            throw new Error(result.error || 'Failed to load top users');
         }
     } catch (error) {
-        console.error('Error loading top users:', error);
+        console.error('❌ Error loading top users:', error);
         showTopUsersError();
+        showNotification('Ошибка загрузки рейтинга: ' + error.message, 'error');
     }
 }
-// Закрытие модального окна при клике вне его
-window.addEventListener('click', function(event) {
-    const modal = document.getElementById('rank-details-modal');
-    if (event.target === modal) {
-        closeRankDetails();
-    }
-});
-
 // Обновление топа при каждом переходе на главную вкладку
 function showMainTab() {
     hideAllTabs();
@@ -11841,6 +11841,7 @@ setTimeout(addStartTaskDebugButton, 3000);
             });
         }
 // Endpoint для получения ранга пользователя
+// Endpoint для получения ранга пользователя
 app.get('/api/user/:userId/rank', async (req, res) => {
     const userId = req.params.userId;
     
@@ -11935,6 +11936,7 @@ app.get('/api/user/:userId/rank', async (req, res) => {
     }
 });
 // Функция для показа деталей ранга пользователя
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ДЛЯ ПОКАЗА ДЕТАЛЕЙ РАНГА ПОЛЬЗОВАТЕЛЯ
 async function showUserRankDetails() {
     if (!currentUser) {
         showNotification('Пожалуйста, войдите в систему', 'error');
@@ -11942,18 +11944,25 @@ async function showUserRankDetails() {
     }
 
     try {
-        // Показываем загрузку
+        console.log('🎯 Loading user rank details for:', currentUser.id);
+        
+        // Показываем загрузку в модальном окне
         document.getElementById('user-rank-number').textContent = '...';
         document.getElementById('user-tasks-count').textContent = '...';
         document.getElementById('user-balance-count').textContent = '...';
         document.getElementById('user-referrals-count').textContent = '...';
         document.getElementById('next-rank-info').textContent = 'Загружаем информацию...';
 
-        // Открываем модальное окно
+        // Открываем модальное окно (используем правильный ID)
         document.getElementById('user-rank-modal').style.display = 'block';
 
         // Загружаем данные о ранге
         const response = await fetch(`/api/user/${currentUser.id}/rank`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const result = await response.json();
 
         if (result.success) {
@@ -11970,29 +11979,38 @@ async function showUserRankDetails() {
                 document.getElementById('next-rank-info').textContent = 'Вы на максимальной позиции!';
             }
 
+            console.log('✅ Rank details loaded successfully');
+
         } else {
-            throw new Error(result.error || 'Не удалось загрузить данные');
+            throw new Error(result.error || 'Не удалось загрузить данные о ранге');
         }
 
     } catch (error) {
-        console.error('Error loading rank details:', error);
+        console.error('❌ Error loading rank details:', error);
         document.getElementById('next-rank-info').textContent = 'Ошибка загрузки данных';
-        showNotification('Ошибка загрузки данных о ранге', 'error');
+        showNotification('Ошибка загрузки данных о ранге: ' + error.message, 'error');
+        
+        // Показываем заглушки при ошибке
+        document.getElementById('user-rank-number').textContent = '-';
+        document.getElementById('user-tasks-count').textContent = '0';
+        document.getElementById('user-balance-count').textContent = '0';
+        document.getElementById('user-referrals-count').textContent = '0';
     }
 }
 
-// Функция для закрытия модального окна
+// 🔧 ФУНКЦИЯ ДЛЯ ЗАКРЫТИЯ МОДАЛЬНОГО ОКНА РАНГА
 function closeRankModal() {
     document.getElementById('user-rank-modal').style.display = 'none';
 }
 
-// Обработчик клика вне модального окна
-window.onclick = function(event) {
+// 🔧 ОБРАБОТЧИК КЛИКА ВНЕ МОДАЛЬНОГО ОКНА
+document.addEventListener('click', function(event) {
     const modal = document.getElementById('user-rank-modal');
     if (event.target === modal) {
         closeRankModal();
     }
-}
+});
+
         // Создание элемента чата
         function createChatElement(chat, listType) {
             const chatElement = document.createElement('div');
