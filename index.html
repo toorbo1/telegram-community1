@@ -6849,7 +6849,8 @@ async function initializeApp() {
     fixLayoutIssues();
     // Применяем исправления layout сразу
     fixLayoutIssues();
-
+    // Запускаем систему проверки доступности заданий
+    startTaskAvailabilityChecker();
     // 🔥 ВАЖНО: Загружаем ссылки при старте если пользователь админ
     if (currentUser && (currentUser.is_admin || parseInt(currentUser.id) === ADMIN_ID)) {
         setTimeout(() => {
@@ -12016,11 +12017,16 @@ function showAdminPaymentsSection() {
 
 // 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ НАЧАЛА ЗАДАНИЯ
 async function startTask() {
-    if (!selectedTaskId || !currentUser) {
-        showNotification('Ошибка: задание не выбрано', 'error');
+    if (!currentUser) {
+        showNotification('Пользователь не авторизован', 'error');
         return;
     }
-
+    
+    if (!selectedTaskId) {
+        showNotification('Задание не выбрано', 'error');
+        return;
+    }
+    
     try {
         console.log('🚀 Starting task:', selectedTaskId);
         
@@ -12030,7 +12036,7 @@ async function startTask() {
             startButton.disabled = true;
             startButton.textContent = 'Начинаем...';
         }
-
+        
         const result = await makeRequest('/api/user/tasks/start', {
             method: 'POST',
             body: JSON.stringify({
@@ -12038,30 +12044,39 @@ async function startTask() {
                 taskId: selectedTaskId
             })
         });
-
+        
+        console.log('📨 Start task response:', result);
+        
         if (result.success) {
-            showNotification('✅ Задание начато!', 'success');
-            closeModal('task-modal');
+            showNotification('✅ Задание начато! Выполняйте задание и возвращайтесь для подтверждения.', 'success');
             
-            // 🔥 НЕМЕДЛЕННО СКРЫВАЕМ ЗАДАНИЕ У ВСЕХ ПОЛЬЗОВАТЕЛЕВ
+            // 🔥 ПРОВЕРЯЕМ БЫЛА ЛИ ЭТО ПОСЛЕДНЯЯ КОПИЯ
             if (result.is_last_task) {
-                removeTaskFromUI(selectedTaskId);
-                showNotification('🎯 Это была последняя копия задания!', 'info');
+                console.log('🎯 Это была последняя копия задания, скрываем у всех пользователей');
+                
+                // Немедленно обновляем интерфейс для текущего пользователя
+                removeTaskFromInterface(selectedTaskId);
+                
+                // Можно добавить дополнительное уведомление
+                showNotification('🎯 Вы взяли последнюю копию этого задания!', 'info');
             }
+            
+            // Закрываем модальное окно
+            closeModal('task-modal');
             
             // Обновляем списки заданий
             setTimeout(() => {
                 loadTasks();
                 loadUserTasks();
-            }, 500);
+            }, 1000);
             
         } else {
-            throw new Error(result.error || 'Не удалось начать задание');
+            throw new Error(result.error || 'Неизвестная ошибка');
         }
-
+        
     } catch (error) {
         console.error('❌ Start task error:', error);
-        showNotification(`Ошибка: ${error.message}`, 'error');
+        showNotification(`Ошибка начала задания: ${error.message}`, 'error');
         
         // Восстанавливаем кнопку
         const startButton = document.querySelector('.task-modal-start');
@@ -12071,7 +12086,27 @@ async function startTask() {
         }
     }
 }
-
+// 🔧 ФУНКЦИЯ УДАЛЕНИЯ ЗАДАНИЯ ИЗ ИНТЕРФЕЙСА
+function removeTaskFromInterface(taskId) {
+    console.log(`🗑️ Removing task ${taskId} from interface`);
+    
+    // Удаляем задание из всех контейнеров
+    const containers = ['new-tasks', 'confirmation-tasks', 'completed-tasks', 'rejected-tasks'];
+    
+    containers.forEach(containerId => {
+        const container = document.getElementById(containerId);
+        if (container) {
+            const taskElement = container.querySelector(`[data-task-id="${taskId}"]`);
+            if (taskElement) {
+                taskElement.remove();
+                console.log(`✅ Removed task ${taskId} from ${containerId}`);
+            }
+        }
+    });
+    
+    // Обновляем счетчики заданий
+    updateTasksCounters();
+}
 // 🔧 ФУНКЦИЯ УДАЛЕНИЯ ЗАДАНИЯ ИЗ ИНТЕРФЕЙСА
 function removeTaskFromUI(taskId) {
     console.log('🗑️ Removing task from UI:', taskId);

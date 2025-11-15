@@ -3017,7 +3017,7 @@ app.get('/api/tasks/:taskId/availability', async (req, res) => {
     }
 });
 
-// 🔧 ОБНОВЛЕННЫЙ ENDPOINT НАЧАЛА ЗАДАНИЯ С УВЕДОМЛЕНИЕМ
+// Обновленный endpoint начала задания с WebSocket уведомлением
 app.post('/api/user/tasks/start', async (req, res) => {
     const { userId, taskId } = req.body;
     
@@ -3132,7 +3132,86 @@ function notifyAllUsersTaskTaken(taskId, taskTitle) {
     
     // Здесь можно добавить WebSocket или Server-Sent Events
     // Пока используем периодический опрос с клиента
+    // Логируем событие для отладки
+    console.log(`🎯 Task ${taskId} "${taskTitle}" is now fully taken. Notifying all users.`);
 }
+// 🔧 СИСТЕМА ПЕРИОДИЧЕСКОЙ ПРОВЕРКИ ДОСТУПНОСТИ ЗАДАНИЙ
+function startTaskAvailabilityChecker() {
+    // Проверяем доступность заданий каждые 10 секунд
+    setInterval(async () => {
+        if (document.getElementById('tasks-tab').classList.contains('active')) {
+            await checkTasksAvailability();
+        }
+    }, 10000);
+}
+
+// 🔧 ПРОВЕРКА ДОСТУПНОСТИ ЗАДАНИЙ
+async function checkTasksAvailability() {
+    try {
+        // Получаем текущий список заданий
+        const currentTasks = allTasks || [];
+        
+        for (const task of currentTasks) {
+            const result = await makeRequest(`/api/tasks/${task.id}/availability`);
+            
+            if (result.success) {
+                const availableTasks = result.available_tasks;
+                
+                // Если задание больше не доступно, скрываем его
+                if (availableTasks <= 0) {
+                    removeTaskFromInterface(task.id);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('❌ Task availability check error:', error);
+    }
+}
+
+// 🔧 ENDPOINT ДЛЯ ПРОВЕРКИ ДОСТУПНОСТИ ЗАДАНИЯ
+app.get('/api/tasks/:taskId/availability', async (req, res) => {
+    const taskId = req.params.taskId;
+    
+    try {
+        const result = await pool.query(`
+            SELECT 
+                t.*,
+                COUNT(ut.id) as completed_count,
+                t.people_required,
+                (t.people_required - COUNT(ut.id)) as available_count
+            FROM tasks t
+            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
+            WHERE t.id = $1 AND t.status = 'active'
+            GROUP BY t.id
+        `, [taskId]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Задание не найдено'
+            });
+        }
+        
+        const task = result.rows[0];
+        const availableCount = Math.max(0, task.people_required - task.completed_count);
+        
+        res.json({
+            success: true,
+            task: {
+                ...task,
+                available_count: availableCount
+            },
+            available_tasks: availableCount
+        });
+        
+    } catch (error) {
+        console.error('Get task availability error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
 // В server.js обновите endpoint удаления пользователя:
 app.post('/api/admin/leaderboard/remove-user', async (req, res) => {
     const { adminId, targetUserId } = req.body;
