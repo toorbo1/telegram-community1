@@ -13,7 +13,6 @@
     <link rel="stylesheet" href="animations.css">
     <link rel="stylesheet" href="mobile.css">
     <style>
-        
         /* 🔥 СТИЛИ ДЛЯ ПОСЛЕДНЕГО ДОСТУПНОГО ЗАДАНИЯ */
 .last-task {
     border: 2px solid var(--gold);
@@ -11283,24 +11282,7 @@ function displayReferralLinksList(links) {
         container.appendChild(linkElement);
     });
 }
-async function loadTasks() {
-    try {
-        const response = await fetch(`/api/tasks?userId=${currentUser.id}`);
-        const result = await response.json();
-        
-        if (result.success) {
-            displayTasks(result.tasks);
-            
-            // Сохраняем текущие задания для сравнения
-            window.currentTasks = result.tasks;
-        } else {
-            throw new Error(result.error);
-        }
-    } catch (error) {
-        console.error('Error loading tasks:', error);
-        showNotification('Ошибка загрузки заданий', 'error');
-    }
-}
+
 // Создать упрощенный элемент ссылки (только подсчет приглашенных)
 function createSimplifiedLinkElement(link) {
     const linkElement = document.createElement('div');
