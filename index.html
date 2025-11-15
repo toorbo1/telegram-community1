@@ -3581,10 +3581,11 @@ async function loadTasks(search = '', category = 'all') {
         console.log('📨 Server response:', result);
 
         if (result.success) {
-            // Фильтруем заблокированные задания
-            allTasks = (result.tasks || []).filter(task => !task.is_blocked);
-            console.log(`✅ Loaded ${allTasks.length} tasks (after filtering blocked):`, allTasks.map(t => ({id: t.id, title: t.title, blocked: t.is_blocked})));
+            allTasks = result.tasks || [];
+            console.log (`✅ Loaded ${allTasks.length} tasks:`, allTasks.map(t => ({id: t.id, title: t.title})));
             
+            // 🔥 ВАЖНО: Теперь сервер сам фильтрует отклоненные задания
+            // Просто отображаем то, что пришло с сервера
             displayTasks(allTasks, 'new');
             
         } else {
@@ -3613,6 +3614,7 @@ async function loadTasks(search = '', category = 'all') {
         showNotification(`Ошибка загрузки заданий: ${error.message}`, 'error');
     }
 }
+
 // 🔧 НОВАЯ ФУНКЦИЯ: Получение активных заданий пользователя
 async function getUserActiveTasks() {
     if (!currentUser) return [];
@@ -6169,6 +6171,7 @@ function getTabIndex(category) {
 
 function openTaskModal(taskId) {
     console.log('📖 Opening task modal for task:', taskId);
+    console.log('📋 All available tasks:', allTasks);
     
     selectedTaskId = taskId;
     
@@ -6176,41 +6179,63 @@ function openTaskModal(taskId) {
     if (task) {
         console.log('✅ Task found:', task);
         
-        const peopleRequired = task.people_required || 1;
-        const completedCount = task.completed_count || 0;
-        const availableTasks = Math.max(0, peopleRequired - completedCount);
-        
         // Обновляем модальное окно
         document.getElementById('task-modal-title').textContent = task.title;
         document.getElementById('task-modal-category').textContent = task.category || 'Общее';
         document.getElementById('task-modal-price').textContent = `${task.price} ⭐`;
         document.getElementById('task-modal-description').textContent = task.description;
-        document.getElementById('task-modal-time').textContent = task.time_to_complete || '5 минут';
-        document.getElementById('task-modal-difficulty').textContent = task.difficulty || 'Легкая';
-        document.getElementById('task-modal-available').textContent = `${availableTasks} заданий`;
         
-        // Особое сообщение если это последнее задание
-        if (availableTasks === 1) {
-            document.getElementById('task-modal-available').innerHTML = 
-                '<span style="color: var(--gold); font-weight: 600;">1 осталось - последний шанс!</span>';
+        // 🔧 ИСПРАВЛЕНИЕ: Правильное отображение изображения в модальном окне
+        const modalImageContainer = document.getElementById('task-modal-image-container');
+        if (modalImageContainer) {
+            if (task.image_url) {
+                modalImageContainer.innerHTML = `
+                    <div class="task-image-placeholder">
+                        <div style="text-align: center;">
+                            <div style="font-size: 32px; margin-bottom: 8px;">📋</div>
+                            <div style="font-size: 12px;">Описание задания</div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                modalImageContainer.innerHTML = `
+                    <div class="task-image-placeholder" style="aspect-ratio: 16/9;">
+                        <div style="text-align: center; padding: 40px;">
+                            <div style="font-size: 32px; margin-bottom: 8px;">📋</div>
+                            <div>Описание задания</div>
+                        </div>
+                    </div>
+                `;
+            }
         }
         
-        // Обработка ссылки на задание
+        document.getElementById('task-modal-time').textContent = task.time_to_complete || '5 минут';
+        document.getElementById('task-modal-difficulty').textContent = task.difficulty || 'Легкая';
+        
+        const peopleRequired = task.people_required || 1;
+        const completedCount = task.completed_count || 0;
+        const availableTasks = Math.max(0, peopleRequired - completedCount);
+        document.getElementById('task-modal-available').textContent = `${availableTasks} заданий`;
+        
+        // 🔧 ДОБАВЛЕНО: Обработка ссылки на задание
         const taskUrl = task.task_url;
         const startButton = document.querySelector('.task-modal-start');
         
         if (taskUrl && taskUrl.startsWith('http')) {
-            startButton.textContent = availableTasks === 1 ? 
-                '🔐 Начать последнее задание' : '🔗 Перейти к заданию';
+            // Если есть валидная ссылка, меняем поведение кнопки
+            startButton.textContent = '🔗 Перейти к заданию';
             startButton.onclick = function() {
                 console.log('🔗 Opening task URL:', taskUrl);
+                // Открываем ссылку в новом окне/вкладке
                 window.open(taskUrl, '_blank');
+                // Закрываем модальное окно
                 closeModal('task-modal');
+                // Также можно автоматически начать задание
                 startTask();
             };
         } else {
-            startButton.textContent = availableTasks === 1 ? 
-                '🔐 Начать последнее задание' : 'Начать задание';
+            // Стандартное поведение - просто начать задание
+            startButton.textContent = 'Начать задание';
             startButton.onclick = startTask;
         }
         
@@ -6218,8 +6243,10 @@ function openTaskModal(taskId) {
         console.log('✅ Task modal opened successfully');
     } else {
         console.error('❌ Task not found in allTasks array');
+        console.error('❌ Available task IDs:', allTasks.map(t => t.id));
         showNotification('Ошибка: задание не найдено. Попробуйте обновить список заданий.', 'error');
         
+        // Автоматически перезагружаем задания
         setTimeout(() => {
             loadTasks();
         }, 2000);
@@ -10613,99 +10640,42 @@ function showAdminPaymentsSection() {
 
 // В index.html - обновите функцию начала задания
 async function startTask() {
-    if (!selectedTaskId) {
-        showNotification('Ошибка: задание не выбрано', 'error');
-        return;
-    }
-
-    if (!currentUser) {
-        showNotification('Пользователь не авторизован', 'error');
+    console.log('🎯 Starting task...', { selectedTaskId, currentUser });
+    
+    if (!currentUser || !selectedTaskId) {
+        showNotification('Ошибка: пользователь не авторизован или задание не выбрано', 'error');
         return;
     }
 
     try {
-        console.log('🚀 Начинаем задание:', {
-            taskId: selectedTaskId,
-            userId: currentUser.id
+        console.log('📤 Sending start task request...');
+        
+        const result = await makeRequest('/api/user/tasks/start', {
+            method: 'POST',
+            body: JSON.stringify({
+                userId: currentUser.id,
+                taskId: selectedTaskId
+            })
         });
 
-        // Получаем информацию о задании
-        const task = allTasks.find(t => t.id === selectedTaskId);
-        if (!task) {
-            showNotification('Задание не найдено', 'error');
-            return;
-        }
+        console.log('📨 Start task response:', result);
 
-        const peopleRequired = task.people_required || 1;
-        const completedCount = task.completed_count || 0;
-        const availableTasks = Math.max(0, peopleRequired - completedCount);
-
-        // Проверяем, доступно ли задание
-        if (availableTasks <= 0) {
-            showNotification('Это задание уже полностью занято', 'error');
+        if (result.success) {
             closeModal('task-modal');
-            loadTasks(); // Обновляем список
-            return;
-        }
-
-        // Проверяем, последнее ли это задание
-        if (availableTasks === 1) {
-            console.log('🎯 Это последнее задание, используем специальный endpoint...');
+            showNotification('✅ Задание начато! Выполните его и вернитесь для подтверждения.', 'success');
             
-            const result = await makeRequest('/api/user/tasks/start-last', {
-                method: 'POST',
-                body: JSON.stringify({
-                    userId: currentUser.id,
-                    taskId: selectedTaskId
-                })
-            });
-
-            if (result.success) {
-                showNotification('🎉 Вы начали последнее задание! Другие пользователи не смогут его взять.', 'success');
-                closeModal('task-modal');
-                
-                // НЕМЕДЛЕННО обновляем интерфейс
-                setTimeout(() => {
-                    loadTasks();
-                    loadUserTasks();
-                }, 500);
-                
-            } else {
-                throw new Error(result.error || 'Ошибка начала задания');
-            }
+            // НЕМЕДЛЕННО обновляем списки заданий
+            setTimeout(() => {
+                loadTasks(); // Обновляем новые задания (убираем начатое)
+                loadUserTasksForCategory('active'); // Добавляем в активные
+            }, 500);
+            
         } else {
-            // Обычное начало задания
-            const result = await makeRequest('/api/user/tasks/start', {
-                method: 'POST',
-                body: JSON.stringify({
-                    userId: currentUser.id,
-                    taskId: selectedTaskId
-                })
-            });
-
-            if (result.success) {
-                showNotification('Задание успешно начато!', 'success');
-                closeModal('task-modal');
-                
-                // НЕМЕДЛЕННО обновляем интерфейс
-                setTimeout(() => {
-                    loadTasks();
-                    loadUserTasks();
-                }, 500);
-                
-            } else {
-                throw new Error(result.error || 'Ошибка начала задания');
-            }
+            showNotification('❌ Ошибка: ' + result.error, 'error');
         }
-
     } catch (error) {
-        console.error('❌ Ошибка начала задания:', error);
-        showNotification(`Ошибка начала задания: ${error.message}`, 'error');
-        
-        // В случае ошибки все равно обновляем список
-        setTimeout(() => {
-            loadTasks();
-        }, 1000);
+        console.error('💥 Error starting task:', error);
+        showNotification('❌ Ошибка начала задания: ' + error.message, 'error');
     }
 }
 

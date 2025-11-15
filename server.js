@@ -5875,37 +5875,12 @@ app.delete('/api/posts/:id', async (req, res) => {
 });
 
 // ==================== TASKS ENDPOINTS ====================
-// Функция для автоматической разблокировки заданий
-async function autoUnblockTasks() {
-    try {
-        // Разблокируем задания, которые были заблокированы более 1 часа
-        const result = await pool.query(`
-            UPDATE tasks 
-            SET is_blocked = false 
-            WHERE is_blocked = true 
-            AND id IN (
-                SELECT t.id 
-                FROM tasks t
-                LEFT JOIN user_tasks ut ON t.id = ut.task_id 
-                WHERE ut.status = 'active'
-                AND ut.started_at < NOW() - INTERVAL '1 hour'
-            )
-        `);
-        
-        if (result.rowCount > 0) {
-            console.log(`🔓 Автоматически разблокировано ${result.rowCount} заданий`);
-        }
-    } catch (error) {
-        console.error('Ошибка автоматической разблокировки:', error);
-    }
-}
 
-// Запускаем каждые 30 минут
-setInterval(autoUnblockTasks, 30 * 60 * 1000);
 // Получение заданий с правильной фильтрацией отклоненных заданий
-// В функции загрузки заданий добавьте фильтрацию по is_blocked
 app.get('/api/tasks', async (req, res) => {
     const { search, category, userId } = req.query;
+    
+    console.log('📥 Получен запрос на задания:', { search, category, userId });
     
     try {
         let query = `
@@ -5916,11 +5891,17 @@ app.get('/api/tasks', async (req, res) => {
                        WHERE ut2.task_id = t.id 
                        AND ut2.user_id = $1 
                        AND ut2.status IN ('active', 'pending_review', 'completed')
-                   ) as user_has_task
+                   ) as user_has_task,
+                   -- ДОБАВЛЕНО: проверяем есть ли отклоненные задания у пользователя
+                   EXISTS(
+                       SELECT 1 FROM user_tasks ut3 
+                       WHERE ut3.task_id = t.id 
+                       AND ut3.user_id = $1 
+                       AND ut3.status = 'rejected'
+                   ) as user_has_rejected_task
             FROM tasks t 
             LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
-            WHERE t.status = 'active' 
-            AND (t.is_blocked IS NULL OR t.is_blocked = false)
+            WHERE t.status = 'active'
         `;
         let params = [userId];
         let paramCount = 1;
@@ -6702,223 +6683,78 @@ app.get('/api/debug/admin-tasks', async (req, res) => {
 app.post('/api/user/tasks/start', async (req, res) => {
     const { userId, taskId } = req.body;
     
-    // 🔧 ВАЛИДАЦИЯ ПАРАМЕТРОВ
+    console.log('🚀 Start task request:', { userId, taskId });
+    
     if (!userId || !taskId) {
         return res.status(400).json({
             success: false,
-            error: 'Отсутствуют обязательные параметры'
-        });
-    }
-    
-    // Преобразуем к числам для безопасности
-    const numericUserId = parseInt(userId);
-    const numericTaskId = parseInt(taskId);
-    
-    if (isNaN(numericUserId) || isNaN(numericTaskId)) {
-        return res.status(400).json({
-            success: false,
-            error: 'Неверный формат параметров'
+            error: 'Missing required fields'
         });
     }
     
     try {
-        // Получаем информацию о задании
-        const taskResult = await pool.query(
-            'SELECT * FROM tasks WHERE id = $1',
-            [taskId]
-        );
+        // Проверяем, выполнял ли пользователь это задание
+        const existingTask = await pool.query(`
+    SELECT id FROM user_tasks 
+    WHERE user_id = $1 AND task_id = $2 
+    AND status IN ('active', 'pending_review', 'completed', 'rejected')
+`, [userId, taskId]);
         
-        if (taskResult.rows.length === 0) {
-            return res.json({
-                success: false,
-                error: 'Задание не найдено'
-            });
-        }
-        
-        const task = taskResult.rows[0];
-        const peopleRequired = task.people_required || 1;
-        
-        // Получаем количество уже выполненных заданий
-        const completedResult = await pool.query(
-            'SELECT COUNT(*) FROM user_tasks WHERE task_id = $1 AND status = $2',
-            [taskId, 'completed']
-        );
-        
-        const completedCount = parseInt(completedResult.rows[0].count);
-        const availableTasks = Math.max(0, peopleRequired - completedCount);
-        
-        // Проверяем, есть ли уже активные задания у пользователя
-       const activeTaskResult = await pool.query(
-    'SELECT COUNT(*) FROM user_tasks WHERE user_id = $1 AND task_id = $2 AND status = $3',
-    [userId, taskId, 'active']
-);
-        
-        if (parseInt(activeTaskResult.rows[0].count) > 0) {
-            return res.json({
-                success: false,
-                error: 'Вы уже начали это задание'
-            });
-        }
-        
-        // Проверяем, осталось ли только 1 задание
-        let taskBlocked = false;
-        if (availableTasks === 1) {
-            // Блокируем задание для других пользователей
-            await pool.query(
-                'UPDATE tasks SET is_blocked = true WHERE id = $1',
-                [taskId]
-            );
-            taskBlocked = true;
-            
-            console.log(`🔒 Задание ${taskId} заблокировано - это было последнее доступное задание`);
-        }
-        
-        // Создаем запись о начале задания
-        await pool.query(
-            'INSERT INTO user_tasks (user_id, task_id, status, started_at) VALUES ($1, $2, $3, NOW())',
-            [userId, taskId, 'active']
-        );
-        
-        res.json({
-            success: true,
-            taskBlocked: taskBlocked,
-            message: taskBlocked ? 
-                'Задание начато! Это было последнее задание.' : 
-                'Задание успешно начато!'
-        });
-        
-    } catch (error) {
-        console.error('Start task error:', error);
-        res.json({
-            success: false,
-            error: 'Ошибка начала задания: ' + error.message
-        });
-    }
-});
-async function handleLastTaskStart(taskId, userId) {
-    try {
-        const client = await pool.connect();
-        
-        try {
-            await client.query('BEGIN');
-            
-            // Блокируем задание
-            await client.query(
-                'UPDATE tasks SET is_blocked = true WHERE id = $1',
-                [taskId]
-            );
-            
-            // Создаем запись о начале задания
-            await client.query(
-                'INSERT INTO user_tasks (user_id, task_id, status, started_at) VALUES ($1, $2, $3, NOW())',
-                [userId, taskId, 'active']
-            );
-            
-            await client.query('COMMIT');
-            
-            console.log(`🔒 Задание ${taskId} заблокировано как последнее для пользователя ${userId}`);
-            
-            return {
-                success: true,
-                taskBlocked: true,
-                message: 'Вы начали последнее доступное задание!'
-            };
-            
-        } catch (transactionError) {
-            await client.query('ROLLBACK');
-            throw transactionError;
-        } finally {
-            client.release();
-        }
-        
-    } catch (error) {
-        console.error('Handle last task error:', error);
-        throw error;
-    }
-}
-// Endpoint для разблокировки заданий (для админов)
-app.post('/api/admin/tasks/unblock', async (req, res) => {
-    const { adminId, taskId } = req.body;
-    
-    if (parseInt(adminId) !== ADMIN_ID) {
-        return res.status(403).json({
-            success: false,
-            error: 'Доступ запрещен'
-        });
-    }
-    
-    try {
-        await pool.query(
-            'UPDATE tasks SET is_blocked = false WHERE id = $1',
-            [taskId]
-        );
-        
-        res.json({
-            success: true,
-            message: 'Задание разблокировано'
-        });
-    } catch (error) {
-        console.error('Unblock task error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Ошибка разблокировки: ' + error.message
-        });
-    }
-});
-app.post('/api/user/tasks/start-last', async (req, res) => {
-    const { userId, taskId } = req.body;
-    
-    try {
-        // Валидация
-        if (!userId || !taskId) {
+        if (existingTask.rows.length > 0) {
             return res.status(400).json({
                 success: false,
-                error: 'Отсутствуют обязательные параметры'
+                error: 'Вы уже выполняли это задание'
             });
         }
-
-        const numericUserId = parseInt(userId);
-        const numericTaskId = parseInt(taskId);
-
-        const client = await pool.connect();
         
-        try {
-            await client.query('BEGIN');
-
-            // Блокируем задание
-            await client.query(
-                'UPDATE tasks SET is_blocked = true WHERE id = $1',
-                [numericTaskId]
-            );
-
-            // Создаем запись о начале задания
-            await client.query(
-                'INSERT INTO user_tasks (user_id, task_id, status, started_at) VALUES ($1, $2, $3, NOW())',
-                [numericUserId, numericTaskId, 'active']
-            );
-
-            await client.query('COMMIT');
-
-            console.log(`🔒 Задание ${numericTaskId} заблокировано как последнее для пользователя ${numericUserId}`);
-
-            res.json({
-                success: true,
-                taskBlocked: true,
-                message: 'Вы начали последнее доступное задание!'
+        // Проверяем лимит выполнений
+        const taskInfo = await pool.query(`
+            SELECT t.*, 
+                   COUNT(ut.id) as completed_count
+            FROM tasks t
+            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
+            WHERE t.id = $1 AND t.status = 'active'
+            GROUP BY t.id
+        `, [taskId]);
+        
+        if (taskInfo.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Задание не найдено или недоступно'
             });
-
-        } catch (transactionError) {
-            await client.query('ROLLBACK');
-            throw transactionError;
-        } finally {
-            client.release();
         }
-
+        
+        const task = taskInfo.rows[0];
+        const peopleRequired = task.people_required || 1;
+        const completedCount = task.completed_count || 0;
+        
+        // 🔥 ПРОВЕРЯЕМ ДОСТИГНУТ ЛИ ЛИМИТ ИСПОЛНИТЕЛЕЙ
+        if (completedCount >= peopleRequired) {
+            return res.status(400).json({
+                success: false,
+                error: 'Достигнут лимит выполнения этого задания'
+            });
+        }
+        
+        // Start the task
+        const result = await pool.query(`
+            INSERT INTO user_tasks (user_id, task_id, status) 
+            VALUES ($1, $2, 'active')
+            RETURNING *
+        `, [userId, taskId]);
+        
+        console.log('✅ Task started successfully:', result.rows[0]);
+        
+        res.json({
+            success: true,
+            message: 'Задание начато!',
+            userTaskId: result.rows[0].id
+        });
     } catch (error) {
-        console.error('Start last task error:', error);
+        console.error('❌ Start task error:', error);
         res.status(500).json({
             success: false,
-            error: 'Ошибка начала задания: ' + error.message
+            error: 'Database error: ' + error.message
         });
     }
 });
