@@ -12043,7 +12043,7 @@ async function startTask() {
             showNotification('✅ Задание начато!', 'success');
             closeModal('task-modal');
             
-            // 🔥 НЕМЕДЛЕННО СКРЫВАЕМ ЗАДАНИЕ У ВСЕХ ПОЛЬЗОВАТЕЛЕВ
+            // 🔥 НЕМЕДЛЕННО СКРЫВАЕМ ЗАДАНИЕ У ВСЕХ ПОЛЬЗОВАТЕЛЕЙ
             if (result.is_last_task) {
                 removeTaskFromUI(selectedTaskId);
                 showNotification('🎯 Это была последняя копия задания!', 'info');
@@ -12054,11 +12054,9 @@ async function startTask() {
                 loadTasks();
                 loadUserTasks();
             }, 500);
-            
         } else {
             throw new Error(result.error || 'Не удалось начать задание');
         }
-
     } catch (error) {
         console.error('❌ Start task error:', error);
         showNotification(`Ошибка: ${error.message}`, 'error');
@@ -12115,7 +12113,6 @@ function removeTaskFromUI(taskId) {
 // 🔧 ПРИНУДИТЕЛЬНОЕ УДАЛЕНИЕ ЗАДАНИЯ
 function forceRemoveTask(taskId) {
     console.log('🔧 Force removing task:', taskId);
-    
     // Перезагружаем список заданий полностью
     loadTasks();
 }
@@ -12141,7 +12138,6 @@ function updateTasksCounters() {
     
     const taskCards = tasksContainer.querySelectorAll('.task-card');
     const availableTasksCount = taskCards.length;
-    
     console.log(`📊 Total available tasks: ${availableTasksCount}`);
 }
 
@@ -12166,7 +12162,6 @@ function startTaskAvailabilityChecker() {
 async function checkTasksAvailability() {
     try {
         console.log('🔄 Checking tasks availability...');
-        
         const response = await fetch(`/api/tasks?userId=${currentUser?.id || ''}`);
         const result = await response.json();
         
@@ -12215,7 +12210,6 @@ function updateTasksListIfNeeded(newTasks) {
         }, 1000);
     }
 }
-
 // 🔧 WEB SOCKET ДЛЯ МГНОВЕННОГО ОБНОВЛЕНИЯ
 function initializeWebSocket() {
     const ws = new WebSocket(`ws://${window.location.host}`);
@@ -12226,13 +12220,10 @@ function initializeWebSocket() {
     
     ws.onmessage = function(event) {
         const data = JSON.parse(event.data);
-        
         if (data.type === 'TASK_TAKEN') {
             console.log('🔄 Task taken by another user:', data.taskId);
-            
             // Немедленно удаляем задание из интерфейса
             removeTaskFromUI(data.taskId);
-            
             // Показываем уведомление
             showNotification('⚠️ Задание было взято другим пользователем', 'warning');
         }
@@ -12269,7 +12260,6 @@ async function updateTaskAvailability(taskId) {
             if (availableTasks <= 0) {
                 // Удаляем задание из интерфейса
                 removeTaskFromUI(taskId);
-                
                 // Показываем уведомление
                 showNotification('🎯 Задание завершено! Все копии разобраны.', 'info');
             }
@@ -14537,6 +14527,23 @@ window.showAdminPaymentsSection = showAdminPaymentsSection;
 
 // 🔧 ЭКСПОРТ НОВЫХ ФУНКЦИЙ
 window.deleteVerification = deleteVerification;
+// 🔧 ИНИЦИАЛИЗАЦИЯ СИСТЕМЫ
+function initializeTaskHidingSystem() {
+    console.log('🎯 Initializing task hiding system...');
+    
+    // Запускаем проверку доступности заданий
+    startTaskAvailabilityChecker();
+    
+    // Инициализируем WebSocket
+    initializeWebSocket();
+    
+    console.log('✅ Task hiding system initialized');
+}
+
+// Запускаем при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(initializeTaskHidingSystem, 2000);
+});
 </script>
 </body>
 </html>
