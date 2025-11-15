@@ -6680,9 +6680,27 @@ app.get('/api/debug/admin-tasks', async (req, res) => {
 });
 
 // В server.js - обновите endpoint начала задания
-// Маршрут для начала задания с проверкой доступности
 app.post('/api/user/tasks/start', async (req, res) => {
     const { userId, taskId } = req.body;
+    
+    // 🔧 ВАЛИДАЦИЯ ПАРАМЕТРОВ
+    if (!userId || !taskId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Отсутствуют обязательные параметры'
+        });
+    }
+    
+    // Преобразуем к числам для безопасности
+    const numericUserId = parseInt(userId);
+    const numericTaskId = parseInt(taskId);
+    
+    if (isNaN(numericUserId) || isNaN(numericTaskId)) {
+        return res.status(400).json({
+            success: false,
+            error: 'Неверный формат параметров'
+        });
+    }
     
     try {
         // Получаем информацию о задании
@@ -6711,10 +6729,10 @@ app.post('/api/user/tasks/start', async (req, res) => {
         const availableTasks = Math.max(0, peopleRequired - completedCount);
         
         // Проверяем, есть ли уже активные задания у пользователя
-        const activeTaskResult = await pool.query(
-            'SELECT COUNT(*) FROM user_tasks WHERE user_id = $1 AND task_id = $2 AND status = $1',
-            [userId, taskId, 'active']
-        );
+       const activeTaskResult = await pool.query(
+    'SELECT COUNT(*) FROM user_tasks WHERE user_id = $1 AND task_id = $2 AND status = $3',
+    [userId, taskId, 'active']
+);
         
         if (parseInt(activeTaskResult.rows[0].count) > 0) {
             return res.json({
@@ -6753,6 +6771,104 @@ app.post('/api/user/tasks/start', async (req, res) => {
     } catch (error) {
         console.error('Start task error:', error);
         res.json({
+            success: false,
+            error: 'Ошибка начала задания: ' + error.message
+        });
+    }
+});
+async function handleLastTaskStart(taskId, userId) {
+    try {
+        const client = await pool.connect();
+        
+        try {
+            await client.query('BEGIN');
+            
+            // Блокируем задание
+            await client.query(
+                'UPDATE tasks SET is_blocked = true WHERE id = $1',
+                [taskId]
+            );
+            
+            // Создаем запись о начале задания
+            await client.query(
+                'INSERT INTO user_tasks (user_id, task_id, status, started_at) VALUES ($1, $2, $3, NOW())',
+                [userId, taskId, 'active']
+            );
+            
+            await client.query('COMMIT');
+            
+            console.log(`🔒 Задание ${taskId} заблокировано как последнее для пользователя ${userId}`);
+            
+            return {
+                success: true,
+                taskBlocked: true,
+                message: 'Вы начали последнее доступное задание!'
+            };
+            
+        } catch (transactionError) {
+            await client.query('ROLLBACK');
+            throw transactionError;
+        } finally {
+            client.release();
+        }
+        
+    } catch (error) {
+        console.error('Handle last task error:', error);
+        throw error;
+    }
+}
+app.post('/api/user/tasks/start-last', async (req, res) => {
+    const { userId, taskId } = req.body;
+    
+    try {
+        // Валидация
+        if (!userId || !taskId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Отсутствуют обязательные параметры'
+            });
+        }
+
+        const numericUserId = parseInt(userId);
+        const numericTaskId = parseInt(taskId);
+
+        const client = await pool.connect();
+        
+        try {
+            await client.query('BEGIN');
+
+            // Блокируем задание
+            await client.query(
+                'UPDATE tasks SET is_blocked = true WHERE id = $1',
+                [numericTaskId]
+            );
+
+            // Создаем запись о начале задания
+            await client.query(
+                'INSERT INTO user_tasks (user_id, task_id, status, started_at) VALUES ($1, $2, $3, NOW())',
+                [numericUserId, numericTaskId, 'active']
+            );
+
+            await client.query('COMMIT');
+
+            console.log(`🔒 Задание ${numericTaskId} заблокировано как последнее для пользователя ${numericUserId}`);
+
+            res.json({
+                success: true,
+                taskBlocked: true,
+                message: 'Вы начали последнее доступное задание!'
+            });
+
+        } catch (transactionError) {
+            await client.query('ROLLBACK');
+            throw transactionError;
+        } finally {
+            client.release();
+        }
+
+    } catch (error) {
+        console.error('Start last task error:', error);
+        res.status(500).json({
             success: false,
             error: 'Ошибка начала задания: ' + error.message
         });

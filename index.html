@@ -10613,47 +10613,82 @@ function showAdminPaymentsSection() {
 
 // В index.html - обновите функцию начала задания
 async function startTask() {
-    console.log('🎯 Starting task...', { selectedTaskId, currentUser });
-    
-    if (!currentUser || !selectedTaskId) {
-        showNotification('Ошибка: пользователь не авторизован или задание не выбрано', 'error');
+    if (!selectedTaskId) {
+        showNotification('Ошибка: задание не выбрано', 'error');
+        return;
+    }
+
+    if (!currentUser) {
+        showNotification('Пользователь не авторизован', 'error');
         return;
     }
 
     try {
-        console.log('📤 Sending start task request...');
-        
-        const result = await makeRequest('/api/user/tasks/start', {
-            method: 'POST',
-            body: JSON.stringify({
-                userId: currentUser.id,
-                taskId: selectedTaskId
-            })
+        console.log('🚀 Начинаем задание:', {
+            taskId: selectedTaskId,
+            userId: currentUser.id
         });
 
-        console.log('📨 Start task response:', result);
-
-        if (result.success) {
-            closeModal('task-modal');
-            
-            if (result.taskBlocked) {
-                showNotification('✅ Задание начато! Это было последнее задание, оно заблокировано для других пользователей.', 'success');
-            } else {
-                showNotification('✅ Задание начато! Выполните его и вернитесь для подтверждения.', 'success');
-            }
-            
-            // НЕМЕДЛЕННО обновляем списки заданий
-            setTimeout(() => {
-                loadTasks(); // Обновляем новые задания (убираем начатое)
-                loadUserTasksForCategory('active'); // Добавляем в активные
-            }, 500);
-            
-        } else {
-            showNotification('❌ Ошибка: ' + result.error, 'error');
+        // Получаем информацию о задании
+        const task = allTasks.find(t => t.id === selectedTaskId);
+        if (!task) {
+            showNotification('Задание не найдено', 'error');
+            return;
         }
+
+        const peopleRequired = task.people_required || 1;
+        const completedCount = task.completed_count || 0;
+        const availableTasks = Math.max(0, peopleRequired - completedCount);
+
+        // Проверяем, последнее ли это задание
+        if (availableTasks === 1) {
+            console.log('🎯 Это последнее задание, блокируем...');
+            
+            const result = await makeRequest('/api/user/tasks/start-last', {
+                method: 'POST',
+                body: JSON.stringify({
+                    userId: currentUser.id,
+                    taskId: selectedTaskId
+                })
+            });
+
+            if (result.success) {
+                showNotification('🎉 Вы начали последнее задание! Другие пользователи не смогут его взять.', 'success');
+                closeModal('task-modal');
+                
+                // Обновляем интерфейс
+                setTimeout(() => {
+                    loadTasks();
+                }, 1000);
+            } else {
+                throw new Error(result.error || 'Ошибка начала задания');
+            }
+        } else {
+            // Обычное начало задания
+            const result = await makeRequest('/api/user/tasks/start', {
+                method: 'POST',
+                body: JSON.stringify({
+                    userId: currentUser.id,
+                    taskId: selectedTaskId
+                })
+            });
+
+            if (result.success) {
+                showNotification('Задание успешно начато!', 'success');
+                closeModal('task-modal');
+                
+                // Обновляем интерфейс
+                setTimeout(() => {
+                    loadTasks();
+                }, 1000);
+            } else {
+                throw new Error(result.error || 'Ошибка начала задания');
+            }
+        }
+
     } catch (error) {
-        console.error('💥 Error starting task:', error);
-        showNotification('❌ Ошибка начала задания: ' + error.message, 'error');
+        console.error('❌ Ошибка начала задания:', error);
+        showNotification(`Ошибка начала задания: ${error.message}`, 'error');
     }
 }
 
