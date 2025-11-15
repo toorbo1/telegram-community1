@@ -4376,26 +4376,7 @@ bot.on('message', async (msg) => {
     }
 });
 
-// Закрытие модального окна при клике вне его
-window.addEventListener('click', function(event) {
-    const modal = document.getElementById('rank-details-modal');
-    if (event.target === modal) {
-        closeRankDetails();
-    }
-});
 
-// Обновление топа при каждом переходе на главную вкладку
-function showMainTab() {
-    hideAllTabs();
-    document.getElementById('main-tab').classList.add('active');
-    updateNavState('main');
-    
-    // Обновляем топ пользователей с улучшенным дизайном
-    loadTopUsers();
-    
-    // Прокручиваем к началу
-    setTimeout(scrollToTop, 100);
-}
 
 // Health check с информацией о конфигурации
 // Улучшенный health check

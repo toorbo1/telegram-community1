@@ -6709,6 +6709,26 @@ async function loadTopUsers() {
         showTopUsersError();
     }
 }
+// Закрытие модального окна при клике вне его
+window.addEventListener('click', function(event) {
+    const modal = document.getElementById('rank-details-modal');
+    if (event.target === modal) {
+        closeRankDetails();
+    }
+});
+
+// Обновление топа при каждом переходе на главную вкладку
+function showMainTab() {
+    hideAllTabs();
+    document.getElementById('main-tab').classList.add('active');
+    updateNavState('main');
+    
+    // Обновляем топ пользователей с улучшенным дизайном
+    loadTopUsers();
+    
+    // Прокручиваем к началу
+    setTimeout(scrollToTop, 100);
+}
 
         // Обновленная функция загрузки заданий пользователя
         async function loadUserTasks() {
