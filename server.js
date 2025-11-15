@@ -5875,12 +5875,37 @@ app.delete('/api/posts/:id', async (req, res) => {
 });
 
 // ==================== TASKS ENDPOINTS ====================
+// Функция для автоматической разблокировки заданий
+async function autoUnblockTasks() {
+    try {
+        // Разблокируем задания, которые были заблокированы более 1 часа
+        const result = await pool.query(`
+            UPDATE tasks 
+            SET is_blocked = false 
+            WHERE is_blocked = true 
+            AND id IN (
+                SELECT t.id 
+                FROM tasks t
+                LEFT JOIN user_tasks ut ON t.id = ut.task_id 
+                WHERE ut.status = 'active'
+                AND ut.started_at < NOW() - INTERVAL '1 hour'
+            )
+        `);
+        
+        if (result.rowCount > 0) {
+            console.log(`🔓 Автоматически разблокировано ${result.rowCount} заданий`);
+        }
+    } catch (error) {
+        console.error('Ошибка автоматической разблокировки:', error);
+    }
+}
 
+// Запускаем каждые 30 минут
+setInterval(autoUnblockTasks, 30 * 60 * 1000);
 // Получение заданий с правильной фильтрацией отклоненных заданий
+// В функции загрузки заданий добавьте фильтрацию по is_blocked
 app.get('/api/tasks', async (req, res) => {
     const { search, category, userId } = req.query;
-    
-    console.log('📥 Получен запрос на задания:', { search, category, userId });
     
     try {
         let query = `
@@ -5891,17 +5916,11 @@ app.get('/api/tasks', async (req, res) => {
                        WHERE ut2.task_id = t.id 
                        AND ut2.user_id = $1 
                        AND ut2.status IN ('active', 'pending_review', 'completed')
-                   ) as user_has_task,
-                   -- ДОБАВЛЕНО: проверяем есть ли отклоненные задания у пользователя
-                   EXISTS(
-                       SELECT 1 FROM user_tasks ut3 
-                       WHERE ut3.task_id = t.id 
-                       AND ut3.user_id = $1 
-                       AND ut3.status = 'rejected'
-                   ) as user_has_rejected_task
+                   ) as user_has_task
             FROM tasks t 
             LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
-            WHERE t.status = 'active'
+            WHERE t.status = 'active' 
+            AND (t.is_blocked IS NULL OR t.is_blocked = false)
         `;
         let params = [userId];
         let paramCount = 1;
@@ -6817,6 +6836,35 @@ async function handleLastTaskStart(taskId, userId) {
         throw error;
     }
 }
+// Endpoint для разблокировки заданий (для админов)
+app.post('/api/admin/tasks/unblock', async (req, res) => {
+    const { adminId, taskId } = req.body;
+    
+    if (parseInt(adminId) !== ADMIN_ID) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен'
+        });
+    }
+    
+    try {
+        await pool.query(
+            'UPDATE tasks SET is_blocked = false WHERE id = $1',
+            [taskId]
+        );
+        
+        res.json({
+            success: true,
+            message: 'Задание разблокировано'
+        });
+    } catch (error) {
+        console.error('Unblock task error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка разблокировки: ' + error.message
+        });
+    }
+});
 app.post('/api/user/tasks/start-last', async (req, res) => {
     const { userId, taskId } = req.body;
     

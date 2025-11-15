@@ -10640,9 +10640,17 @@ async function startTask() {
         const completedCount = task.completed_count || 0;
         const availableTasks = Math.max(0, peopleRequired - completedCount);
 
+        // Проверяем, доступно ли задание
+        if (availableTasks <= 0) {
+            showNotification('Это задание уже полностью занято', 'error');
+            closeModal('task-modal');
+            loadTasks(); // Обновляем список
+            return;
+        }
+
         // Проверяем, последнее ли это задание
         if (availableTasks === 1) {
-            console.log('🎯 Это последнее задание, блокируем...');
+            console.log('🎯 Это последнее задание, используем специальный endpoint...');
             
             const result = await makeRequest('/api/user/tasks/start-last', {
                 method: 'POST',
@@ -10656,10 +10664,12 @@ async function startTask() {
                 showNotification('🎉 Вы начали последнее задание! Другие пользователи не смогут его взять.', 'success');
                 closeModal('task-modal');
                 
-                // Обновляем интерфейс
+                // НЕМЕДЛЕННО обновляем интерфейс
                 setTimeout(() => {
                     loadTasks();
-                }, 1000);
+                    loadUserTasks();
+                }, 500);
+                
             } else {
                 throw new Error(result.error || 'Ошибка начала задания');
             }
@@ -10677,10 +10687,12 @@ async function startTask() {
                 showNotification('Задание успешно начато!', 'success');
                 closeModal('task-modal');
                 
-                // Обновляем интерфейс
+                // НЕМЕДЛЕННО обновляем интерфейс
                 setTimeout(() => {
                     loadTasks();
-                }, 1000);
+                    loadUserTasks();
+                }, 500);
+                
             } else {
                 throw new Error(result.error || 'Ошибка начала задания');
             }
@@ -10689,6 +10701,11 @@ async function startTask() {
     } catch (error) {
         console.error('❌ Ошибка начала задания:', error);
         showNotification(`Ошибка начала задания: ${error.message}`, 'error');
+        
+        // В случае ошибки все равно обновляем список
+        setTimeout(() => {
+            loadTasks();
+        }, 1000);
     }
 }
 
