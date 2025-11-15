@@ -13,6 +13,692 @@
     <link rel="stylesheet" href="animations.css">
     <link rel="stylesheet" href="mobile.css">
     <style>
+        
+        /* Плавная прокрутка для всего сайта */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Убираем возможные смещения для фиксированных элементов */
+body {
+    overflow-x: hidden;
+}
+
+/* Гарантируем, что основные контейнеры начинаются с верха */
+.tab-content,
+.page {
+    min-height: 100vh;
+}
+
+/* Фикс для мобильных устройств */
+@media (max-width: 768px) {
+    .main-content {
+        padding-top: 0;
+    }
+}
+        /* Стили для карточки проверки позиции */
+.check-position-card {
+    background: linear-gradient(135deg, #ff6b6b, #ffa500);
+    border-radius: 20px;
+    padding: 20px;
+    margin: 15px 0;
+    color: white;
+    text-align: center;
+    box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
+    border: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.check-position-card::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    right: -20px;
+    width: 80px;
+    height: 80px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+}
+
+.check-position-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.check-position-title {
+    font-size: 18px;
+    font-weight: 700;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.check-position-icon {
+    font-size: 24px;
+    animation: bounce 2s infinite;
+}
+
+.check-position-text {
+    font-size: 14px;
+    margin-bottom: 15px;
+    opacity: 0.9;
+}
+
+.check-position-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 25px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    width: 100%;
+}
+
+.check-position-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+}
+
+/* Анимация для иконки */
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-5px);
+    }
+    60% {
+        transform: translateY(-3px);
+    }
+}
+
+/* Стили для модального окна ранга */
+.rank-details-content {
+    text-align: center;
+}
+
+.rank-main-info {
+    margin-bottom: 30px;
+}
+
+.rank-number {
+    font-size: 72px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 10px;
+}
+
+.rank-label {
+    font-size: 18px;
+    color: var(--text-secondary);
+}
+
+.rank-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.rank-stat-item {
+    background: var(--bg-secondary);
+    border-radius: 15px;
+    padding: 20px;
+    text-align: center;
+    border: 1px solid var(--border);
+    transition: transform 0.3s ease;
+}
+
+.rank-stat-item:hover {
+    transform: translateY(-5px);
+}
+
+.stat-icon {
+    font-size: 32px;
+    margin-bottom: 10px;
+}
+
+.stat-info .stat-value {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 5px;
+}
+
+.stat-info .stat-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.rank-progress-section {
+    background: var(--bg-secondary);
+    border-radius: 15px;
+    padding: 25px;
+    border: 1px solid var(--border);
+}
+
+.rank-progress-section h4 {
+    margin-bottom: 15px;
+    color: var(--text-primary);
+}
+
+.progress-info {
+    margin-bottom: 20px;
+    font-size: 16px;
+    color: var(--text-secondary);
+}
+
+.progress-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+@media (max-width: 768px) {
+    .rank-stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .progress-actions {
+        flex-direction: column;
+    }
+    
+    .rank-number {
+        font-size: 48px;
+    }
+}
+        /* ЯРКИЙ ДИЗАЙН ТОПА ПОЛЬЗОВАТЕЛЕЙ */
+.top-users-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 20px;
+    padding: 20px;
+    margin: 15px 0;
+    border: none;
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.top-users-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
+    border-radius: 50%;
+}
+
+.top-users-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 2;
+}
+
+.top-users-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.view-full-list-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.view-full-list-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.top-users-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.top-user-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    z-index: 2;
+}
+
+.top-user-item:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+}
+
+.user-rank {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 800;
+    margin-right: 15px;
+    flex-shrink: 0;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.rank-1 {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+}
+
+.rank-2 {
+    background: linear-gradient(135deg, #C0C0C0, #A0A0A0);
+    box-shadow: 0 4px 15px rgba(192, 192, 192, 0.4);
+}
+
+.rank-3 {
+    background: linear-gradient(135deg, #CD7F32, #A0522D);
+    box-shadow: 0 4px 15px rgba(205, 127, 50, 0.4);
+}
+
+.rank-other {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.user-avatar {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    margin-right: 15px;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #ff6b6b, #ffa500);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.user-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.user-name {
+    font-weight: 700;
+    font-size: 16px;
+    margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.user-stats {
+    display: flex;
+    gap: 15px;
+    font-size: 13px;
+}
+
+.user-tasks {
+    color: #4cd137;
+    font-weight: 700;
+    background: rgba(76, 209, 55, 0.2);
+    padding: 4px 10px;
+    border-radius: 15px;
+    border: 1px solid rgba(76, 209, 55, 0.3);
+}
+
+.user-balance {
+    color: #ffd700;
+    font-weight: 700;
+    background: rgba(255, 215, 0, 0.2);
+    padding: 4px 10px;
+    border-radius: 15px;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.user-referrals {
+    color: #00a8ff;
+    font-weight: 700;
+    background: rgba(0, 168, 255, 0.2);
+    padding: 4px 10px;
+    border-radius: 15px;
+    border: 1px solid rgba(0, 168, 255, 0.3);
+}
+        /* Стили для топа пользователей */
+.top-users-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.top-users-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.top-users-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.view-full-list-btn {
+    background: transparent;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.view-full-list-btn:hover {
+    background: var(--gold);
+    color: white;
+}
+
+.top-user-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-light);
+    position: relative;
+}
+
+.top-user-item:last-child {
+    border-bottom: none;
+}
+
+.user-rank {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.user-rank.rank-1 {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: white;
+}
+
+.user-rank.rank-2 {
+    background: linear-gradient(135deg, #C0C0C0, #A0A0A0);
+    color: white;
+}
+
+.user-rank.rank-3 {
+    background: linear-gradient(135deg, #CD7F32, #A0522D);
+    color: white;
+}
+
+.user-rank.rank-other {
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--gold));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.user-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.user-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-stats {
+    display: flex;
+    gap: 12px;
+    font-size: 12px;
+}
+
+.user-tasks {
+    color: var(--success);
+    font-weight: 700;
+    background: rgba(34, 197, 94, 0.1);
+    padding: 2px 8px;
+    border-radius: 12px;
+    border: 1px solid var(--success);
+}
+
+.user-balance {
+    color: var(--gold);
+    font-weight: 600;
+}
+
+.user-referrals {
+    color: var(--accent);
+}
+
+/* Позиция пользователя */
+.user-position {
+    margin-top: 16px;
+}
+
+.position-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 16px 0;
+}
+
+.current-user-position {
+    background: rgba(59, 130, 246, 0.05);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.position-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.position-text {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.position-details-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.position-details-btn:hover {
+    background: var(--accent-dark);
+}
+
+.position-stats {
+    border-top: 1px solid var(--border-light);
+    padding-top: 12px;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.stat-item:last-child {
+    margin-bottom: 0;
+}
+
+.stat-label {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.stat-value {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Модальное окно ранга */
+.rank-details {
+    text-align: center;
+}
+
+.rank-main {
+    margin-bottom: 24px;
+}
+
+.rank-number {
+    font-size: 48px;
+    font-weight: 900;
+    color: var(--gold);
+    margin-bottom: 8px;
+}
+
+.rank-label {
+    color: var(--text-secondary);
+    font-size: 16px;
+}
+
+.rank-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.rank-stat-card {
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    border: 1px solid var(--border);
+}
+
+.stat-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.stat-info .stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.stat-info .stat-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.rank-progress {
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid var(--border);
+}
+
+.rank-progress h4 {
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+
+.progress-info {
+    margin-bottom: 16px;
+}
+
+.progress-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .rank-stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .progress-actions {
+        flex-direction: column;
+    }
+    
+    .top-users-header {
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
+    }
+}
         /* Стили для кнопок удаления в топе */
 .top-user-actions {
     margin-left: auto;
@@ -522,14 +1208,49 @@
         <div class="loading">Загрузка топа...</div>
     </div>
     
-    <!-- Место текущего пользователя -->
-    <div class="user-position" id="user-position" style="display: none;">
-        <div class="position-divider"></div>
-        <div class="current-user-position">
+ <!-- Место текущего пользователя -->
+<div class="user-position" id="user-position" style="display: none;">
+    <div class="position-divider"></div>
+    <div class="current-user-position">
+        <div class="position-info">
             <span class="position-text">Ваше место: <strong id="user-rank">-</strong></span>
+            <button class="position-details-btn" onclick="showUserRankDetails()">
+                ℹ️ Подробнее
+            </button>
+        </div>
+        <div class="position-stats" id="position-stats" style="display: none;">
+            <div class="stat-item">
+                <span class="stat-label">Выполнено заданий:</span>
+                <span class="stat-value" id="user-completed-tasks">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Баланс:</span>
+                <span class="stat-value" id="user-balance">0 ⭐</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">До следующего места:</span>
+                <span class="stat-value" id="next-rank-diff">-</span>
+            </div>
         </div>
     </div>
 </div>
+<!-- Простое отображение места в топе -->
+<div class="check-position-card fade-in">
+    <div class="check-position-header">
+        <div class="check-position-title">🎯 Ваше место в топе</div>
+        <div class="check-position-icon">🏆</div>
+    </div>
+    <div class="position-number" id="user-rank-simple" style="font-size: 32px; font-weight: 800; color: var(--gold); text-align: center; margin: 15px 0;">
+        Загрузка...
+    </div>
+    <div class="check-position-text" style="text-align: center; font-size: 14px;">
+        в общем рейтинге исполнителей
+    </div>
+    <div class="check-position-text" style="text-align: center; font-size: 14px;">
+        топ 1 становяться за наибольшее количество выполненных заданий
+    </div>
+</div></div>
+
 
         <!-- Как работает -->
         <div class="exchange-card fade-in" onclick="showHowItWorksPage()">
@@ -1632,6 +2353,141 @@
 
 
     <script>
+        
+        // Функция для прокрутки страницы к началу
+function scrollToTop() {
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
+}
+
+// Прокрутка к началу при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    scrollToTop();
+});
+
+// Прокрутка к началу при переключении вкладок
+function showMainTab() {
+    hideAllTabs();
+    document.getElementById('main-tab').classList.add('active');
+    updateNavState('main');
+    
+    // Прокручиваем к началу
+    setTimeout(scrollToTop, 100);
+}
+
+function showTasksTab() {
+    console.log('🎯 ПЕРЕХОД НА ВКЛАДКУ ЗАДАНИЙ');
+    
+    hideAllTabs();
+    const tasksTab = document.getElementById('tasks-tab');
+    if (tasksTab) {
+        tasksTab.classList.add('active');
+    }
+    
+    updateNavState('tasks');
+    
+    // Применяем исправления для мобильных
+    setTimeout(fixMobileLayout, 100);
+    
+    // Активируем вкладку "Новые" и прокручиваем к началу
+    setTimeout(() => {
+        showTaskCategory('new');
+        scrollToTop();
+    }, 150);
+}
+
+function showProfileTab() {
+    hideAllTabs();
+    document.getElementById('profile-tab').classList.add('active');
+    updateNavState('profile');
+    
+    // Прокручиваем к началу
+    setTimeout(scrollToTop, 100);
+}
+
+function showAdminTab() {
+    const isMainAdmin = parseInt(currentUser?.id) === ADMIN_ID;
+    const isRegularAdmin = currentUser?.is_admin === true;
+    
+    if (!currentUser || (!isMainAdmin && !isRegularAdmin)) {
+        showNotification('Доступ запрещен!', 'error');
+        return;
+    }
+    
+    hideAllTabs();
+    document.getElementById('admin-tab').classList.add('active');
+    updateNavState('admin');
+    
+    // Сбрасываем панель при каждом открытии
+    resetAdminPanel();
+    
+    // Показываем секцию постов по умолчанию
+    showAdminSection('posts');
+    
+    // Прокручиваем к началу
+    setTimeout(scrollToTop, 100);
+}
+
+// Также добавьте прокрутку для страниц
+function showWithdrawPage() {
+    hideAllTabs();
+    document.getElementById('withdraw-page').classList.add('active');
+    
+    // Обновляем баланс на странице вывода
+    updateWithdrawPage();
+    loadWithdrawHistory();
+    
+    // Прокручиваем к началу
+    setTimeout(scrollToTop, 100);
+}
+
+function showHowItWorksPage() {
+    hideAllTabs();
+    document.getElementById('how-it-works-page').classList.add('active');
+    
+    // Прокручиваем к началу
+    setTimeout(scrollToTop, 100);
+}
+
+function showAboutPage() {
+    hideAllTabs();
+    document.getElementById('about-page').classList.add('active');
+    
+    // Прокручиваем к началу
+    setTimeout(scrollToTop, 100);
+}
+
+// Обеспечиваем прокрутку к началу при навигации по истории браузера
+window.addEventListener('popstate', function() {
+    setTimeout(scrollToTop, 100);
+});
+
+// Предотвращаем сохранение позиции скролла браузером
+if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+}
+
+// Дополнительная функция для принудительной прокрутки при любых изменениях маршрута
+function initializeScrollManagement() {
+    // Перехватываем все клики по ссылкам
+    document.addEventListener('click', function(e) {
+        const target = e.target.closest('a');
+        if (target) {
+            // Небольшая задержка для обработки навигации
+            setTimeout(scrollToTop, 50);
+        }
+    });
+    
+    // Обработка изменений hash в URL
+    window.addEventListener('hashchange', function() {
+        setTimeout(scrollToTop, 100);
+    });
+}
+
+// Инициализируем управление прокруткой
+initializeScrollManagement();
         // Функция для отображения топа с кнопками удаления
 // 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ТОПА
 async function displayLeaderboardWithAdminControls(topUsers, currentUserRank, currentUserStats) {
@@ -2465,16 +3321,50 @@ function showProfileTab() {
     }, 100);
 }
 
-// 🔧 ДОБАВЛЕНИЕ ПРОКРУТКИ К СУЩЕСТВУЮЩИМ ФУНКЦИЯМ
 function showMainTab() {
     hideAllTabs();
     document.getElementById('main-tab').classList.add('active');
     updateNavState('main');
     
+    // Быстрая загрузка ранга
+    loadUserRankFast();
+    
+    // Полная загрузка топа (может быть медленнее)
+    setTimeout(() => {
+        loadTopUsers();
+    }, 1000);
+    
     // Прокручиваем к началу
     setTimeout(scrollToTop, 100);
 }
 
+// 🔧 АВТООБНОВЛЕНИЕ РАНГА КАЖДЫЕ 30 СЕКУНД
+function startRankAutoUpdate() {
+    setInterval(() => {
+        if (document.getElementById('main-tab').classList.contains('active')) {
+            loadUserRankFast();
+        }
+    }, 30000);
+}
+
+// Запустите при инициализации
+startRankAutoUpdate();
+// 🔧 БЫСТРАЯ ФУНКЦИЯ ДЛЯ ЗАГРУЗКИ ТОЛЬКО РАНГА
+async function loadUserRankFast() {
+    if (!currentUser) return;
+    
+    try {
+        const response = await fetch(`/api/user/${currentUser.id}/simple-rank`);
+        const result = await response.json();
+        
+        if (result.success) {
+            updateSimpleRankDisplay(result.rank);
+        }
+    } catch (error) {
+        console.error('Fast rank load error:', error);
+        updateSimpleRankDisplay(null);
+    }
+}
 function showTasksTab() {
     console.log('🎯 ПЕРЕХОД НА ВКЛАДКУ ЗАДАНИЙ');
     
@@ -5815,12 +6705,12 @@ function formatCategory(category) {
 async function initializeApp() {
     console.log('🎮 Initializing LinkGold app...');
     // Загружаем топ пользователей с обработкой ошибок
+        // Загружаем топ пользователей с обработкой ошибок
     try {
         await loadTopUsers();
     } catch (error) {
         console.error('Failed to load top users:', error);
     }
-    
     // Применяем исправления layout сразу
     fixLayoutIssues();
     // Применяем исправления layout сразу
@@ -6089,6 +6979,351 @@ function displayUserTasksForCategory(tasks, status) {
         const taskElement = createTaskCardWithImage(task, status, index);
         container.appendChild(taskElement);
     });
+}
+
+// Функция для отображения топа пользователей с улучшенным дизайном
+// 🔧 ФУНКЦИЯ ОТОБРАЖЕНИЯ ТОПА ПОЛЬЗОВАТЕЛЕЙ
+function displayTopUsers(topUsers) {
+    const topUsersElement = document.getElementById('top-users-list');
+    if (!topUsersElement) return;
+    
+    if (!topUsers || topUsers.length === 0) {
+        topUsersElement.innerHTML = '<div class="no-data">🏆 Топ пользователей пуст</div>';
+        return;
+    }
+    
+    let html = '<div class="top-users-grid">';
+    
+    topUsers.slice(0, 5).forEach((user, index) => {
+        const position = index + 1;
+        const medal = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : `${position}.`;
+        
+        const displayName = user.username || `user_${user.user_id}`;
+        const completedTasks = user.completed_tasks || 0;
+        
+        html += `
+            <div class="top-user-item ${user.user_id === currentUser?.id ? 'current-user' : ''}">
+                <div class="top-user-position">${medal}</div>
+                <div class="top-user-info">
+                    <div class="top-user-name">${displayName}</div>
+                    <div class="top-user-stats">
+                        <span class="tasks-count">✅ ${completedTasks}</span>
+                        <span class="balance">💫 ${user.balance}⭐</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    
+    // Добавляем кнопку для просмотра полного топа
+    html += `
+        <div class="view-full-leaderboard">
+            <button class="btn btn-primary" onclick="showLeaderboardPage()">
+                📊 Узнать мое место
+            </button>
+        </div>
+    `;
+    
+    topUsersElement.innerHTML = html;
+}
+
+// 🔧 ФУНКЦИЯ ДЛЯ ПОКАЗА СТРАНИЦЫ ЛИДЕРБОРДА
+function showLeaderboardPage() {
+    hideAllTabs();
+    document.getElementById('leaderboard-page').classList.add('active');
+    
+    // Загружаем данные лидерборда
+    setTimeout(() => {
+        loadLeaderboard();
+        scrollToTop();
+    }, 100);
+}
+
+// Функция создания элемента пользователя в топе с улучшенным дизайном
+function createTopUserElement(user, rank) {
+    const userElement = document.createElement('div');
+    userElement.className = 'top-user-item';
+    
+    // Используем username вместо "Пользователь"
+    const displayName = user.username || `user_${user.user_id}`;
+    
+    // Реальные выполненные задания
+    const completedTasks = user.completed_tasks || 0;
+    const balance = user.balance || 0;
+    
+    // Аватар из первой буквы имени
+    const avatarText = displayName.charAt(0).toUpperCase();
+    
+    userElement.innerHTML = `
+        <div class="user-rank ${getRankClass(rank)}">${rank}</div>
+        <div class="user-avatar">${avatarText}</div>
+        <div class="user-info">
+            <div class="user-name">${escapeHtml(displayName)}</div>
+            <div class="user-stats">
+                <span class="user-tasks">${completedTasks} заданий</span>
+                <span class="user-balance">${balance} ⭐</span>
+                ${user.referral_count > 0 ? `<span class="user-referrals">👥 ${user.referral_count}</span>` : ''}
+            </div>
+        </div>
+        ${currentUser && currentUser.is_admin ? `
+            <div class="top-user-actions">
+                <button class="btn-danger btn-sm" onclick="removeUserFromLeaderboard(${user.user_id}, '${displayName.replace(/'/g, "\\'")}')">
+                    🗑️ Удалить
+                </button>
+            </div>
+        ` : ''}
+    `;
+    
+    return userElement;
+}
+
+// Функция отображения позиции пользователя
+function displayUserPosition(rank, stats) {
+    const userPosition = document.getElementById('user-position');
+    const userRankElement = document.getElementById('user-rank');
+    const userCompletedTasks = document.getElementById('user-completed-tasks');
+    const userBalance = document.getElementById('user-balance');
+    
+    if (userRankElement) {
+        userRankElement.textContent = rank;
+    }
+    
+    if (userCompletedTasks && stats) {
+        userCompletedTasks.textContent = stats.completed_tasks || 0;
+    }
+    
+    if (userBalance && stats) {
+        userBalance.textContent = `${stats.balance || 0} ⭐`;
+    }
+    
+    userPosition.style.display = 'block';
+    
+    // Загружаем информацию о следующем месте
+    loadNextRankInfo(rank, stats);
+}
+
+// Функция загрузки информации о следующем месте
+async function loadNextRankInfo(currentRank, currentStats) {
+    try {
+        const response = await fetch(`/api/leaderboard/next-rank?userId=${currentUser.id}&currentRank=${currentRank}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            const nextRankDiff = document.getElementById('next-rank-diff');
+            if (nextRankDiff) {
+                if (result.nextUser) {
+                    const tasksDiff = result.nextUser.completed_tasks - (currentStats.completed_tasks || 0);
+                    if (tasksDiff > 0) {
+                        nextRankDiff.textContent = `+${tasksDiff} заданий`;
+                    } else {
+                        nextRankDiff.textContent = 'Вы на максимальном месте!';
+                    }
+                } else {
+                    nextRankDiff.textContent = 'Вы на максимальном месте!';
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error loading next rank info:', error);
+    }
+}
+
+// Функция показа деталей ранга
+function showUserRankDetails() {
+    const stats = currentUserStats; // Должна быть установлена при загрузке топа
+    
+    if (!stats) return;
+    
+    // Заполняем модальное окно данными
+    document.getElementById('modal-rank').textContent = currentUserRank;
+    document.getElementById('modal-completed-tasks').textContent = stats.completed_tasks || 0;
+    document.getElementById('modal-balance').textContent = `${stats.balance || 0} ⭐`;
+    document.getElementById('modal-referrals').textContent = stats.referral_count || 0;
+    
+    // Загружаем информацию о следующем месте для модального окна
+    loadNextRankInfoForModal(currentUserRank, stats);
+    
+    // Показываем модальное окно
+    document.getElementById('rank-details-modal').style.display = 'block';
+}
+
+// Функция загрузки информации о следующем месте для модального окна
+async function loadNextRankInfoForModal(currentRank, currentStats) {
+    try {
+        const response = await fetch(`/api/leaderboard/next-rank?userId=${currentUser.id}&currentRank=${currentRank}`);
+        const result = await response.json();
+        
+        const nextRankInfo = document.getElementById('next-rank-info');
+        if (nextRankInfo) {
+            if (result.nextUser && result.nextUser.completed_tasks > currentStats.completed_tasks) {
+                const tasksNeeded = result.nextUser.completed_tasks - currentStats.completed_tasks;
+                nextRankInfo.textContent = `Выполните еще ${tasksNeeded} заданий чтобы подняться на ${currentRank - 1} место`;
+            } else {
+                nextRankInfo.textContent = 'Вы на максимальном месте! Продолжайте в том же духе!';
+            }
+        }
+    } catch (error) {
+        console.error('Error loading next rank info for modal:', error);
+    }
+}
+
+// Функция закрытия модального окна
+function closeRankDetails() {
+    document.getElementById('rank-details-modal').style.display = 'none';
+}
+
+// Функция переключения отображения статистики
+function togglePositionStats() {
+    const stats = document.getElementById('position-stats');
+    if (stats.style.display === 'none') {
+        stats.style.display = 'block';
+    } else {
+        stats.style.display = 'none';
+    }
+}
+
+// Добавьте новый endpoint в server.js для получения информации о следующем месте
+app.get('/api/leaderboard/next-rank', async (req, res) => {
+    const { userId, currentRank } = req.query;
+    
+    try {
+        // Получаем пользователя, который на одну позицию выше
+        const nextUserResult = await pool.query(`
+            WITH user_ranking AS (
+                SELECT 
+                    up.user_id,
+                    COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_tasks,
+                    COALESCE(up.balance, 0) as balance,
+                    ROW_NUMBER() OVER (
+                        ORDER BY 
+                            COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) DESC,
+                            COALESCE(up.balance, 0) DESC,
+                            up.created_at ASC
+                    ) as position
+                FROM user_profiles up
+                LEFT JOIN user_tasks ut ON up.user_id = ut.user_id AND ut.status = 'completed'
+                GROUP BY up.user_id, up.balance, up.created_at
+                HAVING COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) > 0
+                   OR COALESCE(up.balance, 0) > 0
+            )
+            SELECT * FROM user_ranking WHERE position = $1
+        `, [parseInt(currentRank) - 1]);
+        
+        res.json({
+            success: true,
+            nextUser: nextUserResult.rows.length > 0 ? nextUserResult.rows[0] : null,
+            currentRank: parseInt(currentRank)
+        });
+        
+    } catch (error) {
+        console.error('Next rank info error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Обновленная функция для загрузки топа
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ ТОПА ПОЛЬЗОВАТЕЛЕЙ
+async function loadTopUsers() {
+    try {
+        console.log('🏆 Loading top users...');
+        
+        const userId = currentUser?.id || '';
+        const response = await fetch(`/api/leaderboard/top?userId=${userId}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            displayTopUsers(result.topUsers);
+            
+            // Обновляем простое отображение ранга
+            updateSimpleRankDisplay(result.currentUserRank);
+            
+            // Сохраняем статистику пользователя для использования в других функциях
+            if (result.currentUserStats) {
+                window.currentUserStats = result.currentUserStats;
+                window.currentUserRank = result.currentUserRank;
+            }
+        } else {
+            throw new Error(result.error || 'Failed to load top users');
+        }
+    } catch (error) {
+        console.error('❌ Error loading top users:', error);
+        showTopUsersError();
+        showNotification('Ошибка загрузки рейтинга: ' + error.message, 'error');
+    }
+}
+
+// 🔧 ФУНКЦИЯ ОБНОВЛЕНИЯ ПРОСТОГО ОТОБРАЖЕНИЯ РАНГА
+function updateSimpleRankDisplay(rank) {
+    const rankElement = document.getElementById('user-rank-simple');
+    if (rankElement) {
+        if (rank) {
+            rankElement.textContent = `#${rank}`;
+            rankElement.style.fontSize = '32px';
+            rankElement.style.fontWeight = '800';
+            rankElement.style.color = 'var(--gold)';
+        } else {
+            rankElement.textContent = '—';
+            rankElement.style.fontSize = '24px';
+            rankElement.style.color = 'var(--text-secondary)';
+        }
+    }
+}
+
+// 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ТОПА
+function displayTopUsers(topUsers) {
+    const topUsersElement = document.getElementById('top-users-list');
+    if (!topUsersElement) return;
+    
+    if (!topUsers || topUsers.length === 0) {
+        topUsersElement.innerHTML = '<div class="no-data">🏆 Топ пользователей пуст</div>';
+        return;
+    }
+    
+    let html = '<div class="top-users-grid">';
+    
+    topUsers.slice(0, 5).forEach((user, index) => {
+        const position = index + 1;
+        const medal = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : `${position}.`;
+        
+        const displayName = user.username || `user_${user.user_id}`;
+        const completedTasks = user.completed_tasks || 0;
+        
+        html += `
+            <div class="top-user-item ${user.user_id === currentUser?.id ? 'current-user' : ''}">
+                <div class="top-user-position">${medal}</div>
+                <div class="top-user-info">
+                    <div class="top-user-name">${displayName}</div>
+                    <div class="top-user-stats">
+                        <span class="tasks-count">✅ ${completedTasks}</span>
+                        <span class="balance">💫 ${user.balance}⭐</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    
+    // Добавляем кнопку для просмотра полного топа
+    html += `
+        <div class="view-full-leaderboard">
+            <button class="btn btn-primary" onclick="showLeaderboardPage()">
+                📊 Узнать мое место
+            </button>
+        </div>
+    `;
+    
+    topUsersElement.innerHTML = html;
 }
 
         // Обновленная функция загрузки заданий пользователя
@@ -6432,6 +7667,7 @@ async function cancelTask() {
         showNotification('Ошибка отмены задания', 'error');
     }
 }
+
 // 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ ПРОВЕРОК
 async function loadTaskVerifications() {
     if (!currentUser) return;
@@ -7590,47 +8826,7 @@ async function addTask() {
         showNotification(`❌ Ошибка создания задания: ${error.message}`, 'error');
     }
 }
-// Функция для загрузки топа пользователей
-// Проверьте корректность endpoint'а
-async function loadTopUsers() {
-    try {
-        console.log('🏆 Loading top users...');
-        
-        // Добавьте проверку URL
-        const url = '/api/leaderboard/top';
-        console.log('📡 Request URL:', url);
-        
-        const result = await makeRequest(url);
-        
-        if (result.success) {
-            displayTopUsers(result.topUsers, result.currentUserRank);
-        } else {
-            console.error('Error loading top users:', result.error);
-            showTopUsersError();
-        }
-    } catch (error) {
-        console.error('Error loading top users:', error);
-        showTopUsersError();
-    }
-}
 
-function showTopUsersError() {
-    const container = document.getElementById('top-users-list');
-    if (!container) return;
-    
-    container.innerHTML = `
-        <div class="no-top-users">
-            <div class="icon">❌</div>
-            <div>Ошибка загрузки</div>
-            <div style="font-size: 12px; color: var(--text-secondary); margin: 8px 0;">
-                Не удалось загрузить рейтинг
-            </div>
-            <button class="view-full-list-btn" onclick="loadTopUsers()" style="margin-top: 10px;">
-                Повторить
-            </button>
-        </div>
-    `;
-}
 
 // Функция для отображения топа пользователей
 function displayTopUsers(topUsers, currentUserRank) {
@@ -7721,21 +8917,32 @@ function getRankClass(rank) {
 }
 
 // Функция показа ошибки загрузки топа
+// 🔧 ФУНКЦИЯ ПОКАЗА ОШИБКИ ТОПА
 function showTopUsersError() {
     const container = document.getElementById('top-users-list');
-    if (!container) return;
+    const rankElement = document.getElementById('user-rank-simple');
     
-    container.innerHTML = `
-        <div class="no-top-users">
-            <div class="icon">❌</div>
-            <div>Ошибка загрузки</div>
-            <button class="view-full-list-btn" onclick="loadTopUsers()" style="margin-top: 10px;">
-                Повторить
-            </button>
-        </div>
-    `;
+    if (container) {
+        container.innerHTML = `
+            <div class="no-top-users">
+                <div class="icon">❌</div>
+                <div>Ошибка загрузки</div>
+                <div style="font-size: 12px; color: var(--text-secondary); margin: 8px 0;">
+                    Не удалось загрузить рейтинг
+                </div>
+                <button class="view-full-list-btn" onclick="loadTopUsers()" style="margin-top: 10px;">
+                    Повторить
+                </button>
+            </div>
+        `;
+    }
+    
+    if (rankElement) {
+        rankElement.textContent = '—';
+        rankElement.style.fontSize = '24px';
+        rankElement.style.color = 'var(--text-secondary)';
+    }
 }
-
 // Функция показа полного списка лидеров
 function showFullLeaderboard() {
     // Здесь можно реализовать переход на полную страницу лидерборда
@@ -7745,29 +8952,7 @@ function showFullLeaderboard() {
 
 
 
-// Также обновляем функцию showMainTab для обновления топа при переходе на главную
-function showMainTab() {
-    hideAllTabs();
-    document.getElementById('main-tab').classList.add('active');
-    updateNavState('main');
-    
-    // Обновляем топ пользователей
-    loadTopUsers();
-    
-    // Прокручиваем к началу
-    setTimeout(scrollToTop, 100);
-}
 
-// Автообновление топа каждые 30 секунд
-setInterval(() => {
-    if (document.getElementById('main-tab').classList.contains('active')) {
-        loadTopUsers();
-    }
-}, 30000);
-
-// 🔧 ЭКСПОРТ ФУНКЦИЙ
-window.loadTopUsers = loadTopUsers;
-window.showFullLeaderboard = showFullLeaderboard;
 // Добавьте эту функцию для отладки
 function debugTaskCreation() {
     
@@ -8523,18 +9708,6 @@ function showTasksTab() {
             currentChatId = null;
         }
 
-        // 🔧 ФУНКЦИИ НАВИГАЦИИ
-        function showMainTab() {
-            hideAllTabs();
-            document.getElementById('main-tab').classList.add('active');
-            updateNavState('main');
-        }
-
-        function showTasksTab() {
-            hideAllTabs();
-            document.getElementById('tasks-tab').classList.add('active');
-            updateNavState('tasks');
-        }
 
 
 // 🔧 ФУНКЦИЯ УДАЛЕНИЯ ЗАДАНИЯ
@@ -9287,7 +10460,65 @@ setTimeout(addEmergencyButton, 2000);
         }
 // 🔧 ФУНКЦИИ ДЛЯ СИСТЕМЫ ВЫВОДА СРЕДСТВ
 
+// 🔧 РЕЗЕРВНАЯ ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ РАНГА
+async function getUserRankFallback() {
+    try {
+        // Пробуем получить ранг из существующего endpoint'а топа
+        const response = await fetch(`/api/leaderboard/top?userId=${currentUser.id}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            return {
+                rank: result.currentUserRank || 'Не в топе',
+                tasks: result.currentUserStats?.completed_tasks || 0,
+                balance: result.currentUserStats?.balance || 0,
+                referrals: result.currentUserStats?.referral_count || 0
+            };
+        }
+    } catch (error) {
+        console.error('Fallback also failed:', error);
+    }
+    
+    return null;
+}
+// 🔧 ДИАГНОСТИКА ENDPOINT'А РАНГА
+async function debugRankEndpoint() {
+    if (!currentUser) {
+        console.log('❌ No current user');
+        return;
+    }
+    
+    try {
+        console.log('🔍 Testing rank endpoint...');
+        
+        const testUrl = `/api/user/${currentUser.id}/rank`;
+        console.log('📡 Testing URL:', testUrl);
+        
+        const response = await fetch(testUrl);
+        console.log('📊 Response status:', response.status);
+        console.log('📊 Response ok:', response.ok);
+        
+        const contentType = response.headers.get('content-type');
+        console.log('📄 Content-Type:', contentType);
+        
+        const text = await response.text();
+        console.log('📝 Response text (first 200 chars):', text.substring(0, 200));
+        
+        if (contentType && contentType.includes('application/json')) {
+            const data = JSON.parse(text);
+            console.log('✅ Valid JSON response:', data);
+        } else {
+            console.error('❌ Invalid response - expected JSON but got:', contentType);
+            console.error('📝 Full response:', text);
+        }
+        
+    } catch (error) {
+        console.error('💥 Debug error:', error);
+    }
+}
 
+// Вызовите для тестирования
+// setTimeout(debugRankEndpoint, 3000);
 
 // Функция выбора суммы
 // 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ВЫБОРА СУММЫ
@@ -9656,6 +10887,16 @@ function displayWithdrawalRequests(requests) {
         container.appendChild(requestElement);
     });
 }
+// Функция для обновления простого отображения ранга
+function updateSimpleRankDisplay() {
+    if (window.currentUserRank) {
+        const rankElement = document.getElementById('user-rank-simple');
+        if (rankElement) {
+            rankElement.textContent = `#${window.currentUserRank}`;
+        }
+    }
+}
+
 
 // 🔧 ФУНКЦИЯ ОТМЕНЫ ВЫПЛАТЫ
 async function cancelWithdrawal(requestId) {
@@ -10761,7 +12002,57 @@ setTimeout(addStartTaskDebugButton, 3000);
                 console.error('Error loading archived chats:', error);
             }
         }
+// 🔧 ФУНКЦИЯ ДЛЯ ЗАКРЫТИЯ МОДАЛЬНОГО ОКНА РАНГА
+function closeRankModal() {
+    console.log('🔒 Closing rank modal');
+    document.getElementById('user-rank-modal').style.display = 'none';
+}
 
+// 🔧 ОБРАБОТЧИК КЛИКА ВНЕ МОДАЛЬНОГО ОКНА
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('user-rank-modal');
+    if (event.target === modal) {
+        closeRankModal();
+    }
+});
+// 🔧 АВАРИЙНАЯ ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ РАНГА
+async function showUserRankDetailsEmergency() {
+    if (!currentUser) {
+        showNotification('Пожалуйста, войдите в систему', 'error');
+        return;
+    }
+
+    try {
+        // Используем данные из уже загруженного топа
+        if (window.currentUserStats && window.currentUserRank) {
+            document.getElementById('user-rank-number').textContent = window.currentUserRank;
+            document.getElementById('user-tasks-count').textContent = window.currentUserStats.completed_tasks || 0;
+            document.getElementById('user-balance-count').textContent = window.currentUserStats.balance || 0;
+            document.getElementById('user-referrals-count').textContent = window.currentUserStats.referral_count || 0;
+            document.getElementById('next-rank-info').textContent = 'Продолжайте выполнять задания для улучшения позиции!';
+            
+            document.getElementById('user-rank-modal').style.display = 'block';
+            return;
+        }
+
+        // Если данных нет, показываем сообщение
+        showNotification('Сначала загрузите топ пользователей', 'info');
+        await loadTopUsers();
+        
+        // Пробуем снова через секунду
+        setTimeout(() => {
+            if (window.currentUserStats && window.currentUserRank) {
+                showUserRankDetailsEmergency();
+            } else {
+                showNotification('Не удалось загрузить данные о ранге', 'error');
+            }
+        }, 1000);
+
+    } catch (error) {
+        console.error('Emergency rank error:', error);
+        showNotification('Ошибка загрузки ранга', 'error');
+    }
+}
         // Отображение списка активных чатов
         function displayAdminChatsList(chats) {
             const container = document.getElementById('active-chats-list');
@@ -10822,6 +12113,203 @@ setTimeout(addStartTaskDebugButton, 3000);
                 container.appendChild(chatElement);
             });
         }
+// Endpoint для получения ранга пользователя
+// Endpoint для получения ранга пользователя
+app.get('/api/user/:userId/rank', async (req, res) => {
+    const userId = req.params.userId;
+    
+    try {
+        // Получаем позицию пользователя в рейтинге
+        const rankResult = await pool.query(`
+            WITH user_ranking AS (
+                SELECT 
+                    up.user_id,
+                    COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_tasks,
+                    COALESCE(up.balance, 0) as balance,
+                    up.referral_count,
+                    ROW_NUMBER() OVER (
+                        ORDER BY 
+                            COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) DESC,
+                            COALESCE(up.balance, 0) DESC,
+                            up.created_at ASC
+                    ) as position
+                FROM user_profiles up
+                LEFT JOIN user_tasks ut ON up.user_id = ut.user_id AND ut.status = 'completed'
+                GROUP BY up.user_id, up.balance, up.referral_count, up.created_at
+                HAVING COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) > 0
+                   OR COALESCE(up.balance, 0) > 0
+            )
+            SELECT * FROM user_ranking WHERE user_id = $1
+        `, [userId]);
+        
+        if (rankResult.rows.length === 0) {
+            return res.json({
+                success: true,
+                rank: 'Не в топе',
+                completed_tasks: 0,
+                balance: 0,
+                referral_count: 0,
+                next_rank_info: 'Выполните первое задание, чтобы попасть в рейтинг!'
+            });
+        }
+        
+        const userRank = rankResult.rows[0];
+        
+        // Получаем информацию о следующем месте
+        const nextRankResult = await pool.query(`
+            WITH user_ranking AS (
+                SELECT 
+                    up.user_id,
+                    COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_tasks,
+                    COALESCE(up.balance, 0) as balance,
+                    ROW_NUMBER() OVER (
+                        ORDER BY 
+                            COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) DESC,
+                            COALESCE(up.balance, 0) DESC,
+                            up.created_at ASC
+                    ) as position
+                FROM user_profiles up
+                LEFT JOIN user_tasks ut ON up.user_id = ut.user_id AND ut.status = 'completed'
+                GROUP BY up.user_id, up.balance, up.created_at
+                HAVING COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) > 0
+                   OR COALESCE(up.balance, 0) > 0
+            )
+            SELECT * FROM user_ranking WHERE position = $1
+        `, [userRank.position - 1]);
+        
+        let nextRankInfo = 'Вы на максимальной позиции!';
+        
+        if (nextRankResult.rows.length > 0) {
+            const nextUser = nextRankResult.rows[0];
+            const tasksNeeded = nextUser.completed_tasks - userRank.completed_tasks;
+            const balanceNeeded = nextUser.balance - userRank.balance;
+            
+            if (tasksNeeded > 0) {
+                nextRankInfo = `Выполните еще ${tasksNeeded} заданий чтобы подняться на ${userRank.position - 1} место`;
+            } else if (balanceNeeded > 0) {
+                nextRankInfo = `Заработайте еще ${balanceNeeded}⭐ чтобы подняться на ${userRank.position - 1} место`;
+            }
+        }
+        
+        res.json({
+            success: true,
+            rank: userRank.position,
+            completed_tasks: userRank.completed_tasks,
+            balance: userRank.balance,
+            referral_count: userRank.referral_count,
+            next_rank_info: nextRankInfo
+        });
+        
+    } catch (error) {
+        console.error('Get user rank error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+// Функция для показа деталей ранга пользователя
+async function showUserRankDetails() {
+    console.log('🔍 DEBUG showUserRankDetails START');
+    console.log('- currentUser:', currentUser);
+    
+    if (!currentUser) {
+        console.log('❌ No current user');
+        showNotification('Пожалуйста, войдите в систему', 'error');
+        return;
+    }
+
+    try {
+        console.log('🎯 Loading user rank details for:', currentUser.id);
+        
+        const url = `/api/user/${currentUser.id}/rank`;
+        console.log('📡 Request URL:', url);
+
+        // Показываем загрузку
+        document.getElementById('user-rank-number').textContent = '...';
+        document.getElementById('user-tasks-count').textContent = '...';
+        document.getElementById('user-balance-count').textContent = '...';
+        document.getElementById('user-referrals-count').textContent = '...';
+        document.getElementById('next-rank-info').textContent = 'Загружаем информацию...';
+
+        // Открываем модальное окно
+        document.getElementById('user-rank-modal').style.display = 'block';
+
+        // Загружаем данные о ранге
+        const response = await fetch(url);
+        console.log('📊 Response status:', response.status);
+        console.log('📊 Response ok:', response.ok);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        console.log('📨 Response data:', result);
+
+        if (result.success) {
+            // Заполняем данные
+            const rankDisplay = result.rank ? result.rank : 'Не в топе';
+            document.getElementById('user-rank-number').textContent = rankDisplay;
+            document.getElementById('user-tasks-count').textContent = result.completed_tasks || 0;
+            document.getElementById('user-balance-count').textContent = result.balance || 0;
+            document.getElementById('user-referrals-count').textContent = result.referral_count || 0;
+
+            // Показываем информацию о следующем месте
+            if (result.next_rank_info) {
+                document.getElementById('next-rank-info').innerHTML = result.next_rank_info;
+            } else if (result.message) {
+                document.getElementById('next-rank-info').innerHTML = result.message;
+            } else {
+                document.getElementById('next-rank-info').textContent = 'Выполните задания чтобы попасть в рейтинг!';
+            }
+
+            console.log('✅ Rank details loaded successfully');
+
+        } else {
+            throw new Error(result.error || 'Не удалось загрузить данные о ранге');
+        }
+
+    } catch (error) {
+        console.error('❌ Error loading rank details:', error);
+        
+        // Показываем заглушки при ошибке
+        document.getElementById('user-rank-number').textContent = 'Ошибка';
+        document.getElementById('user-tasks-count').textContent = '0';
+        document.getElementById('user-balance-count').textContent = '0';
+        document.getElementById('user-referrals-count').textContent = '0';
+        document.getElementById('next-rank-info').textContent = 'Ошибка загрузки данных';
+        
+        showNotification('Ошибка загрузки данных о ранге: ' + error.message, 'error');
+    }
+    
+    console.log('🔍 DEBUG showUserRankDetails END');
+}
+
+// 🔧 ФУНКЦИЯ ДЛЯ ЗАКРЫТИЯ МОДАЛЬНОГО ОКНА РАНГА
+function closeRankModal() {
+    document.getElementById('user-rank-modal').style.display = 'none';
+}
+
+// 🔧 ОБРАБОТЧИК КЛИКА ВНЕ МОДАЛЬНОГО ОКНА
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('user-rank-modal');
+    if (event.target === modal) {
+        closeRankModal();
+    }
+});
+// 🔧 ФУНКЦИЯ ДЛЯ ЗАКРЫТИЯ МОДАЛЬНОГО ОКНА РАНГА
+function closeRankModal() {
+    document.getElementById('user-rank-modal').style.display = 'none';
+}
+
+// 🔧 ОБРАБОТЧИК КЛИКА ВНЕ МОДАЛЬНОГО ОКНА
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('user-rank-modal');
+    if (event.target === modal) {
+        closeRankModal();
+    }
+});
 
         // Создание элемента чата
         function createChatElement(chat, listType) {
