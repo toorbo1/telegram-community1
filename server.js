@@ -3017,7 +3017,7 @@ app.get('/api/tasks/:taskId/availability', async (req, res) => {
     }
 });
 
-// 🔧 ОБНОВЛЕННЫЙ ENDPOINT НАЧАЛА ЗАДАНИЯ С УВЕДОМЛЕНИЕМ
+// Обновленный endpoint начала задания с мгновенным скрытием
 app.post('/api/user/tasks/start', async (req, res) => {
     const { userId, taskId } = req.body;
     
@@ -3097,21 +3097,28 @@ app.post('/api/user/tasks/start', async (req, res) => {
         const newAvailableTasks = availableTasks - 1;
         const isLastTask = newAvailableTasks === 0;
         
+        // 6. Если это была последняя копия - помечаем задание как выполненное
+        if (isLastTask) {
+            await client.query(`
+                UPDATE tasks 
+                SET status = 'completed' 
+                WHERE id = $1
+            `, [taskId]);
+            
+            console.log(`🎯 Task ${taskId} marked as completed - last copy taken`);
+        }
+        
         await client.query('COMMIT');
         
         console.log(`✅ Task started: ${taskId}, available now: ${newAvailableTasks}, isLast: ${isLastTask}`);
-        
-        // 🔥 ОТПРАВЛЯЕМ УВЕДОМЛЕНИЕ ВСЕМ ПОЛЬЗОВАТЕЛЯМ
-        if (isLastTask) {
-            notifyAllUsersTaskTaken(taskId, task.title);
-        }
         
         res.json({
             success: true,
             message: 'Задание начато!',
             userTaskId: startResult.rows[0].id,
             available_tasks: newAvailableTasks,
-            is_last_task: isLastTask
+            is_last_task: isLastTask,
+            task_removed: isLastTask // Флаг что задание должно исчезнуть
         });
         
     } catch (error) {
@@ -6046,6 +6053,7 @@ app.delete('/api/posts/:id', async (req, res) => {
 // ==================== TASKS ENDPOINTS ====================
 
 // Получение заданий с правильной фильтрацией отклоненных заданий
+// В endpoint /api/tasks добавьте фильтрацию
 app.get('/api/tasks', async (req, res) => {
     const { search, category, userId } = req.query;
     
@@ -6061,7 +6069,6 @@ app.get('/api/tasks', async (req, res) => {
                        AND ut2.user_id = $1 
                        AND ut2.status IN ('active', 'pending_review', 'completed')
                    ) as user_has_task,
-                   -- ДОБАВЛЕНО: проверяем есть ли отклоненные задания у пользователя
                    EXISTS(
                        SELECT 1 FROM user_tasks ut3 
                        WHERE ut3.task_id = t.id 
@@ -6070,7 +6077,7 @@ app.get('/api/tasks', async (req, res) => {
                    ) as user_has_rejected_task
             FROM tasks t 
             LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
-            WHERE t.status = 'active'
+            WHERE t.status = 'active'  -- ТОЛЬКО АКТИВНЫЕ ЗАДАНИЯ
         `;
         let params = [userId];
         let paramCount = 1;
@@ -6094,11 +6101,11 @@ app.get('/api/tasks', async (req, res) => {
         
         const result = await pool.query(query, params);
         
-        // 🔥 ФИЛЬТРУЕМ ЗАДАНИЯ: показываем только те, которые не достигли лимита исполнителей
+        // 🔥 ФИЛЬТРУЕМ ЗАДАНИЯ: показываем только активные и не достигшие лимита
         const availableTasks = result.rows.filter(task => {
             const completedCount = task.completed_count || 0;
             const peopleRequired = task.people_required || 1;
-            return completedCount < peopleRequired;
+            return completedCount < peopleRequired && task.status === 'active';
         });
         
         // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Фильтруем задания, которые пользователь уже начал ИЛИ ОТКЛОНЕНЫ
@@ -6848,85 +6855,7 @@ app.get('/api/debug/admin-tasks', async (req, res) => {
     }
 });
 
-// В server.js - обновите endpoint начала задания
-app.post('/api/user/tasks/start', async (req, res) => {
-    const { userId, taskId } = req.body;
-    
-    console.log('🚀 Start task request:', { userId, taskId });
-    
-    if (!userId || !taskId) {
-        return res.status(400).json({
-            success: false,
-            error: 'Missing required fields'
-        });
-    }
-    
-    try {
-        // Проверяем, выполнял ли пользователь это задание
-        const existingTask = await pool.query(`
-    SELECT id FROM user_tasks 
-    WHERE user_id = $1 AND task_id = $2 
-    AND status IN ('active', 'pending_review', 'completed', 'rejected')
-`, [userId, taskId]);
-        
-        if (existingTask.rows.length > 0) {
-            return res.status(400).json({
-                success: false,
-                error: 'Вы уже выполняли это задание'
-            });
-        }
-        
-        // Проверяем лимит выполнений
-        const taskInfo = await pool.query(`
-            SELECT t.*, 
-                   COUNT(ut.id) as completed_count
-            FROM tasks t
-            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
-            WHERE t.id = $1 AND t.status = 'active'
-            GROUP BY t.id
-        `, [taskId]);
-        
-        if (taskInfo.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'Задание не найдено или недоступно'
-            });
-        }
-        
-        const task = taskInfo.rows[0];
-        const peopleRequired = task.people_required || 1;
-        const completedCount = task.completed_count || 0;
-        
-        // 🔥 ПРОВЕРЯЕМ ДОСТИГНУТ ЛИ ЛИМИТ ИСПОЛНИТЕЛЕЙ
-        if (completedCount >= peopleRequired) {
-            return res.status(400).json({
-                success: false,
-                error: 'Достигнут лимит выполнения этого задания'
-            });
-        }
-        
-        // Start the task
-        const result = await pool.query(`
-            INSERT INTO user_tasks (user_id, task_id, status) 
-            VALUES ($1, $2, 'active')
-            RETURNING *
-        `, [userId, taskId]);
-        
-        console.log('✅ Task started successfully:', result.rows[0]);
-        
-        res.json({
-            success: true,
-            message: 'Задание начато!',
-            userTaskId: result.rows[0].id
-        });
-    } catch (error) {
-        console.error('❌ Start task error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
+
 // Get user tasks
 app.get('/api/user/:userId/tasks', async (req, res) => {
     const userId = req.params.userId;
