@@ -5149,7 +5149,7 @@ app.post('/api/user/tasks/start-with-hide', async (req, res) => {
 app.get('/api/tasks-with-auto-hide', async (req, res) => {
     const { search, category, userId } = req.query;
     
-    console.log('📥 Получен запрос на задания с авто-скрытием:', { search, category, userId });
+    console.log('📥 Получен запрос на задания с авто-скрытием: ', { search, category, userId });
     
     try {
         let query = `
