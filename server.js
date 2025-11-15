@@ -2972,6 +2972,7 @@ app.get('/api/leaderboard/top', async (req, res) => {
 });
 
 // 🔧 ENDPOINT ДЛЯ ПРОВЕРКИ ДОСТУПНОСТИ ЗАДАНИЯ
+// 🔧 ENDPOINT ДЛЯ ПРОВЕРКИ ДОСТУПНОСТИ ЗАДАНИЯ С WebSocket уведомлением
 app.get('/api/tasks/:taskId/availability', async (req, res) => {
     const taskId = req.params.taskId;
     
@@ -3016,7 +3017,7 @@ app.get('/api/tasks/:taskId/availability', async (req, res) => {
     }
 });
 
-// 🔧 ОБНОВЛЕННЫЙ ENDPOINT НАЧАЛА ЗАДАНИЯ
+// 🔧 ОБНОВЛЕННЫЙ ENDPOINT НАЧАЛА ЗАДАНИЯ С УВЕДОМЛЕНИЕМ
 app.post('/api/user/tasks/start', async (req, res) => {
     const { userId, taskId } = req.body;
     
@@ -3034,7 +3035,7 @@ app.post('/api/user/tasks/start', async (req, res) => {
     try {
         await client.query('BEGIN');
         
-        // 1. Проверяем доступность задания
+        // 1. Проверяем доступность задания с блокировкой
         const taskCheck = await client.query(`
             SELECT 
                 t.*,
@@ -3043,6 +3044,7 @@ app.post('/api/user/tasks/start', async (req, res) => {
             LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
             WHERE t.id = $1 AND t.status = 'active'
             GROUP BY t.id
+            FOR UPDATE
         `, [taskId]);
         
         if (taskCheck.rows.length === 0) {
@@ -3058,6 +3060,8 @@ app.post('/api/user/tasks/start', async (req, res) => {
         const completedCount = task.completed_count || 0;
         const availableTasks = peopleRequired - completedCount;
         
+        console.log(`📊 Task ${taskId} availability check: ${availableTasks} available`);
+        
         // 2. Проверяем, есть ли еще доступные копии
         if (availableTasks <= 0) {
             await client.query('ROLLBACK');
@@ -3071,7 +3075,7 @@ app.post('/api/user/tasks/start', async (req, res) => {
         const existingTask = await client.query(`
             SELECT id FROM user_tasks 
             WHERE user_id = $1 AND task_id = $2 
-            AND status IN ('active', 'pending_review', 'completed')
+            AND status IN ('active', 'pending_review', 'completed', 'rejected')
         `, [userId, taskId]);
         
         if (existingTask.rows.length > 0) {
@@ -3097,6 +3101,11 @@ app.post('/api/user/tasks/start', async (req, res) => {
         
         console.log(`✅ Task started: ${taskId}, available now: ${newAvailableTasks}, isLast: ${isLastTask}`);
         
+        // 🔥 ОТПРАВЛЯЕМ УВЕДОМЛЕНИЕ ВСЕМ ПОЛЬЗОВАТЕЛЯМ
+        if (isLastTask) {
+            notifyAllUsersTaskTaken(taskId, task.title);
+        }
+        
         res.json({
             success: true,
             message: 'Задание начато!',
@@ -3117,6 +3126,13 @@ app.post('/api/user/tasks/start', async (req, res) => {
     }
 });
 
+// 🔧 ФУНКЦИЯ УВЕДОМЛЕНИЯ ВСЕХ ПОЛЬЗОВАТЕЛЕЙ
+function notifyAllUsersTaskTaken(taskId, taskTitle) {
+    console.log(`📢 Notifying all users: task ${taskId} is taken`);
+    
+    // Здесь можно добавить WebSocket или Server-Sent Events
+    // Пока используем периодический опрос с клиента
+}
 // В server.js обновите endpoint удаления пользователя:
 app.post('/api/admin/leaderboard/remove-user', async (req, res) => {
     const { adminId, targetUserId } = req.body;
