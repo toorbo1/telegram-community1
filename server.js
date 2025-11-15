@@ -6921,6 +6921,77 @@ app.get('/api/user/:userId/tasks', async (req, res) => {
         });
     }
 });
+// Endpoint для отправки задания на проверку с файлом
+app.post('/api/user/tasks/submit-with-screenshot', upload.single('screenshot'), async (req, res) => {
+    const { userId, userTaskId } = req.body;
+    
+    if (!userId || !userTaskId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields'
+        });
+    }
+    
+    if (!req.file) {
+        return res.status(400).json({
+            success: false,
+            error: 'No screenshot uploaded'
+        });
+    }
+    
+    const screenshotUrl = `/uploads/${req.file.filename}`;
+    
+    try {
+        // Обновляем статус задания пользователя
+        await pool.query(`
+            UPDATE user_tasks 
+            SET status = 'pending_review', 
+                screenshot_url = $1, 
+                submitted_at = CURRENT_TIMESTAMP 
+            WHERE id = $2 AND user_id = $3
+        `, [screenshotUrl, userTaskId, userId]);
+        
+        // Получаем информацию для верификации
+        const taskInfo = await pool.query(`
+            SELECT ut.task_id, t.title, t.price, u.first_name, u.username
+            FROM user_tasks ut
+            JOIN tasks t ON ut.task_id = t.id
+            JOIN user_profiles u ON ut.user_id = u.user_id
+            WHERE ut.id = $1 AND ut.user_id = $2
+        `, [userTaskId, userId]);
+        
+        if (taskInfo.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Task not found'
+            });
+        }
+        
+        const task = taskInfo.rows[0];
+        const userName = task.first_name || `user_${userId}`;
+        
+        // Создаем запись верификации
+        await pool.query(`
+            INSERT INTO task_verifications 
+            (user_task_id, user_id, task_id, user_name, user_username, task_title, task_price, screenshot_url, status) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
+        `, [userTaskId, userId, task.task_id, userName, task.username, task.title, task.price, screenshotUrl]);
+        
+        console.log(`✅ Task ${userTaskId} submitted for verification by user ${userId}`);
+        
+        res.json({
+            success: true,
+            message: 'Task submitted for verification'
+        });
+        
+    } catch (error) {
+        console.error('Submit with screenshot error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
 // Get user tasks for confirmation
 app.get('/api/user/:userId/tasks/active', async (req, res) => {
     const userId = req.params.userId;
