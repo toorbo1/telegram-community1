@@ -6257,6 +6257,7 @@ app.delete('/api/posts/:id', async (req, res) => {
 // ==================== TASKS ENDPOINTS ====================
 
 // Получение заданий с правильной фильтрацией отклоненных заданий
+// Обновленный endpoint получения заданий с авто-скрытием заполненных
 app.get('/api/tasks', async (req, res) => {
     const { search, category, userId } = req.query;
     
@@ -6271,14 +6272,7 @@ app.get('/api/tasks', async (req, res) => {
                        WHERE ut2.task_id = t.id 
                        AND ut2.user_id = $1 
                        AND ut2.status IN ('active', 'pending_review', 'completed')
-                   ) as user_has_task,
-                   -- ДОБАВЛЕНО: проверяем есть ли отклоненные задания у пользователя
-                   EXISTS(
-                       SELECT 1 FROM user_tasks ut3 
-                       WHERE ut3.task_id = t.id 
-                       AND ut3.user_id = $1 
-                       AND ut3.status = 'rejected'
-                   ) as user_has_rejected_task
+                   ) as user_has_task
             FROM tasks t 
             LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
             WHERE t.status = 'active'
@@ -6301,51 +6295,104 @@ app.get('/api/tasks', async (req, res) => {
         
         query += ` GROUP BY t.id ORDER BY t.created_at DESC`;
         
-        console.log('📊 Выполняем запрос:', query, params);
+        console.log('📊 Выполняем запрос с авто-скрытием');
         
         const result = await pool.query(query, params);
         
-        // 🔥 ФИЛЬТРУЕМ ЗАДАНИЯ: показываем только те, которые не достигли лимита исполнителей
+        // 🔥 АВТОМАТИЧЕСКИ СКРЫВАЕМ ЗАПОЛНЕННЫЕ ЗАДАНИЯ
+        const tasksToHide = [];
         const availableTasks = result.rows.filter(task => {
             const completedCount = task.completed_count || 0;
             const peopleRequired = task.people_required || 1;
-            return completedCount < peopleRequired;
-        });
-        
-        // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Фильтруем задания, которые пользователь уже начал ИЛИ ОТКЛОНЕНЫ
-        const filteredTasks = availableTasks.filter(task => {
-            const hasActiveTask = task.user_has_task;
-            const hasRejectedTask = task.user_has_rejected_task;
+            const isAvailableByLimit = completedCount < peopleRequired;
             
-            // Не показываем задание если:
-            // 1. Пользователь уже начал это задание (активное, на проверке или выполненное)
-            // 2. Пользователь уже имеет отклоненную версию этого задания
-            return !hasActiveTask && !hasRejectedTask;
-        });
-        
-        // 🔧 ИСПРАВЛЕНИЕ: Обеспечиваем правильные URL для изображений
-        const tasksWithCorrectedImages = filteredTasks.map(task => {
-            if (task.image_url) {
-                if (!task.image_url.startsWith('http')) {
-                    task.image_url = `${APP_URL}${task.image_url}`;
-                }
-                task.image_url += `${task.image_url.includes('?') ? '&' : '?'}t=${Date.now()}`;
+            // Если задание заполнено - помечаем для скрытия
+            if (!isAvailableByLimit) {
+                tasksToHide.push(task.id);
             }
-            return task;
+            
+            return isAvailableByLimit;
         });
         
-        console.log(`✅ Найдено заданий: ${result.rows.length}, доступно по лимиту: ${availableTasks.length}, доступно пользователю: ${filteredTasks.length}`);
-        console.log(`🎯 Отклоненные задания отфильтрованы: ${availableTasks.length - filteredTasks.length} заданий скрыто`);
+        // 🔥 СКРЫВАЕМ ЗАПОЛНЕННЫЕ ЗАДАНИЯ В БАЗЕ
+        if (tasksToHide.length > 0) {
+            console.log(`🎯 Авто-скрытие заполненных заданий: ${tasksToHide.join(', ')}`);
+            
+            await pool.query(`
+                UPDATE tasks 
+                SET status = 'completed' 
+                WHERE id = ANY($1) AND status = 'active'
+            `, [tasksToHide]);
+        }
+        
+        // 🔥 ФИЛЬТРУЕМ задания которые пользователь уже начал
+        const filteredTasks = availableTasks.filter(task => !task.user_has_task);
+        
+        console.log(`✅ Найдено заданий: ${result.rows.length}, доступно: ${availableTasks.length}, для пользователя: ${filteredTasks.length}, скрыто: ${tasksToHide.length}`);
         
         res.json({
             success: true,
-            tasks: tasksWithCorrectedImages,
-            totalCount: result.rows.length,
-            availableByLimit: availableTasks.length,
-            availableCount: filteredTasks.length
+            tasks: filteredTasks,
+            stats: {
+                totalCount: result.rows.length,
+                availableByLimit: availableTasks.length,
+                availableCount: filteredTasks.length,
+                hiddenCount: tasksToHide.length
+            }
         });
     } catch (error) {
         console.error('❌ Get tasks error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+// Endpoint для принудительной проверки и скрытия заполненных заданий
+app.post('/api/admin/hide-completed-tasks', async (req, res) => {
+    const { adminId } = req.body;
+    
+    console.log('🔧 Принудительное скрытие заполненных заданий админом:', adminId);
+    
+    try {
+        // Находим задания которые достигли лимита
+        const completedTasks = await pool.query(`
+            SELECT t.id, t.title, t.people_required, COUNT(ut.id) as completed_count
+            FROM tasks t
+            LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
+            WHERE t.status = 'active'
+            GROUP BY t.id, t.title, t.people_required
+            HAVING COUNT(ut.id) >= t.people_required
+        `);
+        
+        if (completedTasks.rows.length === 0) {
+            return res.json({
+                success: true,
+                message: 'Нет заданий для скрытия',
+                hiddenCount: 0
+            });
+        }
+        
+        const taskIds = completedTasks.rows.map(task => task.id);
+        
+        // Скрываем задания
+        await pool.query(`
+            UPDATE tasks 
+            SET status = 'completed' 
+            WHERE id = ANY($1)
+        `, [taskIds]);
+        
+        console.log(`✅ Скрыто заданий: ${taskIds.join(', ')}`);
+        
+        res.json({
+            success: true,
+            message: `Скрыто ${taskIds.length} заполненных заданий`,
+            hiddenTasks: completedTasks.rows,
+            hiddenCount: taskIds.length
+        });
+        
+    } catch (error) {
+        console.error('❌ Hide completed tasks error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
@@ -7060,6 +7107,7 @@ app.get('/api/debug/admin-tasks', async (req, res) => {
 });
 
 // В server.js - обновите endpoint начала задания
+// Обновленный endpoint для начала задания с автоматическим скрытием
 app.post('/api/user/tasks/start', async (req, res) => {
     const { userId, taskId } = req.body;
     
@@ -7072,23 +7120,28 @@ app.post('/api/user/tasks/start', async (req, res) => {
         });
     }
     
+    const client = await pool.connect();
+    
     try {
-        // Проверяем, выполнял ли пользователь это задание
-        const existingTask = await pool.query(`
-    SELECT id FROM user_tasks 
-    WHERE user_id = $1 AND task_id = $2 
-    AND status IN ('active', 'pending_review', 'completed', 'rejected')
-`, [userId, taskId]);
+        await client.query('BEGIN');
+
+        // 1. Проверяем, выполнял ли пользователь это задание
+        const existingTask = await client.query(`
+            SELECT id FROM user_tasks 
+            WHERE user_id = $1 AND task_id = $2 
+            AND status IN ('active', 'pending_review', 'completed')
+        `, [userId, taskId]);
         
         if (existingTask.rows.length > 0) {
+            await client.query('ROLLBACK');
             return res.status(400).json({
                 success: false,
                 error: 'Вы уже выполняли это задание'
             });
         }
         
-        // Проверяем лимит выполнений
-        const taskInfo = await pool.query(`
+        // 2. Проверяем лимит выполнений задания
+        const taskInfo = await client.query(`
             SELECT t.*, 
                    COUNT(ut.id) as completed_count
             FROM tasks t
@@ -7098,6 +7151,7 @@ app.post('/api/user/tasks/start', async (req, res) => {
         `, [taskId]);
         
         if (taskInfo.rows.length === 0) {
+            await client.query('ROLLBACK');
             return res.status(404).json({
                 success: false,
                 error: 'Задание не найдено или недоступно'
@@ -7107,35 +7161,58 @@ app.post('/api/user/tasks/start', async (req, res) => {
         const task = taskInfo.rows[0];
         const peopleRequired = task.people_required || 1;
         const completedCount = task.completed_count || 0;
+        const remainingSlots = peopleRequired - completedCount;
         
-        // 🔥 ПРОВЕРЯЕМ ДОСТИГНУТ ЛИ ЛИМИТ ИСПОЛНИТЕЛЕЙ
-        if (completedCount >= peopleRequired) {
-            return res.status(400).json({
-                success: false,
-                error: 'Достигнут лимит выполнения этого задания'
-            });
+        console.log(`📊 Task slots: ${completedCount}/${peopleRequired}, remaining: ${remainingSlots}`);
+        
+        // 3. Если это последний слот - помечаем задание как выполненное
+        let taskHidden = false;
+        if (remainingSlots === 1) {
+            console.log(`🎯 Last slot taken! Hiding task ${taskId} for all users`);
+            
+            await client.query(`
+                UPDATE tasks 
+                SET status = 'completed' 
+                WHERE id = $1
+            `, [taskId]);
+            
+            taskHidden = true;
         }
         
-        // Start the task
-        const result = await pool.query(`
+        // 4. Start the task for user
+        const result = await client.query(`
             INSERT INTO user_tasks (user_id, task_id, status) 
             VALUES ($1, $2, 'active')
             RETURNING *
         `, [userId, taskId]);
         
-        console.log('✅ Task started successfully:', result.rows[0]);
+        await client.query('COMMIT');
+        
+        console.log('✅ Task started successfully:', {
+            userTaskId: result.rows[0].id,
+            taskHidden: taskHidden,
+            remainingSlotsBefore: remainingSlots
+        });
         
         res.json({
             success: true,
-            message: 'Задание начато!',
-            userTaskId: result.rows[0].id
+            message: taskHidden ? 
+                'Задание начато! Это был последний доступный слот - задание скрыто для других пользователей.' : 
+                'Задание начато!',
+            userTaskId: result.rows[0].id,
+            taskHidden: taskHidden,
+            remainingSlots: remainingSlots - 1
         });
+        
     } catch (error) {
+        await client.query('ROLLBACK');
         console.error('❌ Start task error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
         });
+    } finally {
+        client.release();
     }
 });
 // Get user tasks
@@ -7289,7 +7366,7 @@ async function ensureDatabaseConnection() {
 // Проверяем подключение каждые 10 минут
 setInterval(ensureDatabaseConnection, 10 * 60 * 1000);
 
-// В server.js - обновите endpoint отмены задания
+// Обновленный endpoint для отмены задания с возвратом в список
 app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
     const userTaskId = req.params.userTaskId;
     const { userId } = req.body;
@@ -7301,14 +7378,21 @@ app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
         });
     }
     
+    const client = await pool.connect();
+    
     try {
-        // Получаем информацию о задании перед удалением
-        const taskInfo = await pool.query(`
-            SELECT task_id FROM user_tasks 
-            WHERE id = $1 AND user_id = $2 AND status = 'active'
+        await client.query('BEGIN');
+
+        // 1. Получаем информацию о задании перед удалением
+        const taskInfo = await client.query(`
+            SELECT ut.task_id, t.status as task_status, t.people_required
+            FROM user_tasks ut 
+            JOIN tasks t ON ut.task_id = t.id
+            WHERE ut.id = $1 AND ut.user_id = $2 AND ut.status = 'active'
         `, [userTaskId, userId]);
         
         if (taskInfo.rows.length === 0) {
+            await client.query('ROLLBACK');
             return res.status(404).json({
                 success: false,
                 error: 'Задание не найдено или уже завершено'
@@ -7316,26 +7400,51 @@ app.post('/api/user/tasks/:userTaskId/cancel', async (req, res) => {
         }
         
         const taskId = taskInfo.rows[0].task_id;
+        const taskStatus = taskInfo.rows[0].task_status;
+        const peopleRequired = taskInfo.rows[0].people_required;
         
-        // Удаляем запись о выполнении задания
-        await pool.query(`
+        // 2. Если задание было скрыто (status = 'completed'), возвращаем его обратно
+        let taskRestored = false;
+        if (taskStatus === 'completed') {
+            console.log(`🔄 Restoring task ${taskId} back to active status`);
+            
+            await client.query(`
+                UPDATE tasks 
+                SET status = 'active' 
+                WHERE id = $1
+            `, [taskId]);
+            
+            taskRestored = true;
+        }
+        
+        // 3. Удаляем запись о выполнении задания
+        await client.query(`
             DELETE FROM user_tasks 
             WHERE id = $1 AND user_id = $2
         `, [userTaskId, userId]);
         
-        console.log(`✅ Task ${taskId} cancelled by user ${userId}`);
+        await client.query('COMMIT');
+        
+        console.log(`✅ Task ${taskId} cancelled by user ${userId}, restored: ${taskRestored}`);
         
         res.json({
             success: true,
-            message: 'Задание отменено успешно',
-            taskId: taskId
+            message: taskRestored ? 
+                'Задание отменено и возвращено в список доступных!' : 
+                'Задание отменено успешно',
+            taskId: taskId,
+            taskRestored: taskRestored
         });
+        
     } catch (error) {
+        await client.query('ROLLBACK');
         console.error('Cancel task error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
         });
+    } finally {
+        client.release();
     }
 });
 

@@ -11880,37 +11880,30 @@ function showAdminPaymentsSection() {
         }
 
 // Функция для начала задания с автоматическим скрытием
+// Обновленная функция начала задания
 async function startTask() {
-    console.log('🚀 Starting task...', { selectedTaskId, currentUser });
-    
-    // Используем selectedTaskId из глобальной переменной
-    const taskIdToStart = selectedTaskId;
-    
-    if (!currentUser || !taskIdToStart) {
+    if (!selectedTaskId || !currentUser) {
         showNotification('Ошибка: задание не выбрано или пользователь не авторизован', 'error');
         return;
     }
-
+    
     try {
-        console.log('🎯 Starting task with ID:', taskIdToStart);
+        console.log('🚀 Starting task:', selectedTaskId);
         
-        const result = await makeRequest('/api/user/tasks/start-with-hide', {
+        const result = await makeRequest('/api/user/tasks/start', {
             method: 'POST',
             body: JSON.stringify({
                 userId: currentUser.id,
-                taskId: taskIdToStart
+                taskId: selectedTaskId
             })
         });
-
-        console.log('📨 Start task response:', result);
-
+        
         if (result.success) {
             showNotification(result.message, 'success');
             closeModal('task-modal');
             
             // Если задание было скрыто, обновляем список
             if (result.taskHidden) {
-                showNotification('🎯 Это был последний слот! Задание скрыто для других пользователей.', 'info');
                 setTimeout(() => {
                     loadTasks();
                 }, 500);
@@ -11920,11 +11913,42 @@ async function startTask() {
             loadUserTasks();
             
         } else {
-            showNotification('❌ Ошибка: ' + result.error, 'error');
+            throw new Error(result.error);
         }
     } catch (error) {
-        console.error('💥 Start task error:', error);
-        showNotification('❌ Ошибка начала задания: ' + error.message, 'error');
+        console.error('Start task error:', error);
+        showNotification('Ошибка начала задания: ' + error.message, 'error');
+    }
+}
+
+// Обновленная функция отмены задания
+async function cancelTask() {
+    if (!currentUserTaskId) return;
+
+    try {
+        const result = await makeRequest(`/api/user/tasks/${currentUserTaskId}/cancel`, {
+            method: 'POST',
+            body: JSON.stringify({
+                userId: currentUser.id
+            })
+        });
+
+        if (result.success) {
+            showNotification(result.message, 'success');
+            closeModal('cancel-confirmation-modal');
+            
+            // НЕМЕДЛЕННО обновляем списки
+            setTimeout(() => {
+                loadTasks(); // Возвращаем задание в новые (если оно было скрыто)
+                loadUserTasks(); // Убираем из активных
+            }, 500);
+            
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error cancelling task:', error);
+        showNotification('Ошибка отмены задания', 'error');
     }
 }
 
