@@ -8501,7 +8501,84 @@ app.get('/api/tasks/:taskId/status', async (req, res) => {
         });
     }
 });
+// 🔧 ДИАГНОСТИЧЕСКИЙ ENDPOINT ДЛЯ ПРОВЕРКИ СТАТУСОВ ЗАДАНИЙ
+app.get('/api/debug/user-tasks-status/:userId', async (req, res) => {
+    const userId = req.params.userId;
+    
+    try {
+        const result = await pool.query(`
+            SELECT 
+                status,
+                COUNT(*) as count,
+                ARRAY_AGG(CONCAT(task_id, ' (user_task:', id, ')')) as task_ids
+            FROM user_tasks 
+            WHERE user_id = $1
+            GROUP BY status
+            ORDER BY status
+        `, [userId]);
+        
+        res.json({
+            success: true,
+            user_id: userId,
+            task_statuses: result.rows,
+            total_tasks: result.rows.reduce((sum, row) => sum + parseInt(row.count), 0)
+        });
+        
+    } catch (error) {
+        console.error('Debug user tasks error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 
+// 🔧 ENDPOINT ДЛЯ ПРОВЕРКИ ПРОЦЕССА ВЫПОЛНЕНИЯ ЗАДАНИЙ
+app.get('/api/debug/task-flow/:userId', async (req, res) => {
+    const userId = req.params.userId;
+    
+    try {
+        // Получаем все задания пользователя с детальной информацией
+        const userTasks = await pool.query(`
+            SELECT 
+                ut.id as user_task_id,
+                ut.task_id,
+                ut.status as user_task_status,
+                ut.started_at,
+                ut.submitted_at,
+                ut.completed_at,
+                t.title,
+                t.status as task_status,
+                tv.id as verification_id,
+                tv.status as verification_status
+            FROM user_tasks ut
+            JOIN tasks t ON ut.task_id = t.id
+            LEFT JOIN task_verifications tv ON ut.id = tv.user_task_id
+            WHERE ut.user_id = $1
+            ORDER BY ut.started_at DESC
+        `, [userId]);
+        
+        res.json({
+            success: true,
+            user_id: userId,
+            tasks: userTasks.rows,
+            summary: {
+                total: userTasks.rows.length,
+                by_status: userTasks.rows.reduce((acc, task) => {
+                    acc[task.user_task_status] = (acc[task.user_task_status] || 0) + 1;
+                    return acc;
+                }, {})
+            }
+        });
+        
+    } catch (error) {
+        console.error('Debug task flow error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 // В server.js добавьте:
 app.get('/api/user/:userId/referral-earnings', async (req, res) => {
     const userId = req.params.userId;
