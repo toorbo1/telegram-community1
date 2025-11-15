@@ -4396,32 +4396,32 @@ bot.on('message', async (msg) => {
 
 
 
-// Health check с информацией о конфигурации
 // Улучшенный health check
 app.get('/api/health', async (req, res) => {
-    try {
-        // Проверяем подключение к БД
-        const dbResult = await pool.query('SELECT 1');
-        const dbStatus = dbResult ? 'connected' : 'disconnected';
-        
-        const healthInfo = {
-            status: 'OK',
-            timestamp: new Date().toISOString(),
-            database: dbStatus,
-            uptime: process.uptime(),
-            memory: process.memoryUsage(),
-            environment: process.env.NODE_ENV || 'development'
-        };
-        
-        res.json(healthInfo);
-    } catch (error) {
-        console.error('Health check failed:', error);
-        res.status(500).json({
-            status: 'ERROR',
-            message: 'Database connection failed',
-            error: error.message
-        });
+  try {
+    // Проверяем подключение к БД
+    await pool.query('SELECT 1');
+    
+    // Проверяем основные таблицы
+    const tables = ['user_profiles', 'tasks', 'user_tasks'];
+    for (const table of tables) {
+      await pool.query(`SELECT 1 FROM ${table} LIMIT 1`);
     }
+    
+    res.json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      database: 'connected',
+      services: ['api', 'database']
+    });
+  } catch (error) {
+    console.error('Health check failed:', error);
+    res.status(500).json({
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      error: error.message
+    });
+  }
 });
 
 // Диагностика таблицы промокодов
