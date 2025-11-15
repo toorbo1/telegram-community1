@@ -5036,7 +5036,7 @@ app.get('/api/admin/users-detailed-stats', async (req, res) => {
         });
     }
 });
-// В server.js добавьте этот endpoint для начала задания с автоматическим скрытием
+// Endpoint для начала задания с автоматическим скрытием
 app.post('/api/user/tasks/start-with-hide', async (req, res) => {
     const { userId, taskId } = req.body;
     
@@ -5145,7 +5145,7 @@ app.post('/api/user/tasks/start-with-hide', async (req, res) => {
     }
 });
 
-// Также обновите основной endpoint получения заданий чтобы сразу скрывать заполненные
+// Обновите endpoint получения заданий
 app.get('/api/tasks-with-auto-hide', async (req, res) => {
     const { search, category, userId } = req.query;
     
