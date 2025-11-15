@@ -1636,8 +1636,8 @@ body {
 
 .task-detail-label {
     color: var(--text-secondary);
-    font-weight: 400;
-    margin-left: 10px;
+    font-weight: 500;
+   
 }
 
 .task-detail-value {

@@ -13,9 +13,18 @@
     <link rel="stylesheet" href="animations.css">
     <link rel="stylesheet" href="mobile.css">
     <style>
-.task-detail-label {
-margin-top: 20px;
-        }
+.task-modal-details {
+    position: relative;
+}
+
+.task-detail:last-child {
+    position: relative;
+    left: -10px; /* Смещение влево */
+    margin-top: 15px; /* Смещение вниз */
+    padding-top: 10px;
+    border-top: 1px solid var(--border-light);
+}
+
         /* Упрощенные стили во время скролла */
 body.scrolling * {
     transition: none !important;
