@@ -5,6 +5,8 @@ const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
 const TelegramBot = require('node-telegram-bot-api');
+const WebSocket = require('ws'); // ← ДОБАВЬТЕ ЭТУ СТРОКУ
+
 let currentUser = null;
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -5338,7 +5340,66 @@ app.post('/api/admin/links/recover', async (req, res) => {
         });
     }
 });
+// ... существующий код конфигурации ...
 
+
+
+// 🔥 ДОБАВЬТЕ WEB SOCKET СЕРВЕР ЗДЕСЬ
+const wss = new WebSocket.Server({ noServer: true });
+const connectedClients = new Map();
+
+// WebSocket соединения
+wss.on('connection', (ws, request) => {
+    const urlParams = new URLSearchParams(request.url.split('?')[1]);
+    const userId = urlParams.get('userId');
+    
+    if (userId) {
+        connectedClients.set(userId, ws);
+        console.log(`🔗 WebSocket connected: ${userId}, total clients: ${connectedClients.size}`);
+    }
+
+    ws.on('close', () => {
+        if (userId) {
+            connectedClients.delete(userId);
+            console.log(`🔌 WebSocket disconnected: ${userId}, remaining clients: ${connectedClients.size}`);
+        }
+    });
+
+    ws.on('error', (error) => {
+        console.error(`❌ WebSocket error for user ${userId}:`, error);
+        if (userId) {
+            connectedClients.delete(userId);
+        }
+    });
+});
+
+// Функция для уведомления всех клиентов об изменении задания
+function broadcastTaskUpdate(taskId, action, data = {}) {
+    const message = JSON.stringify({
+        type: 'TASK_UPDATED',
+        taskId: taskId,
+        action: action,
+        data: data,
+        timestamp: new Date().toISOString()
+    });
+    
+    let sentCount = 0;
+    connectedClients.forEach((ws, userId) => {
+        if (ws.readyState === WebSocket.OPEN) {
+            try {
+                ws.send(message);
+                sentCount++;
+            } catch (error) {
+                console.error(`❌ Failed to send WS message to user ${userId}:`, error);
+                connectedClients.delete(userId);
+            }
+        }
+    });
+    
+    console.log(`📢 Broadcast task update: ${action} for task ${taskId}, sent to ${sentCount} clients`);
+}
+
+// ... продолжение существующего кода ...
 // Удаление ссылки
 app.post('/api/admin/links/delete', async (req, res) => {
     const { adminId, code } = req.body;
@@ -5883,7 +5944,6 @@ app.delete('/api/posts/:id', async (req, res) => {
 
 // ==================== TASKS ENDPOINTS ====================
 
-// Получение заданий с правильной фильтрацией отклоненных заданий
 app.get('/api/tasks', async (req, res) => {
     const { search, category, userId } = req.query;
     
@@ -5893,13 +5953,13 @@ app.get('/api/tasks', async (req, res) => {
         let query = `
             SELECT t.*, 
                    COUNT(ut.id) as completed_count,
+                   t.people_required - COUNT(ut.id) as remaining_slots,
                    EXISTS(
                        SELECT 1 FROM user_tasks ut2 
                        WHERE ut2.task_id = t.id 
                        AND ut2.user_id = $1 
                        AND ut2.status IN ('active', 'pending_review', 'completed')
                    ) as user_has_task,
-                   -- ДОБАВЛЕНО: проверяем есть ли отклоненные задания у пользователя
                    EXISTS(
                        SELECT 1 FROM user_tasks ut3 
                        WHERE ut3.task_id = t.id 
@@ -5932,21 +5992,17 @@ app.get('/api/tasks', async (req, res) => {
         
         const result = await pool.query(query, params);
         
-        // 🔥 ФИЛЬТРУЕМ ЗАДАНИЯ: показываем только те, которые не достигли лимита исполнителей
+        // 🔥 ФИЛЬТРУЕМ ЗАДАНИЯ: показываем только те, у которых есть свободные слоты
         const availableTasks = result.rows.filter(task => {
-            const completedCount = task.completed_count || 0;
-            const peopleRequired = task.people_required || 1;
-            return completedCount < peopleRequired;
+            const remainingSlots = task.remaining_slots || 0;
+            return remainingSlots > 0;
         });
         
-        // 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Фильтруем задания, которые пользователь уже начал ИЛИ ОТКЛОНЕНЫ
+        // 🔥 ФИЛЬТРУЕМ задания, которые пользователь уже начал ИЛИ ОТКЛОНЕНЫ
         const filteredTasks = availableTasks.filter(task => {
             const hasActiveTask = task.user_has_task;
             const hasRejectedTask = task.user_has_rejected_task;
             
-            // Не показываем задание если:
-            // 1. Пользователь уже начал это задание (активное, на проверке или выполненное)
-            // 2. Пользователь уже имеет отклоненную версию этого задания
             return !hasActiveTask && !hasRejectedTask;
         });
         
@@ -5962,7 +6018,6 @@ app.get('/api/tasks', async (req, res) => {
         });
         
         console.log(`✅ Найдено заданий: ${result.rows.length}, доступно по лимиту: ${availableTasks.length}, доступно пользователю: ${filteredTasks.length}`);
-        console.log(`🎯 Отклоненные задания отфильтрованы: ${availableTasks.length - filteredTasks.length} заданий скрыто`);
         
         res.json({
             success: true,
@@ -6686,7 +6741,6 @@ app.get('/api/debug/admin-tasks', async (req, res) => {
     }
 });
 
-// В server.js - обновите endpoint начала задания
 app.post('/api/user/tasks/start', async (req, res) => {
     const { userId, taskId } = req.body;
     
@@ -6699,32 +6753,25 @@ app.post('/api/user/tasks/start', async (req, res) => {
         });
     }
     
+    const client = await pool.connect();
+    
     try {
-        // Проверяем, выполнял ли пользователь это задание
-        const existingTask = await pool.query(`
-    SELECT id FROM user_tasks 
-    WHERE user_id = $1 AND task_id = $2 
-    AND status IN ('active', 'pending_review', 'completed', 'rejected')
-`, [userId, taskId]);
-        
-        if (existingTask.rows.length > 0) {
-            return res.status(400).json({
-                success: false,
-                error: 'Вы уже выполняли это задание'
-            });
-        }
-        
-        // Проверяем лимит выполнений
-        const taskInfo = await pool.query(`
+        await client.query('BEGIN');
+
+        // 🔒 БЛОКИРУЕМ задание для предотвращения гонки условий
+        const taskInfo = await client.query(`
             SELECT t.*, 
-                   COUNT(ut.id) as completed_count
+                   COUNT(ut.id) as completed_count,
+                   t.people_required - COUNT(ut.id) as remaining_slots
             FROM tasks t
             LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.status = 'completed'
             WHERE t.id = $1 AND t.status = 'active'
             GROUP BY t.id
+            FOR UPDATE
         `, [taskId]);
         
         if (taskInfo.rows.length === 0) {
+            await client.query('ROLLBACK');
             return res.status(404).json({
                 success: false,
                 error: 'Задание не найдено или недоступно'
@@ -6734,36 +6781,118 @@ app.post('/api/user/tasks/start', async (req, res) => {
         const task = taskInfo.rows[0];
         const peopleRequired = task.people_required || 1;
         const completedCount = task.completed_count || 0;
+        const remainingSlots = task.remaining_slots || 1;
+        
+        console.log(`📊 Task slots: ${completedCount}/${peopleRequired}, осталось: ${remainingSlots}`);
+        
+        // Проверяем, выполнял ли пользователь это задание
+        const existingTask = await client.query(`
+            SELECT id FROM user_tasks 
+            WHERE user_id = $1 AND task_id = $2 
+            AND status IN ('active', 'pending_review', 'completed', 'rejected')
+        `, [userId, taskId]);
+        
+        if (existingTask.rows.length > 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({
+                success: false,
+                error: 'Вы уже выполняли это задание'
+            });
+        }
         
         // 🔥 ПРОВЕРЯЕМ ДОСТИГНУТ ЛИ ЛИМИТ ИСПОЛНИТЕЛЕЙ
         if (completedCount >= peopleRequired) {
+            await client.query('ROLLBACK');
             return res.status(400).json({
                 success: false,
                 error: 'Достигнут лимит выполнения этого задания'
             });
         }
         
+        // 🔥 ОСНОВНАЯ ЛОГИКА: Если остался 1 слот - задание должно исчезнуть для всех
+        const isLastSlot = remainingSlots === 1;
+        
         // Start the task
-        const result = await pool.query(`
+        const result = await client.query(`
             INSERT INTO user_tasks (user_id, task_id, status) 
             VALUES ($1, $2, 'active')
             RETURNING *
         `, [userId, taskId]);
         
-        console.log('✅ Task started successfully:', result.rows[0]);
+        await client.query('COMMIT');
+        
+        console.log('✅ Task started successfully:', {
+            userTaskId: result.rows[0].id,
+            isLastSlot: isLastSlot,
+            remainingSlots: isLastSlot ? 0 : remainingSlots - 1
+        });
+        
+        // 🔥 УВЕДОМЛЯЕМ ВСЕХ ПОЛЬЗОВАТЕЛЕЙ ЧЕРЕЗ WEB SOCKET
+        if (isLastSlot) {
+            console.log(`🎯 Последний слот захвачен! Уведомляем всех пользователей`);
+            
+            broadcastTaskUpdate(taskId, 'LAST_SLOT_TAKEN', {
+                taskId: taskId,
+                taskTitle: task.title,
+                takenByUserId: userId,
+                remainingSlots: 0
+            });
+        } else {
+            // Также уведомляем об обновлении счетчика
+            broadcastTaskUpdate(taskId, 'SLOT_TAKEN', {
+                taskId: taskId,
+                remainingSlots: remainingSlots - 1
+            });
+        }
         
         res.json({
             success: true,
-            message: 'Задание начато!',
-            userTaskId: result.rows[0].id
+            message: isLastSlot ? 
+                'Задание начато! Это был последний доступный слот.' : 
+                'Задание начато!',
+            userTaskId: result.rows[0].id,
+            isLastSlot: isLastSlot,
+            remainingSlots: isLastSlot ? 0 : remainingSlots - 1
         });
+        
     } catch (error) {
+        await client.query('ROLLBACK');
         console.error('❌ Start task error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
         });
+    } finally {
+        client.release();
     }
+});
+// 🔥 ДОБАВЬТЕ endpoint для проверки WebSocket
+app.get('/api/websocket/test', (req, res) => {
+    res.json({
+        success: true,
+        connectedClients: connectedClients.size,
+        message: 'WebSocket server is running'
+    });
+});
+
+// 🔥 ДОБАВЬТЕ endpoint для ручной отправки уведомления (для тестирования)
+app.post('/api/websocket/broadcast', (req, res) => {
+    const { taskId, action } = req.body;
+    
+    if (!taskId || !action) {
+        return res.status(400).json({
+            success: false,
+            error: 'Task ID and action are required'
+        });
+    }
+    
+    broadcastTaskUpdate(taskId, action);
+    
+    res.json({
+        success: true,
+        message: `Broadcast sent to ${connectedClients.size} clients`,
+        clientsCount: connectedClients.size
+    });
 });
 // Get user tasks
 app.get('/api/user/:userId/tasks', async (req, res) => {
@@ -9485,10 +9614,14 @@ async function initializeServer() {
 }
 
 // Замените текущий app.listen на этот:
-app.listen(PORT, '0.0.0.0', async () => {
+// ... весь остальной код ...
+
+// 🔥 ЗАМЕНИТЕ текущий app.listen на ЭТОТ ВАРИАНТ:
+const server = app.listen(PORT, '0.0.0.0', async () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📊 Health: http://localhost:${PORT}/api/health`);
     console.log(`🔐 Admin ID: ${ADMIN_ID}`);
+    console.log(`🔗 WebSocket server ready on port ${PORT}`);
     
     // Инициализируем базу данных с заданиями
     await initializeWithTasks();
@@ -9497,9 +9630,36 @@ app.listen(PORT, '0.0.0.0', async () => {
     try {
         await fixWithdrawalTable();
         await fixTasksTable();
-        await fixReferralLinksTable(); // Добавьте эту строку
+        await fixReferralLinksTable();
         console.log('✅ All table structures verified');
     } catch (error) {
         console.error('❌ Error fixing table structures:', error);
     }
+});
+
+// 🔥 ДОБАВЬТЕ WebSocket upgrade обработчик
+server.on('upgrade', (request, socket, head) => {
+    try {
+        wss.handleUpgrade(request, socket, head, (ws) => {
+            wss.emit('connection', ws, request);
+        });
+    } catch (error) {
+        console.error('❌ WebSocket upgrade error:', error);
+        socket.destroy();
+    }
+});
+
+// Обработка graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('🔻 Received SIGTERM, shutting down gracefully...');
+    
+    // Закрываем WebSocket соединения
+    connectedClients.forEach((ws, userId) => {
+        ws.close(1001, 'Server shutdown');
+    });
+    
+    server.close(() => {
+        console.log('✅ Server closed');
+        process.exit(0);
+    });
 });
