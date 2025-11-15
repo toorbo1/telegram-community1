@@ -10,6 +10,10 @@ let currentUser = null;
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server is running on port ${PORT}`);
+});
+
 // Конфигурация для Railway
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -9613,4 +9617,11 @@ app.listen(PORT, '0.0.0.0', async () => {
     } catch (error) {
         console.error('❌ Error fixing table structures:', error);
     }
+});
+// Добавьте в server.js
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString() 
+  });
 });
