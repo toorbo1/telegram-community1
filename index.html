@@ -13,6 +13,131 @@
     <link rel="stylesheet" href="animations.css">
     <link rel="stylesheet" href="mobile.css">
     <style>
+        /* Упрощенные стили во время скролла */
+body.scrolling * {
+    transition: none !important;
+    animation: none !important;
+}
+
+body.scrolling .card,
+body.scrolling .task-card,
+body.scrolling .stat-card {
+    transform: none !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+}
+
+/* Приоритетная загрузка видимого контента */
+.lazy-load {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.lazy-load.loaded {
+    opacity: 1;
+}
+
+/* Оптимизация для WebKit браузеров */
+@media (-webkit-min-device-pixel-ratio: 2) {
+    .card, .task-card, .stat-card {
+        -webkit-transform: translateZ(0);
+        transform: translateZ(0);
+    }
+}
+
+/* Отключаем hover-эффекты на тач-устройствах */
+@media (hover: none) and (pointer: coarse) {
+    .card:hover, .task-card:hover, .stat-card:hover {
+        transform: none !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+    }
+}
+        /* Ленивая загрузка для всех изображений */
+/* Упрощенные стили при скролле */
+.scrolling * {
+    transition: none !important;
+    animation: none !important;
+}
+
+.scrolling .card,
+.scrolling .task-card,
+.scrolling .stat-card {
+    transform: none !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+}
+
+/* Стили для ленивой загрузки */
+.lazy-image {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    background: #f0f0f0;
+}
+
+.lazy-image.loaded {
+    opacity: 1;
+}
+
+/* Оптимизация для мобильных устройств */
+@media (max-width: 768px) {
+    .card, .task-card, .stat-card {
+        transition: none !important;
+        transform: none !important;
+    }
+    
+    .fade-in {
+        animation: none !important;
+        opacity: 1 !important;
+    }
+    
+    /* Упрощаем тени для лучшей производительности */
+    .card, .task-card, .stat-card {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+    }
+}
+
+/* Отключаем hover-эффекты на тач-устройствах */
+@media (hover: none) and (pointer: coarse) {
+    .card:hover, .task-card:hover, .stat-card:hover {
+        transform: none !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+    }
+}
+
+/* Аппаратное ускорение для анимаций */
+.optimized-element {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+}
+
+/* Отключаем сложные анимации при скролле */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Упрощаем анимации для мобильных устройств */
+@media (max-width: 768px) {
+    .card, .task-card, .stat-card {
+        transition: none !important;
+        transform: none !important;
+    }
+    
+    .fade-in {
+        animation: none !important;
+        opacity: 1 !important;
+    }
+}
+
+/* Оптимизация производительности */
+.optimized-scroll {
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000;
+}
         .low-end-mode {
   /* Упрощенные переменные */
   --shadow-intensity: 0.1;
@@ -2636,6 +2761,152 @@ body {
 
 
     <script>
+        // Очистка неиспользуемых ресурсов
+function cleanupMemory() {
+    if (window.gc) {
+        window.gc();
+    }
+    
+    // Очищаем кэш старых данных
+    if (window.taskCache) {
+        const now = Date.now();
+        Object.keys(window.taskCache).forEach(key => {
+            if (now - window.taskCache[key].timestamp > 300000) {
+                delete window.taskCache[key];
+            }
+        });
+    }
+}
+
+// Запускаем очистку каждые 2 минуты
+setInterval(cleanupMemory, 120000);
+        // Функция для оптимизации изображений
+function optimizeImages() {
+    const images = document.querySelectorAll('img');
+    images.forEach(img => {
+        // Добавляем lazy loading
+        img.loading = 'lazy';
+        
+        // Оптимизируем размер для мобильных устройств
+        if (window.innerWidth <= 768) {
+            if (img.width > 300) {
+                img.style.maxWidth = '100%';
+                img.style.height = 'auto';
+            }
+        }
+        
+        // Обработка ошибок загрузки
+        img.onerror = function() {
+            this.style.display = 'none';
+        };
+    });
+}
+
+// Запускаем оптимизацию изображений
+document.addEventListener('DOMContentLoaded', optimizeImages);
+        // Оптимизация производительности при скролле
+let isScrolling = false;
+let scrollTimer = null;
+
+window.addEventListener('scroll', function() {
+    if (!isScrolling) {
+        isScrolling = true;
+        // Добавляем класс для упрощенных стилей при скролле
+        document.body.classList.add('scrolling');
+    }
+    
+    // Очищаем предыдущий таймер
+    clearTimeout(scrollTimer);
+    
+    // Устанавливаем новый таймер
+    scrollTimer = setTimeout(function() {
+        isScrolling = false;
+        document.body.classList.remove('scrolling');
+    }, 100);
+}, { passive: true });
+
+// Дебаунс для частых операций
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Оптимизированная загрузка контента при скролле
+const optimizedScroll = debounce(function() {
+    // Ваш код загрузки контента здесь
+}, 250);
+
+window.addEventListener('scroll', optimizedScroll, { passive: true });
+
+// Предзагрузка критического контента
+function preloadCriticalContent() {
+    const criticalElements = document.querySelectorAll('.card, .task-card, .stat-card');
+    criticalElements.forEach(el => {
+        el.classList.add('optimized-scroll');
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    preloadCriticalContent();
+    
+    // Инициализация Intersection Observer для ленивой загрузки
+    if ('IntersectionObserver' in window) {
+        const lazyObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const element = entry.target;
+                    element.classList.add('loaded');
+                    lazyObserver.unobserve(element);
+                }
+            });
+        });
+        
+        // Наблюдаем за всеми элементами, которые нужно загружать лениво
+        document.querySelectorAll('.lazy-load').forEach(element => {
+            lazyObserver.observe(element);
+        });
+    }
+});
+
+// Оптимизация для медленных устройств
+function optimizeForLowEnd() {
+    const isLowEnd = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isLowEnd) {
+        // Отключаем сложные анимации
+        document.documentElement.style.setProperty('--transition-duration', '0.1s');
+        document.documentElement.style.setProperty('--shadow-intensity', '0.1');
+        
+        // Упрощаем стили
+        const style = document.createElement('style');
+        style.textContent = `
+            .low-end-optimized * {
+                transition: none !important;
+                animation: none !important;
+                transform: none !important;
+            }
+            
+            .low-end-optimized .card,
+            .low-end-optimized .task-card,
+            .low-end-optimized .stat-card {
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        document.body.classList.add('low-end-optimized');
+    }
+}
+
+// Запускаем оптимизацию
+optimizeForLowEnd();
         // Дебаунс для частых операций
 function debounce(func, wait) {
   let timeout;
