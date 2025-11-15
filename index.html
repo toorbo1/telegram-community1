@@ -3177,17 +3177,6 @@ function showMainTab() {
     setTimeout(scrollToTop, 100);
 }
 
-// 🔧 АВТООБНОВЛЕНИЕ РАНГА КАЖДЫЕ 30 СЕКУНД
-function startRankAutoUpdate() {
-    setInterval(() => {
-        if (document.getElementById('main-tab').classList.contains('active')) {
-            loadUserRankFast();
-        }
-    }, 30000);
-}
-
-// Запустите при инициализации
-startRankAutoUpdate();
 
 function showTasksTab() {
     console.log('🎯 ПЕРЕХОД НА ВКЛАДКУ ЗАДАНИЙ');
