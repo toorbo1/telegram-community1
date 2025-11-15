@@ -1,6 +1,44 @@
 /* components.css */
 /* 🔥 ЭФФЕКТ ПАРЯЩИХ МАТОВЫХ СТЕКОЛ С ОТРАЖЕНИЕМ ТЕНИ */
+/* Добавьте в components.css */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+  border-radius: 8px;
+}
 
+.skeleton-text {
+  height: 16px;
+  margin-bottom: 8px;
+}
+
+.skeleton-title {
+  height: 20px;
+  width: 70%;
+}
+
+.skeleton-price {
+  height: 20px;
+  width: 60px;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.task-skeleton {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+}
 /* Базовый эффект парения для всех карточек */
 .card, 
 .task-card, 
