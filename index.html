@@ -5980,32 +5980,32 @@ async function checkReferralEarnings() {
     if (!currentUser) return;
     
     try {
-        const result = await makeRequest(`/api/user/${currentUser.id}/referral-earnings`);
+        const result = await makeRequest(`/api/user/${currentUser.id}/instant-referral-stats`);
         
         if (result.success) {
-            // Обновляем данные пользователя с новой системой бонусов
-            if (result.earnings) {
-                currentUser.referral_earned = result.earnings.total_earned || 0;
-                currentUser.referral_count = result.earnings.referral_count || 0;
-                
-                // Обновляем интерфейс с новой информацией
-                updateReferralSystem();
-                
-                console.log('✅ Реферальные начисления обновлены по новой системе');
-            }
+            // Мгновенно обновляем данные пользователя
+            currentUser.referral_earned = result.stats.referral_earned;
+            currentUser.referral_count = result.stats.referral_count;
+            currentUser.balance = result.stats.balance;
+            
+            // Обновляем интерфейс
+            updateReferralSystem();
+            displayUserProfile();
+            
+            console.log('✅ Реферальные начисления мгновенно обновлены');
         }
     } catch (error) {
         console.error('Ошибка проверки реферальных начислений:', error);
     }
 }
 
-// 🔧 АВТООБНОВЛЕНИЕ РЕФЕРАЛЬНОЙ СТАТИСТИКИ
+// Увеличьте частоту проверки
 function startReferralAutoUpdate() {
     setInterval(() => {
         if (currentUser) {
             checkReferralEarnings();
         }
-    }, 30000); // Обновлять каждые 30 секунд
+    }, 10000); // Обновлять каждые 10 секунд
 }
 
 // Запустить при инициализации приложения
@@ -12692,7 +12692,45 @@ function showAdminPaymentsSection() {
         function closeModal(modalId) {
             document.getElementById(modalId).classList.remove('active');
         }
-
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ КОПИРОВАНИЯ С ОТСЛЕЖИВАНИЕМ
+async function copyReferralLink() {
+    const referralInput = document.getElementById('referral-link');
+    if (!referralInput) return;
+    
+    referralInput.select();
+    referralInput.setSelectionRange(0, 99999);
+    
+    try {
+        await navigator.clipboard.writeText(referralInput.value);
+        
+        // 🔥 ОТСЛЕЖИВАЕМ КЛИК ПО ССЫЛКЕ
+        if (currentUser) {
+            const referralCode = currentUser.referral_code || `ref_${currentUser.id}`;
+            
+            try {
+                await makeRequest('/api/referral-links/track-click', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        code: referralCode,
+                        userId: currentUser.id,
+                        ipAddress: 'web_app', // В веб-приложении нет IP
+                        userAgent: navigator.userAgent
+                    })
+                });
+                
+                console.log('✅ Referral click tracked');
+            } catch (trackError) {
+                console.log('⚠️ Could not track click:', trackError.message);
+            }
+        }
+        
+        showNotification('Реферальная ссылка скопирована! Бонусы начисляются сразу при переходе!', 'success');
+    } catch (copyError) {
+        // Fallback для старых браузеров
+        document.execCommand('copy');
+        showNotification('Реферальная ссылка скопирована!', 'success');
+    }
+}
 // Функция для начала задания с автоматическим скрытием
 // Обновленная функция начала задания
 async function startTask() {
