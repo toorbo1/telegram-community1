@@ -1246,7 +1246,10 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                             `👥 <b>Приглашайте друзей и получайте бонусы за каждого!</b>`,
                             { parse_mode: 'HTML' }
                         );
-                        
+                            // После успешной регистрации отправляем сообщения в чат
+    if (referredBy) {
+        await sendReferralBonusNotification(userId, referredBy, 1, 2);
+    }
                     } catch (botError) {
                         console.log('Не удалось отправить уведомление:', botError.message);
                     }
@@ -4796,7 +4799,7 @@ app.post('/api/tasks', async (req, res) => {
         });
     }
 });
-// 🔥 ФУНКЦИЯ ДЛЯ ОТПРАВКИ СООБЩЕНИЙ О РЕФЕРАЛЬНЫХ НАЧИСЛЕНИЯХ
+// 🔧 ФУНКЦИЯ ДЛЯ ОТПРАВКИ СООБЩЕНИЙ О РЕФЕРАЛЬНЫХ НАЧИСЛЕНИЯХ В ЧАТ БОТА
 async function sendReferralBonusNotification(userId, referrerId, newUserBonus, referrerBonus) {
     if (!bot) {
         console.log('⚠️ Bot not initialized, cannot send referral notification');
@@ -4831,7 +4834,7 @@ async function sendReferralBonusNotification(userId, referrerId, newUserBonus, r
                               `💫 <b>Ваш текущий баланс:</b> ${newUserBonus}⭐\n\n` +
                               `👥 <b>Приглашайте друзей и получайте ${referrerBonus}⭐ за каждого!</b>`;
 
-        // Отправляем уведомления
+        // Отправляем уведомления в чат бота
         await Promise.all([
             bot.sendMessage(referrerId, referrerMessage, { parse_mode: 'HTML' }),
             bot.sendMessage(userId, newUserMessage, { parse_mode: 'HTML' })
@@ -4843,13 +4846,87 @@ async function sendReferralBonusNotification(userId, referrerId, newUserBonus, r
     } catch (error) {
         console.error(`❌ Error sending referral notifications:`, error);
         
-        // Если пользователь заблокировал бота, пропускаем ошибку
+        // Если пользователь заблокировал бот, пропускаем ошибку
         if (error.response && error.response.statusCode === 403) {
             console.log(`🚫 User blocked the bot`);
             return false;
         }
         
         return false;
+    }
+}
+
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ РЕФЕРАЛЬНОЙ РЕГИСТРАЦИИ С УВЕДОМЛЕНИЯМИ
+async function handleReferralRegistration(userId, referralCode, userData) {
+    try {
+        console.log(`🔍 Processing referral registration for user ${userId} with code: ${referralCode}`);
+        
+        let referredBy = null;
+        let referrerName = '';
+        
+        if (referralCode) {
+            const cleanReferralCode = referralCode.replace('ref_', '');
+            
+            // Ищем пользователя по реферальному коду
+            const referrerResult = await pool.query(
+                'SELECT user_id, first_name, username, referral_earned FROM user_profiles WHERE referral_code = $1',
+                [cleanReferralCode]
+            );
+            
+            if (referrerResult.rows.length > 0) {
+                const referrer = referrerResult.rows[0];
+                referredBy = referrer.user_id;
+                referrerName = referrer.first_name;
+                
+                console.log(`🎯 User came via referral from: ${referredBy} (${referrerName})`);
+                
+                // 🔥 НЕМЕДЛЕННО НАЧИСЛЯЕМ БОНУСЫ ПРИ РЕГИСТРАЦИИ
+                const client = await pool.connect();
+                
+                try {
+                    await client.query('BEGIN');
+                    
+                    // 1. Пригласивший получает 2 звезды за регистрацию
+                    await client.query(`
+                        UPDATE user_profiles 
+                        SET balance = COALESCE(balance, 0) + 2,
+                            referral_earned = COALESCE(referral_earned, 0) + 2,
+                            referral_count = COALESCE(referral_count, 0) + 1
+                        WHERE user_id = $1
+                    `, [referredBy]);
+                    
+                    // 2. Новый пользователь получает 1 звезду
+                    await client.query(`
+                        UPDATE user_profiles 
+                        SET balance = COALESCE(balance, 0) + 1
+                        WHERE user_id = $1
+                    `, [userId]);
+                    
+                    await client.query('COMMIT');
+                    
+                    console.log(`✅ Referral bonuses applied: ${referredBy} got 2⭐, ${userId} got 1⭐`);
+                    
+                    // 🔥 ОТПРАВЛЯЕМ СООБЩЕНИЯ В ЧАТ БОТА
+                    await sendReferralBonusNotification(userId, referredBy, 1, 2);
+                    
+                } catch (transactionError) {
+                    await client.query('ROLLBACK');
+                    console.error('❌ Referral bonus transaction error:', transactionError);
+                    throw transactionError;
+                } finally {
+                    client.release();
+                }
+                
+            } else {
+                console.log(`❌ Referrer not found for code: ${cleanReferralCode}`);
+            }
+        }
+        
+        return { referredBy, referrerName };
+        
+    } catch (error) {
+        console.error('❌ Handle referral registration error:', error);
+        return { referredBy: null, referrerName: '' };
     }
 }
 // ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
@@ -6247,106 +6324,6 @@ app.get('/api/admin/referral-links/stats', async (req, res) => {
     }
 });
 
-// 🔥 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОБРАБОТКИ РЕФЕРАЛЬНОЙ РЕГИСТРАЦИИ
-async function handleReferralRegistration(userId, referralCode, userData) {
-    try {
-        console.log(`🔍 Processing referral registration for user ${userId} with code: ${referralCode}`);
-        
-        let referredBy = null;
-        let referrerName = '';
-        
-        if (referralCode && referralCode.startsWith('ref_')) {
-            const cleanReferralCode = referralCode.replace('ref_', '');
-            
-            // Ищем пользователя по реферальному коду
-            const referrerResult = await pool.query(
-                'SELECT user_id, first_name, username, referral_earned FROM user_profiles WHERE referral_code = $1',
-                [cleanReferralCode]
-            );
-            
-            if (referrerResult.rows.length > 0) {
-                const referrer = referrerResult.rows[0];
-                referredBy = referrer.user_id;
-                referrerName = referrer.first_name;
-                
-                console.log(`🎯 User came via referral from: ${referredBy} (${referrerName})`);
-                
-                // 🔥 НЕМЕДЛЕННО НАЧИСЛЯЕМ БОНУСЫ ПРИ РЕГИСТРАЦИИ
-                const client = await pool.connect();
-                
-                try {
-                    await client.query('BEGIN');
-                    
-                    // 1. Пригласивший получает 2 звезды за регистрацию
-                    await client.query(`
-                        UPDATE user_profiles 
-                        SET balance = COALESCE(balance, 0) + 2,
-                            referral_earned = COALESCE(referral_earned, 0) + 2,
-                            referral_count = COALESCE(referral_count, 0) + 1
-                        WHERE user_id = $1
-                    `, [referredBy]);
-                    
-                    // 2. Новый пользователь получает 1 звезду
-                    await client.query(`
-                        UPDATE user_profiles 
-                        SET balance = COALESCE(balance, 0) + 1,
-                            referred_by = $2
-                        WHERE user_id = $1
-                    `, [userId, referredBy]);
-                    
-                    await client.query('COMMIT');
-                    
-                    console.log(`✅ Referral bonuses applied: ${referredBy} got 2⭐, ${userId} got 1⭐`);
-                    
-                    // 🔥 ОТПРАВЛЯЕМ СООБЩЕНИЯ В ЧАТ БОТА
-                    if (bot) {
-                        try {
-                            // Сообщение пригласившему
-                            await bot.sendMessage(
-                                referredBy,
-                                `🎉 <b>НОВЫЙ РЕФЕРАЛ ЗАРЕГИСТРИРОВАЛСЯ!</b>\n\n` +
-                                `👤 <b>${userData.firstName}</b> зарегистрировался по вашей ссылке!\n\n` +
-                                `✨ <b>Вы получили:</b> 2⭐ за регистрацию\n` +
-                                `💫 <b>Всего заработано с рефералов:</b> ${(referrer.referral_earned || 0) + 2}⭐\n\n` +
-                                `🚀 Продолжайте приглашать друзей!`,
-                                { parse_mode: 'HTML' }
-                            );
-                            
-                            // Сообщение новому пользователю
-                            await bot.sendMessage(
-                                userId,
-                                `🎁 <b>РЕФЕРАЛЬНЫЙ БОНУС!</b>\n\n` +
-                                `Вы зарегистрировались по приглашению от ${referrerName} и получили 1⭐ на счет!\n\n` +
-                                `💫 <b>Ваш текущий баланс:</b> 1⭐\n\n` +
-                                `👥 <b>Приглашайте друзей и получайте бонусы за каждого!</b>`,
-                                { parse_mode: 'HTML' }
-                            );
-                            
-                        } catch (botError) {
-                            console.log('⚠️ Could not send referral notifications:', botError.message);
-                        }
-                    }
-                    
-                } catch (transactionError) {
-                    await client.query('ROLLBACK');
-                    console.error('❌ Referral bonus transaction error:', transactionError);
-                    throw transactionError;
-                } finally {
-                    client.release();
-                }
-                
-            } else {
-                console.log(`❌ Referrer not found for code: ${cleanReferralCode}`);
-            }
-        }
-        
-        return { referredBy, referrerName };
-        
-    } catch (error) {
-        console.error('❌ Handle referral registration error:', error);
-        return { referredBy: null, referrerName: '' };
-    }
-}
 // Вспомогательная функция для генерации кода ссылки
 function generateReferralCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';

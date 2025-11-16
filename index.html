@@ -5990,6 +5990,7 @@ async function updateActiveTasksCount() {
 }
 
 // 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ РЕФЕРАЛЬНОЙ СИСТЕМЫ
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ РЕФЕРАЛЬНОЙ СИСТЕМЫ
 function updateReferralSystem() {
     if (!currentUser) return;
     
@@ -6003,17 +6004,20 @@ function updateReferralSystem() {
     // Обновляем статистику
     const refInvited = document.getElementById('ref-invited');
     const refEarned = document.getElementById('ref-earned');
+    const refClicks = document.getElementById('ref-clicks');
     
     if (refInvited) refInvited.textContent = currentUser.referral_count || 0;
     if (refEarned) refEarned.textContent = `${currentUser.referral_earned || 0} ⭐`;
+    if (refClicks) refClicks.textContent = currentUser.referral_clicks || 0;
     
     // 🔥 ОБНОВЛЯЕМ ТЕКСТ С НОВЫМИ УСЛОВИЯМИ
     const referralInfo = document.querySelector('.referral-info');
     if (referralInfo) {
         referralInfo.innerHTML = `
-            <strong>🎯 Новая система бонусов:</strong><br>
-            • <strong>Пригласивший</strong> получает <span style="color: var(--gold); font-weight: 800;">2 звезды</span><br>
-            • <strong>Приглашённый</strong> получает <span style="color: var(--gold); font-weight: 800;">1 звезду</span><br>
+            <strong>🎯 Мгновенная система бонусов:</strong><br>
+            • <strong>За переход по ссылке:</strong> <span style="color: var(--gold); font-weight: 800;">1 звезда</span><br>
+            • <strong>За регистрацию друга:</strong> <span style="color: var(--gold); font-weight: 800;">2 звезды</span><br>
+            • <strong>Друг получает:</strong> <span style="color: var(--gold); font-weight: 800;">1 звезду</span><br>
             • Бонусы начисляются сразу после регистрации<br>
             • Без ограничений по количеству приглашений<br><br>
             
@@ -6023,7 +6027,6 @@ function updateReferralSystem() {
         `;
     }
 }
-
 function showDetailedReferrals() {
     const modalHTML = `
         <div class="modal active" id="detailed-referrals-modal">
@@ -12867,7 +12870,7 @@ async function startTask() {
         showNotification('Ошибка начала задания: ' + error.message, 'error');
     }
 }
-// 🔥 ФУНКЦИЯ ДЛЯ МГНОВЕННОГО ОТСЛЕЖИВАНИЯ ПЕРЕХОДОВ
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ДЛЯ МГНОВЕННОГО ОТСЛЕЖИВАНИЯ ПЕРЕХОДОВ
 async function trackReferralClick() {
     if (!currentUser) return;
     
@@ -12901,7 +12904,7 @@ async function trackReferralClick() {
     }
 }
 
-// 🔥 ОБНОВЛЕННАЯ ФУНКЦИЯ КОПИРОВАНИЯ С МГНОВЕННЫМ ОТСЛЕЖИВАНИЕМ
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ КОПИРОВАНИЯ С МГНОВЕННЫМ ОТСЛЕЖИВАНИЕМ
 async function copyReferralLink() {
     const referralInput = document.getElementById('referral-link');
     if (!referralInput) return;
