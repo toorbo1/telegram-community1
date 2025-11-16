@@ -1017,13 +1017,24 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
     
     console.log('🎯 Start command with referral:', { userId, referralCode });
     
+    console.log('🎯 Start command received:', { 
+        userId, 
+        chatId, 
+        referralCode,
+        username: msg.from.username,
+        firstName: msg.from.first_name
+    });
+    
     try {
         await bot.sendChatAction(chatId, 'typing');
         
-        // 🔧 ВЫЗЫВАЕМ ИСПРАВЛЕННУЮ ФУНКЦИЮ РЕФЕРАЛЬНОЙ РЕГИСТРАЦИИ
-        let referralResult = { referredBy: null, referrerName: '' };
+        // 🔥 МГНОВЕННОЕ НАЧИСЛЕНИЕ ПРИ ПЕРЕХОДЕ ПО ССЫЛКЕ
+        let referralBonusApplied = false;
+        let referrerId = null;
+        let referrerName = '';
+                // 🔧 ВЫЗЫВАЕМ ИСПРАВЛЕННУЮ ФУНКЦИЮ РЕФЕРАЛЬНОЙ РЕГИСТРАЦИИ
         if (referralCode && referralCode.startsWith('ref_')) {
-            referralResult = await handleReferralRegistration(userId, referralCode, {
+            const referralResult = await handleReferralRegistration(userId, referralCode, {
                 firstName: msg.from.first_name,
                 username: msg.from.username
             });
@@ -1032,18 +1043,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                 console.log(`✅ Referral registration processed for ${userId}`);
             }
         }
-        // В команде /start, после обработки реферальной регистрации:
-if (referralResult.referredBy) {
-    await bot.sendMessage(
-        chatId,
-        `👋 <b>Добро пожаловать!</b>\n\n` +
-        `Вы присоединились по приглашению от <b>${referralResult.referrerName}</b>!\n\n` +
-        `🎁 <b>Вы получили бонус:</b> 1⭐ за регистрацию\n` +
-        `💫 <b>Пригласивший получил:</b> 2⭐ за вашу регистрацию\n\n` +
-        `Теперь вы можете начать зарабатывать Telegram Stars!`,
-        { parse_mode: 'HTML' }
-    );
-}
+        
         if (referralCode && referralCode.startsWith('ref_')) {
             const cleanReferralCode = referralCode.replace('ref_', '');
             
@@ -1525,6 +1525,7 @@ async function addSubscriptionColumn() {
 // Вызовите эту функцию при инициализации сервера
 addSubscriptionColumn();
 
+// Также обновите endpoint веб-аутентификации с проверкой подписки
 app.post('/api/user/auth', async (req, res) => {
     const { user, referralCode } = req.body;
     
@@ -1538,17 +1539,26 @@ app.post('/api/user/auth', async (req, res) => {
     try {
         const isMainAdmin = parseInt(user.id) === ADMIN_ID;
         
-        // 🔥 ОБРАБОТКА РЕФЕРАЛЬНОГО КОДА ДЛЯ WEB-АУТЕНТИФИКАЦИИ
-        let referralResult = { referredBy: null, referrerName: '' };
-        if (referralCode) {
-            referralResult = await handleReferralRegistration(user.id, referralCode, {
-                firstName: user.first_name,
-                username: user.username
-            });
-        }
-        
-        // Остальной код аутентификации...
+        // Генерируем реферальный код для пользователя
         const userReferralCode = `ref_${user.id}`;
+        
+        let referredBy = null;
+        let referralBonusGiven = false;
+        
+        // 🔥 ОБРАБОТКА РЕФЕРАЛЬНОГО КОДА ДЛЯ WEB-АУТЕНТИФИКАЦИИ
+        if (referralCode) {
+            const cleanReferralCode = referralCode.replace('ref_', '');
+            const referrerResult = await pool.query(
+                'SELECT user_id, first_name FROM user_profiles WHERE referral_code = $1',
+                [cleanReferralCode]
+            );
+            
+            if (referrerResult.rows.length > 0) {
+                referredBy = referrerResult.rows[0].user_id;
+                const referrerName = referrerResult.rows[0].first_name;
+                console.log(`🎯 Web user came via referral from: ${referredBy} (${referrerName})`);
+            }
+        }
         
         const result = await pool.query(`
             INSERT INTO user_profiles 
@@ -1561,7 +1571,6 @@ app.post('/api/user/auth', async (req, res) => {
                 last_name = EXCLUDED.last_name,
                 photo_url = EXCLUDED.photo_url,
                 is_admin = COALESCE(user_profiles.is_admin, EXCLUDED.is_admin),
-                referred_by = COALESCE(user_profiles.referred_by, EXCLUDED.referred_by),
                 updated_at = CURRENT_TIMESTAMP
             RETURNING *
         `, [
@@ -1572,18 +1581,79 @@ app.post('/api/user/auth', async (req, res) => {
             user.photo_url || '',
             isMainAdmin,
             userReferralCode,
-            referralResult.referredBy
+            referredBy
         ]);
         
         const userProfile = result.rows[0];
         
+        // 🔥 НОВАЯ СИСТЕМА ДЛЯ WEB-ПОЛЬЗОВАТЕЛЕЙ
+        if (userProfile.is_first_login && referredBy) {
+            const client = await pool.connect();
+            
+            try {
+                await client.query('BEGIN');
+                
+                // Пригласивший получает 2 звезды
+                await client.query(`
+                    UPDATE user_profiles 
+                    SET balance = COALESCE(balance, 0) + 2,
+                        referral_earned = COALESCE(referral_earned, 0) + 2,
+                        referral_count = COALESCE(referral_count, 0) + 1,
+                        is_first_login = false
+                    WHERE user_id = $1
+                `, [referredBy]);
+                
+                // Приглашённый получает 1 звезду
+                await client.query(`
+                    UPDATE user_profiles 
+                    SET balance = COALESCE(balance, 0) + 1,
+                        is_first_login = false
+                    WHERE user_id = $1
+                `, [user.id]);
+                
+                await client.query('COMMIT');
+                
+                referralBonusGiven = true;
+                
+                console.log(`🎉 Web реферальные бонусы: пригласивший ${referredBy} получил 2⭐, новый пользователь ${user.id} получил 1⭐`);
+                
+                // 🔥 ОТПРАВЛЯЕМ УВЕДОМЛЕНИЯ В БОТЕ
+                if (bot) {
+                    try {
+                        // Уведомление пригласившему
+                        await bot.sendMessage(
+                            referredBy,
+                            `🎉 <b>НОВЫЙ РЕФЕРАЛ ИЗ ВЕБ-ПРИЛОЖЕНИЯ!</b>\n\n` +
+                            `👤 Новый пользователь присоединился по вашей ссылке!\n\n` +
+                            `✨ <b>Вы получили:</b> 2⭐\n` +
+                            `⭐ <b>Реферал получил:</b> 1⭐\n\n` +
+                            `🚀 Продолжайте приглашать друзей!`,
+                            { parse_mode: 'HTML' }
+                        );
+                    } catch (botError) {
+                        console.log('Не удалось отправить уведомление рефереру:', botError.message);
+                    }
+                }
+                
+            } catch (transactionError) {
+                await client.query('ROLLBACK');
+                console.error('❌ Web referral bonus transaction error:', transactionError);
+            } finally {
+                client.release();
+            }
+        }
+        
+        // Обновляем данные пользователя после начисления бонусов
+        const updatedUser = await pool.query(
+            'SELECT * FROM user_profiles WHERE user_id = $1',
+            [user.id]
+        );
+        
         res.json({
             success: true,
-            user: userProfile,
-            referralBonusGiven: !!referralResult.referredBy,
-            referrerName: referralResult.referrerName
+            user: updatedUser.rows[0],
+            referralBonusGiven: referralBonusGiven
         });
-        
     } catch (error) {
         console.error('Auth error:', error);
         res.status(500).json({
@@ -1592,6 +1662,7 @@ app.post('/api/user/auth', async (req, res) => {
         });
     }
 });
+
 // Endpoint для проверки подписки из веб-интерфейса
 app.post('/api/user/check-subscription', async (req, res) => {
     const { userId } = req.body;
@@ -1648,7 +1719,6 @@ bot.onText(/\/check_subscription/, async (msg) => {
     }
 });
 
-// Функция для диагностики реферальной системы
 app.get('/api/debug/referral-system', async (req, res) => {
     try {
         // Статистика реферальной системы
