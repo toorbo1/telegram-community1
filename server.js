@@ -1026,41 +1026,55 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
     try {
         await bot.sendChatAction(chatId, 'typing');
         
-        // 🔥 ОБРАБОТКА РЕФЕРАЛЬНОЙ ССЫЛКИ
-        let referralData = { referralBy: null, referralName: '' };
+        // 🔥 МГНОВЕННОЕ НАЧИСЛЕНИЕ ПРИ ПЕРЕХОДЕ ПО ССЫЛКЕ
+        let referralBonusApplied = false;
+        let referrerId = null;
+        let referrerName = '';
         
         if (referralCode && referralCode.startsWith('ref_')) {
-            const linkCode = referralCode.replace('ref_', '');
+            const cleanReferralCode = referralCode.replace('ref_', '');
             
-            // Отслеживаем клик по ссылке
-            try {
-                await fetch(`${APP_URL}/api/referral-links/track-click`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        code: linkCode,
-                        userId: userId,
-                        ipAddress: 'telegram', // В Telegram нет IP
-                        userAgent: 'Telegram Bot'
-                    })
-                });
-            } catch (fetchError) {
-                console.log('⚠️ Could not track click:', fetchError.message);
-            }
-            
-            // Обрабатываем реферальную регистрацию
-            referralData = await handleReferralRegistration(
-                userId, 
-                referralCode, 
-                {
-                    firstName: msg.from.first_name,
-                    username: msg.from.username
-                }
+            // НАХОДИМ ПРИГЛАСИВШЕГО
+            const referrerResult = await pool.query(
+                'SELECT user_id, first_name, username FROM user_profiles WHERE referral_code = $1',
+                [cleanReferralCode]
             );
+            
+            if (referrerResult.rows.length > 0) {
+                referrerId = referrerResult.rows[0].user_id;
+                referrerName = referrerResult.rows[0].first_name;
+                
+                console.log(`🎯 Мгновенное начисление за переход по ссылке от: ${referrerId}`);
+                
+                // 🔥 МГНОВЕННО НАЧИСЛЯЕМ 1 ЗВЕЗДУ ПРИГЛАСИВШЕМУ ЗА ПЕРЕХОД
+                await pool.query(`
+                    UPDATE user_profiles 
+                    SET balance = COALESCE(balance, 0) + 1,
+                        referral_earned = COALESCE(referral_earned, 0) + 1
+                    WHERE user_id = $1
+                `, [referrerId]);
+                
+                referralBonusApplied = true;
+                
+                // 🔥 ОТПРАВЛЯЕМ МГНОВЕННОЕ УВЕДОМЛЕНИЕ ПРИГЛАСИВШЕМУ
+                try {
+                    await bot.sendMessage(
+                        referrerId,
+                        `🎉 <b>НОВЫЙ ПЕРЕХОД ПО ВАШЕЙ ССЫЛКЕ!</b>\n\n` +
+                        `👤 Кто-то перешел по вашей реферальной ссылке!\n\n` +
+                        `✨ <b>Вы получили:</b> 1⭐ за переход\n` +
+                        `💫 <b>Если пользователь зарегистрируется, вы получите еще 2⭐!</b>\n\n` +
+                        `🚀 Продолжайте приглашать друзей!`,
+                        { parse_mode: 'HTML' }
+                    );
+                } catch (notificationError) {
+                    console.log('Не удалось отправить уведомление о переходе:', notificationError.message);
+                }
+                
+                console.log(`✅ Мгновенное начисление за переход: ${referrerId} получил 1⭐`);
+            }
         }
-        
+
         // 🔥 ПРОВЕРКА ПОДПИСКИ НА КАНАЛ
         const isSubscribed = await checkSubscription(userId);
         
@@ -1106,7 +1120,6 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         }
 
         // Удаляем сообщение с требованием подписки если оно было
-        // Удаляем сообщение с требованием подписки если оно было
         if (userSubscriptionMessages[userId]) {
             try {
                 await bot.deleteMessage(chatId, userSubscriptionMessages[userId]);
@@ -1123,35 +1136,13 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
             username: msg.from.username || `user_${userId}`
         };
         
-        let referredBy = null;
-        let referrerName = '';
+        let referredBy = referrerId; // Используем найденного ранее реферера
         let referralBonusGiven = false;
-        
-        // 🔥 ИСПРАВЛЕННАЯ ОБРАБОТКА РЕФЕРАЛЬНОГО КОДА
-        if (referralCode) {
-            console.log(`🔍 Обработка реферального кода: ${referralCode}`);
-            
-            const cleanReferralCode = referralCode.replace('ref_', '');
-            
-            // Ищем пользователя с таким реферальным кодом
-            const referrerResult = await pool.query(
-                'SELECT user_id, username, first_name FROM user_profiles WHERE referral_code = $1',
-                [cleanReferralCode]
-            );
-            
-            if (referrerResult.rows.length > 0) {
-                referredBy = referrerResult.rows[0].user_id;
-                referrerName = referrerResult.rows[0].first_name;
-                console.log(`🎯 Пользователь пришел по реферальной ссылке от: ${referredBy} (${referrerName})`);
-            } else {
-                console.log(`❌ Реферальный код не найден: ${cleanReferralCode}`);
-            }
-        }
         
         // Генерируем реферальный код для пользователя
         const userReferralCode = `ref_${userId}`;
         
-        // 🔥 ИСПРАВЛЕННОЕ СОХРАНЕНИЕ ПОЛЬЗОВАТЕЛЯ С НОВОЙ СИСТЕМОЙ БОНУСОВ
+        // 🔥 ИСПРАВЛЕННОЕ СОХРАНЕНИЕ ПОЛЬЗОВАТЕЛЯ
         const client = await pool.connect();
         
         try {
@@ -1170,8 +1161,8 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                 console.log('👤 Создаем нового пользователя');
                 await client.query(`
                     INSERT INTO user_profiles 
-                    (user_id, username, first_name, last_name, referral_code, referred_by, is_first_login, has_subscribed) 
-                    VALUES ($1, $2, $3, $4, $5, $6, true, true)
+                    (user_id, username, first_name, last_name, referral_code, referred_by, is_first_login, has_subscribed, balance) 
+                    VALUES ($1, $2, $3, $4, $5, $6, true, true, 1)
                 `, [
                     userId, 
                     userData.username,
@@ -1198,16 +1189,13 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                     userData.firstName,
                     userData.lastName
                 ]);
-                
-                // Для существующих пользователей не начисляем реферальные бонусы
-                referredBy = null;
             }
             
-            // 🔥 НОВАЯ СИСТЕМА БОНУСОВ - НАЧИСЛЕНИЕ ОБОИМ ПОЛЬЗОВАТЕЛЯМ
+            // 🔥 НОВАЯ СИСТЕМА БОНУСОВ - НАЧИСЛЕНИЕ ОБОИМ ПОЛЬЗОВАТЕЛЯМ ПРИ РЕГИСТРАЦИИ
             if (isNewUser && referredBy) {
-                console.log(`🎁 Начисляем реферальные бонусы по новой системе`);
+                console.log(`🎁 Начисляем реферальные бонусы по новой системе за регистрацию`);
                 
-                // 1. Пригласивший получает 2 звезды
+                // 1. Пригласивший получает ДОПОЛНИТЕЛЬНЫЕ 2 звезды за регистрацию
                 await client.query(`
                     UPDATE user_profiles 
                     SET balance = COALESCE(balance, 0) + 2,
@@ -1216,27 +1204,22 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                     WHERE user_id = $1
                 `, [referredBy]);
                 
-                // 2. Приглашённый получает 1 звезду
-                await client.query(`
-                    UPDATE user_profiles 
-                    SET balance = COALESCE(balance, 0) + 1
-                    WHERE user_id = $1
-                `, [userId]);
+                // 2. Приглашённый УЖЕ получил 1 звезду при создании (см. INSERT выше)
                 
                 referralBonusGiven = true;
                 
-                console.log(`✅ Реферальные бонусы начислены: пригласивший ${referredBy} получил 2⭐, новый пользователь ${userId} получил 1⭐`);
+                console.log(`✅ Реферальные бонусы за регистрацию: пригласивший ${referredBy} получил 2⭐, новый пользователь ${userId} получил 1⭐`);
                 
-                // 🔥 ОТПРАВЛЯЕМ УВЕДОМЛЕНИЯ ОБОИМ ПОЛЬЗОВАТЕЛЯМ
+                // 🔥 ОТПРАВЛЯЕМ УВЕДОМЛЕНИЯ ОБОИМ ПОЛЬЗОВАТЕЛЯМ О РЕГИСТРАЦИИ
                 if (bot) {
                     try {
-                        // Уведомление пригласившему
+                        // Уведомление пригласившему о РЕГИСТРАЦИИ
                         await bot.sendMessage(
                             referredBy,
-                            `🎉 <b>НОВЫЙ РЕФЕРАЛ!</b>\n\n` +
-                            `👤 <b>${userData.firstName}</b> (@${userData.username}) присоединился по вашей ссылке!\n\n` +
-                            `✨ <b>Вы получили:</b> 2⭐\n` +
-                            `⭐ <b>Реферал получил:</b> 1⭐\n\n` +
+                            `🎉 <b>НОВЫЙ РЕФЕРАЛ ЗАРЕГИСТРИРОВАЛСЯ!</b>\n\n` +
+                            `👤 <b>${userData.firstName}</b> (@${userData.username}) зарегистрировался по вашей ссылке!\n\n` +
+                            `✨ <b>Вы получили:</b> 2⭐ за регистрацию\n` +
+                            `⭐ <b>Всего заработано с этого пользователя:</b> 3⭐\n\n` +
                             `🚀 Продолжайте приглашать друзей!`,
                             { parse_mode: 'HTML' }
                         );
@@ -1247,7 +1230,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                             `🎁 <b>РЕФЕРАЛЬНЫЙ БОНУС!</b>\n\n` +
                             `Вы зарегистрировались по приглашению от ${referrerName} и получили 1⭐ на счет!\n\n` +
                             `💫 <b>Ваш текущий баланс:</b> 1⭐\n\n` +
-                            `👥 <b>Приглашайте друзей и получайте 2⭐ за каждого!</b>`,
+                            `👥 <b>Приглашайте друзей и получайте бонусы за каждого!</b>`,
                             { parse_mode: 'HTML' }
                         );
                         
@@ -1274,15 +1257,19 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         );
         
         const finalUserProfile = updatedUser.rows[0];
-        const userBalance = finalUserProfile ? finalUserProfile.balance : 0;
+        const userBalance = finalUserProfile ? finalUserProfile.balance : (isNewUser ? 1 : 0);
         
-        // 🔥 ФОРМИРУЕМ ПРИВЕТСТВЕННОЕ СООБЩЕНИЕ С НОВОЙ СИСТЕМОЙ
+        // 🔥 ФОРМИРУЕМ ПРИВЕТСТВЕННОЕ СООБЩЕНИЕ С ИНФОРМАЦИЕЙ О ВСЕХ БОНУСАХ
         let welcomeMessage = `🌟 <b>ДОБРО ПОЖАЛОВАТЬ В LINKGOLD, ${userData.firstName.toUpperCase()}!</b>\n\n`;
 
-        if (referredBy && referralBonusGiven) {
-            welcomeMessage += `🎁 <b>ВЫ ПОЛУЧИЛИ РЕФЕРАЛЬНЫЙ БОНУС!</b>\n`;
-            welcomeMessage += `• Вы получили: <b>1⭐</b> за регистрацию\n`;
-            welcomeMessage += `• Пригласивший получил: <b>2⭐</b>\n\n`;
+        if (referralBonusApplied && referralBonusGiven) {
+            welcomeMessage += `🎁 <b>ВЫ ПОЛУЧИЛИ РЕФЕРАЛЬНЫЕ БОНУСЫ!</b>\n`;
+            welcomeMessage += `• Пригласивший получил: 1⭐ за переход + 2⭐ за регистрацию\n`;
+            welcomeMessage += `• Вы получили: 1⭐ за регистрацию\n\n`;
+        } else if (referralBonusApplied) {
+            welcomeMessage += `🎯 <b>ПЕРЕХОД ПО РЕФЕРАЛЬНОЙ ССЫЛКЕ!</b>\n`;
+            welcomeMessage += `• Пригласивший получил: 1⭐ за ваш переход\n`;
+            welcomeMessage += `• Зарегистрируйтесь чтобы получить бонусы!\n\n`;
         } else {
             welcomeMessage += `✅ <b>Вы успешно подписались и активировали аккаунт!</b>\n\n`;
         }
@@ -1300,7 +1287,8 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         welcomeMessage += `• Вывод от 50 звёзд\n\n`;
 
         welcomeMessage += `👥 <b>РЕФЕРАЛЬНАЯ СИСТЕМА:</b>\n`;
-        welcomeMessage += `┌ За каждого друга: <b>2 звезды</b>\n`;
+        welcomeMessage += `┌ За переход по вашей ссылке: <b>1 звезда</b>\n`;
+        welcomeMessage += `├ За регистрацию друга: <b>2 звезды</b>\n`;
         welcomeMessage += `└ Друг получает: <b>1 звезду</b>\n\n`;
 
         welcomeMessage += `💰 <b>Ваш текущий баланс:</b> ${userBalance}⭐\n\n`;
@@ -1388,7 +1376,8 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         console.log(`✅ Пользователь ${userId} успешно обработан`, {
             isNewUser: !existingUser,
             referredBy: referredBy,
-            bonusGiven: referralBonusGiven,
+            transitionBonus: referralBonusApplied,
+            registrationBonus: referralBonusGiven,
             referralCode: userReferralCode,
             balance: userBalance
         });
@@ -1397,7 +1386,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         console.error('❌ Start command error:', error);
         await bot.sendMessage(
             chatId, 
-            ''
+            '❌ Произошла ошибка при регистрации. Пожалуйста, попробуйте еще раз.'
         );
     }
 });
@@ -5813,7 +5802,72 @@ app.post('/api/referral-links/create', async (req, res) => {
         });
     }
 });
-
+// 🔥 ENDPOINT ДЛЯ ОТСЛЕЖИВАНИЯ ПЕРЕХОДОВ ПО РЕФЕРАЛЬНЫМ ССЫЛКАМ
+app.post('/api/referral-links/track-click', async (req, res) => {
+    const { code, userId, ipAddress, userAgent } = req.body;
+    
+    try {
+        console.log('🖱️ Tracking referral click:', { code, userId, ipAddress });
+        
+        // Находим ссылку по коду пользователя
+        const linkResult = await pool.query(
+            'SELECT user_id, referral_code FROM user_profiles WHERE referral_code = $1',
+            [code]
+        );
+        
+        if (linkResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Referral link not found'
+            });
+        }
+        
+        const linkOwnerId = linkResult.rows[0].user_id;
+        
+        // Проверяем уникальность клика (по IP и user agent)
+        const uniqueCheck = await pool.query(`
+            SELECT id FROM referral_link_clicks 
+            WHERE user_id = $1 AND ip_address = $2 AND user_agent = $3
+            LIMIT 1
+        `, [userId, ipAddress, userAgent]);
+        
+        const isUniqueClick = uniqueCheck.rows.length === 0;
+        
+        // Сохраняем информацию о клике
+        await pool.query(`
+            INSERT INTO referral_link_clicks (link_id, user_id, ip_address, user_agent)
+            VALUES ($1, $2, $3, $4)
+        `, [linkOwnerId, userId, ipAddress, userAgent]);
+        
+        // 🔥 МГНОВЕННО НАЧИСЛЯЕМ БОНУС ЗА ПЕРЕХОД
+        if (isUniqueClick) {
+            await pool.query(`
+                UPDATE user_profiles 
+                SET balance = COALESCE(balance, 0) + 1,
+                    referral_earned = COALESCE(referral_earned, 0) + 1
+                WHERE user_id = $1
+            `, [linkOwnerId]);
+            
+            console.log(`✅ Transition bonus applied: ${linkOwnerId} got 1⭐ for click`);
+        }
+        
+        console.log(`✅ Click tracked: user ${userId} -> owner ${linkOwnerId}, unique: ${isUniqueClick}`);
+        
+        res.json({
+            success: true,
+            isUnique: isUniqueClick,
+            bonusApplied: isUniqueClick,
+            message: 'Клик зарегистрирован'
+        });
+        
+    } catch (error) {
+        console.error('❌ Track click error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка отслеживания клика'
+        });
+    }
+});
 // Функция для отслеживания кликов по реферальным ссылкам
 // Функция для отслеживания кликов по реферальным ссылкам
 app.post('/api/referral-links/track-click', async (req, res) => {
@@ -5915,11 +5969,10 @@ app.get('/api/user/:userId/instant-referral-stats', async (req, res) => {
                 up.referral_earned,
                 up.balance,
                 COUNT(rlc.id) as total_clicks,
-                COUNT(ra.id) as total_activations
+                COUNT(DISTINCT rlc.id) as unique_clicks
             FROM user_profiles up
             LEFT JOIN referral_links rl ON up.user_id = rl.created_by
             LEFT JOIN referral_link_clicks rlc ON rl.id = rlc.link_id
-            LEFT JOIN referral_activations ra ON rl.id = ra.link_id
             WHERE up.user_id = $1
             GROUP BY up.user_id, up.referral_count, up.referral_earned, up.balance
         `, [userId]);
@@ -5940,13 +5993,14 @@ app.get('/api/user/:userId/instant-referral-stats', async (req, res) => {
                 referral_earned: stats.referral_earned || 0,
                 balance: stats.balance || 0,
                 total_clicks: stats.total_clicks || 0,
-                total_activations: stats.total_activations || 0
+                unique_clicks: stats.unique_clicks || 0
             },
             bonuses: {
                 for_click: 1, // Бонус за переход
                 for_registration: 2, // Бонус за регистрацию
                 for_new_user: 1 // Бонус новому пользователю
-            }
+            },
+            timestamp: new Date().toISOString()
         });
         
     } catch (error) {
