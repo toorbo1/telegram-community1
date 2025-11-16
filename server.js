@@ -1015,6 +1015,8 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
     const userId = msg.from.id;
     const referralCode = match[1] ? match[1].trim() : null;
     
+    console.log('🎯 Start command with referral:', { userId, referralCode });
+    
     console.log('🎯 Start command received:', { 
         userId, 
         chatId, 
@@ -1030,6 +1032,17 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         let referralBonusApplied = false;
         let referrerId = null;
         let referrerName = '';
+                // 🔧 ВЫЗЫВАЕМ ИСПРАВЛЕННУЮ ФУНКЦИЮ РЕФЕРАЛЬНОЙ РЕГИСТРАЦИИ
+        if (referralCode && referralCode.startsWith('ref_')) {
+            const referralResult = await handleReferralRegistration(userId, referralCode, {
+                firstName: msg.from.first_name,
+                username: msg.from.username
+            });
+            
+            if (referralResult.referredBy) {
+                console.log(`✅ Referral registration processed for ${userId}`);
+            }
+        }
         
         if (referralCode && referralCode.startsWith('ref_')) {
             const cleanReferralCode = referralCode.replace('ref_', '');
@@ -5957,24 +5970,159 @@ app.post('/api/referral-links/track-click', async (req, res) => {
         });
     }
 });
-
 // 🔥 ENDPOINT ДЛЯ МГНОВЕННОЙ ПРОВЕРКИ РЕФЕРАЛЬНЫХ НАЧИСЛЕНИЙ
 app.get('/api/user/:userId/instant-referral-stats', async (req, res) => {
     const userId = req.params.userId;
     
+    console.log('📊 Instant referral stats request for user:', userId);
+    
     try {
-        const result = await pool.query(`
+        // Получаем основную статистику пользователя
+        const userResult = await pool.query(`
             SELECT 
+                up.user_id,
+                up.username,
+                up.first_name,
+                up.balance,
                 up.referral_count,
                 up.referral_earned,
-                up.balance,
+                up.referred_by,
+                up.created_at,
+                -- Статистика переходов по ссылкам
                 COUNT(rlc.id) as total_clicks,
-                COUNT(DISTINCT rlc.id) as unique_clicks
+                COUNT(DISTINCT rlc.id) as unique_clicks,
+                -- Статистика реферальных активаций
+                COUNT(ra.id) as referral_activations,
+                COALESCE(SUM(ra.reward_amount), 0) as total_referral_rewards
             FROM user_profiles up
             LEFT JOIN referral_links rl ON up.user_id = rl.created_by
             LEFT JOIN referral_link_clicks rlc ON rl.id = rlc.link_id
+            LEFT JOIN referral_activations ra ON rl.id = ra.link_id
             WHERE up.user_id = $1
-            GROUP BY up.user_id, up.referral_count, up.referral_earned, up.balance
+            GROUP BY up.user_id
+        `, [userId]);
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Пользователь не найден'
+            });
+        }
+        
+        const user = userResult.rows[0];
+        
+        // Получаем информацию о реферере (если есть)
+        let referrerInfo = null;
+        if (user.referred_by) {
+            const referrerResult = await pool.query(`
+                SELECT user_id, username, first_name 
+                FROM user_profiles 
+                WHERE user_id = $1
+            `, [user.referred_by]);
+            
+            if (referrerResult.rows.length > 0) {
+                referrerInfo = referrerResult.rows[0];
+            }
+        }
+        
+        // Получаем последние реферальные начисления
+        const recentReferrals = await pool.query(`
+            SELECT 
+                ra.activated_at,
+                ra.reward_amount,
+                up.first_name,
+                up.username
+            FROM referral_activations ra
+            JOIN user_profiles up ON ra.user_id = up.user_id
+            JOIN referral_links rl ON ra.link_id = rl.id
+            WHERE rl.created_by = $1
+            ORDER BY ra.activated_at DESC
+            LIMIT 5
+        `, [userId]);
+        
+        // Получаем статистику по дням
+        const dailyStats = await pool.query(`
+            SELECT 
+                DATE(ra.activated_at) as date,
+                COUNT(*) as referrals_count,
+                SUM(ra.reward_amount) as daily_earnings
+            FROM referral_activations ra
+            JOIN referral_links rl ON ra.link_id = rl.id
+            WHERE rl.created_by = $1 AND ra.activated_at >= CURRENT_DATE - INTERVAL '7 days'
+            GROUP BY DATE(ra.activated_at)
+            ORDER BY date DESC
+        `, [userId]);
+        
+        const responseData = {
+            success: true,
+            stats: {
+                // Основная статистика
+                user_id: user.user_id,
+                username: user.username,
+                first_name: user.first_name,
+                
+                // Финансы
+                balance: parseFloat(user.balance) || 0,
+                referral_earned: parseFloat(user.referral_earned) || 0,
+                
+                // Реферальная статистика
+                referral_count: user.referral_count || 0,
+                referred_by: user.referred_by,
+                total_clicks: parseInt(user.total_clicks) || 0,
+                unique_clicks: parseInt(user.unique_clicks) || 0,
+                referral_activations: parseInt(user.referral_activations) || 0,
+                total_referral_rewards: parseFloat(user.total_referral_rewards) || 0,
+                
+                // Расчетные показатели
+                conversion_rate: user.total_clicks > 0 ? 
+                    ((user.referral_activations / user.total_clicks) * 100).toFixed(1) : 0,
+                avg_referral_earning: user.referral_activations > 0 ? 
+                    (user.total_referral_rewards / user.referral_activations).toFixed(2) : 0
+            },
+            
+            // Дополнительная информация
+            referrer: referrerInfo,
+            recent_referrals: recentReferrals.rows,
+            daily_stats: dailyStats.rows,
+            
+            // Информация о бонусах
+            bonus_info: {
+                for_click: 1,        // Бонус за переход
+                for_registration: 2, // Бонус за регистрацию
+                for_new_user: 1      // Бонус новому пользователю
+            },
+            
+            // Мета-информация
+            timestamp: new Date().toISOString(),
+            cache_ttl: 5 // В секундах до следующего обновления
+        };
+        
+        console.log(`✅ Instant referral stats loaded for ${user.username}:`, {
+            balance: responseData.stats.balance,
+            referral_earned: responseData.stats.referral_earned,
+            referral_count: responseData.stats.referral_count
+        });
+        
+        res.json(responseData);
+        
+    } catch (error) {
+        console.error('❌ Instant referral stats error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка базы данных: ' + error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+// 🔧 БЫСТРЫЙ ENDPOINT ДЛЯ ПРОВЕРКИ ТОЛЬКО БАЛАНСА
+app.get('/api/user/:userId/quick-balance', async (req, res) => {
+    const userId = req.params.userId;
+    
+    try {
+        const result = await pool.query(`
+            SELECT balance, referral_earned, referral_count 
+            FROM user_profiles 
+            WHERE user_id = $1
         `, [userId]);
         
         if (result.rows.length === 0) {
@@ -5984,34 +6132,24 @@ app.get('/api/user/:userId/instant-referral-stats', async (req, res) => {
             });
         }
         
-        const stats = result.rows[0];
+        const user = result.rows[0];
         
         res.json({
             success: true,
-            stats: {
-                referral_count: stats.referral_count || 0,
-                referral_earned: stats.referral_earned || 0,
-                balance: stats.balance || 0,
-                total_clicks: stats.total_clicks || 0,
-                unique_clicks: stats.unique_clicks || 0
-            },
-            bonuses: {
-                for_click: 1, // Бонус за переход
-                for_registration: 2, // Бонус за регистрацию
-                for_new_user: 1 // Бонус новому пользователю
-            },
+            balance: parseFloat(user.balance) || 0,
+            referral_earned: parseFloat(user.referral_earned) || 0,
+            referral_count: user.referral_count || 0,
             timestamp: new Date().toISOString()
         });
         
     } catch (error) {
-        console.error('Instant referral stats error:', error);
+        console.error('Quick balance error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error'
         });
     }
 });
-
 // Функция для отслеживания конверсий (регистраций по ссылке)
 app.post('/api/referral-links/track-conversion', async (req, res) => {
     const { code, userId } = req.body;
@@ -6110,7 +6248,7 @@ app.get('/api/admin/referral-links/stats', async (req, res) => {
 });
 
 // Обновленная функция для обработки реферальных регистраций
-// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ОБРАБОТКИ РЕФЕРАЛЬНЫХ ССЫЛОК
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ ОБРАБОТКИ РЕФЕРАЛЬНОЙ РЕГИСТРАЦИИ
 async function handleReferralRegistration(userId, referralCode, userData) {
     try {
         console.log(`🔍 Processing referral registration for user ${userId} with code: ${referralCode}`);
@@ -6122,62 +6260,84 @@ async function handleReferralRegistration(userId, referralCode, userData) {
         if (referralCode) {
             const cleanReferralCode = referralCode.replace('ref_', '');
             
-            // Ищем ссылку в базе данных
-            const linkResult = await pool.query(
-                'SELECT id, code, created_by FROM referral_links WHERE code = $1 AND is_active = true',
+            // Ищем пользователя по реферальному коду
+            const referrerResult = await pool.query(
+                'SELECT user_id, first_name, username FROM user_profiles WHERE referral_code = $1',
                 [cleanReferralCode]
             );
             
-            if (linkResult.rows.length > 0) {
-                const link = linkResult.rows[0];
-                referredBy = link.created_by;
-                linkId = link.id;
+            if (referrerResult.rows.length > 0) {
+                const referrer = referrerResult.rows[0];
+                referredBy = referrer.user_id;
+                referrerName = referrer.first_name;
                 
-                // Получаем информацию о реферере
-                const referrerResult = await pool.query(
-                    'SELECT first_name, username FROM user_profiles WHERE user_id = $1',
-                    [referredBy]
-                );
+                console.log(`🎯 User came via referral from: ${referredBy} (${referrerName})`);
                 
-                if (referrerResult.rows.length > 0) {
-                    referrerName = referrerResult.rows[0].first_name;
+                // 🔥 НЕМЕДЛЕННО НАЧИСЛЯЕМ БОНУСЫ ПРИ РЕГИСТРАЦИИ
+                const client = await pool.connect();
+                
+                try {
+                    await client.query('BEGIN');
+                    
+                    // 1. Пригласивший получает 2 звезды за регистрацию
+                    await client.query(`
+                        UPDATE user_profiles 
+                        SET balance = COALESCE(balance, 0) + 2,
+                            referral_earned = COALESCE(referral_earned, 0) + 2,
+                            referral_count = COALESCE(referral_count, 0) + 1
+                        WHERE user_id = $1
+                    `, [referredBy]);
+                    
+                    // 2. Новый пользователь получает 1 звезду
+                    await client.query(`
+                        UPDATE user_profiles 
+                        SET balance = COALESCE(balance, 0) + 1
+                        WHERE user_id = $1
+                    `, [userId]);
+                    
+                    await client.query('COMMIT');
+                    
+                    console.log(`✅ Referral bonuses applied: ${referredBy} got 2⭐, ${userId} got 1⭐`);
+                    
+                    // 🔥 ОТПРАВЛЯЕМ СООБЩЕНИЯ В ЧАТ БОТА
+                    if (bot) {
+                        try {
+                            // Сообщение пригласившему
+                            await bot.sendMessage(
+                                referredBy,
+                                `🎉 <b>НОВЫЙ РЕФЕРАЛ ЗАРЕГИСТРИРОВАЛСЯ!</b>\n\n` +
+                                `👤 <b>${userData.firstName}</b> зарегистрировался по вашей ссылке!\n\n` +
+                                `✨ <b>Вы получили:</b> 2⭐ за регистрацию\n` +
+                                `💫 <b>Всего заработано с рефералов:</b> ${referrer.referral_earned + 2}⭐\n\n` +
+                                `🚀 Продолжайте приглашать друзей!`,
+                                { parse_mode: 'HTML' }
+                            );
+                            
+                            // Сообщение новому пользователю
+                            await bot.sendMessage(
+                                userId,
+                                `🎁 <b>РЕФЕРАЛЬНЫЙ БОНУС!</b>\n\n` +
+                                `Вы зарегистрировались по приглашению от ${referrerName} и получили 1⭐ на счет!\n\n` +
+                                `💫 <b>Ваш текущий баланс:</b> 1⭐\n\n` +
+                                `👥 <b>Приглашайте друзей и получайте бонусы за каждого!</b>`,
+                                { parse_mode: 'HTML' }
+                            );
+                            
+                        } catch (botError) {
+                            console.log('⚠️ Could not send referral notifications:', botError.message);
+                        }
+                    }
+                    
+                } catch (transactionError) {
+                    await client.query('ROLLBACK');
+                    console.error('❌ Referral bonus transaction error:', transactionError);
+                    throw transactionError;
+                } finally {
+                    client.release();
                 }
                 
-                console.log(`🎯 User came via referral link ${link.code} from user ${referredBy}`);
-                
-                // Регистрируем конверсию СРАЗУ при переходе
-                await pool.query(`
-                    INSERT INTO referral_activations (link_id, user_id, reward_amount)
-                    VALUES ($1, $2, $3)
-                `, [link.id, userId, 2]);
-                
-                // Обновляем статистику ссылки
-                await pool.query(`
-                    UPDATE referral_links 
-                    SET conversions = conversions + 1
-                    WHERE id = $1
-                `, [link.id]);
-                
-                // 🔥 НЕМЕДЛЕННО НАЧИСЛЯЕМ БОНУСЫ
-                await pool.query(`
-                    UPDATE user_profiles 
-                    SET balance = COALESCE(balance, 0) + 2,
-                        referral_earned = COALESCE(referral_earned, 0) + 2,
-                        referral_count = COALESCE(referral_count, 0) + 1
-                    WHERE user_id = $1
-                `, [referredBy]);
-                
-                // Новый пользователь тоже получает бонус
-                await pool.query(`
-                    UPDATE user_profiles 
-                    SET balance = COALESCE(balance, 0) + 1
-                    WHERE user_id = $1
-                `, [userId]);
-                
-                console.log(`✅ Referral bonuses applied immediately: ${referredBy} got 2⭐, ${userId} got 1⭐`);
-                
             } else {
-                console.log(`❌ Referral link not found: ${cleanReferralCode}`);
+                console.log(`❌ Referrer not found for code: ${cleanReferralCode}`);
             }
         }
         
@@ -6188,7 +6348,6 @@ async function handleReferralRegistration(userId, referralCode, userData) {
         return { referredBy: null, referrerName: '', linkId: null };
     }
 }
-
 // Вспомогательная функция для генерации кода ссылки
 function generateReferralCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';

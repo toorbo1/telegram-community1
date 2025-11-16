@@ -1864,10 +1864,8 @@ body {
     
     <div class="referral-info">
         <strong>🎯 Мгновенная система бонусов:</strong><br>
-        • <strong>За переход по ссылке:</strong> <span style="color: var(--gold); font-weight: 800;">1 звезда</span><br>
         • <strong>За регистрацию друга:</strong> <span style="color: var(--gold); font-weight: 800;">2 звезды</span><br>
         • <strong>Друг получает:</strong> <span style="color: var(--gold); font-weight: 800;">1 звезду</span><br>
-        • <strong>Бонусы начисляются мгновенно!</strong><br>
         • Без ограничений по количеству приглашений
     </div>
     
@@ -3549,7 +3547,97 @@ function resetAmountSelection() {
         withdrawBtn.textContent = 'Вывести средства';
     }
 }
+// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ ДЛЯ МГНОВЕННОЙ ПРОВЕРКИ РЕФЕРАЛЬНЫХ НАЧИСЛЕНИЙ
+async function checkInstantReferralBonus() {
+    if (!currentUser) return;
+    
+    try {
+        const result = await makeRequest(`/api/user/${currentUser.id}/instant-referral-stats`);
+        
+        if (result.success) {
+            // Обновляем данные пользователя
+            currentUser.balance = result.stats.balance;
+            currentUser.referral_earned = result.stats.referral_earned;
+            currentUser.referral_count = result.stats.referral_count;
+            
+            // Обновляем интерфейс
+            updateReferralSystem();
+            displayUserProfile();
+            
+            // Показываем уведомление о новых начислениях
+            if (result.recent_referrals && result.recent_referrals.length > 0) {
+                const latestReferral = result.recent_referrals[0];
+                const now = new Date();
+                const referralTime = new Date(latestReferral.activated_at);
+                const timeDiff = (now - referralTime) / 1000; // Разница в секундах
+                
+                // Если начисление было менее 10 секунд назад - показываем анимацию
+                if (timeDiff < 10) {
+                    showReferralBonusAnimation(
+                        latestReferral.first_name || 'Новый пользователь',
+                        latestReferral.reward_amount
+                    );
+                }
+            }
+            
+            console.log('✅ Реферальные начисления мгновенно обновлены:', {
+                balance: result.stats.balance,
+                referral_earned: result.stats.referral_earned,
+                referral_count: result.stats.referral_count
+            });
+        }
+    } catch (error) {
+        console.error('Ошибка проверки реферальных начислений:', error);
+    }
+}
 
+// 🔧 ФУНКЦИЯ ДЛЯ БЫСТРОЙ ПРОВЕРКИ БАЛАНСА (менее ресурсоемкая)
+async function checkQuickBalance() {
+    if (!currentUser) return;
+    
+    try {
+        const result = await makeRequest(`/api/user/${currentUser.id}/quick-balance`);
+        
+        if (result.success) {
+            // Быстро обновляем только баланс
+            currentUser.balance = result.balance;
+            currentUser.referral_earned = result.referral_earned;
+            
+            // Быстро обновляем отображение баланса
+            const balanceElement = document.getElementById('user-balance-main');
+            if (balanceElement) {
+                balanceElement.textContent = `${result.balance} ⭐`;
+            }
+            
+            const refEarnedElement = document.getElementById('ref-earned');
+            if (refEarnedElement) {
+                refEarnedElement.textContent = `${result.referral_earned} ⭐`;
+            }
+        }
+    } catch (error) {
+        console.error('Quick balance check error:', error);
+    }
+}
+
+// 🔧 ЗАПУСКАЕМ ОБНОВЛЕНИЕ С РАЗНОЙ ЧАСТОТОЙ
+function startReferralAutoUpdate() {
+    // Быстрая проверка баланса каждые 3 секунды
+    setInterval(() => {
+        if (currentUser) {
+            checkQuickBalance();
+        }
+    }, 3000);
+    
+    // Полная проверка статистики каждые 30 секунд
+    setInterval(() => {
+        if (currentUser) {
+            checkInstantReferralBonus();
+        }
+    }, 30000);
+}
+
+// Запускаем при инициализации приложения
+startReferralAutoUpdate();
 // 🔧 ОБНОВЛЕНИЕ СТРАНИЦЫ ВЫВОДА
 // Обновление страницы вывода
 function updateWithdrawPage() {
@@ -12934,7 +13022,36 @@ function addStartTaskDebugButton() {
 
 // Вызовите при загрузке
 setTimeout(addStartTaskDebugButton, 3000);
+// 🔧 ФУНКЦИЯ ДЛЯ МГНОВЕННОЙ ПРОВЕРКИ РЕФЕРАЛЬНЫХ НАЧИСЛЕНИЙ
+async function checkInstantReferralBonus() {
+    if (!currentUser) return;
+    
+    try {
+        const result = await makeRequest(`/api/user/${currentUser.id}/instant-referral-stats`);
+        
+        if (result.success) {
+            // Обновляем данные пользователя
+            currentUser.balance = result.stats.balance;
+            currentUser.referral_earned = result.stats.referral_earned;
+            currentUser.referral_count = result.stats.referral_count;
+            
+            // Обновляем интерфейс
+            updateReferralSystem();
+            displayUserProfile();
+            
+            console.log('✅ Реферальные начисления мгновенно обновлены');
+        }
+    } catch (error) {
+        console.error('Ошибка проверки реферальных начислений:', error);
+    }
+}
 
+// Проверяем каждые 3 секунды после загрузки
+setInterval(() => {
+    if (currentUser) {
+        checkInstantReferralBonus();
+    }
+}, 3000);
         async function loadAdminChats() {
     if (!currentUser) return;
     
