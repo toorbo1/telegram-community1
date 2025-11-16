@@ -241,6 +241,50 @@ CREATE TABLE IF NOT EXISTS referral_links (
     FOREIGN KEY (created_by) REFERENCES user_profiles(user_id)
 )
 `);
+        // Таблица реферальных ссылок
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS referral_links (
+                id SERIAL PRIMARY KEY,
+                code VARCHAR(20) UNIQUE NOT NULL,
+                name TEXT NOT NULL,
+                description TEXT,
+                created_by BIGINT NOT NULL,
+                referral_url TEXT NOT NULL,
+                total_clicks INTEGER DEFAULT 0,
+                unique_clicks INTEGER DEFAULT 0,
+                conversions INTEGER DEFAULT 0,
+                is_active BOOLEAN DEFAULT true,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (created_by) REFERENCES user_profiles(user_id)
+            )
+        `);
+        
+        // Таблица кликов по ссылкам
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS referral_link_clicks (
+                id SERIAL PRIMARY KEY,
+                link_id INTEGER NOT NULL,
+                user_id BIGINT,
+                ip_address TEXT,
+                user_agent TEXT,
+                clicked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (link_id) REFERENCES referral_links(id)
+            )
+        `);
+        
+        // Таблица активаций реферальных ссылок
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS referral_activations (
+                id SERIAL PRIMARY KEY,
+                link_id INTEGER NOT NULL,
+                user_id BIGINT NOT NULL,
+                activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                reward_amount REAL DEFAULT 0,
+                FOREIGN KEY (link_id) REFERENCES referral_links(id),
+                FOREIGN KEY (user_id) REFERENCES user_profiles(user_id)
+            )
+        `);
+        
 await pool.query(`CREATE TABLE IF NOT EXISTS referral_link_clicks (
     id SERIAL PRIMARY KEY,
     link_id INTEGER NOT NULL,
@@ -912,8 +956,7 @@ async function checkSubscription(userId) {
         }
         
         return true;
-    }
-}
+    }}
 bot.onText(/\/start(.+)?/, async (msg, match) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
@@ -929,6 +972,41 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
     
     try {
         await bot.sendChatAction(chatId, 'typing');
+        
+        // 🔥 ОБРАБОТКА РЕФЕРАЛЬНОЙ ССЫЛКИ
+        let referralData = { referralBy: null, referralName: '' };
+        
+        if (referralCode && referralCode.startsWith('ref_')) {
+            const linkCode = referralCode.replace('ref_', '');
+            
+            // Отслеживаем клик по ссылке
+            try {
+                await fetch(`${APP_URL}/api/referral-links/track-click`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        code: linkCode,
+                        userId: userId,
+                        ipAddress: 'telegram', // В Telegram нет IP
+                        userAgent: 'Telegram Bot'
+                    })
+                });
+            } catch (fetchError) {
+                console.log('⚠️ Could not track click:', fetchError.message);
+            }
+            
+            // Обрабатываем реферальную регистрацию
+            referralData = await handleReferralRegistration(
+                userId, 
+                referralCode, 
+                {
+                    firstName: msg.from.first_name,
+                    username: msg.from.username
+                }
+            );
+        }
         
         // 🔥 ПРОВЕРКА ПОДПИСКИ НА КАНАЛ
         const isSubscribed = await checkSubscription(userId);
@@ -5401,103 +5479,8 @@ app.post('/api/admin/links/create', async (req, res) => {
         });
     }
 });
-// Отслеживание кликов по реферальным ссылкам
-app.post('/api/referral-links/track-click', async (req, res) => {
-    const { code, userId, ipAddress, userAgent } = req.body;
-    
-    try {
-        // Находим ссылку по коду
-        const linkResult = await pool.query(
-            'SELECT id FROM referral_links WHERE code = $1 AND is_active = true',
-            [code]
-        );
-        
-        if (linkResult.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'Ссылка не найдена'
-            });
-        }
-        
-        const linkId = linkResult.rows[0].id;
-        
-        // Проверяем уникальность клика (по IP и user agent)
-        const uniqueCheck = await pool.query(`
-            SELECT id FROM referral_link_clicks 
-            WHERE link_id = $1 AND ip_address = $2 AND user_agent = $3
-            LIMIT 1
-        `, [linkId, ipAddress, userAgent]);
-        
-        const isUniqueClick = uniqueCheck.rows.length === 0;
-        
-        // Обновляем статистику
-        await pool.query(`
-            UPDATE referral_links 
-            SET total_clicks = total_clicks + 1,
-                unique_clicks = unique_clicks + $1
-            WHERE id = $2
-        `, [isUniqueClick ? 1 : 0, linkId]);
-        
-        // Сохраняем информацию о клике
-        await pool.query(`
-            INSERT INTO referral_link_clicks (link_id, user_id, ip_address, user_agent)
-            VALUES ($1, $2, $3, $4)
-        `, [linkId, userId, ipAddress, userAgent]);
-        
-        res.json({
-            success: true,
-            isUnique: isUniqueClick,
-            message: 'Клик зарегистрирован'
-        });
-        
-    } catch (error) {
-        console.error('Track click error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Ошибка отслеживания клика'
-        });
-    }
-});
-// Отслеживание конверсий (регистраций по ссылке)
-app.post('/api/referral-links/track-conversion', async (req, res) => {
-    const { code, userId } = req.body;
-    
-    try {
-        // Находим ссылку по коду
-        const linkResult = await pool.query(
-            'SELECT id FROM referral_links WHERE code = $1 AND is_active = true',
-            [code]
-        );
-        
-        if (linkResult.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'Ссылка не найдена'
-            });
-        }
-        
-        const linkId = linkResult.rows[0].id;
-        
-        // Обновляем счетчик конверсий
-        await pool.query(`
-            UPDATE referral_links 
-            SET conversions = conversions + 1
-            WHERE id = $1
-        `, [linkId]);
-        
-        res.json({
-            success: true,
-            message: 'Конверсия зарегистрирована'
-        });
-        
-    } catch (error) {
-        console.error('Track conversion error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Ошибка отслеживания конверсии'
-        });
-    }
-});
+
+
 // Функция для проверки и восстановления таблицы referral_links
 async function fixReferralLinksTable() {
     try {
@@ -5729,7 +5712,373 @@ app.post('/api/admin/links/delete', async (req, res) => {
         });
     }
 });
+// ==================== REFERRAL LINK TRACKING SYSTEM ====================
 
+// Функция для создания реферальной ссылки
+app.post('/api/referral-links/create', async (req, res) => {
+    const { adminId, name, description } = req.body;
+    
+    console.log('🔗 Create referral link request:', { adminId, name, description });
+    
+    try {
+        // Проверка прав администратора
+        const isAdmin = await checkAdminAccess(adminId);
+        if (!isAdmin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Доступ запрещен. Только администраторы могут создавать ссылки.'
+            });
+        }
+        
+        // Генерируем уникальный код
+        const code = generateReferralCode();
+        
+        // Создаем ссылку на бота
+        const referralUrl = `https://t.me/LinkGoldMoney_bot?start=ref_${code}`;
+        
+        // Создаем запись в базе данных
+        const result = await pool.query(`
+            INSERT INTO referral_links (code, name, description, created_by, referral_url) 
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING *
+        `, [code, name.trim(), description?.trim() || '', adminId, referralUrl]);
+        
+        console.log('✅ Referral link created:', result.rows[0]);
+        
+        res.json({
+            success: true,
+            message: `Ссылка "${name}" успешно создана!`,
+            link: result.rows[0],
+            referralUrl: referralUrl
+        });
+        
+    } catch (error) {
+        console.error('❌ Create referral link error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка базы данных: ' + error.message
+        });
+    }
+});
+
+// Функция для отслеживания кликов по реферальным ссылкам
+app.post('/api/referral-links/track-click', async (req, res) => {
+    const { code, userId, ipAddress, userAgent } = req.body;
+    
+    try {
+        console.log('🖱️ Tracking referral click:', { code, userId, ipAddress });
+        
+        // Находим ссылку по коду
+        const linkResult = await pool.query(
+            'SELECT id FROM referral_links WHERE code = $1 AND is_active = true',
+            [code]
+        );
+        
+        if (linkResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Ссылка не найдена'
+            });
+        }
+        
+        const linkId = linkResult.rows[0].id;
+        
+        // Проверяем уникальность клика (по IP и user agent)
+        const uniqueCheck = await pool.query(`
+            SELECT id FROM referral_link_clicks 
+            WHERE link_id = $1 AND ip_address = $2 AND user_agent = $3
+            LIMIT 1
+        `, [linkId, ipAddress, userAgent]);
+        
+        const isUniqueClick = uniqueCheck.rows.length === 0;
+        
+        // Сохраняем информацию о клике
+        await pool.query(`
+            INSERT INTO referral_link_clicks (link_id, user_id, ip_address, user_agent)
+            VALUES ($1, $2, $3, $4)
+        `, [linkId, userId, ipAddress, userAgent]);
+        
+        // Обновляем статистику в referral_links
+        await pool.query(`
+            UPDATE referral_links 
+            SET total_clicks = total_clicks + 1,
+                unique_clicks = unique_clicks + $1
+            WHERE id = $2
+        `, [isUniqueClick ? 1 : 0, linkId]);
+        
+        console.log(`✅ Click tracked: link ${linkId}, unique: ${isUniqueClick}`);
+        
+        res.json({
+            success: true,
+            isUnique: isUniqueClick,
+            message: 'Клик зарегистрирован'
+        });
+        
+    } catch (error) {
+        console.error('❌ Track click error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка отслеживания клика'
+        });
+    }
+});
+
+// Функция для отслеживания конверсий (регистраций по ссылке)
+app.post('/api/referral-links/track-conversion', async (req, res) => {
+    const { code, userId } = req.body;
+    
+    try {
+        console.log('🎯 Tracking referral conversion:', { code, userId });
+        
+        // Находим ссылку по коду
+        const linkResult = await pool.query(
+            'SELECT id FROM referral_links WHERE code = $1 AND is_active = true',
+            [code]
+        );
+        
+        if (linkResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Ссылка не найдена'
+            });
+        }
+        
+        const linkId = linkResult.rows[0].id;
+        
+        // Создаем запись об активации
+        await pool.query(`
+            INSERT INTO referral_activations (link_id, user_id, reward_amount)
+            VALUES ($1, $2, $3)
+        `, [linkId, userId, 2]); // 2 звезды за активацию
+        
+        // Обновляем счетчик конверсий
+        await pool.query(`
+            UPDATE referral_links 
+            SET conversions = conversions + 1
+            WHERE id = $1
+        `, [linkId]);
+        
+        console.log(`✅ Conversion tracked: user ${userId} via link ${linkId}`);
+        
+        res.json({
+            success: true,
+            message: 'Конверсия зарегистрирована'
+        });
+        
+    } catch (error) {
+        console.error('❌ Track conversion error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка отслеживания конверсии'
+        });
+    }
+});
+
+// Получение статистики по реферальным ссылкам
+app.get('/api/admin/referral-links/stats', async (req, res) => {
+    const { adminId } = req.query;
+    
+    try {
+        // Проверка прав администратора
+        const isAdmin = await checkAdminAccess(adminId);
+        if (!isAdmin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Доступ запрещен'
+            });
+        }
+        
+        const result = await pool.query(`
+            SELECT 
+                rl.*,
+                up.username as creator_username,
+                up.first_name as creator_name,
+                COUNT(DISTINCT rlc.id) as total_clicks,
+                COUNT(DISTINCT CASE WHEN rlc.user_id IS NOT NULL THEN rlc.id END) as registered_clicks,
+                COUNT(DISTINCT ra.id) as activations,
+                COALESCE(SUM(ra.reward_amount), 0) as total_rewards
+            FROM referral_links rl
+            LEFT JOIN user_profiles up ON rl.created_by = up.user_id
+            LEFT JOIN referral_link_clicks rlc ON rl.id = rlc.link_id
+            LEFT JOIN referral_activations ra ON rl.id = ra.link_id
+            WHERE rl.is_active = true
+            GROUP BY rl.id, up.username, up.first_name
+            ORDER BY rl.created_at DESC
+        `);
+        
+        res.json({
+            success: true,
+            links: result.rows
+        });
+        
+    } catch (error) {
+        console.error('❌ Get referral stats error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
+
+// Обновленная функция для обработки реферальных регистраций
+async function handleReferralRegistration(userId, referralCode, userData) {
+    try {
+        console.log(`🔍 Processing referral registration for user ${userId} with code: ${referralCode}`);
+        
+        let referredBy = null;
+        let referrerName = '';
+        
+        if (referralCode) {
+            const cleanReferralCode = referralCode.replace('ref_', '');
+            
+            // Ищем ссылку в базе данных
+            const linkResult = await pool.query(
+                'SELECT id, code, created_by FROM referral_links WHERE code = $1 AND is_active = true',
+                [cleanReferralCode]
+            );
+            
+            if (linkResult.rows.length > 0) {
+                const link = linkResult.rows[0];
+                referredBy = link.created_by;
+                
+                // Получаем информацию о реферере
+                const referrerResult = await pool.query(
+                    'SELECT first_name, username FROM user_profiles WHERE user_id = $1',
+                    [referredBy]
+                );
+                
+                if (referrerResult.rows.length > 0) {
+                    referrerName = referrerResult.rows[0].first_name;
+                }
+                
+                console.log(`🎯 User came via referral link ${link.code} from user ${referredBy}`);
+                
+                // Регистрируем конверсию
+                await pool.query(`
+                    INSERT INTO referral_activations (link_id, user_id, reward_amount)
+                    VALUES ($1, $2, $3)
+                `, [link.id, userId, 2]);
+                
+                // Обновляем статистику ссылки
+                await pool.query(`
+                    UPDATE referral_links 
+                    SET conversions = conversions + 1
+                    WHERE id = $1
+                `, [link.id]);
+            } else {
+                console.log(`❌ Referral link not found: ${cleanReferralCode}`);
+            }
+        }
+        
+        return { referredBy, referrerName };
+        
+    } catch (error) {
+        console.error('❌ Handle referral registration error:', error);
+        return { referredBy: null, referrerName: '' };
+    }
+}
+
+
+// Вспомогательная функция для генерации кода ссылки
+function generateReferralCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 8; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
+// Функция для получения детальной статистики по ссылке
+app.get('/api/admin/referral-links/:linkId/detailed-stats', async (req, res) => {
+    const { linkId } = req.params;
+    const { adminId } = req.query;
+    
+    try {
+        // Проверка прав администратора
+        const isAdmin = await checkAdminAccess(adminId);
+        if (!isAdmin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Доступ запрещен'
+            });
+        }
+        
+        // Основная статистика ссылки
+        const linkStats = await pool.query(`
+            SELECT * FROM referral_links WHERE id = $1
+        `, [linkId]);
+        
+        if (linkStats.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Ссылка не найдена'
+            });
+        }
+        
+        // Статистика по дням
+        const dailyStats = await pool.query(`
+            SELECT 
+                DATE(clicked_at) as date,
+                COUNT(*) as total_clicks,
+                COUNT(DISTINCT ip_address) as unique_clicks,
+                COUNT(DISTINCT user_id) as registered_clicks
+            FROM referral_link_clicks 
+            WHERE link_id = $1 
+            GROUP BY DATE(clicked_at)
+            ORDER BY date DESC
+            LIMIT 30
+        `, [linkId]);
+        
+        // Последние активации
+        const recentActivations = await pool.query(`
+            SELECT 
+                ra.*,
+                up.username,
+                up.first_name
+            FROM referral_activations ra
+            LEFT JOIN user_profiles up ON ra.user_id = up.user_id
+            WHERE ra.link_id = $1
+            ORDER BY ra.activated_at DESC
+            LIMIT 20
+        `, [linkId]);
+        
+        // География кликов (по IP)
+        const geographyStats = await pool.query(`
+            SELECT 
+                ip_address,
+                COUNT(*) as click_count,
+                MIN(clicked_at) as first_click,
+                MAX(clicked_at) as last_click
+            FROM referral_link_clicks 
+            WHERE link_id = $1
+            GROUP BY ip_address
+            ORDER BY click_count DESC
+            LIMIT 50
+        `, [linkId]);
+        
+        res.json({
+            success: true,
+            link: linkStats.rows[0],
+            dailyStats: dailyStats.rows,
+            recentActivations: recentActivations.rows,
+            geographyStats: geographyStats.rows,
+            summary: {
+                total_days: dailyStats.rows.length,
+                total_activations: recentActivations.rows.length,
+                conversion_rate: linkStats.rows[0].total_clicks > 0 ? 
+                    (linkStats.rows[0].conversions / linkStats.rows[0].total_clicks * 100).toFixed(2) : 0
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Get detailed link stats error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    }
+});
 // Настройки доступа к ссылкам
 app.get('/api/admin/links/settings', async (req, res) => {
     const { adminId } = req.query;
@@ -5792,16 +6141,7 @@ app.post('/api/admin/links/settings', async (req, res) => {
     }
 });
 
-// Вспомогательная функция для генерации кода
-// Вспомогательная функция для генерации кода
-function generateReferralCode() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = '';
-    for (let i = 0; i < 8; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return 'LINK_' + result;
-}
+
 // Экспорт данных пользователей
 app.get('/api/admin/users-export', async (req, res) => {
     const { adminId, format = 'json' } = req.query;
