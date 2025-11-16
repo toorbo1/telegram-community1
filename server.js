@@ -1033,16 +1033,17 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         let referrerId = null;
         let referrerName = '';
                 // 🔧 ВЫЗЫВАЕМ ИСПРАВЛЕННУЮ ФУНКЦИЮ РЕФЕРАЛЬНОЙ РЕГИСТРАЦИИ
-        if (referralCode && referralCode.startsWith('ref_')) {
-            const referralResult = await handleReferralRegistration(userId, referralCode, {
-                firstName: msg.from.first_name,
-                username: msg.from.username
-            });
-            
-            if (referralResult.referredBy) {
-                console.log(`✅ Referral registration processed for ${userId}`);
-            }
-        }
+// 🔧 ВЫЗЫВАЕМ ИСПРАВЛЕННУЮ ФУНКЦИЮ РЕФЕРАЛЬНОЙ РЕГИСТРАЦИИ
+if (referralCode && referralCode.startsWith('ref_')) {
+    const referralResult = await handleReferralRegistration(userId, referralCode, {
+        firstName: msg.from.first_name,
+        username: msg.from.username
+    });
+    
+    if (referralResult.referredBy) {
+        console.log(`✅ Referral registration processed for ${userId}`);
+    }
+}
         
         if (referralCode && referralCode.startsWith('ref_')) {
             const cleanReferralCode = referralCode.replace('ref_', '');
@@ -4800,6 +4801,7 @@ app.post('/api/tasks', async (req, res) => {
     }
 });
 // 🔧 ФУНКЦИЯ ДЛЯ ОТПРАВКИ СООБЩЕНИЙ О РЕФЕРАЛЬНЫХ НАЧИСЛЕНИЯХ В ЧАТ БОТА
+// 🔧 ФУНКЦИЯ ДЛЯ ОТПРАВКИ СООБЩЕНИЙ О РЕФЕРАЛЬНЫХ НАЧИСЛЕНИЯХ В ЧАТ БОТА
 async function sendReferralBonusNotification(userId, referrerId, newUserBonus, referrerBonus) {
     if (!bot) {
         console.log('⚠️ Bot not initialized, cannot send referral notification');
@@ -4856,7 +4858,8 @@ async function sendReferralBonusNotification(userId, referrerId, newUserBonus, r
     }
 }
 
-// 🔧 ОБНОВЛЕННАЯ ФУНКЦИЯ РЕФЕРАЛЬНОЙ РЕГИСТРАЦИИ С УВЕДОМЛЕНИЯМИ
+// 🔧 ИСПРАВЛЕННАЯ ВЕРСИЯ - server.js строка ~1320
+// 🔧 ИСПРАВЛЕННАЯ ВЕРСИЯ - server.js строка ~1320
 async function handleReferralRegistration(userId, referralCode, userData) {
     try {
         console.log(`🔍 Processing referral registration for user ${userId} with code: ${referralCode}`);
@@ -4865,12 +4868,13 @@ async function handleReferralRegistration(userId, referralCode, userData) {
         let referrerName = '';
         
         if (referralCode) {
-            const cleanReferralCode = referralCode.replace('ref_', '');
+            // 🔥 ИСПРАВЛЕНИЕ: используем код как есть, без удаления 'ref_'
+            const cleanReferralCode = referralCode; // УБИРАЕМ .replace('ref_', '')
             
             // Ищем пользователя по реферальному коду
             const referrerResult = await pool.query(
                 'SELECT user_id, first_name, username, referral_earned FROM user_profiles WHERE referral_code = $1',
-                [cleanReferralCode]
+                [cleanReferralCode] // ✅ Теперь ищем с 'ref_' префиксом
             );
             
             if (referrerResult.rows.length > 0) {
@@ -4929,8 +4933,6 @@ async function handleReferralRegistration(userId, referralCode, userData) {
         return { referredBy: null, referrerName: '' };
     }
 }
-// ==================== WITHDRAWAL REQUESTS FOR ADMINS ====================
-
 // ==================== NOTIFICATION ENDPOINTS ====================
 
 // Отправка уведомлений всем пользователям (только для главного админа)
