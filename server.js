@@ -10,6 +10,8 @@ let currentUser = null;
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const LINKGOLDMONEY_API_KEY = 'FL-ZdgjHg-rrIELi-bvfvmC-KyqwaR';
+const LINKGOLDMONEY_API_URL = 'https://telegram-community1-production-0bc1.up.railway.app/';
 // Конфигурация для Railway
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -5318,6 +5320,352 @@ app.post('/api/user/tasks/start-with-hide', async (req, res) => {
     }
 });
 
+
+// Функция для автоматической проверки задания через LinkGoldMoney
+async function checkTaskWithLinkGold(userId, taskData, screenshotUrl = null) {
+    try {
+        console.log('🔍 Starting automatic task verification with LinkGoldMoney...', {
+            userId,
+            taskId: taskData.id,
+            screenshotUrl
+        });
+
+        const payload = {
+            api_key: LINKGOLDMONEY_API_KEY,
+            user_id: userId.toString(),
+            task_id: taskData.id.toString(),
+            task_title: taskData.title,
+            task_description: taskData.description,
+            task_price: taskData.price,
+            timestamp: new Date().toISOString()
+        };
+
+        // Если есть скриншот, добавляем его в запрос
+        if (screenshotUrl) {
+            payload.screenshot_url = screenshotUrl;
+        }
+
+        console.log('📤 Sending request to LinkGoldMoney API...');
+
+        const response = await fetch(`${LINKGOLDMONEY_API_URL}/check`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        
+        console.log('✅ LinkGoldMoney API response:', result);
+
+        return {
+            success: true,
+            approved: result.approved || false,
+            message: result.message || 'Проверка завершена',
+            details: result
+        };
+
+    } catch (error) {
+        console.error('❌ LinkGoldMoney API error:', error);
+        
+        // Возвращаем результат для ручной проверки в случае ошибки API
+        return {
+            success: false,
+            approved: false,
+            message: 'Автоматическая проверка временно недоступна. Задание будет проверено вручную.',
+            error: error.message
+        };
+    }
+}
+
+// Обновленный endpoint для отправки задания на проверку с интеграцией LinkGoldMoney
+app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'), async (req, res) => {
+    const userTaskId = req.params.userTaskId;
+    const { userId } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing user ID'
+        });
+    }
+    
+    if (!req.file) {
+        return res.status(400).json({
+            success: false,
+            error: 'No screenshot uploaded'
+        });
+    }
+    
+    const screenshotUrl = `/uploads/${req.file.filename}`;
+    
+    const client = await pool.connect();
+    
+    try {
+        await client.query('BEGIN');
+
+        // Получаем информацию о задании
+        const taskInfo = await client.query(`
+            SELECT ut.user_id, ut.task_id, u.first_name, u.last_name, u.username, t.title, t.price, t.description
+            FROM user_tasks ut 
+            JOIN user_profiles u ON ut.user_id = u.user_id 
+            JOIN tasks t ON ut.task_id = t.id 
+            WHERE ut.id = $1
+        `, [userTaskId]);
+        
+        if (taskInfo.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({
+                success: false,
+                error: 'Task not found'
+            });
+        }
+        
+        const taskData = taskInfo.rows[0];
+        const userName = `${taskData.first_name} ${taskData.last_name}`;
+
+        // 🔄 АВТОМАТИЧЕСКАЯ ПРОВЕРКА ЧЕРЕЗ LINKGOLDMONEY
+        console.log('🔄 Starting automatic verification with LinkGoldMoney...');
+        const verificationResult = await checkTaskWithLinkGold(userId, taskData, screenshotUrl);
+
+        let status = 'pending_review';
+        let verificationStatus = 'pending';
+        
+        // Если автоматическая проверка успешна и задание одобрено
+        if (verificationResult.success && verificationResult.approved) {
+            status = 'completed';
+            verificationStatus = 'approved';
+            
+            console.log('✅ Task auto-approved by LinkGoldMoney');
+        }
+
+        // Обновляем user_task
+        await client.query(`
+            UPDATE user_tasks 
+            SET status = $1, screenshot_url = $2, submitted_at = CURRENT_TIMESTAMP 
+            WHERE id = $3 AND user_id = $4
+        `, [status, screenshotUrl, userTaskId, userId]);
+        
+        // Создаем запись верификации
+        const verificationResultDb = await client.query(`
+            INSERT INTO task_verifications 
+            (user_task_id, user_id, task_id, user_name, user_username, task_title, task_price, screenshot_url, status, auto_verified) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            RETURNING *
+        `, [
+            userTaskId, 
+            taskData.user_id, 
+            taskData.task_id, 
+            userName, 
+            taskData.username, 
+            taskData.title, 
+            taskData.price, 
+            screenshotUrl,
+            verificationStatus,
+            true // Помечаем как автоматически проверенное
+        ]);
+
+        // Если задание автоматически одобрено, начисляем средства
+        if (status === 'completed') {
+            await client.query(`
+                UPDATE user_profiles 
+                SET balance = COALESCE(balance, 0) + $1,
+                    tasks_completed = COALESCE(tasks_completed, 0) + 1
+                WHERE user_id = $2
+            `, [taskData.price, userId]);
+
+            // Обновляем счетчик выполненных заданий
+            await client.query(`
+                UPDATE tasks 
+                SET completed_count = COALESCE(completed_count, 0) + 1 
+                WHERE id = $1
+            `, [taskData.task_id]);
+
+            // Проверяем, не достигнут ли лимит выполнений
+            const taskUpdate = await client.query(`
+                SELECT people_required, completed_count 
+                FROM tasks 
+                WHERE id = $1
+            `, [taskData.task_id]);
+
+            if (taskUpdate.rows.length > 0) {
+                const task = taskUpdate.rows[0];
+                if (task.completed_count >= task.people_required) {
+                    await client.query(`
+                        UPDATE tasks 
+                        SET status = 'completed' 
+                        WHERE id = $1
+                    `, [taskData.task_id]);
+                }
+            }
+
+            // Отправляем уведомление пользователю
+            await sendTaskNotification(userId, taskData.title, 'approved', 
+                'Задание автоматически одобрено системой проверки!');
+        }
+
+        await client.query('COMMIT');
+
+        const response = {
+            success: true,
+            message: verificationResult.success && verificationResult.approved 
+                ? 'Задание автоматически одобрено! Средства зачислены на ваш счет.' 
+                : 'Задание отправлено на проверку. Ожидайте решения администратора.',
+            verificationId: verificationResultDb.rows[0].id,
+            autoVerified: verificationResult.success && verificationResult.approved,
+            verificationResult: verificationResult
+        };
+
+        console.log('✅ Task submission completed:', response);
+        
+        res.json(response);
+        
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Submit task error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    } finally {
+        client.release();
+    }
+});
+
+// Endpoint для ручного вызова проверки через LinkGoldMoney
+app.post('/api/admin/task-verifications/:verificationId/check-with-linkgold', async (req, res) => {
+    const verificationId = req.params.verificationId;
+    const { adminId } = req.body;
+
+    console.log('🔍 Manual LinkGoldMoney check request:', { verificationId, adminId });
+
+    // Проверка прав администратора
+    const isAdmin = await checkAdminAccess(adminId);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен'
+        });
+    }
+
+    try {
+        // Получаем информацию о проверке
+        const verificationResult = await pool.query(`
+            SELECT tv.*, t.title, t.description, t.price, u.user_id
+            FROM task_verifications tv
+            JOIN tasks t ON tv.task_id = t.id
+            JOIN user_profiles u ON tv.user_id = u.user_id
+            WHERE tv.id = $1
+        `, [verificationId]);
+
+        if (verificationResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Проверка не найдена'
+            });
+        }
+
+        const verification = verificationResult.rows[0];
+
+        // Вызываем проверку через LinkGoldMoney
+        const linkGoldResult = await checkTaskWithLinkGold(
+            verification.user_id, 
+            {
+                id: verification.task_id,
+                title: verification.task_title,
+                description: verification.task_description,
+                price: verification.task_price
+            },
+            verification.screenshot_url
+        );
+
+        // Обновляем статус проверки на основе результата
+        if (linkGoldResult.success && linkGoldResult.approved) {
+            // Если автоматически одобрено, выполняем стандартную процедуру одобрения
+            await pool.query(`
+                UPDATE task_verifications 
+                SET status = 'approved', reviewed_at = NOW(), reviewed_by = $1, auto_verified = true
+                WHERE id = $2
+            `, [adminId, verificationId]);
+
+            // Здесь можно добавить логику начисления средств и т.д.
+        }
+
+        res.json({
+            success: true,
+            verificationResult: linkGoldResult,
+            message: linkGoldResult.success ? 
+                `Проверка завершена: ${linkGoldResult.message}` : 
+                'Ошибка автоматической проверки'
+        });
+
+    } catch (error) {
+        console.error('LinkGoldMoney manual check error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка проверки: ' + error.message
+        });
+    }
+});
+
+// Endpoint для получения статуса интеграции LinkGoldMoney
+app.get('/api/admin/linkgold-status', async (req, res) => {
+    const { adminId } = req.query;
+
+    // Проверка прав администратора
+    const isAdmin = await checkAdminAccess(adminId);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен'
+        });
+    }
+
+    try {
+        // Тестовый запрос к API LinkGoldMoney
+        const testPayload = {
+            api_key: LINKGOLDMONEY_API_KEY,
+            test: true,
+            timestamp: new Date().toISOString()
+        };
+
+        const response = await fetch(`${LINKGOLDMONEY_API_URL}/check`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(testPayload)
+        });
+
+        const status = response.ok ? 'connected' : 'error';
+
+        res.json({
+            success: true,
+            status: status,
+            apiKey: LINKGOLDMONEY_API_KEY ? 'configured' : 'missing',
+            apiUrl: LINKGOLDMONEY_API_URL,
+            lastChecked: new Date().toISOString(),
+            responseStatus: response.status
+        });
+
+    } catch (error) {
+        console.error('LinkGoldMoney status check error:', error);
+        res.json({
+            success: false,
+            status: 'error',
+            error: error.message,
+            apiKey: LINKGOLDMONEY_API_KEY ? 'configured' : 'missing',
+            apiUrl: LINKGOLDMONEY_API_URL,
+            lastChecked: new Date().toISOString()
+        });
+    }
+});
+
 // Обновите endpoint получения заданий
 app.get('/api/tasks-with-auto-hide', async (req, res) => {
     const { search, category, userId } = req.query;
@@ -7923,10 +8271,36 @@ app.get('/api/user/:userId/tasks/active', async (req, res) => {
         });
     }
 });
+// В функции initDatabase() добавьте:
+async function addAutoVerificationColumn() {
+    try {
+        await pool.query(`
+            ALTER TABLE task_verifications 
+            ADD COLUMN IF NOT EXISTS auto_verified BOOLEAN DEFAULT false
+        `);
+        console.log('✅ Column auto_verified added to task_verifications');
+    } catch (error) {
+        console.log('ℹ️ Column auto_verified already exists or error:', error.message);
+    }
+}
+
+// Вызовите эту функцию при инициализации
+addAutoVerificationColumn();
 // Submit task for verification (WITH FILE UPLOAD)
 app.post('/api/user/tasks/:userTaskId/submit', upload.single('screenshot'), async (req, res) => {
-    const userTaskId = req.params.userTaskId;
+    // Перенаправляем на новый endpoint с автоматической проверкой
+    const { userTaskId } = req.params;
     const { userId } = req.body;
+    
+    // Вызываем endpoint с автоматической проверкой
+    const newReq = { ...req, params: { userTaskId }, body: { userId } };
+    const newRes = {
+        json: (data) => res.json(data),
+        status: (code) => ({ json: (data) => res.status(code).json(data) })
+    };
+    
+    await exports.submitTaskAuto(newReq, newRes);
+
     
     if (!userId) {
         return res.status(400).json({
