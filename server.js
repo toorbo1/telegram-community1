@@ -2019,6 +2019,95 @@ bot.onText(/\/set_balance/, async (msg) => {
     );
 });
 
+// Улучшенная версия команды balance_user
+bot.onText(/\/balance_user (\d+)\s+([+-]?\d+)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const adminId = msg.from.id;
+    const targetUserId = match[1];
+    const amount = parseInt(match[2]);
+    
+    try {
+        // Проверка прав администратора
+        const isAdmin = await checkAdminAccess(adminId);
+        if (!isAdmin) {
+            return await bot.sendMessage(
+                chatId,
+                '❌ У вас нет прав для изменения балансов.'
+            );
+        }
+        
+        // Проверка существования пользователя
+        const userResult = await pool.query(
+            'SELECT user_id, username, first_name, balance FROM user_profiles WHERE user_id = $1',
+            [targetUserId]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return await bot.sendMessage(
+                chatId,
+                `❌ Пользователь с ID ${targetUserId} не найден.`
+            );
+        }
+        
+        const user = userResult.rows[0];
+        const currentBalance = user.balance || 0;
+        const newBalance = currentBalance + amount;
+        
+        // Проверка на отрицательный баланс
+        if (newBalance < 0) {
+            return await bot.sendMessage(
+                chatId,
+                `❌ Нельзя установить отрицательный баланс. Текущий баланс: ${currentBalance}⭐`
+            );
+        }
+        
+        // Обновление баланса
+        await pool.query(
+            'UPDATE user_profiles SET balance = $1 WHERE user_id = $2',
+            [newBalance, targetUserId]
+        );
+        
+        // Логирование действия
+        await pool.query(`
+            INSERT INTO admin_actions (admin_id, action_type, target_id, description) 
+            VALUES ($1, $2, $3, $4)
+        `, [adminId, 'balance_update', targetUserId, 
+            `Баланс изменен на ${amount}⭐. Новый баланс: ${newBalance}⭐`]);
+        
+        // Отправка уведомления
+        await bot.sendMessage(
+            chatId,
+            `✅ Баланс обновлен!\n\n` +
+            `👤 Пользователь: ${user.first_name}\n` +
+            `🆔 ID: ${targetUserId}\n` +
+            `💰 Изменение: ${amount >= 0 ? '+' : ''}${amount}⭐\n` +
+            `💫 Новый баланс: ${newBalance}⭐`,
+            { parse_mode: 'HTML' }
+        );
+        
+        // Уведомление пользователя (если возможно)
+        if (bot && amount !== 0) {
+            try {
+                await bot.sendMessage(
+                    targetUserId,
+                    amount > 0 ? 
+                    `🎉 Ваш баланс пополнен на ${amount}⭐ администратором!\n💫 Текущий баланс: ${newBalance}⭐` :
+                    `ℹ️ С вашего баланса списано ${Math.abs(amount)}⭐ администратором.\n💫 Текущий баланс: ${newBalance}⭐`
+                );
+            } catch (error) {
+                console.log('Не удалось отправить уведомление пользователю');
+            }
+        }
+        
+    } catch (error) {
+        console.error('Balance user command error:', error);
+        await bot.sendMessage(
+            chatId,
+            '❌ Ошибка при изменении баланса. Проверьте правильность введенных данных.'
+        );
+    }
+});
+
 // Команда для непосредственного изменения баланса
 bot.onText(/\/balance_user (\d+) ([+-]?\d+)/, async (msg, match) => {
     const chatId = msg.chat.id;
@@ -5870,6 +5959,52 @@ app.post('/api/user/tasks/start-with-hide', async (req, res) => {
     }
 });
 
+// Добавьте проверку перед изменением баланса
+app.post('/api/admin/balance/update', async (req, res) => {
+    const { adminId, targetUserId, amount } = req.body;
+    
+    try {
+        // Проверка прав администратора
+        const isAdmin = await checkAdminAccess(adminId);
+        if (!isAdmin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Доступ запрещен'
+            });
+        }
+
+        // Проверка существования пользователя
+        const userCheck = await pool.query(
+            'SELECT user_id FROM user_profiles WHERE user_id = $1',
+            [targetUserId]
+        );
+        
+        if (userCheck.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Пользователь не найден'
+            });
+        }
+
+        // Обновление баланса
+        await pool.query(
+            'UPDATE user_profiles SET balance = COALESCE(balance, 0) + $1 WHERE user_id = $2',
+            [amount, targetUserId]
+        );
+
+        res.json({
+            success: true,
+            message: `Баланс пользователя ${targetUserId} обновлен на ${amount}⭐`
+        });
+        
+    } catch (error) {
+        console.error('Balance update error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка базы данных: ' + error.message
+        });
+    }
+});
 
 // Функция для проверки прав главного администратора
 async function checkMainAdminAccess(userId) {
