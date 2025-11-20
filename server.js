@@ -491,7 +491,12 @@ await pool.query(`
                 completed_at TIMESTAMP
             )
         `);
-
+ await pool.query(`
+            ALTER TABLE task_verifications 
+            ADD COLUMN IF NOT EXISTS auto_verified BOOLEAN DEFAULT false
+        `);
+        // Вызовите эту функцию при инициализации
+addAutoVerificationColumn();
         await pool.query(`
             CREATE TABLE IF NOT EXISTS admin_actions (
                 id SERIAL PRIMARY KEY,
@@ -1019,16 +1024,34 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
     
     console.log('🎯 Start command with referral:', { userId, referralCode });
     
-    console.log('🎯 Start command received:', { 
-        userId, 
-        chatId, 
-        referralCode,
-        username: msg.from.username,
-        firstName: msg.from.first_name
-    });
-    
     try {
         await bot.sendChatAction(chatId, 'typing');
+        
+        // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: проверяем повторные переходы по рефке
+        if (referralCode && referralCode.startsWith('ref_')) {
+            const existingUser = await pool.query(
+                'SELECT user_id FROM user_profiles WHERE user_id = $1',
+                [userId]
+            );
+            
+            if (existingUser.rows.length > 0) {
+                console.log(`⚠️ Зарегистрированный пользователь ${userId} повторно перешел по реферальной ссылке`);
+                
+                await bot.sendMessage(
+                    chatId,
+                    `ℹ️ <b>Вы уже зарегистрированы в боте!</b>\n\n` +
+                    `Реферальные бонусы начисляются только при первой регистрации по реферальной ссылке.\n\n` +
+                    `Используйте команды:\n` +
+                    `/balance - проверить баланс\n` +
+                    `/referral - ваша реферальная ссылка\n` +
+                    `📋 - просмотр заданий`,
+                    { parse_mode: 'HTML' }
+                );
+                
+                // 🔥 ВАЖНО: завершаем обработку для повторных переходов
+                return;
+            }
+        }
         
         // 🔥 МГНОВЕННОЕ НАЧИСЛЕНИЕ ПРИ ПЕРЕХОДЕ ПО ССЫЛКЕ
         let referralBonusApplied = false;
@@ -4860,8 +4883,7 @@ async function sendReferralBonusNotification(userId, referrerId, newUserBonus, r
     }
 }
 
-// 🔧 ИСПРАВЛЕННАЯ ВЕРСИЯ - server.js строка ~1320
-// 🔧 ИСПРАВЛЕННАЯ ВЕРСИЯ - server.js строка ~1320
+// 🔧 ИСПРАВЛЕННАЯ ФУНКЦИЯ РЕФЕРАЛЬНОЙ РЕГИСТРАЦИИ
 async function handleReferralRegistration(userId, referralCode, userData) {
     try {
         console.log(`🔍 Processing referral registration for user ${userId} with code: ${referralCode}`);
@@ -4873,7 +4895,45 @@ async function handleReferralRegistration(userId, referralCode, userData) {
             // 🔥 ИСПРАВЛЕНИЕ: используем код как есть, без удаления 'ref_'
             const cleanReferralCode = referralCode; // УБИРАЕМ .replace('ref_', '')
             
-            // Ищем пользователя по реферальному коду
+            // ПРОВЕРЯЕМ: был ли пользователь уже зарегистрирован в боте
+            const existingUser = await pool.query(
+                'SELECT user_id FROM user_profiles WHERE user_id = $1',
+                [userId]
+            );
+            
+            // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: если пользователь УЖЕ зарегистрирован - не начисляем бонусы
+            if (existingUser.rows.length > 0) {
+                console.log(`❌ Пользователь ${userId} уже зарегистрирован в боте - реферальные бонусы не начисляются`);
+                
+                // Находим информацию о пригласившем для сообщения
+                const referrerResult = await pool.query(
+                    'SELECT user_id, first_name FROM user_profiles WHERE referral_code = $1',
+                    [cleanReferralCode]
+                );
+                
+                if (referrerResult.rows.length > 0) {
+                    const referrer = referrerResult.rows[0];
+                    console.log(`ℹ️ Пользователь ${userId} повторно перешел по ссылке от ${referrer.user_id} - бонусы не начислены`);
+                    
+                    // Можно отправить сообщение пользователю
+                    if (bot) {
+                        try {
+                            await bot.sendMessage(
+                                userId,
+                                `ℹ️ <b>Вы уже зарегистрированы в боте!</b>\n\n` +
+                                `Реферальные бонусы начисляются только при первой регистрации.`,
+                                { parse_mode: 'HTML' }
+                            );
+                        } catch (botError) {
+                            console.log('Не удалось отправить уведомление:', botError.message);
+                        }
+                    }
+                }
+                
+                return { referredBy: null, referrerName: '', alreadyRegistered: true };
+            }
+            
+            // Ищем пользователя по реферальному коду (только для НОВЫХ пользователей)
             const referrerResult = await pool.query(
                 'SELECT user_id, first_name, username, referral_earned FROM user_profiles WHERE referral_code = $1',
                 [cleanReferralCode] // ✅ Теперь ищем с 'ref_' префиксом
@@ -4884,9 +4944,9 @@ async function handleReferralRegistration(userId, referralCode, userData) {
                 referredBy = referrer.user_id;
                 referrerName = referrer.first_name;
                 
-                console.log(`🎯 User came via referral from: ${referredBy} (${referrerName})`);
+                console.log(`🎯 Новый пользователь пришел по реферальной ссылке от: ${referredBy} (${referrerName})`);
                 
-                // 🔥 НЕМЕДЛЕННО НАЧИСЛЯЕМ БОНУСЫ ПРИ РЕГИСТРАЦИИ
+                // 🔥 НЕМЕДЛЕННО НАЧИСЛЯЕМ БОНУСЫ ПРИ ПЕРВОЙ РЕГИСТРАЦИИ
                 const client = await pool.connect();
                 
                 try {
@@ -4910,29 +4970,29 @@ async function handleReferralRegistration(userId, referralCode, userData) {
                     
                     await client.query('COMMIT');
                     
-                    console.log(`✅ Referral bonuses applied: ${referredBy} got 2⭐, ${userId} got 1⭐`);
+                    console.log(`✅ Реферальные бонусы применены: ${referredBy} получил 2⭐, ${userId} получил 1⭐`);
                     
                     // 🔥 ОТПРАВЛЯЕМ СООБЩЕНИЯ В ЧАТ БОТА
                     await sendReferralBonusNotification(userId, referredBy, 1, 2);
                     
                 } catch (transactionError) {
                     await client.query('ROLLBACK');
-                    console.error('❌ Referral bonus transaction error:', transactionError);
+                    console.error('❌ Ошибка транзакции реферальных бонусов:', transactionError);
                     throw transactionError;
                 } finally {
                     client.release();
                 }
                 
             } else {
-                console.log(`❌ Referrer not found for code: ${cleanReferralCode}`);
+                console.log(`❌ Приглашающий не найден по коду: ${cleanReferralCode}`);
             }
         }
         
-        return { referredBy, referrerName };
+        return { referredBy, referrerName, alreadyRegistered: false };
         
     } catch (error) {
-        console.error('❌ Handle referral registration error:', error);
-        return { referredBy: null, referrerName: '' };
+        console.error('❌ Ошибка обработки реферальной регистрации:', error);
+        return { referredBy: null, referrerName: '', alreadyRegistered: false };
     }
 }
 // ==================== NOTIFICATION ENDPOINTS ====================
@@ -5321,6 +5381,7 @@ app.post('/api/user/tasks/start-with-hide', async (req, res) => {
 });
 
 
+
 // Функция для автоматической проверки задания через LinkGoldMoney
 async function checkTaskWithLinkGold(userId, taskData, screenshotUrl = null) {
     try {
@@ -5382,7 +5443,6 @@ async function checkTaskWithLinkGold(userId, taskData, screenshotUrl = null) {
         };
     }
 }
-
 // Обновленный endpoint для отправки задания на проверку с интеграцией LinkGoldMoney
 app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'), async (req, res) => {
     const userTaskId = req.params.userTaskId;
@@ -5467,7 +5527,7 @@ app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'),
             taskData.price, 
             screenshotUrl,
             verificationStatus,
-            true // Помечаем как автоматически проверенное
+            verificationResult.success // Помечаем как автоматически проверенное
         ]);
 
         // Если задание автоматически одобрено, начисляем средства
@@ -5613,6 +5673,7 @@ app.post('/api/admin/task-verifications/:verificationId/check-with-linkgold', as
     }
 });
 
+// Endpoint для получения статуса интеграции LinkGoldMoney
 // Endpoint для получения статуса интеграции LinkGoldMoney
 app.get('/api/admin/linkgold-status', async (req, res) => {
     const { adminId } = req.query;
