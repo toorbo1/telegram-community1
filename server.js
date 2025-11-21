@@ -1021,11 +1021,32 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
     const referralCode = match[1] ? match[1].trim() : null;
-    
-    console.log('🎯 Start command with referral:', { userId, referralCode });
-    
+
+    console.log('🎯 Start command with SubGram integration:', { userId, referralCode });
+
     try {
         await bot.sendChatAction(chatId, 'typing');
+
+        // Проверяем подписку через SubGram
+        const subscriptionCheck = await checkSubscriptionWithSubGram(userId, {
+            first_name: msg.from.first_name,
+            username: msg.from.username
+        });
+
+        // Если требуется подписка, показываем спонсоров
+        if (subscriptionCheck.required) {
+            if (subscriptionCheck.status === 'requires_subscription' && subscriptionCheck.sponsors) {
+                await showSubscriptionRequired(chatId, subscriptionCheck.sponsors, userId);
+                return;
+            } else if (subscriptionCheck.status === 'requires_registration') {
+                await showRegistrationRequired(chatId, subscriptionCheck.registration_url);
+                return;
+            }
+        }
+
+        // Если подписка не требуется или проверка пройдена, продолжаем обычную регистрацию
+        await processUserRegistration(chatId, msg.from, referralCode);
+
         
         // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: проверяем повторные переходы по рефке
         if (referralCode && referralCode.startsWith('ref_')) {
@@ -7109,6 +7130,464 @@ app.post('/api/referral-links/track-click', async (req, res) => {
         });
     }
 });
+// ==================== SUBGRAM API INTEGRATION ====================
+
+const SUBGRAM_API_KEY = '849e4d1d215c57172c535e7a6fbedab62294721a38a36d3e3da158b3aedf34b';
+const SUBGRAM_API_URL = 'https://api.subgram.org';
+
+// Основная функция для получения спонсоров
+async function getSubGramSponsors(userData) {
+    try {
+        console.log('🎯 Requesting SubGram sponsors for user:', userData.user_id);
+
+        const requestBody = {
+            chat_id: userData.chat_id || userData.user_id,
+            user_id: userData.user_id,
+            first_name: userData.first_name,
+            username: userData.username,
+            language_code: userData.language_code || 'ru',
+            is_premium: userData.is_premium || false,
+            action: 'subscribe',
+            max_sponsors: 3
+        };
+
+        // Добавляем опциональные параметры если они есть
+        if (userData.gender) requestBody.gender = userData.gender;
+        if (userData.age) requestBody.age = userData.age;
+        if (userData.exclude_resource_ids) requestBody.exclude_resource_ids = userData.exclude_resource_ids;
+        if (userData.exclude_ads_ids) requestBody.exclude_ads_ids = userData.exclude_ads_ids;
+
+        const response = await fetch(`${SUBGRAM_API_URL}/get-sponsors`, {
+            method: 'POST',
+            headers: {
+                'Auth': SUBGRAM_API_KEY,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('✅ SubGram API response:', result);
+
+        return result;
+
+    } catch (error) {
+        console.error('❌ SubGram API error:', error);
+        return {
+            status: 'error',
+            message: 'Failed to get sponsors',
+            error: error.message
+        };
+    }
+}
+
+// Функция для проверки подписок пользователя
+async function checkUserSubscriptions(userId, links = []) {
+    try {
+        console.log('🔍 Checking user subscriptions:', userId);
+
+        const requestBody = {
+            user_id: userId
+        };
+
+        if (links.length > 0) {
+            requestBody.links = links;
+        }
+
+        const response = await fetch(`${SUBGRAM_API_URL}/get-user-subscriptions`, {
+            method: 'POST',
+            headers: {
+                'Auth': SUBGRAM_API_KEY,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        return result;
+
+    } catch (error) {
+        console.error('❌ Check subscriptions error:', error);
+        return {
+            status: 'error',
+            message: 'Failed to check subscriptions'
+        };
+    }
+}
+
+// Функция для управления ботами в SubGram
+async function manageSubGramBot(action, botData = {}) {
+    try {
+        console.log('🤖 Managing SubGram bot:', action);
+
+        const requestBody = {
+            action: action,
+            ...botData
+        };
+
+        const response = await fetch(`${SUBGRAM_API_URL}/bots`, {
+            method: 'POST',
+            headers: {
+                'Auth': SUBGRAM_API_KEY,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        return result;
+
+    } catch (error) {
+        console.error('❌ Manage bot error:', error);
+        return {
+            status: 'error',
+            message: 'Failed to manage bot'
+        };
+    }
+}
+
+// Middleware для проверки подписки через SubGram
+async function checkSubscriptionWithSubGram(userId, userData) {
+    try {
+        console.log('🔐 Checking subscription with SubGram for user:', userId);
+
+        // Получаем спонсоров для пользователя
+        const sponsorsResult = await getSubGramSponsors({
+            user_id: userId,
+            chat_id: userId,
+            first_name: userData.first_name,
+            username: userData.username,
+            language_code: 'ru',
+            is_premium: false
+        });
+
+        // Обрабатываем разные статусы ответа
+        switch (sponsorsResult.status) {
+            case 'ok':
+                // Пользователь подписан на все или нет подходящих спонсоров
+                console.log('✅ User passed subscription check');
+                return {
+                    required: false,
+                    status: 'subscribed'
+                };
+
+            case 'warning':
+                // Требуется подписка
+                console.log('📢 User needs to subscribe to sponsors');
+                return {
+                    required: true,
+                    status: 'requires_subscription',
+                    sponsors: sponsorsResult.sponsors || [],
+                    message: 'Требуется подписка на спонсоров'
+                };
+
+            case 'register':
+                // Требуется регистрация через WebApp
+                console.log('📝 User needs registration');
+                return {
+                    required: true,
+                    status: 'requires_registration',
+                    registration_url: sponsorsResult.additional?.registration_url,
+                    message: 'Требуется дополнительная информация'
+                };
+
+            case 'gender':
+            case 'age':
+                // Требуется указать пол/возраст
+                console.log('👤 User needs to provide demographic info');
+                return {
+                    required: true,
+                    status: `requires_${sponsorsResult.status}`,
+                    message: `Требуется указать ${sponsorsResult.status === 'gender' ? 'пол' : 'возраст'}`
+                };
+
+            default:
+                // В случае ошибки разрешаем доступ
+                console.log('⚠️ SubGram check failed, allowing access');
+                return {
+                    required: false,
+                    status: 'error',
+                    message: 'Ошибка проверки подписки'
+                };
+        }
+
+    } catch (error) {
+        console.error('❌ Subscription check error:', error);
+        // В случае ошибки разрешаем доступ
+        return {
+            required: false,
+            status: 'error',
+            message: error.message
+        };
+    }
+}
+
+// Функция для создания кнопок подписки
+function createSubscriptionButtons(sponsors) {
+    const buttons = [];
+    
+    // Добавляем кнопки для каждого спонсора
+    sponsors.forEach(sponsor => {
+        if (sponsor.available_now && sponsor.status === 'unsubscribed') {
+            buttons.push([
+                {
+                    text: sponsor.button_text || 'Подписаться',
+                    url: sponsor.link
+                }
+            ]);
+        }
+    });
+
+    // Добавляем кнопку проверки подписки
+    buttons.push([
+        {
+            text: '✅ Я подписался',
+            callback_data: 'check_subgram_subscription'
+        }
+    ]);
+
+    return buttons;
+}
+
+
+
+// Функция для показа требований подписки
+async function showSubscriptionRequired(chatId, sponsors, userId) {
+    const messageText = `
+📢 <b>ДЛЯ ДОСТУПА К LINKGOLD НЕОБХОДИМО ПОДПИСАТЬСЯ</b>
+
+✨ <b>Подпишитесь на наши спонсорские каналы чтобы получить доступ к боту:</b>
+
+🔸 Подписка бесплатна
+🔸 Отписка возможна через 3 дня
+🔸 Доступ к боту сразу после подписки
+
+👇 <b>Выберите каналы для подписки:</b>
+    `.trim();
+
+    const buttons = createSubscriptionButtons(sponsors);
+
+    await bot.sendMessage(chatId, messageText, {
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: buttons
+        }
+    });
+
+    // Сохраняем информацию о спонсорах для пользователя
+    await saveUserSponsors(userId, sponsors);
+}
+
+// Функция для показа требований регистрации
+async function showRegistrationRequired(chatId, registrationUrl) {
+    const messageText = `
+📝 <b>ТРЕБУЕТСЯ ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ</b>
+
+Для персонализации контента и предложений, пожалуйста, укажите дополнительную информацию о себе.
+
+Это займет всего 1 минуту!
+    `.trim();
+
+    await bot.sendMessage(chatId, messageText, {
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    {
+                        text: '✅ Заполнить анкету',
+                        web_app: { url: registrationUrl }
+                    }
+                ],
+                [
+                    {
+                        text: '🔄 Проверить снова',
+                        callback_data: 'check_subgram_subscription'
+                    }
+                ]
+            ]
+        }
+    });
+}
+
+// Сохранение спонсоров пользователя
+async function saveUserSponsors(userId, sponsors) {
+    try {
+        // Здесь можно сохранить информацию о спонсорах в базу данных
+        // для последующей проверки подписки
+        console.log('💾 Saving user sponsors:', { userId, sponsorsCount: sponsors.length });
+        
+        // Временное решение - можно добавить в user_profiles или отдельную таблицу
+        await pool.query(`
+            INSERT INTO user_subgram_data (user_id, sponsors_data, last_check) 
+            VALUES ($1, $2, CURRENT_TIMESTAMP)
+            ON CONFLICT (user_id) 
+            DO UPDATE SET sponsors_data = $2, last_check = CURRENT_TIMESTAMP
+        `, [userId, JSON.stringify(sponsors)]);
+
+    } catch (error) {
+        console.error('❌ Save sponsors error:', error);
+    }
+}
+
+// Обработчик проверки подписки
+bot.on('callback_query', async (callbackQuery) => {
+    const message = callbackQuery.message;
+    const chatId = message.chat.id;
+    const userId = callbackQuery.from.id;
+    const data = callbackQuery.data;
+
+    if (data === 'check_subgram_subscription') {
+        await handleSubscriptionCheck(chatId, userId, callbackQuery);
+    }
+});
+
+// Обработчик проверки подписки
+async function handleSubscriptionCheck(chatId, userId, callbackQuery) {
+    try {
+        await bot.answerCallbackQuery(callbackQuery.id, {
+            text: '🔍 Проверяем подписки...'
+        });
+
+        // Проверяем подписку снова
+        const subscriptionCheck = await checkSubscriptionWithSubGram(userId, {
+            first_name: callbackQuery.from.first_name,
+            username: callbackQuery.from.username
+        });
+
+        if (subscriptionCheck.required) {
+            // Подписка все еще требуется
+            await bot.sendMessage(chatId, '❌ Вы еще не подписались на все необходимые каналы. Пожалуйста, завершите подписку.');
+        } else {
+            // Подписка выполнена
+            await bot.deleteMessage(chatId, message.message_id);
+            await bot.sendMessage(chatId, '✅ Отлично! Проверка подписки пройдена. Теперь вы можете пользоваться ботом!');
+
+            // Продолжаем регистрацию
+            await processUserRegistration(chatId, callbackQuery.from, null);
+        }
+
+    } catch (error) {
+        console.error('❌ Subscription check handler error:', error);
+        await bot.answerCallbackQuery(callbackQuery.id, {
+            text: '❌ Ошибка проверки подписки'
+        });
+    }
+}
+
+// Функция обработки регистрации пользователя (ваш существующий код)
+async function processUserRegistration(chatId, user, referralCode) {
+    // Ваш существующий код регистрации из функции start
+    // Перенесите сюда основную логику регистрации из обработчика /start
+    console.log('👤 Processing user registration:', user.id);
+    
+    // Здесь ваш существующий код регистрации...
+}
+
+// Endpoint для админ-панели SubGram
+app.get('/api/admin/subgram-status', async (req, res) => {
+    const { adminId } = req.query;
+
+    try {
+        // Проверка прав администратора
+        const isAdmin = await checkAdminAccess(adminId);
+        if (!isAdmin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Доступ запрещен'
+            });
+        }
+
+        // Получаем информацию о боте в SubGram
+        const botInfo = await manageSubGramBot('info', {
+            bot_id: await getBotSubGramId() // Нужно получить ID бота в SubGram
+        });
+
+        // Получаем статистику
+        const testResult = await getSubGramSponsors({
+            user_id: adminId,
+            chat_id: adminId,
+            first_name: 'Test',
+            username: 'test_admin'
+        });
+
+        res.json({
+            success: true,
+            subgram: {
+                api_key_configured: !!SUBGRAM_API_KEY,
+                bot_status: botInfo.status,
+                test_request: testResult.status,
+                last_checked: new Date().toISOString()
+            },
+            botInfo: botInfo,
+            testResult: testResult
+        });
+
+    } catch (error) {
+        console.error('SubGram status error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'SubGram check failed: ' + error.message
+        });
+    }
+});
+
+// Функция для получения ID бота в SubGram
+async function getBotSubGramId() {
+    // Здесь можно сохранить ID бота при регистрации
+    // Пока используем дефолтное значение или получаем из базы
+    return await pool.query('SELECT subgram_bot_id FROM bot_settings LIMIT 1')
+        .then(result => result.rows[0]?.subgram_bot_id || 'default_bot_id');
+}
+
+// Создаем таблицу для данных SubGram при инициализации
+async function createSubGramTables() {
+    try {
+        console.log('🔧 Creating SubGram tables...');
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS user_subgram_data (
+                user_id BIGINT PRIMARY KEY,
+                sponsors_data JSONB,
+                last_check TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS bot_settings (
+                id SERIAL PRIMARY KEY,
+                subgram_bot_id TEXT,
+                subgram_api_key TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        console.log('✅ SubGram tables created');
+    } catch (error) {
+        console.error('❌ Error creating SubGram tables:', error);
+    }
+}
+
+// Добавьте вызов в функцию инициализации
+async function initializeServer() {
+    await initDatabase();
+    await createSubGramTables(); // Добавьте эту строку
+    await createSampleTasks();
+    
+    console.log('✅ Server initialization complete with SubGram integration');
+}
 // 🔥 ENDPOINT ДЛЯ МГНОВЕННОЙ ПРОВЕРКИ РЕФЕРАЛЬНЫХ НАЧИСЛЕНИЙ
 app.get('/api/user/:userId/instant-referral-stats', async (req, res) => {
     const userId = req.params.userId;
