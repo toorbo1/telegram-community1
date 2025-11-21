@@ -69,66 +69,6 @@ const storage = multer.diskStorage({
     }
 });
 
-// Функция для добавления бота в SubGram
-async function addBotToSubGram() {
-    try {
-        const response = await fetch('https://api.subgram.org/bots', {
-            method: 'POST',
-            headers: {
-                'Auth': '849e4d1d215c57172c535e7a6fbedab62294721a38a36d3e3da158b3aedf34b',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                action: 'add',
-                bot_token: '8206130580:AAG91R9Bnp2pYG0z9v1eRJmH8oZvThsN9eA', // токен вашего бота
-                max_sponsors: 3, // количество спонсоров для показа
-                get_links: 1, // получать только ссылки
-                show_quiz: 1, // показывать анкету
-                text_op: "Для работы нашего сервиса требуется подписка на каналы-спонсоры снизу, после нажмите кнопку 'Проверить'"
-            })
-        });
-
-        const result = await response.json();
-        if (result.status === 'ok') {
-            console.log('✅ Бот успешно добавлен в SubGram');
-            console.log('API Key:', result.result.api_key);
-            return result.result.api_key;
-        } else {
-            throw new Error(result.message);
-        }
-    } catch (error) {
-        console.error('❌ Ошибка добавления бота в SubGram:', error);
-        return null;
-    }
-}
-const SUBGRAM_API_KEY = 'в849e4d1d215c57172c535e7a6fbedab62294721a38a36d3e3da158b3aedf34b'; // Получите после регистрации бота
-
-async function getSponsors(userId, chatId, userData) {
-    try {
-        const response = await fetch('https://api.subgram.org/get-sponsors', {
-            method: 'POST',
-            headers: {
-                'Auth': SUBGRAM_API_KEY,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                chat_id: chatId,
-                user_id: userId,
-                first_name: userData.first_name,
-                username: userData.username,
-                language_code: userData.language_code || 'ru',
-                is_premium: userData.is_premium || false,
-                action: 'subscribe'
-            })
-        });
-
-        const result = await response.json();
-        return result;
-    } catch (error) {
-        console.error('❌ Ошибка получения спонсоров:', error);
-        return null;
-    }
-}
 const upload = multer({ 
     storage: storage,
     limits: {
@@ -1080,48 +1020,6 @@ async function checkSubscription(userId) {
 bot.onText(/\/start(.+)?/, async (msg, match) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
-    
-    try {
-        // Получаем спонсоров для пользователя
-        const sponsorsResult = await getSponsors(userId, chatId, msg.from);
-        
-        if (!sponsorsResult) {
-            // Если ошибка, продолжаем обычную регистрацию
-            await handleNormalRegistration(msg, match);
-            return;
-        }
-
-        // Обрабатываем разные статусы ответа
-        switch (sponsorsResult.status) {
-            case 'ok':
-                // Пользователь уже подписан или нет спонсоров - пропускаем
-                await handleNormalRegistration(msg, match);
-                break;
-                
-            case 'warning':
-                // Нужно подписаться на каналы
-                await showSponsorsBlock(chatId, sponsorsResult);
-                break;
-                
-            case 'register':
-                // Нужно заполнить анкету
-                await showRegistrationForm(chatId, sponsorsResult);
-                break;
-                
-            case 'gender':
-            case 'age':
-                // Нужно указать пол/возраст
-                await showGenderAgeSelection(chatId, sponsorsResult);
-                break;
-                
-            default:
-                await handleNormalRegistration(msg, match);
-        }
-    } catch (error) {
-        console.error('❌ Error in start command:', error);
-        await bot.sendMessage(chatId, '❌ Произошла ошибка при обработке команды. Попробуйте еще раз.');
-    }
-    
     const referralCode = match[1] ? match[1].trim() : null;
     
     console.log('🎯 Start command with referral:', { userId, referralCode });
@@ -1144,6 +1042,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                     `ℹ️ <b>Вы уже зарегистрированы в боте!</b>\n\n` +
                     `Реферальные бонусы начисляются только при первой регистрации по реферальной ссылке.\n\n` +
                     `Используйте команды:\n` +
+                    
                     `/referral - ваша реферальная ссылка\n` +
                     `📋 - просмотр заданий`,
                     { parse_mode: 'HTML' }
@@ -5505,139 +5404,6 @@ app.post('/api/tasks', async (req, res) => {
         });
     }
 });
-
-async function showSponsorsBlock(chatId, sponsorsResult) {
-    const sponsors = sponsorsResult.additional?.sponsors || [];
-    
-    if (sponsors.length === 0) {
-        return;
-    }
-
-    // Создаем сообщение с каналами для подписки
-    let message = `Ошибка! Вы не подписаны на каналы-спонсоры, повторите пожалуйста еще раз\n\n`;
-    message += `Подписаться\n\n`;
-    message += `Здравствуйте! Для работы нашего сервиса требуется подписка на каналы-спонсоры снизу, после нажмите кнопку "Проверить"\n\n`;
-
-    // Добавляем каналы
-    sponsors.forEach((sponsor, index) => {
-        if (sponsor.available_now && sponsor.status === 'unsubscribed') {
-            message += `Канал ${index + 1}\n`;
-            message += `${sponsor.resource_name}\n\n`;
-        }
-    });
-
-    // Создаем клавиатуру с кнопками
-    const keyboard = {
-        inline_keyboard: []
-    };
-
-    // Добавляем кнопки для подписки
-    sponsors.forEach((sponsor, index) => {
-        if (sponsor.available_now && sponsor.status === 'unsubscribed') {
-            keyboard.inline_keyboard.push([
-                {
-                    text: `Нажать старт ${index + 1}`,
-                    url: sponsor.link
-                }
-            ]);
-        }
-    });
-
-    // Добавляем кнопку проверки
-    keyboard.inline_keyboard.push([
-        {
-            text: 'Проверить',
-            callback_data: 'check_subscription_subgram'
-        }
-    ]);
-
-    await bot.sendMessage(chatId, message, {
-        reply_markup: keyboard
-    });
-}
-
-bot.on('callback_query', async (callbackQuery) => {
-    const message = callbackQuery.message;
-    const chatId = message.chat.id;
-    const userId = callbackQuery.from.id;
-    const data = callbackQuery.data;
-
-    if (data === 'check_subscription_subgram') {
-        await bot.answerCallbackQuery(callbackQuery.id, {
-            text: 'Проверяем подписки...'
-        });
-
-        // Повторно запрашиваем статус подписок
-        const sponsorsResult = await getSponsors(userId, chatId, callbackQuery.from);
-        
-        if (sponsorsResult.status === 'ok') {
-            // Все подписки оформлены - удаляем сообщение и продолжаем регистрацию
-            await bot.deleteMessage(chatId, message.message_id);
-            
-            // Имитируем команду /start для продолжения регистрации
-            const startMsg = {
-                chat: { id: chatId },
-                from: callbackQuery.from,
-                text: '/start'
-            };
-            bot.processUpdate({ message: startMsg });
-        } else {
-            // Не все подписки оформлены
-            await bot.answerCallbackQuery(callbackQuery.id, {
-                text: 'Вы еще не подписались на все каналы!',
-                show_alert: true
-            });
-        }
-    }
-});
-async function showRegistrationForm(chatId, sponsorsResult) {
-    const registrationUrl = sponsorsResult.additional?.registration_url;
-    
-    if (!registrationUrl) {
-        return;
-    }
-
-    const keyboard = {
-        inline_keyboard: [
-            [
-                {
-                    text: '✅ Пройти быструю регистрацию',
-                    web_app: { url: registrationUrl }
-                }
-            ],
-            [
-                {
-                    text: 'Продолжить',
-                    callback_data: 'subgram_continue'
-                }
-            ]
-        ]
-    };
-
-    await bot.sendMessage(
-        chatId,
-        'Для продолжения, пожалуйста, укажите ваш пол и возраст.',
-        { reply_markup: keyboard }
-    );
-}
-// При обновлении настроек бота
-await fetch('https://api.subgram.org/bots', {
-    method: 'POST',
-    headers: {
-        'Auth': 'ваш_secret_key',
-        'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-        action: 'update',
-        bot_id: ваш_bot_id,
-        get_links: 1, // Получать только ссылки
-        show_quiz: 1, // Показывать анкету
-        gender_question: 1, // Задавать вопрос о поле
-        age_question: 1, // Задавать вопрос о возрасте
-        max_sponsors: 3, // Количество спонсоров
-        text_op: "Для работы нашего сервиса требуется подписка на каналы-спонсоры снизу, после нажмите кнопку 'Проверить'"
-    })
-});
 // 🔧 ФУНКЦИЯ ДЛЯ ОТПРАВКИ СООБЩЕНИЙ О РЕФЕРАЛЬНЫХ НАЧИСЛЕНИЯХ В ЧАТ БОТА
 // 🔧 ФУНКЦИЯ ДЛЯ ОТПРАВКИ СООБЩЕНИЙ О РЕФЕРАЛЬНЫХ НАЧИСЛЕНИЯХ В ЧАТ БОТА
 async function sendReferralBonusNotification(userId, referrerId, newUserBonus, referrerBonus) {
@@ -7343,9 +7109,6 @@ app.post('/api/referral-links/track-click', async (req, res) => {
         });
     }
 });
-
-
-
 // 🔥 ENDPOINT ДЛЯ МГНОВЕННОЙ ПРОВЕРКИ РЕФЕРАЛЬНЫХ НАЧИСЛЕНИЙ
 app.get('/api/user/:userId/instant-referral-stats', async (req, res) => {
     const userId = req.params.userId;
