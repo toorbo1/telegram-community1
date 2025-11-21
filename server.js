@@ -42,7 +42,257 @@ setInterval(async () => {
         console.error('❌ Database ping failed:', error);
     }
 }, 5 * 60 * 1000); // 5 минут
+// ==================== FLYER API INTEGRATION ====================
 
+const FLYER_API_KEY = 'FL-1eLiZh-Xvihpo-dYpOPh-KSi1sD';
+const FLYER_API_URL = 'https://api.flyerservice.io';
+
+// Функция для проверки подписки через Flyer API
+async function checkSubscriptionWithFlyer(userId, userData) {
+    try {
+        console.log('🎯 Checking subscription with Flyer API for user:', userId);
+
+        const requestBody = {
+            key: FLYER_API_KEY,
+            user_id: userId,
+            language_code: userData.language_code || 'ru'
+        };
+
+        const response = await fetch(`${FLYER_API_URL}/check`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('✅ Flyer API response:', result);
+
+        // Обрабатываем ответ Flyer API
+        if (result.skip === true) {
+            // Пользователь прошел проверку
+            return {
+                required: false,
+                status: 'subscribed',
+                message: 'Проверка подписки пройдена'
+            };
+        } else {
+            // Требуется подписка
+            return {
+                required: true,
+                status: 'requires_subscription',
+                message: result.error || 'Требуется подписка на спонсорские каналы',
+                sponsors: result.sponsors || []
+            };
+        }
+
+    } catch (error) {
+        console.error('❌ Flyer API error:', error);
+        // В случае ошибки разрешаем доступ
+        return {
+            required: false,
+            status: 'error',
+            message: 'Ошибка проверки подписки'
+        };
+    }
+}
+
+// Функция для получения заданий через Flyer API
+async function getFlyerTasks(userId, userData, limit = 5) {
+    try {
+        console.log('📋 Getting tasks from Flyer API for user:', userId);
+
+        const requestBody = {
+            key: FLYER_API_KEY,
+            user_id: userId,
+            language_code: userData.language_code || 'ru',
+            limit: limit
+        };
+
+        const response = await fetch(`${FLYER_API_URL}/get_tasks`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('✅ Flyer tasks response:', result);
+
+        return result;
+
+    } catch (error) {
+        console.error('❌ Flyer tasks error:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
+
+// Функция для проверки статуса задания через Flyer API
+async function checkFlyerTaskStatus(userId, signature) {
+    try {
+        console.log('🔍 Checking Flyer task status:', { userId, signature });
+
+        const requestBody = {
+            key: FLYER_API_KEY,
+            signature: signature
+        };
+
+        const response = await fetch(`${FLYER_API_URL}/check_task`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('✅ Flyer task status response:', result);
+
+        return result;
+
+    } catch (error) {
+        console.error('❌ Flyer task status error:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
+
+// Функция для создания кнопок подписки Flyer
+function createFlyerSubscriptionButtons(sponsors) {
+    const buttons = [];
+    
+    // Добавляем кнопки для каждого спонсора из Flyer
+    sponsors.forEach((sponsor, index) => {
+        if (sponsor.url && sponsor.button_text) {
+            buttons.push([
+                {
+                    text: sponsor.button_text,
+                    url: sponsor.url
+                }
+            ]);
+        }
+    });
+
+    // Добавляем кнопку проверки подписки
+    buttons.push([
+        {
+            text: '✅ Я подписался',
+            callback_data: 'check_flyer_subscription'
+        }
+    ]);
+
+    return buttons;
+}
+
+// Функция для показа требований подписки Flyer
+async function showFlyerSubscriptionRequired(chatId, sponsors, userId) {
+    const messageText = `
+📢 <b>ДЛЯ ДОСТУПА К LINKGOLD НЕОБХОДИМО ПОДПИСАТЬСЯ</b>
+
+✨ <b>Подпишитесь на наши спонсорские каналы чтобы получить доступ к боту:</b>
+
+🔸 Подписка бесплатна
+🔸 Отписка возможна через 3 дня
+🔸 Доступ к боту сразу после подписки
+
+👇 <b>Выберите каналы для подписки:</b>
+    `.trim();
+
+    const buttons = createFlyerSubscriptionButtons(sponsors);
+
+    await bot.sendMessage(chatId, messageText, {
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: buttons
+        }
+    });
+
+    // Сохраняем информацию о спонсорах для пользователя
+    await saveUserFlyerSponsors(userId, sponsors);
+}
+
+// Сохранение спонсоров Flyer пользователя
+async function saveUserFlyerSponsors(userId, sponsors) {
+    try {
+        console.log('💾 Saving user Flyer sponsors:', { userId, sponsorsCount: sponsors.length });
+        
+        // Сохраняем в базу данных
+        await pool.query(`
+            INSERT INTO user_flyer_data (user_id, sponsors_data, last_check) 
+            VALUES ($1, $2, CURRENT_TIMESTAMP)
+            ON CONFLICT (user_id) 
+            DO UPDATE SET sponsors_data = $2, last_check = CURRENT_TIMESTAMP
+        `, [userId, JSON.stringify(sponsors)]);
+
+    } catch (error) {
+        console.error('❌ Save Flyer sponsors error:', error);
+    }
+}
+
+// Обработчик проверки подписки Flyer
+bot.on('callback_query', async (callbackQuery) => {
+    const message = callbackQuery.message;
+    const chatId = message.chat.id;
+    const userId = callbackQuery.from.id;
+    const data = callbackQuery.data;
+
+    if (data === 'check_flyer_subscription') {
+        await handleFlyerSubscriptionCheck(chatId, userId, callbackQuery);
+    }
+});
+
+// Обработчик проверки подписки Flyer
+async function handleFlyerSubscriptionCheck(chatId, userId, callbackQuery) {
+    try {
+        await bot.answerCallbackQuery(callbackQuery.id, {
+            text: '🔍 Проверяем подписки...'
+        });
+
+        // Проверяем подписку снова через Flyer API
+        const subscriptionCheck = await checkSubscriptionWithFlyer(userId, {
+            first_name: callbackQuery.from.first_name,
+            username: callbackQuery.from.username,
+            language_code: callbackQuery.from.language_code || 'ru'
+        });
+
+        if (subscriptionCheck.required) {
+            // Подписка все еще требуется
+            await bot.sendMessage(chatId, '❌ Вы еще не подписались на все необходимые каналы. Пожалуйста, завершите подписку.');
+        } else {
+            // Подписка выполнена
+            await bot.deleteMessage(chatId, message.message_id);
+            await bot.sendMessage(chatId, '✅ Отлично! Проверка подписки пройдена. Теперь вы можете пользоваться ботом!');
+
+            // Продолжаем регистрацию
+            await processUserRegistration(chatId, callbackQuery.from, null);
+        }
+
+    } catch (error) {
+        console.error('❌ Flyer subscription check handler error:', error);
+        await bot.answerCallbackQuery(callbackQuery.id, {
+            text: '❌ Ошибка проверки подписки'
+        });
+    }
+}
 // Middleware
 app.use(cors({
     origin: '*',
@@ -429,7 +679,29 @@ await pool.query(`
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
+  // Таблицы для Flyer
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS user_flyer_data (
+                user_id BIGINT PRIMARY KEY,
+                sponsors_data JSONB,
+                last_check TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
 
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS flyer_tasks (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                task_signature TEXT NOT NULL,
+                task_data JSONB,
+                status TEXT DEFAULT 'active',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP
+            )
+        `);
+
+        console.log('✅ Flyer tables initialized');
         // Гарантируем, что колонка image_url существует
         await pool.query(`
             ALTER TABLE tasks 
@@ -1022,17 +1294,30 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
     const userId = msg.from.id;
     const referralCode = match[1] ? match[1].trim() : null;
 
-    console.log('🎯 Start command with SubGram integration:', { userId, referralCode });
+    console.log('🎯 Start command with Flyer integration:', { userId, referralCode });
 
     try {
         await bot.sendChatAction(chatId, 'typing');
 
-        // Проверяем подписку через SubGram
-        const subscriptionCheck = await checkSubscriptionWithSubGram(userId, {
+        // 🔄 ПРОВЕРКА ПОДПИСКИ ЧЕРЕЗ FLYER API
+        const subscriptionCheck = await checkSubscriptionWithFlyer(userId, {
             first_name: msg.from.first_name,
-            username: msg.from.username
+            username: msg.from.username,
+            language_code: msg.from.language_code || 'ru'
         });
 
+        // Если требуется подписка, показываем спонсоров Flyer
+        if (subscriptionCheck.required) {
+            if (subscriptionCheck.status === 'requires_subscription' && subscriptionCheck.sponsors) {
+                await showFlyerSubscriptionRequired(chatId, subscriptionCheck.sponsors, userId);
+                return;
+            }
+        }
+
+        // Если подписка не требуется или проверка пройдена, продолжаем обычную регистрацию
+        await processUserRegistration(chatId, msg.from, referralCode);
+
+  
         // Если требуется подписка, показываем спонсоров
         if (subscriptionCheck.required) {
             if (subscriptionCheck.status === 'requires_subscription' && subscriptionCheck.sponsors) {
@@ -2716,6 +3001,233 @@ app.get('/api/admin/links/:linkId/stats', async (req, res) => {
         });
     }
 });
+
+
+// Endpoint для получения статуса интеграции Flyer
+app.get('/api/admin/flyer-status', async (req, res) => {
+    const { adminId } = req.query;
+
+    // Проверка прав администратора
+    const isAdmin = await checkAdminAccess(adminId);
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            error: 'Доступ запрещен'
+        });
+    }
+
+    try {
+        // Тестовый запрос к Flyer API
+        const testPayload = {
+            key: FLYER_API_KEY,
+            user_id: adminId,
+            language_code: 'ru'
+        };
+
+        const response = await fetch(`${FLYER_API_URL}/check`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(testPayload)
+        });
+
+        const status = response.ok ? 'connected' : 'error';
+
+        res.json({
+            success: true,
+            status: status,
+            apiKey: FLYER_API_KEY ? 'configured' : 'missing',
+            apiUrl: FLYER_API_URL,
+            lastChecked: new Date().toISOString(),
+            responseStatus: response.status
+        });
+
+    } catch (error) {
+        console.error('Flyer status check error:', error);
+        res.json({
+            success: false,
+            status: 'error',
+            error: error.message,
+            apiKey: FLYER_API_KEY ? 'configured' : 'missing',
+            apiUrl: FLYER_API_URL,
+            lastChecked: new Date().toISOString()
+        });
+    }
+});
+
+// Создаем таблицу для данных Flyer при инициализации
+async function createFlyerTables() {
+    try {
+        console.log('🔧 Creating Flyer tables...');
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS user_flyer_data (
+                user_id BIGINT PRIMARY KEY,
+                sponsors_data JSONB,
+                last_check TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS flyer_tasks (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                task_signature TEXT NOT NULL,
+                task_data JSONB,
+                status TEXT DEFAULT 'active',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP
+            )
+        `);
+
+        console.log('✅ Flyer tables created');
+    } catch (error) {
+        console.error('❌ Error creating Flyer tables:', error);
+    }
+}
+
+// Добавьте вызов в функцию инициализации
+async function initializeServer() {
+    await initDatabase();
+    await createFlyerTables(); // Добавьте эту строку
+    await createSampleTasks();
+    
+    console.log('✅ Server initialization complete with Flyer integration');
+}
+
+// Endpoint для вебхуков Flyer
+app.post('/api/flyer/webhook', async (req, res) => {
+    console.log('📨 Received Flyer webhook:', req.body);
+
+    try {
+        const { type, key_number, data } = req.body;
+
+        // Проверяем ключ
+        if (key_number !== FLYER_API_KEY) {
+            console.log('❌ Invalid Flyer webhook key');
+            return res.status(401).json({ status: false });
+        }
+
+        // Обрабатываем события
+        switch (type) {
+            case 'test':
+                console.log('✅ Test webhook received');
+                break;
+
+            case 'sub_completed':
+                console.log('✅ User completed subscription:', data.user_id);
+                // Пользователь прошел обязательную подписку
+                await handleSubscriptionCompleted(data.user_id);
+                break;
+
+            case 'new_status':
+                console.log('📊 Task status update:', data);
+                // Обновление статуса задания
+                await handleTaskStatusUpdate(data);
+                break;
+
+            default:
+                console.log('⚠️ Unknown webhook type:', type);
+        }
+
+        // Отправляем подтверждение
+        res.json({ status: true });
+
+    } catch (error) {
+        console.error('❌ Flyer webhook error:', error);
+        res.status(500).json({ status: false });
+    }
+});
+
+// Обработчик завершения подписки
+async function handleSubscriptionCompleted(userId) {
+    try {
+        // Помечаем пользователя как прошедшего проверку подписки
+        await pool.query(`
+            UPDATE user_profiles 
+            SET has_subscribed = true 
+            WHERE user_id = $1
+        `, [userId]);
+
+        console.log(`✅ User ${userId} subscription marked as completed`);
+
+    } catch (error) {
+        console.error('❌ Handle subscription completed error:', error);
+    }
+}
+
+// Обработчик обновления статуса задания
+async function handleTaskStatusUpdate(data) {
+    try {
+        const { status, user_id, signature, link } = data;
+
+        // Обновляем статус задания в базе данных
+        await pool.query(`
+            UPDATE flyer_tasks 
+            SET status = $1, completed_at = CASE WHEN $1 = 'completed' THEN CURRENT_TIMESTAMP ELSE NULL END
+            WHERE user_id = $2 AND task_signature = $3
+        `, [status, user_id, signature]);
+
+        console.log(`✅ Flyer task status updated: ${user_id} - ${signature} - ${status}`);
+
+        // Если задание завершено, начисляем награду
+        if (status === 'completed') {
+            await awardUserForFlyerTask(user_id, signature);
+        }
+
+    } catch (error) {
+        console.error('❌ Handle task status update error:', error);
+    }
+}
+
+// Начисление награды за задание Flyer
+async function awardUserForFlyerTask(userId, signature) {
+    try {
+        // Получаем информацию о задании
+        const taskResult = await pool.query(`
+            SELECT task_data FROM flyer_tasks 
+            WHERE user_id = $1 AND task_signature = $2
+        `, [userId, signature]);
+
+        if (taskResult.rows.length === 0) {
+            console.log('❌ Flyer task not found for awarding');
+            return;
+        }
+
+        const taskData = taskResult.rows[0].task_data;
+        const reward = taskData.reward || 10; // Дефолтная награда
+
+        // Начисляем награду пользователю
+        await pool.query(`
+            UPDATE user_profiles 
+            SET balance = COALESCE(balance, 0) + $1
+            WHERE user_id = $2
+        `, [reward, userId]);
+
+        console.log(`✅ Awarded ${reward} stars to user ${userId} for Flyer task`);
+
+        // Отправляем уведомление пользователю
+        if (bot) {
+            try {
+                await bot.sendMessage(
+                    userId,
+                    `🎉 <b>Задание выполнено!</b>\n\n` +
+                    `Вы получили ${reward}⭐ за выполнение задания через Flyer!\n\n` +
+                    `💫 Ваш баланс пополнен.`,
+                    { parse_mode: 'HTML' }
+                );
+            } catch (botError) {
+                console.log('⚠️ Could not send notification:', botError.message);
+            }
+        }
+
+    } catch (error) {
+        console.error('❌ Award Flyer task error:', error);
+    }
+}
+
 // Получение истории отправленных уведомлений
 app.get('/api/admin/notification-history', async (req, res) => {
     const { adminId } = req.query;
