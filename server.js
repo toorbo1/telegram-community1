@@ -13,6 +13,7 @@ const PORT = process.env.PORT || 3000;
 const FLYER_API_KEY = process.env.FLYER_API_KEY || 'FL-pqKrtr-kPaJFg-KeLIQD-TLHgfC';
 const FLYER_API_URL = 'https://api.flyerservice.io';
 // Исправьте URL вебхука - уберите двойной слеш
+// Исправьте этот код в начале файла:
 const WEBHOOK_URL = process.env.APP_URL ? 
     process.env.APP_URL.replace(/\/$/, '') + '/api/flyer/webhook' : 
     'https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook';
@@ -6268,6 +6269,184 @@ async function handleReferralRegistration(userId, referralCode, userData) {
     }
 }
 // ==================== NOTIFICATION ENDPOINTS ====================
+// Простой endpoint для проверки вебхука Flyer
+app.get('/api/flyer/webhook', async (req, res) => {
+    console.log('🔍 Flyer webhook test request received');
+    res.json({ 
+        status: true,
+        message: 'Flyer webhook is working!',
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Основной endpoint для вебхука Flyer
+app.post('/api/flyer/webhook', express.json(), async (req, res) => {
+    console.log('📨 Received Flyer webhook:', JSON.stringify(req.body, null, 2));
+
+    try {
+        const { type, key_number, data } = req.body;
+
+        // Проверяем ключ
+        if (key_number !== FLYER_API_KEY) {
+            console.log('❌ Invalid Flyer webhook key:', key_number);
+            return res.status(401).json({ 
+                status: false,
+                error: 'Invalid API key'
+            });
+        }
+
+        console.log(`✅ Valid Flyer webhook received, type: ${type}`);
+
+        // Обрабатываем события
+        switch (type) {
+            case 'test':
+                console.log('✅ Test webhook received');
+                break;
+
+            case 'sub_completed':
+                console.log('✅ User completed subscription:', data);
+                if (data.user_id) {
+                    await handleFlyerSubscriptionCompleted(data.user_id);
+                }
+                break;
+
+            case 'new_status':
+                console.log('📊 Task status update:', data);
+                await handleFlyerTaskStatusUpdate(data);
+                break;
+
+            default:
+                console.log('⚠️ Unknown webhook type:', type);
+        }
+
+        res.json({ 
+            status: true,
+            processed: true,
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('❌ Flyer webhook processing error:', error);
+        res.status(500).json({ 
+            status: false,
+            error: error.message
+        });
+    }
+});
+
+// Функция для ручной настройки вебхука Flyer
+async function setupFlyerWebhookManually() {
+    try {
+        console.log('🔧 Setting up Flyer webhook manually...');
+
+        const webhookUrl = 'https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook';
+        
+        const response = await fetch('https://api.flyerservice.io/set_webhook', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                key: FLYER_API_KEY,
+                webhook: webhookUrl
+            })
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            console.log('✅ Webhook setup successful:', result);
+            return {
+                success: true,
+                result: result
+            };
+        } else {
+            throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+        }
+
+    } catch (error) {
+        console.error('❌ Manual webhook setup error:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
+
+// Команда для ручной настройки
+bot.onText(/\/setup_flyer_manual/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+
+    if (parseInt(userId) !== ADMIN_ID) {
+        return await bot.sendMessage(chatId, '❌ Только главный администратор может настраивать Flyer.');
+    }
+
+    try {
+        await bot.sendMessage(chatId, '🔄 Начинаю ручную настройку Flyer webhook...');
+
+        const result = await setupFlyerWebhookManually();
+
+        if (result.success) {
+            await bot.sendMessage(
+                chatId,
+                `✅ <b>Flyer webhook успешно настроен!</b>\n\n` +
+                `🌐 URL: https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook\n` +
+                `🔄 Статус: подключено`,
+                { parse_mode: 'HTML' }
+            );
+        } else {
+            throw new Error(result.error);
+        }
+
+    } catch (error) {
+        console.error('Manual setup command error:', error);
+        await bot.sendMessage(
+            chatId,
+            `❌ <b>Ошибка настройки Flyer:</b> ${error.message}\n\n` +
+            `<b>Попробуйте выполнить вручную:</b>\n\n` +
+            `<code>curl -X POST https://api.flyerservice.io/set_webhook \\\n  -H "Content-Type: application/json" \\\n  -d '{"key": "${FLYER_API_KEY}", "webhook": "https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook"}'</code>`,
+            { parse_mode: 'HTML' }
+        );
+    }
+});
+// Команда для проверки статуса вебхука
+bot.onText(/\/webhook_status/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+
+    if (parseInt(userId) !== ADMIN_ID) {
+        return await bot.sendMessage(chatId, '❌ Только главный администратор может проверять статус вебхука.');
+    }
+
+    try {
+        // Проверяем доступность нашего вебхука
+        const testResponse = await fetch('https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook', {
+            method: 'GET'
+        });
+
+        let webhookStatus = '❌ Не отвечает';
+        if (testResponse.ok) {
+            webhookStatus = '✅ Работает';
+        }
+
+        await bot.sendMessage(
+            chatId,
+            `🔧 <b>Статус вебхука</b>\n\n` +
+            `🌐 <b>URL:</b> https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook\n` +
+            `📡 <b>Статус:</b> ${webhookStatus}\n` +
+            `🔑 <b>API Key:</b> ${FLYER_API_KEY ? 'Настроен' : 'Отсутствует'}\n\n` +
+            `<b>Для настройки используйте:</b>\n` +
+            `<code>/setup_flyer_manual</code>`,
+            { parse_mode: 'HTML' }
+        );
+
+    } catch (error) {
+        await bot.sendMessage(
+            chatId,
+            `❌ Ошибка проверки статуса: ${error.message}`
+        );
+    }
+});
 
 // Отправка уведомлений всем пользователям (только для главного админа)
 app.post('/api/admin/send-notification', async (req, res) => {
@@ -8826,7 +9005,6 @@ app.post('/api/flyer/webhook', express.json(), async (req, res) => {
     }
 });
 
-// Автоматическая настройка при запуске сервера
 async function initializeFlyerIntegration() {
     try {
         console.log('🚀 Initializing Flyer integration...');
@@ -8837,41 +9015,21 @@ async function initializeFlyerIntegration() {
             return;
         }
 
-        // Проверяем доступность API
-        const botInfo = await getFlyerBotInfo();
-        if (!botInfo.success) {
-            console.log('❌ Flyer API is not accessible:', botInfo.error);
-            return;
-        }
-
-        console.log('✅ Flyer API is accessible');
-
-        // Настраиваем вебхук
-        const setupResult = await setupFlyerWebhook();
+        // Автоматически настраиваем вебхук при запуске
+        console.log('🔄 Auto-configuring Flyer webhook on startup...');
+        const setupResult = await setupFlyerWebhookManually();
+        
         if (setupResult.success) {
-            console.log('✅ Flyer webhook configured successfully via', setupResult.method);
+            console.log('✅ Flyer webhook configured automatically on startup');
         } else {
             console.log('⚠️ Flyer webhook auto-configuration failed:', setupResult.error);
-            
-            // Показываем инструкцию для ручной настройки
-            console.log(`
-📋 Для ручной настройки Flyer webhook отправьте POST запрос:
-
-URL: ${FLYER_API_URL}/set_webhook
-Body: {
-  "key": "${FLYER_API_KEY}",
-  "webhook": "${WEBHOOK_URL}"
-}
-
-Или используйте команду в боте: /setup_flyer_force
-            `);
+            console.log('💡 Use /setup_flyer_manual command to set up manually');
         }
 
     } catch (error) {
         console.error('❌ Flyer initialization error:', error);
     }
 }
-
 // Endpoint для проверки статуса Flyer
 app.get('/api/admin/flyer-status-detailed', async (req, res) => {
     const { adminId } = req.query;
