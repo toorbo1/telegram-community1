@@ -90,7 +90,21 @@ async function checkSubscriptionWithFlyer(userId, userData) {
                 sponsors: result.sponsors || []
             };
         }
+// В функции checkSubscriptionWithFlyer добавьте:
+console.log('🔧 Flyer API Request Details:', {
+    url: `${FLYER_API_URL}/check`,
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    body: requestBody
+});
 
+// После запроса:
+console.log('🔧 Flyer API Response:', {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers
+});
     } catch (error) {
         console.error('❌ Flyer API error:', error);
         // В случае ошибки разрешаем доступ
@@ -1316,6 +1330,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
 
         // Если подписка не требуется или проверка пройдена, продолжаем обычную регистрацию
         await processUserRegistration(chatId, msg.from, referralCode);
+
 
   
         // Если требуется подписка, показываем спонсоров
@@ -3003,20 +3018,20 @@ app.get('/api/admin/links/:linkId/stats', async (req, res) => {
 });
 
 
-// Endpoint для получения статуса интеграции Flyer
+// Endpoint для проверки статуса интеграции Flyer
 app.get('/api/admin/flyer-status', async (req, res) => {
     const { adminId } = req.query;
 
-    // Проверка прав администратора
-    const isAdmin = await checkAdminAccess(adminId);
-    if (!isAdmin) {
-        return res.status(403).json({
-            success: false,
-            error: 'Доступ запрещен'
-        });
-    }
-
     try {
+        // Проверка прав администратора
+        const isAdmin = await checkAdminAccess(adminId);
+        if (!isAdmin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Доступ запрещен'
+            });
+        }
+
         // Тестовый запрос к Flyer API
         const testPayload = {
             key: FLYER_API_KEY,
@@ -3118,13 +3133,11 @@ app.post('/api/flyer/webhook', async (req, res) => {
 
             case 'sub_completed':
                 console.log('✅ User completed subscription:', data.user_id);
-                // Пользователь прошел обязательную подписку
                 await handleSubscriptionCompleted(data.user_id);
                 break;
 
             case 'new_status':
                 console.log('📊 Task status update:', data);
-                // Обновление статуса задания
                 await handleTaskStatusUpdate(data);
                 break;
 
@@ -3132,7 +3145,6 @@ app.post('/api/flyer/webhook', async (req, res) => {
                 console.log('⚠️ Unknown webhook type:', type);
         }
 
-        // Отправляем подтверждение
         res.json({ status: true });
 
     } catch (error) {
@@ -3140,8 +3152,6 @@ app.post('/api/flyer/webhook', async (req, res) => {
         res.status(500).json({ status: false });
     }
 });
-
-// Обработчик завершения подписки
 async function handleSubscriptionCompleted(userId) {
     try {
         // Помечаем пользователя как прошедшего проверку подписки
@@ -3153,11 +3163,19 @@ async function handleSubscriptionCompleted(userId) {
 
         console.log(`✅ User ${userId} subscription marked as completed`);
 
+        // Отправляем сообщение пользователю
+        if (bot) {
+            await bot.sendMessage(
+                userId,
+                '✅ **Подписка подтверждена!**\n\nТеперь вы можете пользоваться всеми функциями бота!',
+                { parse_mode: 'HTML' }
+            );
+        }
+
     } catch (error) {
         console.error('❌ Handle subscription completed error:', error);
     }
 }
-
 // Обработчик обновления статуса задания
 async function handleTaskStatusUpdate(data) {
     try {
