@@ -12,9 +12,12 @@ const PORT = process.env.PORT || 3000;
 // Используйте ключ из переменных окружения
 const FLYER_API_KEY = process.env.FLYER_API_KEY || 'FL-ZdgjHg-rrTELL-bvfvmC-KyqwaR';
 const FLYER_API_URL = 'https://api.flyerservice.io';
+// Исправьте URL вебхука - уберите двойной слеш
+const WEBHOOK_URL = process.env.APP_URL ? 
+    process.env.APP_URL.replace(/\/$/, '') + '/api/flyer/webhook' : 
+    'https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook';
 
-// Добавьте вебхук URL (ваш Railway URL)
-const WEBHOOK_URL = process.env.APP_URL + '/api/flyer/webhook';
+
 
 const LINKGOLDMONEY_API_KEY = 'FL-ZdgjHg-rrIELi-bvfvmC-KyqwaR';
 const LINKGOLDMONEY_API_URL = 'https://telegram-community1-production-0bc1.up.railway.app/';
@@ -6938,79 +6941,102 @@ app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'),
         client.release();
     }
 });
-// Обновленная функция для настройки вебхука Flyer
+// ==================== FLYER API SETUP FUNCTIONS ====================
+
+// Улучшенная функция настройки вебхука Flyer
 async function setupFlyerWebhook() {
     try {
         console.log('🔧 Setting up Flyer webhook...');
 
-        // Проверяем доступные endpoints Flyer API
-        const testResponse = await fetch(`${FLYER_API_URL}/get_me`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                key: FLYER_API_KEY
-            })
-        });
+        // Проверяем корректность URL вебхука
+        const webhookUrl = WEBHOOK_URL.replace('//api', '/api'); // Исправляем двойной слеш
+        console.log('🌐 Webhook URL:', webhookUrl);
 
-        if (!testResponse.ok) {
-            throw new Error(`Flyer API test failed: ${testResponse.status}`);
-        }
-
-        const testResult = await testResponse.json();
-        console.log('✅ Flyer API connection test:', testResult);
-
-        // Согласно документации Flyer, вебхук настраивается через /set_webhook
-        const webhookResponse = await fetch(`${FLYER_API_URL}/set_webhook`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                key: FLYER_API_KEY,
-                webhook: WEBHOOK_URL
-            })
-        });
-
-        if (!webhookResponse.ok) {
-            // Если /set_webhook не работает, пробуем альтернативные endpoints
-            console.log('⚠️ /set_webhook failed, trying alternative methods...');
-            
-            // Пробуем через /webhook (альтернативный endpoint)
-            const altResponse = await fetch(`${FLYER_API_URL}/webhook`, {
+        // Метод 1: Попробуем через /set_webhook
+        try {
+            console.log('🔄 Trying /set_webhook endpoint...');
+            const response1 = await fetch(`${FLYER_API_URL}/set_webhook`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
                     key: FLYER_API_KEY,
-                    url: WEBHOOK_URL
-                })
+                    webhook: webhookUrl
+                }),
+                timeout: 10000
             });
 
-            if (!altResponse.ok) {
-                throw new Error(`All webhook setup methods failed: ${webhookResponse.status}, ${altResponse.status}`);
+            if (response1.ok) {
+                const result = await response1.json();
+                console.log('✅ Webhook setup via /set_webhook:', result);
+                return {
+                    success: true,
+                    method: 'set_webhook',
+                    result: result
+                };
             }
-
-            const altResult = await altResponse.json();
-            console.log('✅ Webhook setup via alternative method:', altResult);
-            
-            return {
-                success: true,
-                message: 'Webhook configured via alternative method',
-                result: altResult
-            };
+        } catch (error) {
+            console.log('⚠️ /set_webhook failed:', error.message);
         }
 
-        const webhookResult = await webhookResponse.json();
-        console.log('✅ Flyer webhook setup response:', webhookResult);
+        // Метод 2: Попробуем через /webhook
+        try {
+            console.log('🔄 Trying /webhook endpoint...');
+            const response2 = await fetch(`${FLYER_API_URL}/webhook`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    key: FLYER_API_KEY,
+                    url: webhookUrl
+                }),
+                timeout: 10000
+            });
 
-        return {
-            success: true,
-            message: 'Flyer webhook configured successfully',
-            result: webhookResult
-        };
+            if (response2.ok) {
+                const result = await response2.json();
+                console.log('✅ Webhook setup via /webhook:', result);
+                return {
+                    success: true,
+                    method: 'webhook',
+                    result: result
+                };
+            }
+        } catch (error) {
+            console.log('⚠️ /webhook failed:', error.message);
+        }
+
+        // Метод 3: Попробуем через /setWebhook (camelCase)
+        try {
+            console.log('🔄 Trying /setWebhook endpoint...');
+            const response3 = await fetch(`${FLYER_API_URL}/setWebhook`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    key: FLYER_API_KEY,
+                    webhook: webhookUrl
+                }),
+                timeout: 10000
+            });
+
+            if (response3.ok) {
+                const result = await response3.json();
+                console.log('✅ Webhook setup via /setWebhook:', result);
+                return {
+                    success: true,
+                    method: 'setWebhook',
+                    result: result
+                };
+            }
+        } catch (error) {
+            console.log('⚠️ /setWebhook failed:', error.message);
+        }
+
+        throw new Error('All webhook setup methods failed');
 
     } catch (error) {
         console.error('❌ Flyer webhook setup error:', error);
@@ -7021,8 +7047,47 @@ async function setupFlyerWebhook() {
     }
 }
 
-// Команда для настройки Flyer (только для админа)
-bot.onText(/\/setup_flyer/, async (msg) => {
+// Функция для проверки статуса вебхука
+async function checkFlyerWebhookStatus() {
+    try {
+        console.log('🔍 Checking Flyer webhook status...');
+
+        const response = await fetch(`${FLYER_API_URL}/get_me`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                key: FLYER_API_KEY
+            }),
+            timeout: 10000
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('✅ Flyer webhook status:', result);
+
+        return {
+            success: true,
+            webhook: result.webhook,
+            status: result.status,
+            rawResponse: result
+        };
+
+    } catch (error) {
+        console.error('❌ Flyer webhook status check error:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
+
+// Команда для принудительной настройки Flyer
+bot.onText(/\/setup_flyer_force/, async (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
 
@@ -7031,15 +7096,35 @@ bot.onText(/\/setup_flyer/, async (msg) => {
     }
 
     try {
+        await bot.sendMessage(chatId, '🔄 Начинаю настройку Flyer webhook...');
+
+        // Проверяем текущий статус
+        const status = await checkFlyerWebhookStatus();
+        
+        let message = `🔧 <b>Настройка Flyer Webhook</b>\n\n`;
+        message += `🌐 <b>API URL:</b> ${FLYER_API_URL}\n`;
+        message += `🔑 <b>API Key:</b> ${FLYER_API_KEY ? '✅ настроен' : '❌ отсутствует'}\n`;
+        message += `🔄 <b>Webhook URL:</b> ${WEBHOOK_URL}\n\n`;
+
+        if (status.success) {
+            message += `📊 <b>Текущий статус:</b>\n`;
+            message += `• Webhook: ${status.webhook || 'не настроен'}\n`;
+            message += `• Статус: ${status.status || 'неизвестен'}\n\n`;
+        }
+
+        await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
+
+        // Пытаемся настроить вебхук
         const setupResult = await setupFlyerWebhook();
 
         if (setupResult.success) {
             await bot.sendMessage(
                 chatId,
-                `✅ Вебхук Flyer успешно настроен!\n\n` +
+                `✅ <b>Flyer webhook успешно настроен!</b>\n\n` +
+                `📝 Метод: ${setupResult.method}\n` +
                 `🌐 URL: ${WEBHOOK_URL}\n` +
-                `🔑 API Key: ${FLYER_API_KEY ? 'configured' : 'missing'}\n` +
-                `📊 Status: Connected`
+                `🔄 Статус: подключено`,
+                { parse_mode: 'HTML' }
             );
         } else {
             throw new Error(setupResult.error);
@@ -7049,14 +7134,19 @@ bot.onText(/\/setup_flyer/, async (msg) => {
         console.error('Setup flyer command error:', error);
         await bot.sendMessage(
             chatId,
-            `❌ Ошибка настройки Flyer: ${error.message}\n\n` +
-            `Проверьте:\n` +
+            `❌ <b>Ошибка настройки Flyer:</b> ${error.message}\n\n` +
+            `<b>Проверьте:</b>\n` +
             `• Корректность API ключа\n` +
             `• Доступность Flyer API\n` +
-            `• URL вебхука: ${WEBHOOK_URL}`
+            `• URL вебхука: ${WEBHOOK_URL}\n\n` +
+            `<b>Ручная настройка:</b>\n` +
+            `Отправьте POST запрос на ${FLYER_API_URL}/set_webhook\n` +
+            `с телом: {"key": "${FLYER_API_KEY}", "webhook": "${WEBHOOK_URL}"}`,
+            { parse_mode: 'HTML' }
         );
     }
 });
+
 
 // Функция для проверки статуса Flyer
 async function checkFlyerStatus() {
@@ -8680,16 +8770,21 @@ app.get('/api/user/:userId/instant-referral-stats', async (req, res) => {
 
 // Улучшенный обработчик вебхука Flyer
 app.post('/api/flyer/webhook', express.json(), async (req, res) => {
-    console.log('📨 Received Flyer webhook:', req.body);
+    console.log('📨 Received Flyer webhook:', JSON.stringify(req.body, null, 2));
 
     try {
-        const { type, data, key_number } = req.body;
+        const { type, data, key_number, signature } = req.body;
 
         // Проверяем ключ
         if (key_number !== FLYER_API_KEY) {
-            console.log('❌ Invalid Flyer webhook key');
-            return res.status(401).json({ status: false });
+            console.log('❌ Invalid Flyer webhook key:', key_number);
+            return res.status(401).json({ 
+                status: false,
+                error: 'Invalid API key'
+            });
         }
+
+        console.log(`✅ Valid Flyer webhook received, type: ${type}`);
 
         // Обрабатываем события
         switch (type) {
@@ -8698,8 +8793,10 @@ app.post('/api/flyer/webhook', express.json(), async (req, res) => {
                 break;
 
             case 'sub_completed':
-                console.log('✅ User completed subscription:', data.user_id);
-                await handleFlyerSubscriptionCompleted(data.user_id);
+                console.log('✅ User completed subscription:', data);
+                if (data.user_id) {
+                    await handleFlyerSubscriptionCompleted(data.user_id);
+                }
                 break;
 
             case 'new_status':
@@ -8707,15 +8804,142 @@ app.post('/api/flyer/webhook', express.json(), async (req, res) => {
                 await handleFlyerTaskStatusUpdate(data);
                 break;
 
+            case 'check':
+                console.log('🔍 Check webhook:', data);
+                break;
+
             default:
                 console.log('⚠️ Unknown webhook type:', type);
         }
 
-        res.json({ status: true });
+        res.json({ 
+            status: true,
+            processed: true,
+            timestamp: new Date().toISOString()
+        });
 
     } catch (error) {
-        console.error('❌ Flyer webhook error:', error);
-        res.status(500).json({ status: false });
+        console.error('❌ Flyer webhook processing error:', error);
+        res.status(500).json({ 
+            status: false,
+            error: error.message
+        });
+    }
+});
+
+// Автоматическая настройка при запуске сервера
+async function initializeFlyerIntegration() {
+    try {
+        console.log('🚀 Initializing Flyer integration...');
+        
+        // Проверяем наличие API ключа
+        if (!FLYER_API_KEY) {
+            console.log('❌ Flyer API key not configured');
+            return;
+        }
+
+        // Проверяем доступность API
+        const botInfo = await getFlyerBotInfo();
+        if (!botInfo.success) {
+            console.log('❌ Flyer API is not accessible:', botInfo.error);
+            return;
+        }
+
+        console.log('✅ Flyer API is accessible');
+
+        // Настраиваем вебхук
+        const setupResult = await setupFlyerWebhook();
+        if (setupResult.success) {
+            console.log('✅ Flyer webhook configured successfully via', setupResult.method);
+        } else {
+            console.log('⚠️ Flyer webhook auto-configuration failed:', setupResult.error);
+            
+            // Показываем инструкцию для ручной настройки
+            console.log(`
+📋 Для ручной настройки Flyer webhook отправьте POST запрос:
+
+URL: ${FLYER_API_URL}/set_webhook
+Body: {
+  "key": "${FLYER_API_KEY}",
+  "webhook": "${WEBHOOK_URL}"
+}
+
+Или используйте команду в боте: /setup_flyer_force
+            `);
+        }
+
+    } catch (error) {
+        console.error('❌ Flyer initialization error:', error);
+    }
+}
+
+// Endpoint для проверки статуса Flyer
+app.get('/api/admin/flyer-status-detailed', async (req, res) => {
+    const { adminId } = req.query;
+
+    try {
+        // Проверка прав администратора
+        const isAdmin = await checkAdminAccess(adminId);
+        if (!isAdmin) {
+            return res.status(403).json({
+                success: false,
+                error: 'Доступ запрещен'
+            });
+        }
+
+        console.log('🔧 Testing Flyer API connection...');
+
+        // Тестируем все endpoints
+        const [botInfo, webhookStatus, testSubscription] = await Promise.allSettled([
+            getFlyerBotInfo(),
+            checkFlyerWebhookStatus(),
+            checkSubscriptionWithFlyer(adminId, { 
+                first_name: 'Test', 
+                username: 'test_admin',
+                language_code: 'ru' 
+            })
+        ]);
+
+        const results = {
+            get_me: botInfo.status === 'fulfilled' ? botInfo.value : { error: botInfo.reason },
+            webhook_status: webhookStatus.status === 'fulfilled' ? webhookStatus.value : { error: webhookStatus.reason },
+            check: testSubscription.status === 'fulfilled' ? testSubscription.value : { error: testSubscription.reason }
+        };
+
+        res.json({
+            success: true,
+            status: 'tested',
+            apiKey: FLYER_API_KEY ? 'configured' : 'missing',
+            apiUrl: FLYER_API_URL,
+            webhookUrl: WEBHOOK_URL,
+            lastChecked: new Date().toISOString(),
+            endpoints: results,
+            summary: {
+                api: botInfo.status === 'fulfilled' && botInfo.value.success ? '✅' : '❌',
+                webhook: webhookStatus.status === 'fulfilled' && webhookStatus.value.success ? '✅' : '❌',
+                subscription: testSubscription.status === 'fulfilled' ? '✅' : '❌'
+            },
+            manualSetup: {
+                url: `${FLYER_API_URL}/set_webhook`,
+                method: 'POST',
+                body: {
+                    key: FLYER_API_KEY,
+                    webhook: WEBHOOK_URL
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Flyer status check error:', error);
+        res.json({
+            success: false,
+            status: 'error',
+            error: error.message,
+            apiKey: FLYER_API_KEY ? 'configured' : 'missing',
+            apiUrl: FLYER_API_URL,
+            webhookUrl: WEBHOOK_URL,
+            lastChecked: new Date().toISOString()
+        });
     }
 });
 
@@ -13199,7 +13423,10 @@ app.listen(PORT, '0.0.0.0', async () => {
     
     // Инициализируем базу данных с заданиями
     await initializeWithTasks();
+
     
+    // Инициализируем Flyer интеграцию
+    await initializeFlyerIntegration();
     // Принудительно исправляем структуру таблиц
     try {
         await fixWithdrawalTable();
