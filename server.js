@@ -3265,11 +3265,15 @@ async function handleTaskStatusUpdate(data) {
     }
 }
 
-// Начисление награды за задание Flyer
+// Улучшенная функция начисления награды
 async function awardUserForFlyerTask(userId, signature) {
+    const client = await pool.connect();
+    
     try {
+        await client.query('BEGIN');
+
         // Получаем информацию о задании
-        const taskResult = await pool.query(`
+        const taskResult = await client.query(`
             SELECT task_data FROM flyer_tasks 
             WHERE user_id = $1 AND task_signature = $2
         `, [userId, signature]);
@@ -3283,9 +3287,10 @@ async function awardUserForFlyerTask(userId, signature) {
         const reward = taskData.reward || 10; // Дефолтная награда
 
         // Начисляем награду пользователю
-        await pool.query(`
+        await client.query(`
             UPDATE user_profiles 
-            SET balance = COALESCE(balance, 0) + $1
+            SET balance = COALESCE(balance, 0) + $1,
+                updated_at = CURRENT_TIMESTAMP
             WHERE user_id = $2
         `, [reward, userId]);
 
@@ -3306,8 +3311,13 @@ async function awardUserForFlyerTask(userId, signature) {
             }
         }
 
+        await client.query('COMMIT');
+
     } catch (error) {
+        await client.query('ROLLBACK');
         console.error('❌ Award Flyer task error:', error);
+    } finally {
+        client.release();
     }
 }
 
@@ -6371,7 +6381,85 @@ async function setupFlyerWebhookManually() {
         };
     }
 }
+// Улучшенная команда для настройки вебхука
+bot.onText(/\/setup_flyer_fixed/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
 
+    if (parseInt(userId) !== ADMIN_ID) {
+        return await bot.sendMessage(chatId, '❌ Только главный администратор может настраивать Flyer.');
+    }
+
+    try {
+        await bot.sendMessage(chatId, '🔄 Начинаю улучшенную настройку Flyer webhook...');
+
+        // Тестируем наш вебхук сначала
+        const testResponse = await fetch(WEBHOOK_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                type: 'test',
+                key_number: FLYER_API_KEY,
+                data: {}
+            })
+        });
+
+        if (!testResponse.ok) {
+            throw new Error(`Our webhook returned ${testResponse.status}`);
+        }
+
+        const testResult = await testResponse.json();
+        console.log('✅ Our webhook test result:', testResult);
+
+        // Настраиваем вебхук через Flyer API
+        const setupResponse = await fetch(`${FLYER_API_URL}/set_webhook`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                key: FLYER_API_KEY,
+                webhook: WEBHOOK_URL
+            })
+        });
+
+        const setupResult = await setupResponse.json();
+        console.log('✅ Flyer setup response:', setupResult);
+
+        if (setupResponse.ok) {
+            await bot.sendMessage(
+                chatId,
+                `✅ <b>Flyer webhook успешно настроен!</b>\n\n` +
+                `🌐 <b>URL:</b> ${WEBHOOK_URL}\n` +
+                `🔄 <b>Статус:</b> Активен\n` +
+                `📨 <b>Тест:</b> Пройден\n` +
+                `⏰ <b>Время:</b> ${new Date().toLocaleString()}`,
+                { parse_mode: 'HTML' }
+            );
+        } else {
+            throw new Error(`Flyer API: ${setupResponse.status} - ${JSON.stringify(setupResult)}`);
+        }
+
+    } catch (error) {
+        console.error('Setup flyer command error:', error);
+        
+        let errorMessage = `❌ <b>Ошибка настройки Flyer:</b> ${error.message}\n\n`;
+        
+        if (error.message.includes('404')) {
+            errorMessage += `🔧 <b>Проблема:</b> Вебхук возвращает 404 ошибку\n`;
+            errorMessage += `💡 <b>Решение:</b> Проверьте что endpoint правильно настроен\n\n`;
+        }
+        
+        errorMessage += `<b>Ручная настройка через curl:</b>\n\n` +
+            `<code>curl -X POST "https://api.flyerservice.io/set_webhook" \\\n` +
+            `  -H "Content-Type: application/json" \\\n` +
+            `  -d '{"key": "${FLYER_API_KEY}", "webhook": "${WEBHOOK_URL}"}'</code>`;
+
+        await bot.sendMessage(chatId, errorMessage, { parse_mode: 'HTML' });
+    }
+});
 // Команда для ручной настройки
 bot.onText(/\/setup_flyer_manual/, async (msg) => {
     const chatId = msg.chat.id;
@@ -9100,28 +9188,146 @@ app.get('/api/admin/flyer-status-detailed', async (req, res) => {
     }
 });
 
+
+// Убедитесь что этот middleware стоит ПЕРВЫМ для вебхука
+app.post('/api/flyer/webhook', express.json({ limit: '10mb' }), async (req, res) => {
+    console.log('📨 Received Flyer webhook:', JSON.stringify(req.body, null, 2));
+
+    try {
+        const { type, key_number, data } = req.body;
+
+        // Логируем полученные данные для отладки
+        console.log('🔍 Webhook details:', {
+            type,
+            key_number: key_number ? 'provided' : 'missing',
+            data_keys: data ? Object.keys(data) : 'no data'
+        });
+
+        // Проверяем ключ (если предоставлен)
+        if (key_number && key_number !== FLYER_API_KEY) {
+            console.log('❌ Invalid Flyer webhook key:', key_number);
+            return res.status(401).json({ 
+                status: false,
+                error: 'Invalid API key'
+            });
+        }
+
+        console.log(`✅ Valid Flyer webhook received, type: ${type}`);
+
+        // Обрабатываем события согласно документации Flyer
+        switch (type) {
+            case 'test':
+                console.log('✅ Test webhook received - everything works!');
+                // Для тестового вебхука просто возвращаем успех
+                break;
+
+            case 'sub_completed':
+                console.log('✅ User completed subscription:', data);
+                if (data && data.user_id) {
+                    await handleFlyerSubscriptionCompleted(data.user_id);
+                }
+                break;
+
+            case 'new_status':
+                console.log('📊 Task status update:', data);
+                if (data) {
+                    await handleFlyerTaskStatusUpdate(data);
+                }
+                break;
+
+            default:
+                console.log('⚠️ Unknown webhook type:', type);
+                // Для неизвестных типов все равно возвращаем успех
+        }
+
+        // ВАЖНО: Всегда возвращаем {status: true} согласно документации
+        res.json({ 
+            status: true,
+            processed: true,
+            timestamp: new Date().toISOString(),
+            type: type
+        });
+
+    } catch (error) {
+        console.error('❌ Flyer webhook processing error:', error);
+        // Даже при ошибке возвращаем {status: true} чтобы Flyer не считал вебхук неработающим
+        res.json({ 
+            status: true,
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// Улучшенная функция обработки завершения подписки
 async function handleFlyerSubscriptionCompleted(userId) {
     try {
-        // Помечаем пользователя как прошедшего проверку
+        console.log(`🎉 Processing subscription completion for user: ${userId}`);
+
+        // Помечаем пользователя как прошедшего проверку подписки
         await pool.query(`
             UPDATE user_profiles 
-            SET has_subscribed = true 
+            SET has_subscribed = true,
+                updated_at = CURRENT_TIMESTAMP
             WHERE user_id = $1
         `, [userId]);
 
-        console.log(`✅ User ${userId} subscription completed`);
+        console.log(`✅ User ${userId} subscription marked as completed`);
 
-        // Уведомляем пользователя
+        // Отправляем сообщение пользователю
         if (bot) {
-            await bot.sendMessage(
-                userId,
-                '✅ **Подписка подтверждена!**\n\nТеперь вы можете пользоваться всеми функциями бота!',
-                { parse_mode: 'HTML' }
-            );
+            try {
+                await bot.sendMessage(
+                    userId,
+                    '✅ **Подписка подтверждена!**\n\n' +
+                    'Благодарим за подписку! Теперь вы можете пользоваться всеми функциями бота! 🎉',
+                    { parse_mode: 'HTML' }
+                );
+                console.log(`✅ Notification sent to user ${userId}`);
+            } catch (botError) {
+                console.error('❌ Failed to send notification:', botError.message);
+            }
         }
 
     } catch (error) {
         console.error('❌ Handle subscription completed error:', error);
+    }
+}
+// Улучшенная функция обработки статуса задания
+async function handleFlyerTaskStatusUpdate(data) {
+    try {
+        const { status, user_id, signature, link } = data;
+        
+        console.log(`🔄 Processing task status update:`, {
+            user_id,
+            signature,
+            status,
+            link
+        });
+
+        // Обновляем статус задания в базе данных
+        const result = await pool.query(`
+            UPDATE flyer_tasks 
+            SET status = $1, 
+                completed_at = CASE WHEN $1 = 'completed' THEN CURRENT_TIMESTAMP ELSE NULL END,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = $2 AND task_signature = $3
+            RETURNING *
+        `, [status, user_id, signature]);
+
+        if (result.rows.length > 0) {
+            console.log(`✅ Flyer task status updated: ${user_id} - ${signature} - ${status}`);
+        } else {
+            console.log(`⚠️ Flyer task not found: ${user_id} - ${signature}`);
+        }
+
+        // Если задание завершено, начисляем награду
+        if (status === 'completed') {
+            await awardUserForFlyerTask(user_id, signature);
+        }
+
+    } catch (error) {
+        console.error('❌ Handle task status update error:', error);
     }
 }
 
@@ -9419,7 +9625,56 @@ app.post('/api/admin/links/settings', async (req, res) => {
         });
     }
 });
+// Простой GET endpoint для проверки доступности вебхука
+app.get('/api/flyer/webhook', async (req, res) => {
+    console.log('🔍 Flyer webhook test request received');
+    res.json({ 
+        status: true,
+        message: 'Flyer webhook endpoint is working!',
+        url: WEBHOOK_URL,
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
+    });
+});
 
+// Endpoint для ручного тестирования вебхука
+app.post('/api/flyer/webhook/test', async (req, res) => {
+    try {
+        const testPayload = {
+            type: 'test',
+            key_number: FLYER_API_KEY,
+            data: {
+                test: true,
+                timestamp: new Date().toISOString()
+            }
+        };
+
+        // Имитируем запрос от Flyer
+        const response = await fetch(WEBHOOK_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(testPayload)
+        });
+
+        const result = await response.json();
+
+        res.json({
+            success: response.ok,
+            status: response.status,
+            response: result,
+            test_payload: testPayload
+        });
+
+    } catch (error) {
+        console.error('Test webhook error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 
 // Экспорт данных пользователей
 app.get('/api/admin/users-export', async (req, res) => {
