@@ -10,7 +10,7 @@ let currentUser = null;
 const app = express();
 const PORT = process.env.PORT || 3000;
 // Используйте ключ из переменных окружения
-const FLYER_API_KEY = process.env.FLYER_API_KEY || 'FL-ZdgjHg-rrTELL-bvfvmC-KyqwaR';
+const FLYER_API_KEY = process.env.FLYER_API_KEY || 'FL-pqKrtr-kPaJFg-KeLIQD-TLHgfC';
 const FLYER_API_URL = 'https://api.flyerservice.io';
 // Исправьте URL вебхука - уберите двойной слеш
 const WEBHOOK_URL = process.env.APP_URL ? 
@@ -19,7 +19,7 @@ const WEBHOOK_URL = process.env.APP_URL ?
 
 
 
-const LINKGOLDMONEY_API_KEY = 'FL-ZdgjHg-rrIELi-bvfvmC-KyqwaR';
+const LINKGOLDMONEY_API_KEY = 'FL-pqKrtr-kPaJFg-KeLIQD-TLHgfC';
 const LINKGOLDMONEY_API_URL = 'https://telegram-community1-production-0bc1.up.railway.app/';
 // Конфигурация для Railway
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -3177,7 +3177,6 @@ async function initializeServer() {
     console.log('✅ Server initialization complete with Flyer integration');
 }
 
-// Endpoint для вебхуков Flyer
 app.post('/api/flyer/webhook', async (req, res) => {
     console.log('📨 Received Flyer webhook:', req.body);
 
