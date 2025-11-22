@@ -9,8 +9,13 @@ const TelegramBot = require('node-telegram-bot-api');
 let currentUser = null;
 const app = express();
 const PORT = process.env.PORT || 3000;
-const FLYER_API_KEY = 'FL-1eLiZh-Xvihpo-dYpOPh-KSi1sD';
+// Используйте ключ из переменных окружения
+const FLYER_API_KEY = process.env.FLYER_API_KEY || 'FL-ZdgjHg-rrTELL-bvfvmC-KyqwaR';
 const FLYER_API_URL = 'https://api.flyerservice.io';
+
+// Добавьте вебхук URL (ваш Railway URL)
+const WEBHOOK_URL = process.env.APP_URL + '/api/flyer/webhook';
+
 const LINKGOLDMONEY_API_KEY = 'FL-ZdgjHg-rrIELi-bvfvmC-KyqwaR';
 const LINKGOLDMONEY_API_URL = 'https://telegram-community1-production-0bc1.up.railway.app/';
 // Конфигурация для Railway
@@ -50,96 +55,63 @@ setInterval(async () => {
 // Улучшенная функция для проверки подписки через Flyer API
 async function checkSubscriptionWithFlyer(userId, userData) {
     try {
-        console.log('🎯 Checking subscription with Flyer API for user:', userId);
+        console.log('🎯 Checking Flyer subscription for user:', userId);
 
-        // Формируем тело запроса СТРОГО согласно документации
         const requestBody = {
             key: FLYER_API_KEY,
-            user_id: parseInt(userId), // Должно быть числом
-            language_code: userData.language_code || 'ru',
-            message: {
-                rows: 3,
-                text: "Для доступа к боту необходимо подписаться на наши каналы",
-                button_bot: "Подписаться на бота",
-                button_channel: "Подписаться на канал",
-                button_boost: "Буст канала", 
-                button_url: "Наш сайт",
-                button_fp: "FreePremium"
-            }
+            user_id: userId,
+            language_code: userData.language_code || 'ru'
         };
 
-        console.log('🔧 Flyer API Request Body:', JSON.stringify(requestBody, null, 2));
+        console.log('📤 Sending to Flyer API:', {
+            url: `${FLYER_API_URL}/check`,
+            body: requestBody
+        });
 
         const response = await fetch(`${FLYER_API_URL}/check`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'User-Agent': 'LinkGoldBot/1.0',
-                'Accept': 'application/json'
+                'User-Agent': 'LinkGoldBot/1.0'
             },
             body: JSON.stringify(requestBody),
-            signal: AbortSignal.timeout(15000) // 15 секунд таймаут
+            timeout: 15000
         });
 
-        console.log('🔧 Flyer API Response Status:', response.status);
-        
-        const responseText = await response.text();
-        console.log('🔧 Flyer API Response Text:', responseText);
-
         if (!response.ok) {
-            console.error('❌ Flyer API HTTP error:', {
-                status: response.status,
-                statusText: response.statusText,
-                error: responseText
-            });
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        let result;
-        try {
-            result = JSON.parse(responseText);
-        } catch (parseError) {
-            console.error('❌ JSON parse error:', parseError);
-            throw new Error('Invalid JSON response from Flyer API');
-        }
+        const result = await response.json();
+        console.log('✅ Flyer API response:', result);
 
-        console.log('✅ Flyer API parsed response:', result);
-
-        // Обрабатываем ответ согласно документации Flyer API
+        // Обработка ответа согласно документации Flyer
         if (result.skip === true) {
-            // Пользователь прошел проверку
             return {
                 required: false,
                 status: 'subscribed',
-                message: 'Проверка подписки пройдена',
-                rawResponse: result
+                message: 'Проверка пройдена'
             };
         } else {
-            // Требуется подписка
             return {
                 required: true,
                 status: 'requires_subscription',
-                message: result.error || 'Требуется подписка на спонсорские каналы',
+                message: result.error || 'Требуется подписка',
                 warning: result.warning,
-                info: result.info,
-                rawResponse: result
+                info: result.info
             };
         }
 
     } catch (error) {
         console.error('❌ Flyer API error:', error);
-        
-        // В случае ошибки сети или API, разрешаем доступ с записью в лог
         return {
             required: false,
             status: 'error',
-            message: 'Ошибка проверки подписки: ' + error.message,
-            error: error,
-            allowAccess: true // Разрешаем доступ при ошибках
+            message: 'Ошибка проверки подписки',
+            error: error.message
         };
     }
 }
-
 
 
 // Улучшенная функция для получения заданий через Flyer API
@@ -4957,6 +4929,84 @@ bot.onText(/\/admin_help/, async (msg) => {
         { parse_mode: 'HTML' }
     );
 });
+
+// Команда для настройки вебхука Flyer (только для админа)
+bot.onText(/\/setup_flyer/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+
+    if (parseInt(userId) !== ADMIN_ID) {
+        return await bot.sendMessage(chatId, '❌ Только главный администратор может настраивать Flyer.');
+    }
+
+    try {
+        // Настраиваем вебхук через Flyer API
+        const response = await fetch(`${FLYER_API_URL}/set_webhook`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                key: FLYER_API_KEY,
+                webhook: WEBHOOK_URL
+            })
+        });
+
+        if (response.ok) {
+            await bot.sendMessage(
+                chatId,
+                `✅ Вебхук Flyer успешно настроен!\n\nURL: ${WEBHOOK_URL}`
+            );
+        } else {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+    } catch (error) {
+        console.error('Setup flyer error:', error);
+        await bot.sendMessage(
+            chatId,
+            `❌ Ошибка настройки Flyer: ${error.message}`
+        );
+    }
+});
+
+
+// Команда для проверки статуса Flyer
+bot.onText(/\/flyer_status/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+
+    if (parseInt(userId) !== ADMIN_ID) {
+        return await bot.sendMessage(chatId, '❌ Только главный администратор может проверять статус Flyer.');
+    }
+
+    try {
+        const botInfo = await getFlyerBotInfo();
+        const testCheck = await checkSubscriptionWithFlyer(userId, {
+            first_name: 'Test',
+            language_code: 'ru'
+        });
+
+        await bot.sendMessage(
+            chatId,
+            `🔧 **Flyer API Status**\n\n` +
+            `✅ API Key: ${FLYER_API_KEY ? 'Configured' : 'Missing'}\n` +
+            `🌐 API URL: ${FLYER_API_URL}\n` +
+            `🔄 Webhook: ${WEBHOOK_URL}\n` +
+            `🤖 Bot Info: ${botInfo.success ? 'Connected' : 'Error'}\n` +
+            `🔍 Test Check: ${testCheck.status}\n` +
+            `📝 Message: ${testCheck.message}`,
+            { parse_mode: 'HTML' }
+        );
+
+    } catch (error) {
+        await bot.sendMessage(
+            chatId,
+            `❌ Ошибка проверки Flyer: ${error.message}`
+        );
+    }
+});
+
 // 🔥 ОБНОВЛЕННАЯ КОМАНДА /referral
 bot.onText(/\/referral/, async (msg) => {
     const chatId = msg.chat.id;
@@ -8365,6 +8415,73 @@ app.get('/api/user/:userId/instant-referral-stats', async (req, res) => {
         });
     }
 });
+
+// Улучшенный обработчик вебхука Flyer
+app.post('/api/flyer/webhook', express.json(), async (req, res) => {
+    console.log('📨 Received Flyer webhook:', req.body);
+
+    try {
+        const { type, data, key_number } = req.body;
+
+        // Проверяем ключ
+        if (key_number !== FLYER_API_KEY) {
+            console.log('❌ Invalid Flyer webhook key');
+            return res.status(401).json({ status: false });
+        }
+
+        // Обрабатываем события
+        switch (type) {
+            case 'test':
+                console.log('✅ Test webhook received');
+                break;
+
+            case 'sub_completed':
+                console.log('✅ User completed subscription:', data.user_id);
+                await handleFlyerSubscriptionCompleted(data.user_id);
+                break;
+
+            case 'new_status':
+                console.log('📊 Task status update:', data);
+                await handleFlyerTaskStatusUpdate(data);
+                break;
+
+            default:
+                console.log('⚠️ Unknown webhook type:', type);
+        }
+
+        res.json({ status: true });
+
+    } catch (error) {
+        console.error('❌ Flyer webhook error:', error);
+        res.status(500).json({ status: false });
+    }
+});
+
+async function handleFlyerSubscriptionCompleted(userId) {
+    try {
+        // Помечаем пользователя как прошедшего проверку
+        await pool.query(`
+            UPDATE user_profiles 
+            SET has_subscribed = true 
+            WHERE user_id = $1
+        `, [userId]);
+
+        console.log(`✅ User ${userId} subscription completed`);
+
+        // Уведомляем пользователя
+        if (bot) {
+            await bot.sendMessage(
+                userId,
+                '✅ **Подписка подтверждена!**\n\nТеперь вы можете пользоваться всеми функциями бота!',
+                { parse_mode: 'HTML' }
+            );
+        }
+
+    } catch (error) {
+        console.error('❌ Handle subscription completed error:', error);
+    }
+}
+
 // 🔧 БЫСТРЫЙ ENDPOINT ДЛЯ ПРОВЕРКИ ТОЛЬКО БАЛАНСА
 app.get('/api/user/:userId/quick-balance', async (req, res) => {
     const userId = req.params.userId;
