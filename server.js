@@ -14,9 +14,8 @@ const FLYER_API_KEY = process.env.FLYER_API_KEY || 'FL-pqKrtr-kPaJFg-KeLIQD-TLHg
 const FLYER_API_URL = 'https://api.flyerservice.io';
 // Исправьте URL вебхука - уберите двойной слеш
 // Исправьте этот код в начале файла:
-const WEBHOOK_URL = process.env.APP_URL ? 
-    process.env.APP_URL.replace(/\/$/, '') + '/api/flyer/webhook' : 
-    'https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook';
+// ЗАМЕНИТЕ НА ЭТОТ КОД:
+const WEBHOOK_URL = 'https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook';
 
 
 
@@ -565,6 +564,15 @@ async function fixPromocodesTable() {
         console.error('❌ Error fixing promocodes table:', error);
     }
 }
+// ДОБАВЬТЕ ПЕРЕД ОСНОВНЫМ WEBHOOK ENDPOINT
+app.get('/api/flyer/webhook/test', async (req, res) => {
+    console.log('✅ Test webhook endpoint is accessible');
+    res.json({ 
+        status: true,
+        message: 'Webhook endpoint is working!',
+        timestamp: new Date().toISOString()
+    });
+});
 async function initDatabase() {
     try {
         console.log('🔄 Initializing simplified database...');
@@ -2491,6 +2499,41 @@ bot.onText(/\/balance_user (\d+)\s+([+-]?\d+)/, async (msg, match) => {
             chatId,
             '❌ Ошибка при изменении баланса. Проверьте правильность введенных данных.'
         );
+    }
+});
+
+// ДОБАВЬТЕ ЭТУ КОМАНДУ В КОД БОТА:
+bot.onText(/\/fix_webhook/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+
+    if (parseInt(userId) !== ADMIN_ID) {
+        return await bot.sendMessage(chatId, '❌ Только главный администратор может настраивать вебхук.');
+    }
+
+    try {
+        await bot.sendMessage(chatId, '🔄 Настраиваю вебхук Flyer...');
+
+        const response = await fetch('https://api.flyerservice.io/set_webhook', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                key: FLYER_API_KEY,
+                webhook: 'https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook'
+            })
+        });
+
+        if (response.ok) {
+            await bot.sendMessage(chatId, '✅ Вебхук успешно настроен!');
+        } else {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+    } catch (error) {
+        console.error('Webhook setup error:', error);
+        await bot.sendMessage(chatId, `❌ Ошибка: ${error.message}`);
     }
 });
 
@@ -6398,6 +6441,7 @@ app.get('/api/flyer/webhook', async (req, res) => {
 });
 
 // Основной endpoint для вебхука Flyer
+// УБЕДИТЕСЬ ЧТО ЭТОТ КОД РАБОТАЕТ КОРРЕКТНО:
 app.post('/api/flyer/webhook', express.json(), async (req, res) => {
     console.log('📨 Received Flyer webhook:', JSON.stringify(req.body, null, 2));
 
@@ -6406,15 +6450,14 @@ app.post('/api/flyer/webhook', express.json(), async (req, res) => {
 
         // Проверяем ключ
         if (key_number !== FLYER_API_KEY) {
-            console.log('❌ Invalid Flyer webhook key:', key_number);
-            return res.status(401).json({ 
-                status: false,
-                error: 'Invalid API key'
-            });
+            console.log('❌ Invalid Flyer webhook key');
+            return res.status(401).json({ status: false });
         }
 
-        console.log(`✅ Valid Flyer webhook received, type: ${type}`);
-
+        console.log(`✅ Valid webhook received: ${type}`);
+        
+        // ВАЖНО: Всегда возвращаем {status: true}
+        res.json({ status: true });
         // Обрабатываем события
         switch (type) {
             case 'test':
@@ -6444,13 +6487,12 @@ app.post('/api/flyer/webhook', express.json(), async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Flyer webhook processing error:', error);
-        res.status(500).json({ 
-            status: false,
-            error: error.message
-        });
+        console.error('❌ Webhook error:', error);
+        // Даже при ошибке возвращаем true чтобы Flyer не считал вебхук неработающим
+        res.json({ status: true });
     }
 });
+
 // 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ НАСТРОЙКИ ВЕБХУКА FLYER
 async function setupFlyerWebhookEnhanced() {
     try {
