@@ -6441,12 +6441,15 @@ async function handleReferralRegistration(userId, referralCode, userData) {
 }
 // ==================== NOTIFICATION ENDPOINTS ====================
 // Простой endpoint для проверки вебхука Flyer
+// В GET endpoint вебхука измените:
 app.get('/api/flyer/webhook', async (req, res) => {
     console.log('🔍 Flyer webhook test request received');
     res.json({ 
         status: true,
-        message: 'Flyer webhook is working!',
-        timestamp: new Date().toISOString()
+        message: 'Flyer webhook endpoint is working!', // ← ИЗМЕНИТЕ НА АНГЛИЙСКИЙ
+        url: WEBHOOK_URL,
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
     });
 });
 
@@ -9941,17 +9944,7 @@ app.post('/api/admin/links/settings', async (req, res) => {
         });
     }
 });
-// Простой GET endpoint для проверки доступности вебхука
-app.get('/api/flyer/webhook', async (req, res) => {
-    console.log('🔍 Flyer webhook test request received');
-    res.json({ 
-        status: true,
-        message: 'Flyer webhook endpoint is working!',
-        url: WEBHOOK_URL,
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development'
-    });
-});
+
 
 // Endpoint для ручного тестирования вебхука
 app.post('/api/flyer/webhook/test', async (req, res) => {
