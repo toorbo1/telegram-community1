@@ -582,6 +582,7 @@ app.get('/api/flyer/webhook/test', async (req, res) => {
         timestamp: new Date().toISOString()
     });
 });
+
 async function initDatabase() {
     try {
         console.log('🔄 Initializing simplified database...');
@@ -6449,56 +6450,73 @@ app.get('/api/flyer/webhook', async (req, res) => {
     });
 });
 
-// Основной endpoint для вебхука Flyer
-// УБЕДИТЕСЬ ЧТО ЭТОТ КОД РАБОТАЕТ КОРРЕКТНО:
+// 🔧 ИСПРАВЛЕННЫЙ ENDPOINT ДЛЯ FLYER WEBHOOK
 app.post('/api/flyer/webhook', express.json(), async (req, res) => {
     console.log('📨 Received Flyer webhook:', JSON.stringify(req.body, null, 2));
 
     try {
         const { type, key_number, data } = req.body;
 
-        // Проверяем ключ
-        if (key_number !== FLYER_API_KEY) {
-            console.log('❌ Invalid Flyer webhook key');
-            return res.status(401).json({ status: false });
+        // Логируем полученные данные для отладки
+        console.log('🔍 Webhook details:', {
+            type,
+            key_number: key_number ? 'provided' : 'missing',
+            data_keys: data ? Object.keys(data) : 'no data'
+        });
+
+        // Проверяем ключ (если предоставлен)
+        if (key_number && key_number !== FLYER_API_KEY) {
+            console.log('❌ Invalid Flyer webhook key:', key_number);
+            return res.status(401).json({ 
+                status: false,
+                error: 'Invalid API key'
+            });
         }
 
-        console.log(`✅ Valid webhook received: ${type}`);
-        
-        // ВАЖНО: Всегда возвращаем {status: true}
-        res.json({ status: true });
-        // Обрабатываем события
+        console.log(`✅ Valid Flyer webhook received, type: ${type}`);
+
+        // Обрабатываем события согласно документации Flyer
         switch (type) {
             case 'test':
-                console.log('✅ Test webhook received');
+                console.log('✅ Test webhook received - everything works!');
+                // Для тестового вебхука просто возвращаем успех
                 break;
 
             case 'sub_completed':
                 console.log('✅ User completed subscription:', data);
-                if (data.user_id) {
+                if (data && data.user_id) {
                     await handleFlyerSubscriptionCompleted(data.user_id);
                 }
                 break;
 
             case 'new_status':
                 console.log('📊 Task status update:', data);
-                await handleFlyerTaskStatusUpdate(data);
+                if (data) {
+                    await handleFlyerTaskStatusUpdate(data);
+                }
                 break;
 
             default:
                 console.log('⚠️ Unknown webhook type:', type);
+                // Для неизвестных типов все равно возвращаем успех
         }
 
+        // ВАЖНО: Всегда возвращаем {status: true} согласно документации
         res.json({ 
             status: true,
             processed: true,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            type: type
         });
 
     } catch (error) {
-        console.error('❌ Webhook error:', error);
-        // Даже при ошибке возвращаем true чтобы Flyer не считал вебхук неработающим
-        res.json({ status: true });
+        console.error('❌ Flyer webhook processing error:', error);
+        // Даже при ошибке возвращаем {status: true} чтобы Flyer не считал вебхук неработающим
+        res.json({ 
+            status: true,
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
     }
 });
 
@@ -6580,7 +6598,7 @@ async function setupFlyerWebhookEnhanced() {
     }
 }
 
-// Функция для ручной настройки вебхука Flyer
+// 🛠️ ФУНКЦИЯ ДЛЯ РУЧНОЙ НАСТРОЙКИ WEBHOOK
 async function setupFlyerWebhookManually() {
     try {
         console.log('🔧 Setting up Flyer webhook manually...');
@@ -9377,64 +9395,7 @@ app.get('/api/user/:userId/instant-referral-stats', async (req, res) => {
     }
 });
 
-// Улучшенный обработчик вебхука Flyer
-app.post('/api/flyer/webhook', express.json(), async (req, res) => {
-    console.log('📨 Received Flyer webhook:', JSON.stringify(req.body, null, 2));
 
-    try {
-        const { type, data, key_number, signature } = req.body;
-
-        // Проверяем ключ
-        if (key_number !== FLYER_API_KEY) {
-            console.log('❌ Invalid Flyer webhook key:', key_number);
-            return res.status(401).json({ 
-                status: false,
-                error: 'Invalid API key'
-            });
-        }
-
-        console.log(`✅ Valid Flyer webhook received, type: ${type}`);
-
-        // Обрабатываем события
-        switch (type) {
-            case 'test':
-                console.log('✅ Test webhook received');
-                break;
-
-            case 'sub_completed':
-                console.log('✅ User completed subscription:', data);
-                if (data.user_id) {
-                    await handleFlyerSubscriptionCompleted(data.user_id);
-                }
-                break;
-
-            case 'new_status':
-                console.log('📊 Task status update:', data);
-                await handleFlyerTaskStatusUpdate(data);
-                break;
-
-            case 'check':
-                console.log('🔍 Check webhook:', data);
-                break;
-
-            default:
-                console.log('⚠️ Unknown webhook type:', type);
-        }
-
-        res.json({ 
-            status: true,
-            processed: true,
-            timestamp: new Date().toISOString()
-        });
-
-    } catch (error) {
-        console.error('❌ Flyer webhook processing error:', error);
-        res.status(500).json({ 
-            status: false,
-            error: error.message
-        });
-    }
-});
 
 // 🚀 АВТОМАТИЧЕСКАЯ ИНИЦИАЛИЗАЦИЯ FLYER ПРИ ЗАПУСКЕ
 async function initializeFlyerIntegration() {
