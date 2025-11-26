@@ -6579,6 +6579,7 @@ async function setupFlyerWebhookEnhanced() {
         };
     }
 }
+
 // Функция для ручной настройки вебхука Flyer
 async function setupFlyerWebhookManually() {
     try {
@@ -7337,153 +7338,179 @@ async function checkTaskWithLinkGold(userId, taskData, screenshotUrl = null) {
         };
     }
 }
-// 🔧 ИСПРАВЛЕННЫЙ ENDPOINT ДЛЯ ОТПРАВКИ СКРИНШОТА
-app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'), async (req, res) => {
-    console.log('📨 Received screenshot submission:', {
-        userTaskId: req.params.userTaskId,
-        userId: req.body.userId,
-        file: req.file ? {
-            originalname: req.file.originalname,
-            size: req.file.size,
-            mimetype: req.file.mimetype,
-            filename: req.file.filename,
-            path: req.file.path
-        } : 'NO FILE RECEIVED'
-    });
+// ❌ УДАЛИТЕ этот endpoint (он дублируется)
+// app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'), async (req, res) => {
 
-    const userTaskId = req.params.userTaskId;
-    const userId = req.body.userId;
-    
-    // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Проверка наличия файла
-    if (!req.file) {
-        console.error('❌ No file received in request');
-        return res.status(400).json({
-            success: false,
-            error: 'Файл не был получен сервером. Пожалуйста, попробуйте еще раз.'
-        });
-    }
-    
-    if (!userId) {
-        // Удаляем загруженный файл при ошибке
-        if (req.file) {
-            try {
-                fs.unlinkSync(req.file.path);
-            } catch (deleteError) {
-                console.error('Error deleting uploaded file:', deleteError);
-            }
-        }
-        return res.status(400).json({
-            success: false,
-            error: 'Missing user ID'
-        });
-    }
-    
-    // 🔥 ИСПРАВЛЕНИЕ: Используем правильный путь к файлу
-    const screenshotUrl = `/uploads/${req.file.filename}`;
-    console.log('📁 Screenshot URL:', screenshotUrl);
-    console.log('📁 File path:', req.file.path);
-    
-    const client = await pool.connect();
+// ✅ ОСТАВЬТЕ только этот endpoint
+app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'), async (req, res) => {
+    console.log('📸 Received screenshot submission request');
     
     try {
-        await client.query('BEGIN');
-
-        // 1. Проверяем существование задания и права пользователя
-        const taskInfo = await client.query(`
-            SELECT ut.user_id, ut.task_id, ut.status, 
-                   u.first_name, u.last_name, u.username, 
-                   t.title, t.price, t.description, t.people_required
-            FROM user_tasks ut 
-            JOIN user_profiles u ON ut.user_id = u.user_id 
-            JOIN tasks t ON ut.task_id = t.id 
-            WHERE ut.id = $1 AND ut.user_id = $2
-        `, [userTaskId, userId]);
+        const { userTaskId } = req.params;
+        const { userId } = req.body;
         
-        if (taskInfo.rows.length === 0) {
-            await client.query('ROLLBACK');
-            // Удаляем загруженный файл
-            try {
-                fs.unlinkSync(req.file.path);
-            } catch (deleteError) {
-                console.error('Error deleting uploaded file:', deleteError);
-            }
-            return res.status(404).json({
+        console.log('📋 Submission data:', {
+            userTaskId,
+            userId,
+            hasFile: !!req.file,
+            fileInfo: req.file ? {
+                originalname: req.file.originalname,
+                size: req.file.size,
+                mimetype: req.file.mimetype,
+                filename: req.file.filename
+            } : 'No file'
+        });
+
+        // 🔥 КРИТИЧЕСКАЯ ПРОВЕРКА: Убедитесь что файл получен
+        if (!req.file) {
+            console.error('❌ No file received in multer');
+            return res.status(400).json({
                 success: false,
-                error: 'Task not found or access denied'
+                error: 'Файл не был получен сервером. Пожалуйста, попробуйте еще раз.'
             });
         }
-        
-        const taskData = taskInfo.rows[0];
-        
-        // Проверяем, что задание в активном статусе
-        if (taskData.status !== 'active') {
-            await client.query('ROLLBACK');
-            // Удаляем загруженный файл
-            try {
-                fs.unlinkSync(req.file.path);
-            } catch (deleteError) {
-                console.error('Error deleting uploaded file:', deleteError);
+
+        if (!userId) {
+            // Удаляем загруженный файл при ошибке
+            if (req.file) {
+                try {
+                    fs.unlinkSync(req.file.path);
+                } catch (deleteError) {
+                    console.error('Error deleting uploaded file:', deleteError);
+                }
             }
             return res.status(400).json({
                 success: false,
-                error: 'Task is not in active status'
+                error: 'User ID обязателен'
             });
         }
         
-        const userName = `${taskData.first_name} ${taskData.last_name}`;
-
-        // 2. Обновляем user_task
-        await client.query(`
-            UPDATE user_tasks 
-            SET status = 'pending_review', 
-                screenshot_url = $1, 
-                submitted_at = CURRENT_TIMESTAMP 
-            WHERE id = $2 AND user_id = $3
-        `, [screenshotUrl, userTaskId, userId]);
+        // 🔥 ИСПРАВЛЕНИЕ: Используем правильный путь к файлу
+        const screenshotUrl = `/uploads/${req.file.filename}`;
+        console.log('📁 Screenshot URL:', screenshotUrl);
+        console.log('📁 File path:', req.file.path);
         
-        // 3. Создаем запись верификации
-        const verificationResult = await client.query(`
-            INSERT INTO task_verifications 
-            (user_task_id, user_id, task_id, user_name, user_username, task_title, task_price, screenshot_url, status) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
-            RETURNING *
-        `, [
-            userTaskId, 
-            userId, 
-            taskData.task_id, 
-            userName, 
-            taskData.username, 
-            taskData.title, 
-            taskData.price, 
-            screenshotUrl
-        ]);
-
-        await client.query('COMMIT');
-
-        console.log('✅ Task submitted successfully:', {
-            verificationId: verificationResult.rows[0].id,
-            userTaskId: userTaskId,
-            userId: userId,
-            screenshotUrl: screenshotUrl
-        });
+        const client = await pool.connect();
         
-        res.json({
-            success: true,
-            message: 'Задание отправлено на проверку! Ожидайте решения администратора.',
-            verificationId: verificationResult.rows[0].id,
-            userTaskId: userTaskId,
-            screenshotUrl: screenshotUrl
-        });
+        try {
+            await client.query('BEGIN');
+
+            // 1. Проверяем существование задания и права пользователя
+            const taskInfo = await client.query(`
+                SELECT ut.user_id, ut.task_id, ut.status, 
+                       u.first_name, u.last_name, u.username, 
+                       t.title, t.price, t.description, t.people_required
+                FROM user_tasks ut 
+                JOIN user_profiles u ON ut.user_id = u.user_id 
+                JOIN tasks t ON ut.task_id = t.id 
+                WHERE ut.id = $1 AND ut.user_id = $2
+            `, [userTaskId, userId]);
+            
+            if (taskInfo.rows.length === 0) {
+                await client.query('ROLLBACK');
+                // Удаляем загруженный файл
+                try {
+                    fs.unlinkSync(req.file.path);
+                } catch (deleteError) {
+                    console.error('Error deleting uploaded file:', deleteError);
+                }
+                return res.status(404).json({
+                    success: false,
+                    error: 'Задание не найдено или нет доступа'
+                });
+            }
+            
+            const taskData = taskInfo.rows[0];
+            
+            // Проверяем, что задание в активном статусе
+            if (taskData.status !== 'active') {
+                await client.query('ROLLBACK');
+                // Удаляем загруженный файл
+                try {
+                    fs.unlinkSync(req.file.path);
+                } catch (deleteError) {
+                    console.error('Error deleting uploaded file:', deleteError);
+                }
+                return res.status(400).json({
+                    success: false,
+                    error: 'Задание не в активном статусе'
+                });
+            }
+            
+            const userName = `${taskData.first_name} ${taskData.last_name}`;
+
+            // 2. Обновляем user_task
+            await client.query(`
+                UPDATE user_tasks 
+                SET status = 'pending_review', 
+                    screenshot_url = $1, 
+                    submitted_at = CURRENT_TIMESTAMP 
+                WHERE id = $2 AND user_id = $3
+            `, [screenshotUrl, userTaskId, userId]);
+            
+            // 3. Создаем запись верификации
+            const verificationResult = await client.query(`
+                INSERT INTO task_verifications 
+                (user_task_id, user_id, task_id, user_name, user_username, task_title, task_price, screenshot_url, status) 
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
+                RETURNING *
+            `, [
+                userTaskId, 
+                userId, 
+                taskData.task_id, 
+                userName, 
+                taskData.username, 
+                taskData.title, 
+                taskData.price, 
+                screenshotUrl
+            ]);
+
+            await client.query('COMMIT');
+
+            console.log('✅ Task submitted successfully:', {
+                verificationId: verificationResult.rows[0].id,
+                userTaskId: userTaskId,
+                userId: userId,
+                screenshotUrl: screenshotUrl
+            });
+            
+            res.json({
+                success: true,
+                message: 'Задание отправлено на проверку! Ожидайте решения администратора.',
+                verificationId: verificationResult.rows[0].id,
+                userTaskId: userTaskId,
+                screenshotUrl: screenshotUrl
+            });
+            
+        } catch (error) {
+            await client.query('ROLLBACK');
+            console.error('❌ Submit task error:', error);
+            
+            // Удаляем загруженный файл при ошибке
+            if (req.file) {
+                try {
+                    fs.unlinkSync(req.file.path);
+                    console.log('✅ Deleted uploaded file after error');
+                } catch (deleteError) {
+                    console.error('Error deleting uploaded file:', deleteError);
+                }
+            }
+            
+            res.status(500).json({
+                success: false,
+                error: 'Database error: ' + error.message
+            });
+        } finally {
+            client.release();
+        }
         
     } catch (error) {
-        await client.query('ROLLBACK');
-        console.error('❌ Submit task error:', error);
+        console.error('❌ Submit task outer error:', error);
         
         // Удаляем загруженный файл при ошибке
         if (req.file) {
             try {
                 fs.unlinkSync(req.file.path);
-                console.log('✅ Deleted uploaded file after error');
             } catch (deleteError) {
                 console.error('Error deleting uploaded file:', deleteError);
             }
@@ -7491,10 +7518,8 @@ app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'),
         
         res.status(500).json({
             success: false,
-            error: 'Database error: ' + error.message
+            error: 'Server error: ' + error.message
         });
-    } finally {
-        client.release();
     }
 });
 
@@ -12113,141 +12138,7 @@ app.get('/api/admin/cancelled-withdrawals', async (req, res) => {
         });
     }
 });
-// 🔧 ENDPOINT ДЛЯ ОТПРАВКИ СКРИНШОТА НА ПРОВЕРКУ
-app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'), async (req, res) => {
-    console.log('📸 Received screenshot submission request');
-    
-    try {
-        const { userTaskId } = req.params;
-        const { userId } = req.body;
-        
-        console.log('📋 Submission data:', {
-            userTaskId,
-            userId,
-            hasFile: !!req.file,
-            fileInfo: req.file ? {
-                originalname: req.file.originalname,
-                size: req.file.size,
-                mimetype: req.file.mimetype
-            } : 'No file'
-        });
 
-        // Валидация входных данных
-        if (!userId) {
-            return res.status(400).json({
-                success: false,
-                error: 'User ID обязателен'
-            });
-        }
-
-        if (!userTaskId) {
-            return res.status(400).json({
-                success: false,
-                error: 'Task ID обязателен'
-            });
-        }
-
-        // Проверяем существование задания пользователя
-        const userTaskResult = await pool.query(
-            `SELECT ut.*, t.title, t.price 
-             FROM user_tasks ut 
-             JOIN tasks t ON ut.task_id = t.id 
-             WHERE ut.id = $1 AND ut.user_id = $2`,
-            [userTaskId, userId]
-        );
-
-        if (userTaskResult.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'Задание не найдено или не принадлежит пользователю'
-            });
-        }
-
-        const userTask = userTaskResult.rows[0];
-        
-        // Проверяем статус задания
-        if (userTask.status !== 'active') {
-            return res.status(400).json({
-                success: false,
-                error: 'Задание уже завершено или отменено'
-            });
-        }
-
-        // Проверяем файл
-        if (!req.file) {
-            return res.status(400).json({
-                success: false,
-                error: 'Скриншот обязателен для проверки'
-            });
-        }
-
-        // Валидация файла
-        if (!req.file.mimetype.startsWith('image/')) {
-            return res.status(400).json({
-                success: false,
-                error: 'Файл должен быть изображением'
-            });
-        }
-
-        if (req.file.size > 10 * 1024 * 1024) {
-            return res.status(400).json({
-                success: false,
-                error: 'Размер файла не должен превышать 10MB'
-            });
-        }
-
-        // Создаем запись проверки
-        const screenshotUrl = `/uploads/${req.file.filename}`;
-        
-        const verificationResult = await pool.query(
-            `INSERT INTO task_verifications 
-             (user_task_id, user_id, task_id, screenshot_url, status, submitted_at) 
-             VALUES ($1, $2, $3, $4, 'pending', NOW()) 
-             RETURNING *`,
-            [userTaskId, userId, userTask.task_id, screenshotUrl]
-        );
-
-        // Обновляем статус задания пользователя
-        await pool.query(
-            `UPDATE user_tasks SET status = 'pending' WHERE id = $1`,
-            [userTaskId]
-        );
-
-        console.log('✅ Screenshot submitted successfully:', {
-            verificationId: verificationResult.rows[0].id,
-            userTaskId,
-            screenshotUrl
-        });
-
-        res.json({
-            success: true,
-            message: 'Скриншот успешно отправлен на проверку администратору',
-            verification: verificationResult.rows[0]
-        });
-
-    } catch (error) {
-        console.error('❌ Error submitting screenshot:', error);
-        
-        // Удаляем загруженный файл при ошибке
-        if (req.file) {
-            try {
-                const fs = require('fs');
-                const path = require('path');
-                const filePath = path.join(__dirname, 'uploads', req.file.filename);
-                if (fs.existsSync(filePath)) {
-                    fs.unlinkSync(filePath);
-                }
-            } catch (fileError) {
-                console.error('Error deleting uploaded file:', fileError);
-            }
-        }
-        
-        res.status(500).json({
-            success: false,
-            error: 'Внутренняя ошибка сервера: ' + error.message
-        });
-    }
-});
 // Получение списка промокодов
 app.get('/api/admin/promocodes/list', async (req, res) => {
     const { adminId } = req.query;
@@ -14290,7 +14181,14 @@ async function initializeServer() {
     
     console.log('✅ Server initialization complete');
 }
+// Добавьте в самом конце, перед app.listen
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+});
 
+process.on('uncaughtException', (error) => {
+    console.error('❌ Uncaught Exception:', error);
+});
 // Замените текущий app.listen на этот:
 app.listen(PORT, '0.0.0.0', async () => {
     console.log(`🚀 Server running on port ${PORT}`);
