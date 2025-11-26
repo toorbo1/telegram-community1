@@ -8761,79 +8761,95 @@ function showTaskConfirmation(userTaskId, taskName) {
         showNotification('Ошибка: модальное окно не найдено', 'error');
     }
 }
+function debugScreenshotUpload() {
+    console.log('🔍 DEBUG Screenshot Upload:');
+    console.log('- currentUser:', currentUser);
+    console.log('- currentUserTaskId:', currentUserTaskId);
+    console.log('- screenshot-modal:', document.getElementById('screenshot-modal'));
+    console.log('- screenshot-file:', document.getElementById('screenshot-file'));
+    console.log('- submit-screenshot-btn:', document.getElementById('submit-screenshot-btn'));
+    
+    // Проверяем обработчики событий
+    const submitBtn = document.getElementById('submit-screenshot-btn');
+    if (submitBtn) {
+        console.log('- submitBtn onclick:', submitBtn.onclick);
+    }
+}
+
+// Временно добавьте кнопку для отладки
+function addScreenshotDebugButton() {
+    const debugBtn = document.createElement('button');
+    debugBtn.textContent = '🐛 Debug Screenshot';
+    debugBtn.style.position = 'fixed';
+    debugBtn.style.top = '350px';
+    debugBtn.style.right = '10px';
+    debugBtn.style.zIndex = '10000';
+    debugBtn.style.padding = '10px';
+    debugBtn.style.background = 'brown';
+    debugBtn.style.color = 'white';
+    debugBtn.style.border = 'none';
+    debugBtn.style.borderRadius = '5px';
+    debugBtn.style.fontSize = '12px';
+    debugBtn.onclick = debugScreenshotUpload;
+    document.body.appendChild(debugBtn);
+}
+
+// Вызовите при загрузке
+setTimeout(addScreenshotDebugButton, 3000);
         // Функции для системы проверки заданий
 function showScreenshotUpload() {
+    console.log('📸 Opening screenshot upload modal');
+    
+    // Закрываем предыдущие модальные окна
     closeModal('confirmation-modal');
     closeModal('cancel-confirmation-modal');
     
-    // Сброс формы
-    document.getElementById('screenshot-file').value = '';
-    document.getElementById('screenshot-preview').style.display = 'none';
-    document.getElementById('file-name').textContent = '';
-    
-    // 🔥 ВАЖНО: Сбрасываем состояние кнопки
+    // Сбрасываем форму
+    const fileInput = document.getElementById('screenshot-file');
+    const preview = document.getElementById('screenshot-preview');
+    const fileName = document.getElementById('file-name');
     const submitBtn = document.getElementById('submit-screenshot-btn');
+    
+    if (fileInput) fileInput.value = '';
+    if (preview) {
+        preview.src = '';
+        preview.style.display = 'none';
+    }
+    if (fileName) fileName.textContent = '';
     if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.textContent = 'Отправить на проверку';
     }
-            
-            // Настройка обработчика файла
-            document.getElementById('screenshot-file').onchange = function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    document.getElementById('file-name').textContent = file.name;
-                    document.getElementById('submit-screenshot-btn').disabled = false;
-                    
-                    // Показать превью
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        const preview = document.getElementById('screenshot-preview');
+    
+    // Настройка обработчика файла
+    if (fileInput) {
+        fileInput.onchange = function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                if (fileName) fileName.textContent = file.name;
+                if (submitBtn) submitBtn.disabled = false;
+                
+                // Показываем превью
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    if (preview) {
                         preview.src = e.target.result;
                         preview.style.display = 'block';
-                    };
-                    reader.readAsDataURL(file);
-                }
-            };
-            
-            document.getElementById('screenshot-modal').classList.add('active');
-        }
-
-        function showCancelConfirmation() {
-            closeModal('confirmation-modal');
-            document.getElementById('cancel-confirmation-modal').classList.add('active');
-        }
-
-        async function submitScreenshot() {
-    const fileInput = document.getElementById('screenshot-file');
-    if (!fileInput.files[0]) {
-        showNotification('Выберите файл скриншота', 'error');
-        return;
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        };
     }
-
-    const formData = new FormData();
-    formData.append('screenshot', fileInput.files[0]);
-    formData.append('userId', currentUser.id);
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/user/tasks/${currentUserTaskId}/submit`, {
-            method: 'POST',
-            body: formData
-            // Не устанавливаем Content-Type, браузер сам установит с boundary
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            showNotification('Скриншот отправлен на проверку!', 'success');
-            closeModal('screenshot-modal');
-            loadUserTasks();
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error submitting screenshot:', error);
-        showNotification('Ошибка отправки скриншота', 'error');
+    
+    // Показываем модальное окно
+    const modal = document.getElementById('screenshot-modal');
+    if (modal) {
+        modal.classList.add('active');
+        console.log('✅ Screenshot modal opened');
+    } else {
+        console.error('❌ Screenshot modal not found');
+        showNotification('Ошибка: модальное окно не найдено', 'error');
     }
 }
 
@@ -9464,20 +9480,37 @@ document.addEventListener('DOMContentLoaded', function() {
     setupSingleSubmission();
 });
 
-// Также обновите функцию submitScreenshot для восстановления кнопки
 async function submitScreenshot() {
     const fileInput = document.getElementById('screenshot-file');
     const submitBtn = document.getElementById('submit-screenshot-btn');
+    
+    // Проверка существования элементов
+    if (!fileInput) {
+        console.error('❌ fileInput not found');
+        showNotification('Ошибка: элемент загрузки файла не найден', 'error');
+        return;
+    }
     
     if (!fileInput.files[0]) {
         showNotification('Выберите файл скриншота', 'error');
         return;
     }
 
+    if (!currentUser || !currentUserTaskId) {
+        showNotification('Ошибка: данные пользователя не найдены', 'error');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('screenshot', fileInput.files[0]);
+    formData.append('userId', currentUser.id);
+
     try {
-        const formData = new FormData();
-        formData.append('screenshot', fileInput.files[0]);
-        formData.append('userId', currentUser.id);
+        // Показываем загрузку
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Отправляем...';
+        }
 
         const response = await fetch(`${API_BASE_URL}/api/user/tasks/${currentUserTaskId}/submit`, {
             method: 'POST',
@@ -9489,15 +9522,21 @@ async function submitScreenshot() {
         if (result.success) {
             showNotification('Скриншот отправлен на проверку!', 'success');
             closeModal('screenshot-modal');
-            loadUserTasks();
+            
+            // Обновляем интерфейс
+            setTimeout(() => {
+                loadUserTasks();
+                loadTasks(); // Обновляем список заданий
+            }, 1000);
+            
         } else {
-            showNotification('Ошибка: ' + result.error, 'error');
+            showNotification('Ошибка: ' + (result.error || 'Неизвестная ошибка'), 'error');
         }
     } catch (error) {
         console.error('Error submitting screenshot:', error);
-        showNotification('Ошибка отправки скриншота', 'error');
+        showNotification('Ошибка отправки скриншота: ' + error.message, 'error');
     } finally {
-        // 🔥 ВАЖНО: Всегда восстанавливаем кнопку
+        // Восстанавливаем кнопку
         if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.textContent = 'Отправить на проверку';
