@@ -8725,6 +8725,12 @@ fixExistingTaskImages();
 function showTaskConfirmation(userTaskId, taskName) {
     console.log('🔍 Confirming task:', { userTaskId, taskName });
     
+    // 🔥 ДОБАВЬТЕ ЭТУ ПРОВЕРКУ:
+    if (!userTaskId || userTaskId === 'undefined' || userTaskId === 'null') {
+        console.error('❌ Invalid userTaskId:', userTaskId);
+        showNotification('Ошибка: неверный ID задания', 'error');
+        return;
+    }
     if (!userTaskId) {
         showNotification('Ошибка: ID задания не найден', 'error');
         return;
@@ -8764,6 +8770,22 @@ function showTaskConfirmation(userTaskId, taskName) {
 async function submitScreenshot() {
     console.log('🔍 DEBUG submitScreenshot started');
     
+    // 🔥 КРИТИЧЕСКИЕ ПРОВЕРКИ ЭЛЕМЕНТОВ
+    const fileInput = document.getElementById('screenshot-file');
+    const submitBtn = document.getElementById('submit-screenshot-btn');
+    
+    if (!fileInput) {
+        console.error('❌ fileInput element not found');
+        showNotification('Ошибка: элемент формы не найден', 'error');
+        return;
+    }
+    
+    if (!submitBtn) {
+        console.error('❌ submit-screenshot-btn not found');
+        showNotification('Ошибка: кнопка отправки не найдена', 'error');
+        return;
+    }
+
     // Проверка 1: currentUserTaskId
     if (!currentUserTaskId) {
         console.error('❌ currentUserTaskId is undefined!');
@@ -8779,8 +8801,7 @@ async function submitScreenshot() {
     }
 
     // Проверка 3: File input
-    const fileInput = document.getElementById('screenshot-file');
-    if (!fileInput || !fileInput.files[0]) {
+    if (!fileInput.files[0]) {
         console.error('❌ No file selected');
         showNotification('Выберите файл скриншота', 'error');
         return;
@@ -8807,11 +8828,8 @@ async function submitScreenshot() {
 
     try {
         // Показываем индикатор загрузки
-        const submitBtn = document.getElementById('submit-screenshot-btn');
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.textContent = '⏳ Отправляем...';
-        }
+        submitBtn.disabled = true;
+        submitBtn.textContent = '⏳ Отправляем...';
 
         // Создаем FormData
         const formData = new FormData();
@@ -8824,9 +8842,13 @@ async function submitScreenshot() {
             userTaskId: currentUserTaskId,
             fileName: file.name
         });
-
-        // Используем правильный endpoint
-        const endpoint = `/api/user/tasks/${currentUserTaskId}/submit`;
+// После создания FormData добавьте проверку:
+console.log('📤 FormData entries:');
+for (let pair of formData.entries()) {
+    console.log(pair[0] + ': ', pair[1]);
+}
+        // 🔥 ИСПРАВЛЕННЫЙ ENDPOINT - используем submit-auto вместо submit
+        const endpoint = `/api/user/tasks/${currentUserTaskId}/submit-auto`;
         console.log('🌐 Endpoint:', endpoint);
 
         const response = await fetch(API_BASE_URL + endpoint, {
@@ -8955,39 +8977,7 @@ function showScreenshotUpload() {
             document.getElementById('cancel-confirmation-modal').classList.add('active');
         }
 
-        async function submitScreenshot() {
-    const fileInput = document.getElementById('screenshot-file');
-    if (!fileInput.files[0]) {
-        showNotification('Выберите файл скриншота', 'error');
-        return;
-    }
-
-    const formData = new FormData();
-    formData.append('screenshot', fileInput.files[0]);
-    formData.append('userId', currentUser.id);
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/user/tasks/${currentUserTaskId}/submit`, {
-            method: 'POST',
-            body: formData
-            // Не устанавливаем Content-Type, браузер сам установит с boundary
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            showNotification('Скриншот отправлен на проверку!', 'success');
-            closeModal('screenshot-modal');
-            loadUserTasks();
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error submitting screenshot:', error);
-        showNotification('Ошибка отправки скриншота', 'error');
-    }
-}
-
+     
 // Обновите функцию отмены задания
 async function cancelTask() {
     if (!currentUserTaskId) return;
