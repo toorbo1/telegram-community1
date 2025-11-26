@@ -8725,12 +8725,7 @@ fixExistingTaskImages();
 function showTaskConfirmation(userTaskId, taskName) {
     console.log('🔍 Confirming task:', { userTaskId, taskName });
     
-    if (!userTaskId) {
-        showNotification('Ошибка: ID задания не найден', 'error');
-        return;
-    }
-    
-    // Проверяем, что userTaskId - число
+    // Проверяем что userTaskId - число
     const numericTaskId = parseInt(userTaskId);
     if (isNaN(numericTaskId)) {
         showNotification('Ошибка: неверный ID задания', 'error');
@@ -8763,6 +8758,12 @@ function showTaskConfirmation(userTaskId, taskName) {
 }
         // Функции для системы проверки заданий
 function showScreenshotUpload() {
+    // Проверяем что currentUserTaskId установлен
+    if (!currentUserTaskId) {
+        showNotification('Ошибка: задание не выбрано', 'error');
+        return;
+    }
+    
     closeModal('confirmation-modal');
     closeModal('cancel-confirmation-modal');
     
@@ -8771,60 +8772,55 @@ function showScreenshotUpload() {
     document.getElementById('screenshot-preview').style.display = 'none';
     document.getElementById('file-name').textContent = '';
     
-    // 🔥 ВАЖНО: Сбрасываем состояние кнопки
-    const submitBtn = document.getElementById('submit-screenshot-btn');
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Отправить на проверку';
-    }
+    // Настройка обработчика файла
+    document.getElementById('screenshot-file').onchange = function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            document.getElementById('file-name').textContent = file.name;
             
-            // Настройка обработчика файла
-            document.getElementById('screenshot-file').onchange = function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    document.getElementById('file-name').textContent = file.name;
-                    document.getElementById('submit-screenshot-btn').disabled = false;
-                    
-                    // Показать превью
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        const preview = document.getElementById('screenshot-preview');
-                        preview.src = e.target.result;
-                        preview.style.display = 'block';
-                    };
-                    reader.readAsDataURL(file);
-                }
+            // Показать превью
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.getElementById('screenshot-preview');
+                preview.src = e.target.result;
+                preview.style.display = 'block';
             };
-            
-            document.getElementById('screenshot-modal').classList.add('active');
+            reader.readAsDataURL(file);
         }
+    };
+    
+    document.getElementById('screenshot-modal').classList.add('active');
+}
 
         function showCancelConfirmation() {
             closeModal('confirmation-modal');
             document.getElementById('cancel-confirmation-modal').classList.add('active');
         }
 
-        async function submitScreenshot() {
+async function submitScreenshot() {
+    // Проверяем что currentUserTaskId установлен
+    if (!currentUserTaskId) {
+        console.error('❌ currentUserTaskId не установлен');
+        showNotification('Ошибка: ID задания не найден', 'error');
+        return;
+    }
+
     const fileInput = document.getElementById('screenshot-file');
     if (!fileInput.files[0]) {
         showNotification('Выберите файл скриншота', 'error');
         return;
     }
 
-    const formData = new FormData();
-formData.append('screenshot', file); // file - выбранный файл
-formData.append('userId', currentUser.id);
-
-const response = await fetch(`/api/user/tasks/${userTaskId}/submit-auto`, {
-    method: 'POST',
-    body: formData
-    // НЕ добавлять Content-Type header - браузер установит его автоматически с boundary
-});
     try {
+        const formData = new FormData();
+        formData.append('screenshot', fileInput.files[0]);
+        formData.append('userId', currentUser.id);
+
+        console.log('📤 Отправка скриншота для задания:', currentUserTaskId);
+
         const response = await fetch(`${API_BASE_URL}/api/user/tasks/${currentUserTaskId}/submit`, {
             method: 'POST',
             body: formData
-            // Не устанавливаем Content-Type, браузер сам установит с boundary
         });
 
         const result = await response.json();
@@ -8832,15 +8828,57 @@ const response = await fetch(`/api/user/tasks/${userTaskId}/submit-auto`, {
         if (result.success) {
             showNotification('Скриншот отправлен на проверку!', 'success');
             closeModal('screenshot-modal');
-            loadUserTasks();
+            
+            // Обновляем списки заданий
+            setTimeout(() => {
+                loadUserTasks();
+                loadTasks();
+            }, 1000);
+            
         } else {
             showNotification('Ошибка: ' + result.error, 'error');
         }
     } catch (error) {
         console.error('Error submitting screenshot:', error);
-        showNotification('Ошибка отправки скриншота', 'error');
+        showNotification('Ошибка отправки скриншота: ' + error.message, 'error');
     }
 }
+
+
+function debugScreenshotUpload() {
+    console.log('🐛 DEBUG Screenshot Upload:');
+    console.log('- currentUser:', currentUser);
+    console.log('- currentUserTaskId:', currentUserTaskId);
+    console.log('- screenshot-modal:', document.getElementById('screenshot-modal'));
+    console.log('- confirmation-modal:', document.getElementById('confirmation-modal'));
+    
+    // Проверяем загружены ли задания пользователя
+    loadUserTasksForCategory('active').then(() => {
+        console.log('✅ Active tasks loaded for debugging');
+    });
+}
+
+// Временно добавьте кнопку для тестирования
+function addScreenshotDebugButton() {
+    const debugBtn = document.createElement('button');
+    debugBtn.textContent = '🐛 Debug Screenshot';
+    debugBtn.style.position = 'fixed';
+    debugBtn.style.top = '350px';
+    debugBtn.style.right = '10px';
+    debugBtn.style.zIndex = '10000';
+    debugBtn.style.padding = '10px';
+    debugBtn.style.background = 'blue';
+    debugBtn.style.color = 'white';
+    debugBtn.style.border = 'none';
+    debugBtn.style.borderRadius = '5px';
+    debugBtn.style.fontSize = '12px';
+    debugBtn.onclick = debugScreenshotUpload;
+    document.body.appendChild(debugBtn);
+}
+
+// Вызовите при загрузке
+setTimeout(addScreenshotDebugButton, 3000);
+
 
 // Обновите функцию отмены задания
 async function cancelTask() {
