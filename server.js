@@ -17,25 +17,7 @@ const FLYER_API_URL = 'https://api.flyerservice.io';
 // ЗАМЕНИТЕ НА ЭТОТ КОД:
 const WEBHOOK_URL = 'https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook';
 
-// Глобальные переменные для отладки
-console.log('🔧 Debug info:', {
-    API_BASE_URL: API_BASE_URL,
-    currentUser: currentUser ? {
-        id: currentUser.id,
-        name: currentUser.first_name
-    } : 'null',
-    currentUserTaskId: currentUserTaskId
-});
 
-// Функция для проверки состояния
-function debugScreenshotUpload() {
-    console.log('🔍 Debug screenshot upload:', {
-        fileInput: document.getElementById('screenshot-file'),
-        submitBtn: document.getElementById('submit-screenshot-btn'),
-        currentUserTaskId: currentUserTaskId,
-        currentUser: currentUser
-    });
-}
 
 const LINKGOLDMONEY_API_KEY = 'FL-pqKrtr-kPaJFg-KeLIQD-TLHgfC';
 const LINKGOLDMONEY_API_URL = 'https://telegram-community1-production-0bc1.up.railway.app/';
