@@ -4975,6 +4975,78 @@ bot.onText(/\/disable_builtin_op/, async (msg) => {
         console.error('Disable builtin OP error:', error);
     }
 });
+// 🛠️ КОМАНДА ДЛЯ ПРИНУДИТЕЛЬНОЙ НАСТРОЙКИ FLYER WEBHOOK
+bot.onText(/\/force_setup_flyer/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+
+    if (parseInt(userId) !== ADMIN_ID) {
+        return await bot.sendMessage(chatId, '❌ Только главный администратор может настраивать Flyer.');
+    }
+
+    try {
+        await bot.sendMessage(chatId, '🔄 Запускаю принудительную настройку Flyer webhook...');
+
+        // Тестируем наш endpoint сначала
+        const testResponse = await fetch(WEBHOOK_URL, {
+            method: 'GET'
+        });
+
+        const testResult = await testResponse.json();
+        
+        if (!testResult.status) {
+            throw new Error('Our webhook endpoint returns false status');
+        }
+
+        await bot.sendMessage(chatId, '✅ Наш вебхук отвечает корректно, настраиваю Flyer...');
+
+        // Настраиваем вебхук через Flyer API
+        const setupResponse = await fetch('https://api.flyerservice.io/set_webhook', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                key: FLYER_API_KEY,
+                webhook: WEBHOOK_URL
+            })
+        });
+
+        if (!setupResponse.ok) {
+            const errorText = await setupResponse.text();
+            throw new Error(`Flyer API: ${setupResponse.status} - ${errorText}`);
+        }
+
+        const setupResult = await setupResponse.json();
+        
+        await bot.sendMessage(
+            chatId,
+            `🎉 <b>Flyer webhook успешно настроен!</b>\n\n` +
+            `🌐 <b>URL:</b> ${WEBHOOK_URL}\n` +
+            `✅ <b>Статус:</b> Активен\n` +
+            `📨 <b>Ответ Flyer:</b> ${JSON.stringify(setupResult)}\n\n` +
+            `Теперь Flyer будет отправлять уведомления на ваш сервер.`,
+            { parse_mode: 'HTML' }
+        );
+
+    } catch (error) {
+        console.error('Force setup flyer error:', error);
+        
+        let errorMessage = `❌ <b>Ошибка настройки Flyer:</b> ${error.message}\n\n`;
+        
+        if (error.message.includes('404')) {
+            errorMessage += `<b>Проблема:</b> Endpoint не найден\n`;
+            errorMessage += `<b>Решение:</b> Убедитесь что URL вебхука корректен\n\n`;
+        }
+        
+        errorMessage += `<b>Ручная настройка через curl:</b>\n\n` +
+            `<code>curl -X POST "https://api.flyerservice.io/set_webhook" \\\n` +
+            `-H "Content-Type: application/json" \\\n` +
+            `-d '{"key": "${FLYER_API_KEY}", "webhook": "${WEBHOOK_URL}"}'</code>`;
+
+        await bot.sendMessage(chatId, errorMessage, { parse_mode: 'HTML' });
+    }
+});
 // 🔧 КОМАНДА ДЛЯ ПРИНУДИТЕЛЬНОЙ НАСТРОЙКИ FLYER
 bot.onText(/\/fix_flyer_webhook/, async (msg) => {
     const chatId = msg.chat.id;
@@ -6439,23 +6511,23 @@ async function handleReferralRegistration(userId, referralCode, userData) {
         return { referredBy: null, referrerName: '', alreadyRegistered: false };
     }
 }
-// ==================== NOTIFICATION ENDPOINTS ====================
-// Простой endpoint для проверки вебхука Flyer
-// В GET endpoint вебхука измените:
+// 🔧 ИСПРАВЛЕННЫЙ ENDPOINT ДЛЯ FLYER WEBHOOK
 app.get('/api/flyer/webhook', async (req, res) => {
-    console.log('🔍 Flyer webhook test request received');
+    console.log('🔍 Flyer webhook GET request received - testing endpoint');
+    
+    // Всегда возвращаем JSON в правильном формате для Flyer
     res.json({ 
         status: true,
-        message: 'Flyer webhook endpoint is working!', // ← ИЗМЕНИТЕ НА АНГЛИЙСКИЙ
+        message: 'Flyer webhook endpoint is operational',
         url: WEBHOOK_URL,
         timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development'
+        environment: process.env.NODE_ENV || 'production'
     });
 });
 
-// 🔧 ИСПРАВЛЕННЫЙ ENDPOINT ДЛЯ FLYER WEBHOOK
+// 🔧 ИСПРАВЛЕННЫЙ POST ENDPOINT ДЛЯ FLYER WEBHOOK
 app.post('/api/flyer/webhook', express.json(), async (req, res) => {
-    console.log('📨 Received Flyer webhook:', JSON.stringify(req.body, null, 2));
+    console.log('📨 Received Flyer webhook POST:', JSON.stringify(req.body, null, 2));
 
     try {
         const { type, key_number, data } = req.body;
@@ -6482,7 +6554,6 @@ app.post('/api/flyer/webhook', express.json(), async (req, res) => {
         switch (type) {
             case 'test':
                 console.log('✅ Test webhook received - everything works!');
-                // Для тестового вебхука просто возвращаем успех
                 break;
 
             case 'sub_completed':
@@ -6501,10 +6572,9 @@ app.post('/api/flyer/webhook', express.json(), async (req, res) => {
 
             default:
                 console.log('⚠️ Unknown webhook type:', type);
-                // Для неизвестных типов все равно возвращаем успех
         }
 
-        // ВАЖНО: Всегда возвращаем {status: true} согласно документации
+        // ВАЖНО: Всегда возвращаем {status: true} согласно документации Flyer
         res.json({ 
             status: true,
             processed: true,
