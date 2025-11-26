@@ -8776,7 +8776,7 @@ async function submitScreenshot() {
         formData.append('userId', currentUser.id);
 
         // 🔥 ИСПРАВЛЕНИЕ: используем правильный endpoint
-        const response = await fetch(`${API_BASE_URL}/api/user/tasks/${currentUserTaskId}/submit-auto`, {
+        const response = await fetch(`${API_BASE_URL}/api/user/tasks/${currentUserTaskId}/submit`, {
             method: 'POST',
             body: formData
         });
@@ -8801,7 +8801,6 @@ async function submitScreenshot() {
         }
     }
 }
-
 // Функция для диагностики проблемы отправки
 async function debugScreenshotSubmission() {
     console.log('🔍 Debug screenshot submission:');
