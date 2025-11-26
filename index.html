@@ -8762,7 +8762,7 @@ function showTaskConfirmation(userTaskId, taskName) {
     }
 }
 async function submitScreenshot() {
-    console.log('🔍 DEBUG submitScreenshot in Telegram');
+    console.log('🔍 DEBUG submitScreenshot started');
     
     // Проверка 1: currentUserTaskId
     if (!currentUserTaskId) {
@@ -8771,7 +8771,14 @@ async function submitScreenshot() {
         return;
     }
 
-    // Проверка 2: File input
+    // Проверка 2: Пользователь авторизован
+    if (!currentUser || !currentUser.id) {
+        console.error('❌ User not authenticated');
+        showNotification('Ошибка: пользователь не авторизован', 'error');
+        return;
+    }
+
+    // Проверка 3: File input
     const fileInput = document.getElementById('screenshot-file');
     if (!fileInput || !fileInput.files[0]) {
         console.error('❌ No file selected');
@@ -8779,34 +8786,53 @@ async function submitScreenshot() {
         return;
     }
 
-    // Проверка 3: File details
+    // Проверка 4: File details
     const file = fileInput.files[0];
     console.log('📁 File details:', {
         name: file.name,
         size: file.size,
-        type: file.type,
-        lastModified: file.lastModified
+        type: file.type
     });
 
-    // Проверка 4: FormData
-    const formData = new FormData();
-    formData.append('screenshot', file);
-    formData.append('userId', currentUser.id);
-    formData.append('userTaskId', currentUserTaskId);
-    
-    console.log('📤 FormData entries:');
-    for (let pair of formData.entries()) {
-        console.log(pair[0] + ': ' + pair[1]);
+    // Валидация файла
+    if (!file.type.startsWith('image/')) {
+        showNotification('Пожалуйста, выберите изображение (JPEG, PNG, etc.)', 'error');
+        return;
     }
 
-    // Проверка 5: Endpoint
-    const endpoint = `/api/user/tasks/${currentUserTaskId}/submit-auto`;
-    console.log('🌐 Endpoint:', endpoint);
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        showNotification('Размер файла не должен превышать 10MB', 'error');
+        return;
+    }
 
     try {
-        const response = await fetch(endpoint, {
+        // Показываем индикатор загрузки
+        const submitBtn = document.getElementById('submit-screenshot-btn');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Отправляем...';
+        }
+
+        // Создаем FormData
+        const formData = new FormData();
+        formData.append('screenshot', file);
+        formData.append('userId', currentUser.id);
+        formData.append('userTaskId', currentUserTaskId.toString());
+        
+        console.log('📤 FormData prepared:', {
+            userId: currentUser.id,
+            userTaskId: currentUserTaskId,
+            fileName: file.name
+        });
+
+        // Используем правильный endpoint
+        const endpoint = `/api/user/tasks/${currentUserTaskId}/submit`;
+        console.log('🌐 Endpoint:', endpoint);
+
+        const response = await fetch(API_BASE_URL + endpoint, {
             method: 'POST',
             body: formData
+            // Не устанавливаем Content-Type для FormData!
         });
 
         console.log('📨 Response status:', response.status);
@@ -8814,22 +8840,36 @@ async function submitScreenshot() {
         if (!response.ok) {
             const errorText = await response.text();
             console.error('❌ Server error:', errorText);
-            throw new Error(`HTTP ${response.status}`);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
 
         const result = await response.json();
         console.log('✅ Server response:', result);
 
         if (result.success) {
-            showNotification('Скриншот отправлен на проверку!', 'success');
+            showNotification('✅ Скриншот отправлен на проверку!', 'success');
             closeModal('screenshot-modal');
-            loadUserTasks();
+            
+            // Обновляем интерфейс
+            setTimeout(() => {
+                loadUserTasks();
+                loadTasksForCategory('confirmation');
+            }, 1000);
+            
         } else {
-            showNotification('Ошибка: ' + (result.error || 'неизвестная ошибка'), 'error');
+            throw new Error(result.error || 'Неизвестная ошибка сервера');
         }
+
     } catch (error) {
         console.error('💥 Network error:', error);
-        showNotification('Ошибка сети: ' + error.message, 'error');
+        showNotification('❌ Ошибка отправки: ' + error.message, 'error');
+    } finally {
+        // Восстанавливаем кнопку
+        const submitBtn = document.getElementById('submit-screenshot-btn');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Отправить на проверку';
+        }
     }
 }
 // Функция для диагностики проблемы отправки
