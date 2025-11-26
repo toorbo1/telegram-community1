@@ -14181,14 +14181,7 @@ async function initializeServer() {
     
     console.log('✅ Server initialization complete');
 }
-// Добавьте в самом конце, перед app.listen
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
-});
 
-process.on('uncaughtException', (error) => {
-    console.error('❌ Uncaught Exception:', error);
-});
 // Замените текущий app.listen на этот:
 app.listen(PORT, '0.0.0.0', async () => {
     console.log(`🚀 Server running on port ${PORT}`);
