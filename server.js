@@ -406,7 +406,6 @@ const storage = multer.diskStorage({
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         const fileExt = path.extname(file.originalname);
-        // Добавляем префикс для легкой идентификации
         cb(null, 'screenshot-' + uniqueSuffix + fileExt);
     }
 });
@@ -417,7 +416,7 @@ const upload = multer({
         fileSize: 10 * 1024 * 1024 // 10MB limit
     },
     fileFilter: function (req, file, cb) {
-        // Разрешаем только изображения
+        // Проверяем MIME type
         if (file.mimetype.startsWith('image/')) {
             cb(null, true);
         } else {
@@ -425,6 +424,7 @@ const upload = multer({
         }
     }
 });
+
 
 // Функция для отправки уведомления пользователю
 async function sendTaskNotification(userId, taskTitle, status, adminComment = '') {
@@ -7328,10 +7328,12 @@ async function checkTaskWithLinkGold(userId, taskData, screenshotUrl = null) {
         };
     }
 }
-// Обновленный endpoint для отправки задания на проверку с интеграцией LinkGoldMoney
+// Обновленный endpoint для отправки задания на проверку
 app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'), async (req, res) => {
     const userTaskId = req.params.userTaskId;
     const { userId } = req.body;
+    
+    console.log('📤 Submit task request:', { userTaskId, userId, file: req.file });
     
     if (!userId) {
         return res.status(400).json({
@@ -7360,119 +7362,62 @@ app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'),
             FROM user_tasks ut 
             JOIN user_profiles u ON ut.user_id = u.user_id 
             JOIN tasks t ON ut.task_id = t.id 
-            WHERE ut.id = $1
-        `, [userTaskId]);
+            WHERE ut.id = $1 AND ut.user_id = $2
+        `, [userTaskId, userId]);
         
         if (taskInfo.rows.length === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({
                 success: false,
-                error: 'Task not found'
+                error: 'Task not found or access denied'
             });
         }
         
         const taskData = taskInfo.rows[0];
         const userName = `${taskData.first_name} ${taskData.last_name}`;
 
-        // 🔄 АВТОМАТИЧЕСКАЯ ПРОВЕРКА ЧЕРЕЗ LINKGOLDMONEY
-        console.log('🔄 Starting automatic verification with LinkGoldMoney...');
-        const verificationResult = await checkTaskWithLinkGold(userId, taskData, screenshotUrl);
-
-        let status = 'pending_review';
-        let verificationStatus = 'pending';
-        
-        // Если автоматическая проверка успешна и задание одобрено
-        if (verificationResult.success && verificationResult.approved) {
-            status = 'completed';
-            verificationStatus = 'approved';
-            
-            console.log('✅ Task auto-approved by LinkGoldMoney');
-        }
-
         // Обновляем user_task
         await client.query(`
             UPDATE user_tasks 
-            SET status = $1, screenshot_url = $2, submitted_at = CURRENT_TIMESTAMP 
-            WHERE id = $3 AND user_id = $4
-        `, [status, screenshotUrl, userTaskId, userId]);
+            SET status = 'pending_review', screenshot_url = $1, submitted_at = CURRENT_TIMESTAMP 
+            WHERE id = $2 AND user_id = $3
+        `, [screenshotUrl, userTaskId, userId]);
         
         // Создаем запись верификации
-        const verificationResultDb = await client.query(`
+        const verificationResult = await client.query(`
             INSERT INTO task_verifications 
-            (user_task_id, user_id, task_id, user_name, user_username, task_title, task_price, screenshot_url, status, auto_verified) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            (user_task_id, user_id, task_id, user_name, user_username, task_title, task_price, screenshot_url, status) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING *
         `, [
             userTaskId, 
-            taskData.user_id, 
+            userId, 
             taskData.task_id, 
             userName, 
             taskData.username, 
             taskData.title, 
             taskData.price, 
             screenshotUrl,
-            verificationStatus,
-            verificationResult.success // Помечаем как автоматически проверенное
+            'pending' // Статус по умолчанию
         ]);
-
-        // Если задание автоматически одобрено, начисляем средства
-        if (status === 'completed') {
-            await client.query(`
-                UPDATE user_profiles 
-                SET balance = COALESCE(balance, 0) + $1,
-                    tasks_completed = COALESCE(tasks_completed, 0) + 1
-                WHERE user_id = $2
-            `, [taskData.price, userId]);
-
-            // Обновляем счетчик выполненных заданий
-            await client.query(`
-                UPDATE tasks 
-                SET completed_count = COALESCE(completed_count, 0) + 1 
-                WHERE id = $1
-            `, [taskData.task_id]);
-
-            // Проверяем, не достигнут ли лимит выполнений
-            const taskUpdate = await client.query(`
-                SELECT people_required, completed_count 
-                FROM tasks 
-                WHERE id = $1
-            `, [taskData.task_id]);
-
-            if (taskUpdate.rows.length > 0) {
-                const task = taskUpdate.rows[0];
-                if (task.completed_count >= task.people_required) {
-                    await client.query(`
-                        UPDATE tasks 
-                        SET status = 'completed' 
-                        WHERE id = $1
-                    `, [taskData.task_id]);
-                }
-            }
-
-            // Отправляем уведомление пользователю
-            await sendTaskNotification(userId, taskData.title, 'approved', 
-                'Задание автоматически одобрено системой проверки!');
-        }
 
         await client.query('COMMIT');
 
-        const response = {
-            success: true,
-            message: verificationResult.success && verificationResult.approved 
-                ? 'Задание автоматически одобрено! Средства зачислены на ваш счет.' 
-                : 'Задание отправлено на проверку. Ожидайте решения администратора.',
-            verificationId: verificationResultDb.rows[0].id,
-            autoVerified: verificationResult.success && verificationResult.approved,
-            verificationResult: verificationResult
-        };
-
-        console.log('✅ Task submission completed:', response);
+        console.log('✅ Task submitted successfully:', {
+            verificationId: verificationResult.rows[0].id,
+            userTaskId: userTaskId,
+            screenshotUrl: screenshotUrl
+        });
         
-        res.json(response);
+        res.json({
+            success: true,
+            message: 'Задание отправлено на проверку. Ожидайте решения администратора.',
+            verificationId: verificationResult.rows[0].id
+        });
         
     } catch (error) {
         await client.query('ROLLBACK');
-        console.error('Submit task error:', error);
+        console.error('❌ Submit task error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
@@ -7481,6 +7426,36 @@ app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'),
         client.release();
     }
 });
+
+// Обработчик ошибок multer
+app.use((error, req, res, next) => {
+    if (error instanceof multer.MulterError) {
+        if (error.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({
+                success: false,
+                error: 'Файл слишком большой. Максимальный размер: 10MB'
+            });
+        }
+        if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+            return res.status(400).json({
+                success: false,
+                error: 'Неподдерживаемый тип файла. Разрешены только изображения'
+            });
+        }
+    }
+    next(error);
+});
+// Функция для проверки папки uploads
+function ensureUploadsDir() {
+    const uploadsDir = path.join(__dirname, 'uploads');
+    if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+        console.log('✅ Created uploads directory');
+    }
+}
+
+// Вызовите при запуске сервера
+ensureUploadsDir();
 // ==================== FLYER API SETUP FUNCTIONS ====================
 
 // Улучшенная функция настройки вебхука Flyer
@@ -7831,6 +7806,38 @@ async function initializeFlyer() {
 
 // Вызов инициализации Flyer при запуске сервера
 initializeFlyer();
+
+// Диагностический endpoint для проверки загрузки файлов
+app.get('/api/debug/uploads-status', async (req, res) => {
+    try {
+        const uploadsDir = path.join(__dirname, 'uploads');
+        const files = fs.existsSync(uploadsDir) ? fs.readdirSync(uploadsDir) : [];
+        
+        res.json({
+            success: true,
+            uploads: {
+                directory: uploadsDir,
+                exists: fs.existsSync(uploadsDir),
+                fileCount: files.length,
+                files: files.slice(0, 10)
+            },
+            multer: {
+                configured: true,
+                limits: {
+                    fileSize: '10MB'
+                },
+                allowedTypes: ['image/*']
+            }
+        });
+    } catch (error) {
+        console.error('Uploads status error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 // Endpoint для ручного вызова проверки через LinkGoldMoney
 app.post('/api/admin/task-verifications/:verificationId/check-with-linkgold', async (req, res) => {
     const verificationId = req.params.verificationId;
