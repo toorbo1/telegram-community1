@@ -7345,39 +7345,43 @@ app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'),
         file: req.file ? {
             originalname: req.file.originalname,
             size: req.file.size,
-            mimetype: req.file.mimetype
-        } : 'NO FILE'
+            mimetype: req.file.mimetype,
+            filename: req.file.filename,
+            path: req.file.path
+        } : 'NO FILE RECEIVED'
     });
 
-    // Добавьте эту проверку
+    const userTaskId = req.params.userTaskId;
+    const userId = req.body.userId;
+    
+    // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Проверка наличия файла
     if (!req.file) {
         console.error('❌ No file received in request');
         return res.status(400).json({
             success: false,
-            error: 'Файл не был получен сервером'
+            error: 'Файл не был получен сервером. Пожалуйста, попробуйте еще раз.'
         });
     }
-    const userTaskId = req.params.userTaskId;
-    const userId = req.body.userId;
-    
-    console.log('🚀 Submit task with screenshot request:', { userTaskId, userId });
     
     if (!userId) {
+        // Удаляем загруженный файл при ошибке
+        if (req.file) {
+            try {
+                fs.unlinkSync(req.file.path);
+            } catch (deleteError) {
+                console.error('Error deleting uploaded file:', deleteError);
+            }
+        }
         return res.status(400).json({
             success: false,
             error: 'Missing user ID'
         });
     }
     
-    if (!req.file) {
-        return res.status(400).json({
-            success: false,
-            error: 'No screenshot uploaded'
-        });
-    }
-    
-    // 🔥 ИСПРАВЛЕНИЕ: Используем абсолютный URL для production
-    const screenshotUrl = `${APP_URL}/uploads/${req.file.filename}`;
+    // 🔥 ИСПРАВЛЕНИЕ: Используем правильный путь к файлу
+    const screenshotUrl = `/uploads/${req.file.filename}`;
+    console.log('📁 Screenshot URL:', screenshotUrl);
+    console.log('📁 File path:', req.file.path);
     
     const client = await pool.connect();
     
@@ -7397,6 +7401,12 @@ app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'),
         
         if (taskInfo.rows.length === 0) {
             await client.query('ROLLBACK');
+            // Удаляем загруженный файл
+            try {
+                fs.unlinkSync(req.file.path);
+            } catch (deleteError) {
+                console.error('Error deleting uploaded file:', deleteError);
+            }
             return res.status(404).json({
                 success: false,
                 error: 'Task not found or access denied'
@@ -7408,6 +7418,12 @@ app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'),
         // Проверяем, что задание в активном статусе
         if (taskData.status !== 'active') {
             await client.query('ROLLBACK');
+            // Удаляем загруженный файл
+            try {
+                fs.unlinkSync(req.file.path);
+            } catch (deleteError) {
+                console.error('Error deleting uploaded file:', deleteError);
+            }
             return res.status(400).json({
                 success: false,
                 error: 'Task is not in active status'
@@ -7448,7 +7464,7 @@ app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'),
             verificationId: verificationResult.rows[0].id,
             userTaskId: userTaskId,
             userId: userId,
-            screenshotUrl: screenshotUrl // Логируем полный URL
+            screenshotUrl: screenshotUrl
         });
         
         res.json({
@@ -7467,6 +7483,7 @@ app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'),
         if (req.file) {
             try {
                 fs.unlinkSync(req.file.path);
+                console.log('✅ Deleted uploaded file after error');
             } catch (deleteError) {
                 console.error('Error deleting uploaded file:', deleteError);
             }
@@ -7479,6 +7496,34 @@ app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'),
     } finally {
         client.release();
     }
+});
+
+// Диагностика multer
+app.post('/api/debug/upload-test', upload.single('screenshot'), (req, res) => {
+    console.log('🔍 Upload debug:', {
+        body: req.body,
+        file: req.file,
+        headers: req.headers
+    });
+    
+    if (!req.file) {
+        return res.json({
+            success: false,
+            error: 'No file received',
+            received: req.body
+        });
+    }
+    
+    res.json({
+        success: true,
+        file: {
+            originalname: req.file.originalname,
+            filename: req.file.filename,
+            size: req.file.size,
+            mimetype: req.file.mimetype,
+            path: req.file.path
+        }
+    });
 });
 // ==================== FLYER API SETUP FUNCTIONS ====================
 
