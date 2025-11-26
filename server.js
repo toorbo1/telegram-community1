@@ -7339,6 +7339,24 @@ async function checkTaskWithLinkGold(userId, taskData, screenshotUrl = null) {
 }
 // 🔧 ИСПРАВЛЕННЫЙ ENDPOINT ДЛЯ ОТПРАВКИ СКРИНШОТА
 app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'), async (req, res) => {
+    console.log('📨 Received screenshot submission:', {
+        userTaskId: req.params.userTaskId,
+        userId: req.body.userId,
+        file: req.file ? {
+            originalname: req.file.originalname,
+            size: req.file.size,
+            mimetype: req.file.mimetype
+        } : 'NO FILE'
+    });
+
+    // Добавьте эту проверку
+    if (!req.file) {
+        console.error('❌ No file received in request');
+        return res.status(400).json({
+            success: false,
+            error: 'Файл не был получен сервером'
+        });
+    }
     const userTaskId = req.params.userTaskId;
     const userId = req.body.userId;
     
