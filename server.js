@@ -3599,7 +3599,55 @@ bot.onText(/\/search_user (.+)/, async (msg, match) => {
         );
     }
 });
+// 🎯 ПРОСТАЯ КОМАНДА ДЛЯ НАСТРОЙКИ WEBHOOK
+bot.onText(/\/setup_flyer_simple/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
 
+    if (parseInt(userId) !== ADMIN_ID) {
+        return await bot.sendMessage(chatId, '❌ Только главный администратор может настраивать Flyer.');
+    }
+
+    try {
+        await bot.sendMessage(chatId, '🔄 Настраиваю вебхук Flyer...');
+
+        const response = await fetch('https://api.flyerservice.io/set_webhook', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                key: FLYER_API_KEY,
+                webhook: 'https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook'
+            })
+        });
+
+        const result = await response.json();
+        
+        if (response.ok) {
+            await bot.sendMessage(
+                chatId,
+                `✅ Вебхук успешно настроен!\n\n` +
+                `🌐 URL: https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook\n` +
+                `📨 Ответ: ${JSON.stringify(result)}`,
+                { parse_mode: 'HTML' }
+            );
+        } else {
+            throw new Error(JSON.stringify(result));
+        }
+
+    } catch (error) {
+        console.error('Simple webhook setup error:', error);
+        await bot.sendMessage(
+            chatId,
+            `❌ Ошибка: ${error.message}\n\n` +
+            `Проверьте:\n` +
+            `1. Правильность API ключа\n` +
+            `2. Доступность вашего сервера извне\n` +
+            `3. Что endpoint возвращает {status: true}`
+        );
+    }
+});
 // Команда для поиска по ID пользователя
 bot.onText(/\/user (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
@@ -4878,7 +4926,52 @@ bot.on('callback_query', async (callbackQuery) => {
         await bot.answerCallbackQuery(callbackQuery.id, { text: '❌ Произошла ошибка' });
     }
 });
+// 🔍 ПРОВЕРКА ДОСТУПНОСТИ WEBHOOK
+bot.onText(/\/check_webhook/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
 
+    if (parseInt(userId) !== ADMIN_ID) {
+        return await bot.sendMessage(chatId, '❌ Только главный администратор может проверять вебхук.');
+    }
+
+    try {
+        await bot.sendMessage(chatId, '🔍 Проверяю доступность вебхука...');
+
+        const response = await fetch('https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            'User-Agent': 'Flyer-Webhook-Test/1.0'
+            },
+            body: JSON.stringify({
+                type: 'test',
+                key_number: FLYER_API_KEY,
+                data: { test: true }
+            })
+        });
+
+        const result = await response.json();
+
+        await bot.sendMessage(
+            chatId,
+            `📊 <b>Результат проверки вебхука:</b>\n\n` +
+            `🌐 <b>URL:</b> https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook\n` +
+            `📡 <b>Статус:</b> ${response.status}\n` +
+            `✅ <b>Ответ:</b> ${JSON.stringify(result)}\n` +
+            `⏰ <b>Время:</b> ${new Date().toLocaleString()}`,
+            { parse_mode: 'HTML' }
+        );
+
+    } catch (error) {
+        await bot.sendMessage(
+            chatId,
+            `❌ <b>Ошибка проверки:</b> ${error.message}\n\n` +
+            `Возможно, сервер недоступен извне.`,
+            { parse_mode: 'HTML' }
+        );
+    }
+});
 // 📝 КОМАНДА ПОМОЩИ ПО УПРАВЛЕНИЮ ПОЛЬЗОВАТЕЛЯМИ
 bot.onText(/\/user_help/, async (msg) => {
     const chatId = msg.chat.id;
@@ -8911,7 +9004,45 @@ app.post('/api/admin/links/delete', async (req, res) => {
     }
 });
 // ==================== REFERRAL LINK TRACKING SYSTEM ====================
+// 🧪 ТЕСТОВЫЙ ENDPOINT ДЛЯ ПРОВЕРКИ
+app.get('/api/flyer/test-webhook', async (req, res) => {
+    console.log('🧪 Test webhook endpoint called');
+    
+    // Имитируем запрос от Flyer
+    const testPayload = {
+        type: 'test',
+        key_number: FLYER_API_KEY,
+        data: {}
+    };
 
+    try {
+        // Отправляем тестовый запрос на наш же вебхук
+        const response = await fetch('https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(testPayload)
+        });
+
+        const result = await response.json();
+
+        res.json({
+            success: true,
+            webhook_status: response.status,
+            webhook_response: result,
+            test_payload: testPayload,
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('Test webhook error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 // Функция для создания реферальной ссылки
 app.post('/api/referral-links/create', async (req, res) => {
     const { adminId, name, description } = req.body;
