@@ -8775,8 +8775,8 @@ async function submitScreenshot() {
         formData.append('screenshot', fileInput.files[0]);
         formData.append('userId', currentUser.id);
 
-        // 🔥 ИСПРАВЛЕНИЕ: используем правильный endpoint
-        const response = await fetch(`${API_BASE_URL}/api/user/tasks/${currentUserTaskId}/submit`, {
+        // ✅ ПРАВИЛЬНЫЙ endpoint
+        const response = await fetch(`${API_BASE_URL}/api/user/tasks/${currentUserTaskId}/submit-auto`, {
             method: 'POST',
             body: formData
         });
@@ -8794,7 +8794,6 @@ async function submitScreenshot() {
         console.error('Error submitting screenshot:', error);
         showNotification('Ошибка отправки скриншота', 'error');
     } finally {
-        // 🔥 ВАЖНО: Всегда восстанавливаем кнопку
         if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.textContent = 'Отправить на проверку';
@@ -9544,46 +9543,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setupSingleSubmission();
 });
 
-// Также обновите функцию submitScreenshot для восстановления кнопки
-async function submitScreenshot() {
-    const fileInput = document.getElementById('screenshot-file');
-    const submitBtn = document.getElementById('submit-screenshot-btn');
-    
-    if (!fileInput.files[0]) {
-        showNotification('Выберите файл скриншота', 'error');
-        return;
-    }
 
-    try {
-        const formData = new FormData();
-        formData.append('screenshot', fileInput.files[0]);
-        formData.append('userId', currentUser.id);
-
-        const response = await fetch(`${API_BASE_URL}/api/user/tasks/${currentUserTaskId}/submit`, {
-            method: 'POST',
-            body: formData
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            showNotification('Скриншот отправлен на проверку!', 'success');
-            closeModal('screenshot-modal');
-            loadUserTasks();
-        } else {
-            showNotification('Ошибка: ' + result.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error submitting screenshot:', error);
-        showNotification('Ошибка отправки скриншота', 'error');
-    } finally {
-        // 🔥 ВАЖНО: Всегда восстанавливаем кнопку
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Отправить на проверку';
-        }
-    }
-}
 // 🗑️ ФУНКЦИЯ ДЛЯ УДАЛЕНИЯ ПРОВЕРКИ
 async function deleteVerification() {
     if (!currentVerificationId) {
