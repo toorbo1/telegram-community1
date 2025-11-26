@@ -7328,12 +7328,10 @@ async function checkTaskWithLinkGold(userId, taskData, screenshotUrl = null) {
         };
     }
 }
-// Правильная версия endpoint для отправки скриншота
+// Обновленный endpoint для отправки задания на проверку с интеграцией LinkGoldMoney
 app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'), async (req, res) => {
     const userTaskId = req.params.userTaskId;
-    const userId = req.body.userId; // Получаем userId из тела запроса
-    
-    console.log('🚀 Submit task with screenshot request:', { userTaskId, userId });
+    const { userId } = req.body;
     
     if (!userId) {
         return res.status(400).json({
@@ -7356,92 +7354,125 @@ app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'),
     try {
         await client.query('BEGIN');
 
-        // 1. Проверяем существование задания и права пользователя
+        // Получаем информацию о задании
         const taskInfo = await client.query(`
-            SELECT ut.user_id, ut.task_id, ut.status, 
-                   u.first_name, u.last_name, u.username, 
-                   t.title, t.price, t.description, t.people_required
+            SELECT ut.user_id, ut.task_id, u.first_name, u.last_name, u.username, t.title, t.price, t.description
             FROM user_tasks ut 
             JOIN user_profiles u ON ut.user_id = u.user_id 
             JOIN tasks t ON ut.task_id = t.id 
-            WHERE ut.id = $1 AND ut.user_id = $2
-        `, [userTaskId, userId]);
+            WHERE ut.id = $1
+        `, [userTaskId]);
         
         if (taskInfo.rows.length === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({
                 success: false,
-                error: 'Task not found or access denied'
+                error: 'Task not found'
             });
         }
         
         const taskData = taskInfo.rows[0];
-        
-        // Проверяем, что задание в активном статусе
-        if (taskData.status !== 'active') {
-            await client.query('ROLLBACK');
-            return res.status(400).json({
-                success: false,
-                error: 'Task is not in active status'
-            });
-        }
-        
         const userName = `${taskData.first_name} ${taskData.last_name}`;
 
-        // 2. Обновляем user_task
+        // 🔄 АВТОМАТИЧЕСКАЯ ПРОВЕРКА ЧЕРЕЗ LINKGOLDMONEY
+        console.log('🔄 Starting automatic verification with LinkGoldMoney...');
+        const verificationResult = await checkTaskWithLinkGold(userId, taskData, screenshotUrl);
+
+        let status = 'pending_review';
+        let verificationStatus = 'pending';
+        
+        // Если автоматическая проверка успешна и задание одобрено
+        if (verificationResult.success && verificationResult.approved) {
+            status = 'completed';
+            verificationStatus = 'approved';
+            
+            console.log('✅ Task auto-approved by LinkGoldMoney');
+        }
+
+        // Обновляем user_task
         await client.query(`
             UPDATE user_tasks 
-            SET status = 'pending_review', 
-                screenshot_url = $1, 
-                submitted_at = CURRENT_TIMESTAMP 
-            WHERE id = $2 AND user_id = $3
-        `, [screenshotUrl, userTaskId, userId]);
+            SET status = $1, screenshot_url = $2, submitted_at = CURRENT_TIMESTAMP 
+            WHERE id = $3 AND user_id = $4
+        `, [status, screenshotUrl, userTaskId, userId]);
         
-        // 3. Создаем запись верификации
-        const verificationResult = await client.query(`
+        // Создаем запись верификации
+        const verificationResultDb = await client.query(`
             INSERT INTO task_verifications 
-            (user_task_id, user_id, task_id, user_name, user_username, task_title, task_price, screenshot_url, status) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
+            (user_task_id, user_id, task_id, user_name, user_username, task_title, task_price, screenshot_url, status, auto_verified) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING *
         `, [
             userTaskId, 
-            userId, 
+            taskData.user_id, 
             taskData.task_id, 
             userName, 
             taskData.username, 
             taskData.title, 
             taskData.price, 
-            screenshotUrl
+            screenshotUrl,
+            verificationStatus,
+            verificationResult.success // Помечаем как автоматически проверенное
         ]);
+
+        // Если задание автоматически одобрено, начисляем средства
+        if (status === 'completed') {
+            await client.query(`
+                UPDATE user_profiles 
+                SET balance = COALESCE(balance, 0) + $1,
+                    tasks_completed = COALESCE(tasks_completed, 0) + 1
+                WHERE user_id = $2
+            `, [taskData.price, userId]);
+
+            // Обновляем счетчик выполненных заданий
+            await client.query(`
+                UPDATE tasks 
+                SET completed_count = COALESCE(completed_count, 0) + 1 
+                WHERE id = $1
+            `, [taskData.task_id]);
+
+            // Проверяем, не достигнут ли лимит выполнений
+            const taskUpdate = await client.query(`
+                SELECT people_required, completed_count 
+                FROM tasks 
+                WHERE id = $1
+            `, [taskData.task_id]);
+
+            if (taskUpdate.rows.length > 0) {
+                const task = taskUpdate.rows[0];
+                if (task.completed_count >= task.people_required) {
+                    await client.query(`
+                        UPDATE tasks 
+                        SET status = 'completed' 
+                        WHERE id = $1
+                    `, [taskData.task_id]);
+                }
+            }
+
+            // Отправляем уведомление пользователю
+            await sendTaskNotification(userId, taskData.title, 'approved', 
+                'Задание автоматически одобрено системой проверки!');
+        }
 
         await client.query('COMMIT');
 
-        console.log('✅ Task submitted successfully:', {
-            verificationId: verificationResult.rows[0].id,
-            userTaskId: userTaskId,
-            userId: userId
-        });
-        
-        res.json({
+        const response = {
             success: true,
-            message: 'Задание отправлено на проверку! Ожидайте решения администратора.',
-            verificationId: verificationResult.rows[0].id,
-            userTaskId: userTaskId
-        });
+            message: verificationResult.success && verificationResult.approved 
+                ? 'Задание автоматически одобрено! Средства зачислены на ваш счет.' 
+                : 'Задание отправлено на проверку. Ожидайте решения администратора.',
+            verificationId: verificationResultDb.rows[0].id,
+            autoVerified: verificationResult.success && verificationResult.approved,
+            verificationResult: verificationResult
+        };
+
+        console.log('✅ Task submission completed:', response);
+        
+        res.json(response);
         
     } catch (error) {
         await client.query('ROLLBACK');
-        console.error('❌ Submit task error:', error);
-        
-        // Удаляем загруженный файл при ошибке
-        if (req.file) {
-            try {
-                fs.unlinkSync(req.file.path);
-            } catch (deleteError) {
-                console.error('Error deleting uploaded file:', deleteError);
-            }
-        }
-        
+        console.error('Submit task error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
