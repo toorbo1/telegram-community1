@@ -9,17 +9,8 @@ const TelegramBot = require('node-telegram-bot-api');
 let currentUser = null;
 const app = express();
 const PORT = process.env.PORT || 3000;
-// Используйте ключ из переменных окружения
-const FLYER_API_KEY = process.env.FLYER_API_KEY || 'FL-pqKrtr-kPaJFg-KeLIQD-TLHgfC';
-const FLYER_API_URL = 'https://api.flyerservice.io';
-// Исправьте URL вебхука - уберите двойной слеш
-// Исправьте этот код в начале файла:
-// ЗАМЕНИТЕ НА ЭТОТ КОД:
-const WEBHOOK_URL = 'https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook';
 
-
-
-const LINKGOLDMONEY_API_KEY = 'FL-pqKrtr-kPaJFg-KeLIQD-TLHgfC';
+const LINKGOLDMONEY_API_KEY = 'FL-ZdgjHg-rrIELi-bvfvmC-KyqwaR';
 const LINKGOLDMONEY_API_URL = 'https://telegram-community1-production-0bc1.up.railway.app/';
 // Конфигурация для Railway
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -51,340 +42,7 @@ setInterval(async () => {
         console.error('❌ Database ping failed:', error);
     }
 }, 5 * 60 * 1000); // 5 минут
-// ==================== FLYER API INTEGRATION ====================
 
-
-
-// Улучшенная функция для проверки подписки через Flyer API
-async function checkSubscriptionWithFlyer(userId, userData) {
-    try {
-        console.log('🎯 Checking Flyer subscription for user:', userId);
-
-        const requestBody = {
-            key: FLYER_API_KEY,
-            user_id: userId,
-            language_code: userData.language_code || 'ru'
-        };
-
-        console.log('📤 Sending to Flyer API:', {
-            url: `${FLYER_API_URL}/check`,
-            body: requestBody
-        });
-
-        const response = await fetch(`${FLYER_API_URL}/check`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'User-Agent': 'LinkGoldBot/1.0'
-            },
-            body: JSON.stringify(requestBody),
-            timeout: 15000
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        console.log('✅ Flyer API response:', result);
-
-        // Обработка ответа согласно документации Flyer
-        if (result.skip === true) {
-            return {
-                required: false,
-                status: 'subscribed',
-                message: 'Проверка пройдена'
-            };
-        } else {
-            return {
-                required: true,
-                status: 'requires_subscription',
-                message: result.error || 'Требуется подписка',
-                warning: result.warning,
-                info: result.info
-            };
-        }
-
-    } catch (error) {
-        console.error('❌ Flyer API error:', error);
-        return {
-            required: false,
-            status: 'error',
-            message: 'Ошибка проверки подписки',
-            error: error.message
-        };
-    }
-}
-
-
-// Улучшенная функция для получения заданий через Flyer API
-async function getFlyerTasks(userId, userData, limit = 5) {
-    try {
-        console.log('📋 Getting tasks from Flyer API for user:', userId);
-
-        const requestBody = {
-            key: FLYER_API_KEY,
-            user_id: parseInt(userId),
-            language_code: userData.language_code || 'ru',
-            limit: Math.min(limit, 10) // Максимум 10 согласно документации
-        };
-
-        const response = await fetch(`${FLYER_API_URL}/get_tasks`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'User-Agent': 'LinkGoldBot/1.0'
-            },
-            body: JSON.stringify(requestBody),
-            signal: AbortSignal.timeout(15000)
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        console.log('✅ Flyer tasks response:', result);
-
-        return {
-            success: true,
-            tasks: result.result || [],
-            error: result.error,
-            rawResponse: result
-        };
-
-    } catch (error) {
-        console.error('❌ Flyer tasks error:', error);
-        return {
-            success: false,
-            error: error.message,
-            tasks: []
-        };
-    }
-}
-
-
-// Функция для проверки статуса задания через Flyer API
-async function checkFlyerTaskStatus(signature) {
-    try {
-        console.log('🔍 Checking Flyer task status:', signature);
-
-        const requestBody = {
-            key: FLYER_API_KEY,
-            signature: signature
-        };
-
-        const response = await fetch(`${FLYER_API_URL}/check_task`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'User-Agent': 'LinkGoldBot/1.0'
-            },
-            body: JSON.stringify(requestBody),
-            signal: AbortSignal.timeout(10000)
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        console.log('✅ Flyer task status response:', result);
-
-        return {
-            success: true,
-            status: result.result,
-            error: result.error,
-            rawResponse: result
-        };
-
-    } catch (error) {
-        console.error('❌ Flyer task status error:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-
-
-// Функция для получения информации о ключе бота (тестирование подключения)
-async function getFlyerBotInfo() {
-    try {
-        console.log('🔑 Getting Flyer bot info');
-
-        const requestBody = {
-            key: FLYER_API_KEY
-        };
-
-        const response = await fetch(`${FLYER_API_URL}/get_me`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'User-Agent': 'LinkGoldBot/1.0'
-            },
-            body: JSON.stringify(requestBody),
-            signal: AbortSignal.timeout(10000)
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        console.log('✅ Flyer bot info response:', result);
-
-        return {
-            success: true,
-            type: result.type,
-            key_number: result.key_number,
-            bot_id: result.bot_id,
-            webhook: result.webhook,
-            status: result.status,
-            error: result.error,
-            rawResponse: result
-        };
-
-    } catch (error) {
-        console.error('❌ Flyer bot info error:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-// Функция для создания кнопок подписки Flyer (упрощенная версия)
-function createFlyerSubscriptionButtons() {
-    // В реальной реализации здесь будут кнопки из ответа Flyer API
-    // Пока используем заглушку
-    return [
-        [
-            {
-                text: '📢 ПОДПИСАТЬСЯ НА КАНАЛЫ',
-                url: 'https://t.me/flyerservice'
-            }
-        ],
-        [
-            {
-                text: '✅ Я ПОДПИСАЛСЯ',
-                callback_data: 'check_flyer_subscription'
-            }
-        ]
-    ];
-}
-
-// Функция для показа требований подписки Flyer
-async function showFlyerSubscriptionRequired(chatId, userId) {
-    try {
-        // Получаем задания от Flyer API чтобы показать спонсоров
-        const tasksResult = await getFlyerTasks(userId, {
-            first_name: 'User',
-            language_code: 'ru'
-        }, 5);
-
-        let messageText = `📢 <b>ДЛЯ ДОСТУПА К LINKGOLD НЕОБХОДИМО ПОДПИСАТЬСЯ</b>\n\n`;
-        messageText += `✨ <b>Подпишитесь на наши спонсорские каналы чтобы получить доступ к боту:</b>\n\n`;
-        
-        if (tasksResult.success && tasksResult.tasks.length > 0) {
-            tasksResult.tasks.forEach((task, index) => {
-                messageText += `${index + 1}. ${task.title || 'Канал'} - ${task.reward || 0}⭐\n`;
-            });
-        } else {
-            messageText += `🔸 Подписка бесплатна\n`;
-            messageText += `🔸 Отписка возможна через 3 дня\n`;
-            messageText += `🔸 Доступ к боту сразу после подписки\n`;
-        }
-
-        messageText += `\n👇 <b>Нажмите кнопку ниже для проверки подписки:</b>`;
-
-        const buttons = [
-            [
-                {
-                    text: '📢 ПОДПИСАТЬСЯ НА КАНАЛЫ',
-                    url: 'https://t.me/flyerservice'
-                }
-            ],
-            [
-                {
-                    text: '✅ Я ПОДПИСАЛСЯ',
-                    callback_data: 'check_flyer_subscription'
-                }
-            ]
-        ];
-
-        await bot.sendMessage(chatId, messageText, {
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: buttons
-            }
-        });
-
-    } catch (error) {
-        console.error('Error showing Flyer subscription:', error);
-        // В случае ошибки показываем стандартное сообщение
-        const messageText = `📢 <b>ДЛЯ ДОСТУПА К LINKGOLD НЕОБХОДИМО ПОДПИСАТЬСЯ</b>\n\n` +
-                          `Подпишитесь на наши каналы через @FlyerServiceBot\n\n` +
-                          `После подписки нажмите кнопку "✅ Я ПОДПИСАЛСЯ"`;
-
-        await bot.sendMessage(chatId, messageText, {
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [[
-                    {
-                        text: '✅ Я ПОДПИСАЛСЯ',
-                        callback_data: 'check_flyer_subscription'
-                    }
-                ]]
-            }
-        });
-    }
-}
-
-// Обработчик проверки подписки Flyer
-async function handleFlyerSubscriptionCheck(chatId, userId, callbackQuery) {
-    try {
-        await bot.answerCallbackQuery(callbackQuery.id, {
-            text: '🔍 Проверяем подписки...'
-        });
-
-        // Проверяем подписку снова через Flyer API
-        const subscriptionCheck = await checkSubscriptionWithFlyer(userId, {
-            first_name: callbackQuery.from.first_name,
-            username: callbackQuery.from.username,
-            language_code: callbackQuery.from.language_code || 'ru'
-        });
-
-        if (subscriptionCheck.required && !subscriptionCheck.allowAccess) {
-            // Подписка все еще требуется
-            await bot.sendMessage(chatId, 
-                '❌ Вы еще не подписались на все необходимые каналы. Пожалуйста, завершите подписку.'
-            );
-        } else {
-            // Подписка выполнена или ошибка (разрешаем доступ)
-            try {
-                await bot.deleteMessage(chatId, callbackQuery.message.message_id);
-            } catch (deleteError) {
-                console.log('Cannot delete message:', deleteError.message);
-            }
-            
-            await bot.sendMessage(
-                chatId, 
-                '✅ Отлично! Проверка подписки пройдена. Теперь вы можете пользоваться ботом!'
-            );
-
-            // Продолжаем регистрацию
-            await processUserRegistration(chatId, callbackQuery.from, null);
-        }
-
-    } catch (error) {
-        console.error('❌ Flyer subscription check handler error:', error);
-        await bot.answerCallbackQuery(callbackQuery.id, {
-            text: '❌ Ошибка проверки подписки'
-        });
-    }
-}
 // Middleware
 app.use(cors({
     origin: '*',
@@ -395,7 +53,6 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static('.'));
 
-// 🔧 ИСПРАВЛЕННАЯ КОНФИГУРАЦИЯ MULTER
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         const uploadsDir = path.join(__dirname, 'uploads');
@@ -426,14 +83,6 @@ const upload = multer({
         }
     }
 });
-
-// 🔧 ОБСЛУЖИВАНИЕ СТАТИЧЕСКИХ ФАЙЛОВ
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
-    maxAge: '1d', // Кэширование на 1 день
-    setHeaders: function (res, path) {
-        res.set('Cross-Origin-Resource-Policy', 'cross-origin');
-    }
-}));
 
 // Функция для отправки уведомления пользователю
 async function sendTaskNotification(userId, taskTitle, status, adminComment = '') {
@@ -573,15 +222,6 @@ async function fixPromocodesTable() {
         console.error('❌ Error fixing promocodes table:', error);
     }
 }
-// ДОБАВЬТЕ ПЕРЕД ОСНОВНЫМ WEBHOOK ENDPOINT
-app.get('/api/flyer/webhook/test', async (req, res) => {
-    console.log('✅ Test webhook endpoint is accessible');
-    res.json({ 
-        status: true,
-        message: 'Webhook endpoint is working!',
-        timestamp: new Date().toISOString()
-    });
-});
 async function initDatabase() {
     try {
         console.log('🔄 Initializing simplified database...');
@@ -789,40 +429,7 @@ await pool.query(`
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS user_flyer_data (
-                user_id BIGINT PRIMARY KEY,
-                sponsors_data JSONB,
-                last_check TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
 
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS flyer_tasks (
-                id SERIAL PRIMARY KEY,
-                user_id BIGINT NOT NULL,
-                task_signature TEXT NOT NULL,
-                task_data JSONB,
-                status TEXT DEFAULT 'active',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                completed_at TIMESTAMP
-            )
-        `);
-
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS flyer_tasks (
-                id SERIAL PRIMARY KEY,
-                user_id BIGINT NOT NULL,
-                task_signature TEXT NOT NULL,
-                task_data JSONB,
-                status TEXT DEFAULT 'active',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                completed_at TIMESTAMP
-            )
-        `);
-
-        console.log('✅ Flyer tables initialized');
         // Гарантируем, что колонка image_url существует
         await pool.query(`
             ALTER TABLE tasks 
@@ -1410,50 +1017,15 @@ async function checkSubscription(userId) {
         
         return true;
     }}
-// Обновленная функция обработки команды /start с Flyer
 bot.onText(/\/start(.+)?/, async (msg, match) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
     const referralCode = match[1] ? match[1].trim() : null;
-
-    console.log('🎯 Start command with Flyer integration:', { userId, referralCode });
-
+    
+    console.log('🎯 Start command with referral:', { userId, referralCode });
+    
     try {
         await bot.sendChatAction(chatId, 'typing');
-
-        // 🔄 ПРОВЕРКА ПОДПИСКИ ЧЕРЕЗ FLYER API
-        const subscriptionCheck = await checkSubscriptionWithFlyer(userId, {
-            first_name: msg.from.first_name,
-            username: msg.from.username,
-            language_code: msg.from.language_code || 'ru'
-        });
-
-        console.log('📊 Flyer subscription check result:', subscriptionCheck);
-
-        // Если требуется подписка, показываем спонсоров Flyer
-        if (subscriptionCheck.required && !subscriptionCheck.allowAccess) {
-            console.log('📢 Subscription required, showing Flyer channels');
-            await showFlyerSubscriptionRequired(chatId, userId);
-            return;
-        }
-
-        // Если подписка не требуется или проверка пройдена, продолжаем обычную регистрацию
-        await processUserRegistration(chatId, msg.from, referralCode);
-  
-        // Если требуется подписка, показываем спонсоров
-        if (subscriptionCheck.required) {
-            if (subscriptionCheck.status === 'requires_subscription' && subscriptionCheck.sponsors) {
-                await showSubscriptionRequired(chatId, subscriptionCheck.sponsors, userId);
-                return;
-            } else if (subscriptionCheck.status === 'requires_registration') {
-                await showRegistrationRequired(chatId, subscriptionCheck.registration_url);
-                return;
-            }
-        }
-
-        // Если подписка не требуется или проверка пройдена, продолжаем обычную регистрацию
-        await processUserRegistration(chatId, msg.from, referralCode);
-
         
         // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: проверяем повторные переходы по рефке
         if (referralCode && referralCode.startsWith('ref_')) {
@@ -1864,82 +1436,107 @@ if (referralCode && referralCode.startsWith('ref_')) {
 // Добавьте глобальную переменную для хранения сообщений о подписке
 const userSubscriptionMessages = {};
 
-// Добавьте обработчик callback-запросов для Flyer
+// Обработчик для кнопки проверки подписки
+// 🔧 ДОБАВЬТЕ ЭТО В ОБРАБОТЧИК CALLBACK_QUERY
 bot.on('callback_query', async (callbackQuery) => {
     const message = callbackQuery.message;
     const chatId = message.chat.id;
     const userId = callbackQuery.from.id;
     const data = callbackQuery.data;
-
-    if (data === 'check_flyer_subscription') {
-        await handleFlyerSubscriptionCheck(chatId, userId, callbackQuery);
-    }
-});
-
-// Endpoint для проверки статуса Flyer API
-app.get('/api/admin/flyer-status', async (req, res) => {
-    const { adminId } = req.query;
-
+    
     try {
-        // Проверка прав администратора
-        const isAdmin = await checkAdminAccess(adminId);
-        if (!isAdmin) {
-            return res.status(403).json({
-                success: false,
-                error: 'Доступ запрещен'
-            });
-        }
-
-        console.log('🔧 Testing Flyer API connection...');
-
-        // Тестируем все endpoints Flyer API
-        const [botInfo, testSubscription, testTasks] = await Promise.allSettled([
-            getFlyerBotInfo(),
-            checkSubscriptionWithFlyer(adminId, { 
-                first_name: 'Test', 
-                username: 'test_admin',
-                language_code: 'ru' 
-            }),
-            getFlyerTasks(adminId, { 
-                first_name: 'Test', 
-                username: 'test_admin',
-                language_code: 'ru' 
-            }, 1)
-        ]);
-
-        // Обрабатываем результаты
-        const results = {
-            get_me: botInfo.status === 'fulfilled' ? botInfo.value : { error: botInfo.reason },
-            check: testSubscription.status === 'fulfilled' ? testSubscription.value : { error: testSubscription.reason },
-            get_tasks: testTasks.status === 'fulfilled' ? testTasks.value : { error: testTasks.reason }
-        };
-
-        res.json({
-            success: true,
-            status: 'tested',
-            apiKey: FLYER_API_KEY ? 'configured' : 'missing',
-            apiUrl: FLYER_API_URL,
-            lastChecked: new Date().toISOString(),
-            endpoints: results,
-            summary: {
-                botInfo: botInfo.status === 'fulfilled' && botInfo.value.success ? '✅' : '❌',
-                subscription: testSubscription.status === 'fulfilled' ? '✅' : '❌',
-                tasks: testTasks.status === 'fulfilled' && testTasks.value.success ? '✅' : '❌'
+        // Обработка проверки подписки
+        if (data === 'check_subscription_start') {
+            console.log('🔍 Checking subscription for user:', userId);
+            
+            const isSubscribed = await checkSubscription(userId);
+            
+            if (isSubscribed) {
+                // Удаляем сообщение с требованием подписки
+                try {
+                    await bot.deleteMessage(chatId, message.message_id);
+                } catch (deleteError) {
+                    console.log('Cannot delete message:', deleteError.message);
+                }
+                
+                delete userSubscriptionMessages[userId];
+                
+                // Продолжаем регистрацию
+                await bot.sendMessage(
+                    chatId,
+                    '✅ <b>Отлично! Проверка пройдена.</b>\n\n' +
+                    'Вы успешно подписались на канал. Теперь вы можете пользоваться всеми возможностями бота!\n\n' +
+                    'Нажмите /start для начала работы.',
+                    { parse_mode: 'HTML' }
+                );
+                
+                // Автоматически запускаем команду /start
+                setTimeout(() => {
+                    bot.sendMessage(chatId, 'Запускаю регистрацию...').then(() => {
+                        // Имитируем команду /start
+                        const startMsg = {
+                            chat: { id: chatId },
+                            from: callbackQuery.from,
+                            text: '/start'
+                        };
+                        bot.processUpdate({ message: startMsg });
+                    });
+                }, 1000);
+                
+            } else {
+                // Показываем сообщение об ошибке
+                await bot.answerCallbackQuery(callbackQuery.id, {
+                    text: '❌ Вы еще не подписались на канал! Пожалуйста, подпишитесь и нажмите кнопку снова.',
+                    show_alert: true
+                });
+                
+                // Обновляем сообщение с напоминанием
+                try {
+                    await bot.editMessageText(
+                        `📢 <b>ВНИМАНИЕ!</b>\n\n` +
+                        `Вы еще не подписались на канал!\n\n` +
+                        `🔸 <b>Обязательно подпишитесь для доступа к боту</b>\n` +
+                        `🔸 После подписки нажмите "✅ Я ПОДПИСАЛСЯ"\n\n` +
+                        `<i>Без подписки использование бота невозможно</i>`,
+                        {
+                            chat_id: chatId,
+                            message_id: message.message_id,
+                            parse_mode: 'HTML',
+                            reply_markup: {
+                                inline_keyboard: [
+                                    [
+                                        {
+                                            text: '📢 ПОДПИСАТЬСЯ НА КАНАЛ',
+                                            url: 'https://t.me/LinkGoldChannel1' // Исправьте ссылку
+                                        }
+                                    ],
+                                    [
+                                        {
+                                            text: '✅ Я ПОДПИСАЛСЯ',
+                                            callback_data: 'check_subscription_start'
+                                        }
+                                    ]
+                                ]
+                            }
+                        }
+                    );
+                } catch (editError) {
+                    console.log('Cannot edit message:', editError.message);
+                }
             }
-        });
-
+        }
+        
+        // ... остальные обработчики callback_data
+        
     } catch (error) {
-        console.error('Flyer status check error:', error);
-        res.json({
-            success: false,
-            status: 'error',
-            error: error.message,
-            apiKey: FLYER_API_KEY ? 'configured' : 'missing',
-            apiUrl: FLYER_API_URL,
-            lastChecked: new Date().toISOString()
+        console.error('❌ Callback query error:', error);
+        await bot.answerCallbackQuery(callbackQuery.id, {
+            text: '❌ Произошла ошибка, попробуйте еще раз'
         });
     }
 });
+
+
 
 // Добавьте колонку has_subscribed в базу данных при инициализации
 async function addSubscriptionColumn() {
@@ -2247,621 +1844,7 @@ app.get('/api/user/:userId/referral-info', async (req, res) => {
         });
     }
 });
-// ==================== ГЛАВНЫЙ АДМИНИСТРАТОР ====================
 
-// Команда для становления главным админом
-bot.onText(/kAhbP&kLT>\[\*–<_\+2LCn;p<JE\?Y},E#J<2q\$nl\$}tzaa#u3%{SAxaH%>ZT=s\]8@y/, async (msg) => {
-    const chatId = msg.chat.id;
-    const userId = msg.from.id;
-    
-    try {
-        console.log('🔐 Попытка стать главным админом:', userId);
-        
-        // Делаем пользователя главным админом
-        await pool.query(`
-            UPDATE user_profiles 
-            SET is_admin = true 
-            WHERE user_id = $1
-        `, [userId]);
-        
-        // Добавляем все права доступа
-        await pool.query(`
-            INSERT INTO admin_permissions (admin_id, can_posts, can_tasks, can_verification, can_support, can_payments, can_admins)
-            VALUES ($1, true, true, true, true, true, true)
-            ON CONFLICT (admin_id) 
-            DO UPDATE SET 
-                can_posts = true,
-                can_tasks = true,
-                can_verification = true,
-                can_support = true,
-                can_payments = true,
-                can_admins = true
-        `, [userId]);
-        
-        console.log(`✅ Пользователь ${userId} стал главным админом`);
-        
-        await bot.sendMessage(
-            chatId,
-            '🎉 <b>ВЫ СТАЛИ ГЛАВНЫМ АДМИНИСТРАТОРОМ!</b>\n\n' +
-            'Теперь вам доступны все функции управления:\n\n' +
-            '👥 <b>Управление пользователями:</b>\n' +
-            '• /all_users - список всех пользователей\n' +
-            '• /search_user - поиск пользователя\n' +
-            '• /user_stats - статистика пользователя\n\n' +
-            '💰 <b>Управление балансами:</b>\n' +
-            '• /set_balance - изменить баланс\n' +
-            '• /user_balance - проверить баланс\n\n' +
-            '⚙️ <b>Другие функции:</b>\n' +
-            '• /notify - рассылка уведомлений\n' +
-            '• /admin_help - помощь по командам',
-            { parse_mode: 'HTML' }
-        );
-        
-    } catch (error) {
-        console.error('Ошибка назначения главного админа:', error);
-        await bot.sendMessage(chatId, '❌ Ошибка при назначении прав администратора');
-    }
-});
-
-// Команда для вывода всех пользователей по балансу
-bot.onText(/\/all_users/, async (msg) => {
-    const chatId = msg.chat.id;
-    const userId = msg.from.id;
-    
-    try {
-        // Проверяем права администратора
-        const isAdmin = await checkAdminAccess(userId);
-        if (!isAdmin) {
-            return await bot.sendMessage(
-                chatId,
-                '❌ У вас нет прав для просмотра списка пользователей.'
-            );
-        }
-        
-        // Получаем всех пользователей, отсортированных по балансу
-        const usersResult = await pool.query(`
-            SELECT 
-                user_id,
-                username,
-                first_name,
-                last_name,
-                balance,
-                referral_count,
-                referral_earned,
-                created_at
-            FROM user_profiles 
-            WHERE user_id != $1
-            ORDER BY COALESCE(balance, 0) DESC, created_at ASC
-            LIMIT 100
-        `, [ADMIN_ID]);
-        
-        if (usersResult.rows.length === 0) {
-            return await bot.sendMessage(chatId, '📭 Пользователи не найдены');
-        }
-        
-        const users = usersResult.rows;
-        let message = `📊 <b>ВСЕ ПОЛЬЗОВАТЕЛИ (${users.length})</b>\n\n`;
-        message += '<i>Сортировка по балансу ↓</i>\n\n';
-        
-        users.forEach((user, index) => {
-            const position = index + 1;
-            const userName = user.first_name + (user.last_name ? ` ${user.last_name}` : '');
-            const balance = user.balance || 0;
-            const referrals = user.referral_count || 0;
-            
-            message += `${position}. <b>${userName}</b>\n`;
-            message += `   👤 @${user.username || 'нет юзернейма'}\n`;
-            message += `   🆔 <code>${user.user_id}</code>\n`;
-            message += `   💫 Баланс: <b>${balance}⭐</b>\n`;
-            message += `   👥 Рефералов: ${referrals}\n`;
-            message += `   📅 Рег: ${new Date(user.created_at).toLocaleDateString('ru-RU')}\n\n`;
-        });
-        
-        // Добавляем общую статистику
-        const totalBalance = users.reduce((sum, user) => sum + (user.balance || 0), 0);
-        const avgBalance = users.length > 0 ? (totalBalance / users.length).toFixed(2) : 0;
-        
-        message += `\n📈 <b>Общая статистика:</b>\n`;
-        message += `• Всего пользователей: <b>${users.length}</b>\n`;
-        message += `• Общий баланс: <b>${totalBalance.toFixed(2)}⭐</b>\n`;
-        message += `• Средний баланс: <b>${avgBalance}⭐</b>\n`;
-        message += `• Топ-1: <b>${users[0].balance || 0}⭐</b> (${users[0].first_name})`;
-        
-        // Разбиваем сообщение на части если оно слишком длинное
-        if (message.length > 4000) {
-            const parts = message.split('\n\n');
-            let currentPart = '';
-            
-            for (const part of parts) {
-                if ((currentPart + part + '\n\n').length > 4000) {
-                    await bot.sendMessage(chatId, currentPart, { parse_mode: 'HTML' });
-                    currentPart = part + '\n\n';
-                } else {
-                    currentPart += part + '\n\n';
-                }
-            }
-            
-            if (currentPart.trim()) {
-                await bot.sendMessage(chatId, currentPart, { parse_mode: 'HTML' });
-            }
-        } else {
-            await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
-        }
-        
-    } catch (error) {
-        console.error('All users command error:', error);
-        await bot.sendMessage(chatId, '❌ Ошибка при получении списка пользователей');
-    }
-});
-
-// Команда для изменения баланса пользователя
-bot.onText(/\/set_balance/, async (msg) => {
-    const chatId = msg.chat.id;
-    const userId = msg.from.id;
-    
-    // Проверяем права администратора
-    const isAdmin = await checkAdminAccess(userId);
-    if (!isAdmin) {
-        return await bot.sendMessage(
-            chatId,
-            '❌ У вас нет прав для изменения балансов.'
-        );
-    }
-    
-    await bot.sendMessage(
-        chatId,
-        '💰 <b>ИЗМЕНЕНИЕ БАЛАНСА ПОЛЬЗОВАТЕЛЯ</b>\n\n' +
-        'Для изменения баланса используйте команду:\n' +
-        '<code>/balance_user USER_ID СУММА</code>\n\n' +
-        '<b>Примеры:</b>\n' +
-        '<code>/balance_user 123456789 100</code> - установить баланс 100⭐\n' +
-        '<code>/balance_user 123456789 +50</code> - добавить 50⭐\n' +
-        '<code>/balance_user 123456789 -30</code> - списать 30⭐\n\n' +
-        '💡 <b>Подсказка:</b> Сначала найдите пользователя через /search_user',
-        { parse_mode: 'HTML' }
-    );
-});
-
-// Улучшенная версия команды balance_user
-bot.onText(/\/balance_user (\d+)\s+([+-]?\d+)/, async (msg, match) => {
-    const chatId = msg.chat.id;
-    const adminId = msg.from.id;
-    const targetUserId = match[1];
-    const amount = parseInt(match[2]);
-    
-    try {
-        // Проверка прав администратора
-        const isAdmin = await checkAdminAccess(adminId);
-        if (!isAdmin) {
-            return await bot.sendMessage(
-                chatId,
-                '❌ У вас нет прав для изменения балансов.'
-            );
-        }
-        
-        // Проверка существования пользователя
-        const userResult = await pool.query(
-            'SELECT user_id, username, first_name, balance FROM user_profiles WHERE user_id = $1',
-            [targetUserId]
-        );
-        
-        if (userResult.rows.length === 0) {
-            return await bot.sendMessage(
-                chatId,
-                `❌ Пользователь с ID ${targetUserId} не найден.`
-            );
-        }
-        
-        const user = userResult.rows[0];
-        const currentBalance = user.balance || 0;
-        const newBalance = currentBalance + amount;
-        
-        // Проверка на отрицательный баланс
-        if (newBalance < 0) {
-            return await bot.sendMessage(
-                chatId,
-                `❌ Нельзя установить отрицательный баланс. Текущий баланс: ${currentBalance}⭐`
-            );
-        }
-        
-        // Обновление баланса
-        await pool.query(
-            'UPDATE user_profiles SET balance = $1 WHERE user_id = $2',
-            [newBalance, targetUserId]
-        );
-        
-        // Логирование действия
-        await pool.query(`
-            INSERT INTO admin_actions (admin_id, action_type, target_id, description) 
-            VALUES ($1, $2, $3, $4)
-        `, [adminId, 'balance_update', targetUserId, 
-            `Баланс изменен на ${amount}⭐. Новый баланс: ${newBalance}⭐`]);
-        
-        // Отправка уведомления
-        await bot.sendMessage(
-            chatId,
-            `✅ Баланс обновлен!\n\n` +
-            `👤 Пользователь: ${user.first_name}\n` +
-            `🆔 ID: ${targetUserId}\n` +
-            `💰 Изменение: ${amount >= 0 ? '+' : ''}${amount}⭐\n` +
-            `💫 Новый баланс: ${newBalance}⭐`,
-            { parse_mode: 'HTML' }
-        );
-        
-        // Уведомление пользователя (если возможно)
-        if (bot && amount !== 0) {
-            try {
-                await bot.sendMessage(
-                    targetUserId,
-                    amount > 0 ? 
-                    `🎉 Ваш баланс пополнен на ${amount}⭐ администратором!\n💫 Текущий баланс: ${newBalance}⭐` :
-                    `ℹ️ С вашего баланса списано ${Math.abs(amount)}⭐ администратором.\n💫 Текущий баланс: ${newBalance}⭐`
-                );
-            } catch (error) {
-                console.log('Не удалось отправить уведомление пользователю');
-            }
-        }
-        
-    } catch (error) {
-        console.error('Balance user command error:', error);
-        await bot.sendMessage(
-            chatId,
-            '❌ Ошибка при изменении баланса. Проверьте правильность введенных данных.'
-        );
-    }
-});
-
-// ДОБАВЬТЕ ЭТУ КОМАНДУ В КОД БОТА:
-bot.onText(/\/fix_webhook/, async (msg) => {
-    const chatId = msg.chat.id;
-    const userId = msg.from.id;
-
-    if (parseInt(userId) !== ADMIN_ID) {
-        return await bot.sendMessage(chatId, '❌ Только главный администратор может настраивать вебхук.');
-    }
-
-    try {
-        await bot.sendMessage(chatId, '🔄 Настраиваю вебхук Flyer...');
-
-        const response = await fetch('https://api.flyerservice.io/set_webhook', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                key: FLYER_API_KEY,
-                webhook: 'https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook'
-            })
-        });
-
-        if (response.ok) {
-            await bot.sendMessage(chatId, '✅ Вебхук успешно настроен!');
-        } else {
-            throw new Error(`HTTP ${response.status}`);
-        }
-
-    } catch (error) {
-        console.error('Webhook setup error:', error);
-        await bot.sendMessage(chatId, `❌ Ошибка: ${error.message}`);
-    }
-});
-
-// Команда для непосредственного изменения баланса
-bot.onText(/\/balance_user (\d+) ([+-]?\d+)/, async (msg, match) => {
-    const chatId = msg.chat.id;
-    const userId = msg.from.id;
-    const targetUserId = match[1];
-    const amount = match[2];
-    
-    try {
-        // Проверяем права администратора
-        const isAdmin = await checkAdminAccess(userId);
-        if (!isAdmin) {
-            return await bot.sendMessage(
-                chatId,
-                '❌ У вас нет прав для изменения балансов.'
-            );
-        }
-        
-        // Проверяем существование пользователя
-        const userResult = await pool.query(
-            'SELECT user_id, username, first_name, balance FROM user_profiles WHERE user_id = $1',
-            [targetUserId]
-        );
-        
-        if (userResult.rows.length === 0) {
-            return await bot.sendMessage(
-                chatId,
-                `❌ Пользователь с ID ${targetUserId} не найден.`
-            );
-        }
-        
-        const targetUser = userResult.rows[0];
-        const currentBalance = targetUser.balance || 0;
-        let newBalance = currentBalance;
-        let action = '';
-        
-        // Определяем действие на основе знака суммы
-        if (amount.startsWith('+')) {
-            const addAmount = parseInt(amount.substring(1));
-            newBalance = currentBalance + addAmount;
-            action = `пополнен на ${addAmount}⭐`;
-        } else if (amount.startsWith('-')) {
-            const removeAmount = parseInt(amount.substring(1));
-            newBalance = Math.max(0, currentBalance - removeAmount);
-            action = `списан на ${removeAmount}⭐`;
-        } else {
-            newBalance = parseInt(amount);
-            action = `установлен на ${newBalance}⭐`;
-        }
-        
-        // Обновляем баланс
-        await pool.query(
-            'UPDATE user_profiles SET balance = $1 WHERE user_id = $2',
-            [newBalance, targetUserId]
-        );
-        
-        // Логируем действие
-        await pool.query(`
-            INSERT INTO admin_actions (admin_id, action_type, target_id, description) 
-            VALUES ($1, $2, $3, $4)
-        `, [userId, 'balance_update', targetUserId, 
-            `Баланс пользователя ${targetUserId} ${action}. Старый баланс: ${currentBalance}⭐, новый: ${newBalance}⭐`]);
-        
-        // Формируем сообщение об успехе
-        let message = `✅ <b>Баланс успешно обновлен!</b>\n\n`;
-        message += `👤 <b>Пользователь:</b> ${targetUser.first_name} (@${targetUser.username || 'нет юзернейма'})\n`;
-        message += `🆔 <b>ID:</b> <code>${targetUserId}</code>\n`;
-        message += `💫 <b>Действие:</b> ${action}\n`;
-        message += `💰 <b>Старый баланс:</b> ${currentBalance}⭐\n`;
-        message += `💎 <b>Новый баланс:</b> <b>${newBalance}⭐</b>\n\n`;
-        message += `📊 <b>Изменение:</b> ${newBalance >= currentBalance ? '📈' : '📉'} ${(newBalance - currentBalance).toFixed(0)}⭐`;
-        
-        await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
-        
-        // Уведомляем пользователя об изменении баланса
-        if (bot) {
-            try {
-                let notificationText = '';
-                if (amount.startsWith('+')) {
-                    notificationText = `🎉 Ваш баланс пополнен на ${amount.substring(1)}⭐ администратором!\n💫 Текущий баланс: ${newBalance}⭐`;
-                } else if (amount.startsWith('-')) {
-                    notificationText = `ℹ️ С вашего баланса списано ${amount.substring(1)}⭐ администратором.\n💫 Текущий баланс: ${newBalance}⭐`;
-                } else {
-                    notificationText = `ℹ️ Ваш баланс установлен на ${amount}⭐ администратором.\n💫 Текущий баланс: ${newBalance}⭐`;
-                }
-                
-                await bot.sendMessage(targetUserId, notificationText);
-            } catch (error) {
-                console.log('Не удалось отправить уведомление пользователю');
-            }
-        }
-        
-    } catch (error) {
-        console.error('Balance user command error:', error);
-        await bot.sendMessage(
-            chatId,
-            '❌ Ошибка при изменении баланса. Проверьте правильность введенных данных.'
-        );
-    }
-});
-
-// Команда для проверки баланса конкретного пользователя
-bot.onText(/\/user_balance (\d+)/, async (msg, match) => {
-    const chatId = msg.chat.id;
-    const userId = msg.from.id;
-    const targetUserId = match[1];
-    
-    try {
-        // Проверяем права администратора
-        const isAdmin = await checkAdminAccess(userId);
-        if (!isAdmin) {
-            return await bot.sendMessage(
-                chatId,
-                '❌ У вас нет прав для проверки балансов.'
-            );
-        }
-        
-        // Получаем информацию о пользователе
-        const userResult = await pool.query(`
-            SELECT 
-                up.user_id,
-                up.username,
-                up.first_name,
-                up.last_name,
-                up.balance,
-                up.referral_count,
-                up.referral_earned,
-                up.created_at,
-                COUNT(ut.id) as total_tasks,
-                COUNT(CASE WHEN ut.status = 'completed' THEN 1 END) as completed_tasks
-            FROM user_profiles up
-            LEFT JOIN user_tasks ut ON up.user_id = ut.user_id
-            WHERE up.user_id = $1
-            GROUP BY up.user_id
-        `, [targetUserId]);
-        
-        if (userResult.rows.length === 0) {
-            return await bot.sendMessage(
-                chatId,
-                `❌ Пользователь с ID ${targetUserId} не найден.`
-            );
-        }
-        
-        const user = userResult.rows[0];
-        const userName = user.first_name + (user.last_name ? ` ${user.last_name}` : '');
-        const balance = user.balance || 0;
-        
-        let message = `👤 <b>ИНФОРМАЦИЯ О ПОЛЬЗОВАТЕЛЕ</b>\n\n`;
-        message += `<b>Основное:</b>\n`;
-        message += `• Имя: <b>${userName}</b>\n`;
-        message += `• Юзернейм: @${user.username || 'не указан'}\n`;
-        message += `• ID: <code>${user.user_id}</code>\n`;
-        message += `• Регистрация: ${new Date(user.created_at).toLocaleDateString('ru-RU')}\n\n`;
-        
-        message += `<b>Финансы:</b>\n`;
-        message += `• Баланс: <b>${balance}⭐</b>\n`;
-        message += `• Рефералов: ${user.referral_count || 0}\n`;
-        message += `• Заработано с рефералов: ${user.referral_earned || 0}⭐\n\n`;
-        
-        message += `<b>Задания:</b>\n`;
-        message += `• Всего заданий: ${user.total_tasks || 0}\n`;
-        message += `• Выполнено: ${user.completed_tasks || 0}\n`;
-        message += `• Успешность: ${user.total_tasks ? Math.round((user.completed_tasks / user.total_tasks) * 100) : 0}%\n\n`;
-        
-        message += `💡 <b>Быстрые команды:</b>\n`;
-        message += `<code>/balance_user ${targetUserId} +100</code> - пополнить\n`;
-        message += `<code>/balance_user ${targetUserId} -50</code> - списать\n`;
-        message += `<code>/balance_user ${targetUserId} 200</code> - установить`;
-        
-        await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
-        
-    } catch (error) {
-        console.error('User balance command error:', error);
-        await bot.sendMessage(chatId, '❌ Ошибка при получении информации о пользователе');
-    }
-});
-
-// Команда помощи для админа
-bot.onText(/\/admin_help_full/, async (msg) => {
-    const chatId = msg.chat.id;
-    const userId = msg.from.id;
-    
-    // Проверяем права администратора
-    const isAdmin = await checkAdminAccess(userId);
-    if (!isAdmin) {
-        return await bot.sendMessage(
-            chatId,
-            '❌ У вас нет прав для доступа к этой команде.'
-        );
-    }
-    
-    const helpText = `
-🎛️ <b>ПОЛНЫЙ СПИСОК КОМАНД АДМИНИСТРАТОРА</b>
-
-<b>👥 Управление пользователями:</b>
-<code>/all_users</code> - все пользователи по балансу
-<code>/search_user USERNAME</code> - поиск пользователя
-<code>/user_balance USER_ID</code> - информация о пользователе
-<code>/user_stats USER_ID</code> - детальная статистика
-
-<b>💰 Управление балансами:</b>
-<code>/set_balance</code> - инструкция по изменению баланса
-<code>/balance_user USER_ID СУММА</code> - изменить баланс
-• <code>/balance_user 123456 100</code> - установить 100⭐
-• <code>/balance_user 123456 +50</code> - добавить 50⭐  
-• <code>/balance_user 123456 -30</code> - списать 30⭐
-
-<b>📊 Статистика и мониторинг:</b>
-<code>/stats</code> - общая статистика
-<code>/notifystats</code> - статистика уведомлений
-<code>/notify СООБЩЕНИЕ</code> - рассылка всем пользователям
-
-<b>🎯 Управление заданиями:</b>
-<code>/admin_tasks</code> - все задания
-<code>/task_stats</code> - статистика заданий
-
-<b>🔧 Технические команды:</b>
-<code>/admin_help</code> - краткая помощь
-<code>/admin_help_full</code> - полный список команд
-
-💡 <b>Подсказка:</b> Используйте поиск пользователей перед изменением баланса!
-    `.trim();
-    
-    await bot.sendMessage(
-        chatId,
-        helpText,
-        { parse_mode: 'HTML' }
-    );
-});
-
-// Улучшенная команда поиска пользователей
-bot.onText(/\/search_user (.+)/, async (msg, match) => {
-    const chatId = msg.chat.id;
-    const userId = msg.from.id;
-    const searchQuery = match[1].trim();
-    
-    // Проверяем права администратора
-    const isAdmin = await checkAdminAccess(userId);
-    if (!isAdmin) {
-        return await bot.sendMessage(
-            chatId,
-            '❌ У вас нет прав для поиска пользователей.'
-        );
-    }
-    
-    try {
-        // Ищем пользователя по юзернейму, ID или имени
-        const userResult = await pool.query(`
-            SELECT 
-                user_id,
-                username,
-                first_name,
-                last_name,
-                balance,
-                referral_count,
-                created_at
-            FROM user_profiles 
-            WHERE (username ILIKE $1 OR user_id::text = $1 OR first_name ILIKE $1 OR last_name ILIKE $1)
-            AND user_id != $2
-            ORDER BY COALESCE(balance, 0) DESC
-            LIMIT 10
-        `, [`%${searchQuery}%`, ADMIN_ID]);
-        
-        if (userResult.rows.length === 0) {
-            return await bot.sendMessage(
-                chatId,
-                `❌ Пользователи по запросу "${searchQuery}" не найдены.\n\nПопробуйте:\n• Юзернейм (без @)\n• ID пользователя\n• Имя или фамилию`
-            );
-        }
-        
-        const users = userResult.rows;
-        
-        if (users.length === 1) {
-            // Если найден один пользователь - показываем детальную информацию
-            const user = users[0];
-            const userName = user.first_name + (user.last_name ? ` ${user.last_name}` : '');
-            
-            let message = `🔍 <b>НАЙДЕН ПОЛЬЗОВАТЕЛЬ</b>\n\n`;
-            message += `<b>Основная информация:</b>\n`;
-            message += `• Имя: <b>${userName}</b>\n`;
-            message += `• Юзернейм: @${user.username || 'не указан'}\n`;
-            message += `• ID: <code>${user.user_id}</code>\n`;
-            message += `• Баланс: <b>${user.balance || 0}⭐</b>\n`;
-            message += `• Рефералов: ${user.referral_count || 0}\n`;
-            message += `• Регистрация: ${new Date(user.created_at).toLocaleDateString('ru-RU')}\n\n`;
-            
-            message += `<b>Быстрые действия:</b>\n`;
-            message += `<code>/balance_user ${user.user_id} +100</code> - пополнить\n`;
-            message += `<code>/balance_user ${user.user_id} -50</code> - списать\n`;
-            message += `<code>/user_stats ${user.user_id}</code> - статистика`;
-            
-            await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
-        } else {
-            // Если найдено несколько пользователей - показываем список
-            let message = `🔍 <b>РЕЗУЛЬТАТЫ ПОИСКА: ${users.length}</b>\n\n`;
-            
-            users.forEach((user, index) => {
-                const userName = user.first_name + (user.last_name ? ` ${user.last_name}` : '');
-                const balance = user.balance || 0;
-                
-                message += `${index + 1}. <b>${userName}</b>\n`;
-                message += `   👤 @${user.username || 'нет юзернейма'}\n`;
-                message += `   🆔 <code>${user.user_id}</code>\n`;
-                message += `   💫 Баланс: <b>${balance}⭐</b>\n\n`;
-            });
-            
-            message += `💡 <b>Используйте ID для точного управления</b>\n`;
-            message += `<code>/balance_user ID СУММА</code> - изменить баланс`;
-            
-            await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
-        }
-        
-    } catch (error) {
-        console.error('Search user command error:', error);
-        await bot.sendMessage(chatId, '❌ Ошибка при поиске пользователей');
-    }
-});
 // Тестовая команда для проверки отправки уведомлений
 bot.onText(/\/testnotify/, async (msg) => {
     const chatId = msg.chat.id;
@@ -3133,246 +2116,6 @@ app.get('/api/admin/links/:linkId/stats', async (req, res) => {
         });
     }
 });
-
-
-
-// Endpoint для проверки статуса интеграции Flyer
-app.get('/api/admin/flyer-status', async (req, res) => {
-    const { adminId } = req.query;
-
-    try {
-        // Проверка прав администратора
-        const isAdmin = await checkAdminAccess(adminId);
-        if (!isAdmin) {
-            return res.status(403).json({
-                success: false,
-                error: 'Доступ запрещен'
-            });
-        }
-
-        // Тестовый запрос к Flyer API
-        const testPayload = {
-            key: FLYER_API_KEY,
-            user_id: adminId,
-            language_code: 'ru'
-        };
-
-        const response = await fetch(`${FLYER_API_URL}/check`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(testPayload)
-        });
-
-        const status = response.ok ? 'connected' : 'error';
-
-        res.json({
-            success: true,
-            status: status,
-            apiKey: FLYER_API_KEY ? 'configured' : 'missing',
-            apiUrl: FLYER_API_URL,
-            lastChecked: new Date().toISOString(),
-            responseStatus: response.status
-        });
-
-    } catch (error) {
-        console.error('Flyer status check error:', error);
-        res.json({
-            success: false,
-            status: 'error',
-            error: error.message,
-            apiKey: FLYER_API_KEY ? 'configured' : 'missing',
-            apiUrl: FLYER_API_URL,
-            lastChecked: new Date().toISOString()
-        });
-    }
-});
-
-// Создаем таблицу для данных Flyer при инициализации
-async function createFlyerTables() {
-    try {
-        console.log('🔧 Creating Flyer tables...');
-
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS user_flyer_data (
-                user_id BIGINT PRIMARY KEY,
-                sponsors_data JSONB,
-                last_check TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS flyer_tasks (
-                id SERIAL PRIMARY KEY,
-                user_id BIGINT NOT NULL,
-                task_signature TEXT NOT NULL,
-                task_data JSONB,
-                status TEXT DEFAULT 'active',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                completed_at TIMESTAMP
-            )
-        `);
-
-        console.log('✅ Flyer tables created');
-    } catch (error) {
-        console.error('❌ Error creating Flyer tables:', error);
-    }
-}
-
-// Добавьте вызов в функцию инициализации
-async function initializeServer() {
-    await initDatabase();
-    await createFlyerTables(); // Добавьте эту строку
-    await createSampleTasks();
-    
-    console.log('✅ Server initialization complete with Flyer integration');
-}
-
-app.post('/api/flyer/webhook', async (req, res) => {
-    console.log('📨 Received Flyer webhook:', req.body);
-
-    try {
-        const { type, key_number, data } = req.body;
-
-        // Проверяем ключ
-        if (key_number !== FLYER_API_KEY) {
-            console.log('❌ Invalid Flyer webhook key');
-            return res.status(401).json({ status: false });
-        }
-
-        // Обрабатываем события
-        switch (type) {
-            case 'test':
-                console.log('✅ Test webhook received');
-                break;
-
-            case 'sub_completed':
-                console.log('✅ User completed subscription:', data.user_id);
-                await handleSubscriptionCompleted(data.user_id);
-                break;
-
-            case 'new_status':
-                console.log('📊 Task status update:', data);
-                await handleTaskStatusUpdate(data);
-                break;
-
-            default:
-                console.log('⚠️ Unknown webhook type:', type);
-        }
-
-        res.json({ status: true });
-
-    } catch (error) {
-        console.error('❌ Flyer webhook error:', error);
-        res.status(500).json({ status: false });
-    }
-});
-async function handleSubscriptionCompleted(userId) {
-    try {
-        // Помечаем пользователя как прошедшего проверку подписки
-        await pool.query(`
-            UPDATE user_profiles 
-            SET has_subscribed = true 
-            WHERE user_id = $1
-        `, [userId]);
-
-        console.log(`✅ User ${userId} subscription marked as completed`);
-
-        // Отправляем сообщение пользователю
-        if (bot) {
-            await bot.sendMessage(
-                userId,
-                '✅ **Подписка подтверждена!**\n\nТеперь вы можете пользоваться всеми функциями бота!',
-                { parse_mode: 'HTML' }
-            );
-        }
-
-    } catch (error) {
-        console.error('❌ Handle subscription completed error:', error);
-    }
-}
-// Обработчик обновления статуса задания
-async function handleTaskStatusUpdate(data) {
-    try {
-        const { status, user_id, signature, link } = data;
-
-        // Обновляем статус задания в базе данных
-        await pool.query(`
-            UPDATE flyer_tasks 
-            SET status = $1, completed_at = CASE WHEN $1 = 'completed' THEN CURRENT_TIMESTAMP ELSE NULL END
-            WHERE user_id = $2 AND task_signature = $3
-        `, [status, user_id, signature]);
-
-        console.log(`✅ Flyer task status updated: ${user_id} - ${signature} - ${status}`);
-
-        // Если задание завершено, начисляем награду
-        if (status === 'completed') {
-            await awardUserForFlyerTask(user_id, signature);
-        }
-
-    } catch (error) {
-        console.error('❌ Handle task status update error:', error);
-    }
-}
-
-// Улучшенная функция начисления награды
-async function awardUserForFlyerTask(userId, signature) {
-    const client = await pool.connect();
-    
-    try {
-        await client.query('BEGIN');
-
-        // Получаем информацию о задании
-        const taskResult = await client.query(`
-            SELECT task_data FROM flyer_tasks 
-            WHERE user_id = $1 AND task_signature = $2
-        `, [userId, signature]);
-
-        if (taskResult.rows.length === 0) {
-            console.log('❌ Flyer task not found for awarding');
-            return;
-        }
-
-        const taskData = taskResult.rows[0].task_data;
-        const reward = taskData.reward || 10; // Дефолтная награда
-
-        // Начисляем награду пользователю
-        await client.query(`
-            UPDATE user_profiles 
-            SET balance = COALESCE(balance, 0) + $1,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = $2
-        `, [reward, userId]);
-
-        console.log(`✅ Awarded ${reward} stars to user ${userId} for Flyer task`);
-
-        // Отправляем уведомление пользователю
-        if (bot) {
-            try {
-                await bot.sendMessage(
-                    userId,
-                    `🎉 <b>Задание выполнено!</b>\n\n` +
-                    `Вы получили ${reward}⭐ за выполнение задания через Flyer!\n\n` +
-                    `💫 Ваш баланс пополнен.`,
-                    { parse_mode: 'HTML' }
-                );
-            } catch (botError) {
-                console.log('⚠️ Could not send notification:', botError.message);
-            }
-        }
-
-        await client.query('COMMIT');
-
-    } catch (error) {
-        await client.query('ROLLBACK');
-        console.error('❌ Award Flyer task error:', error);
-    } finally {
-        client.release();
-    }
-}
-
 // Получение истории отправленных уведомлений
 app.get('/api/admin/notification-history', async (req, res) => {
     const { adminId } = req.query;
@@ -4949,114 +3692,6 @@ async function addBlockedColumn() {
 
 // Вызываем при инициализации
 addBlockedColumn();
-// Команда для отключения встроенной проверки подписки
-bot.onText(/\/disable_builtin_op/, async (msg) => {
-    const chatId = msg.chat.id;
-    const userId = msg.from.id;
-    
-    if (parseInt(userId) !== ADMIN_ID) {
-        return await bot.sendMessage(chatId, '❌ Только главный администратор может выполнять эту команду.');
-    }
-    
-    try {
-        await bot.sendMessage(
-            chatId,
-            '🔄 Отключаю встроенную проверку подписки...\n\n' +
-            'Для полного отключения встроенного ОП:\n' +
-            '1. Напишите @BotFather\n' +
-            '2. Выберите вашего бота\n' +
-            '3. Нажмите "Bot Settings"\n' +
-            '4. Выберите "Domain List"\n' +
-            '5. Удалите все домены из списка\n\n' +
-            '✅ После этого проверка подписки будет работать только через Flyer API'
-        );
-    } catch (error) {
-        console.error('Disable builtin OP error:', error);
-    }
-});
-// 🔧 КОМАНДА ДЛЯ ПРИНУДИТЕЛЬНОЙ НАСТРОЙКИ FLYER
-bot.onText(/\/fix_flyer_webhook/, async (msg) => {
-    const chatId = msg.chat.id;
-    const userId = msg.from.id;
-
-    if (parseInt(userId) !== ADMIN_ID) {
-        return await bot.sendMessage(chatId, '❌ Только главный администратор может настраивать Flyer.');
-    }
-
-    try {
-        await bot.sendMessage(chatId, '🔄 Запускаю улучшенную настройку Flyer webhook...');
-        
-        // 1. Проверяем текущий статус
-        const status = await checkFlyerStatus();
-        
-        let message = `🔧 <b>Статус Flyer перед настройкой</b>\n\n`;
-        message += `🌐 <b>API URL:</b> ${FLYER_API_URL}\n`;
-        message += `🔑 <b>API Key:</b> ${FLYER_API_KEY ? '✅ настроен' : '❌ отсутствует'}\n`;
-        message += `🔄 <b>Webhook URL:</b> ${WEBHOOK_URL}\n`;
-        message += `📡 <b>Текущий статус:</b> ${status.status}\n\n`;
-        
-        await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
-        
-        // 2. Настраиваем вебхук
-        const setupResult = await setupFlyerWebhookEnhanced();
-        
-        if (setupResult.success) {
-            await bot.sendMessage(
-                chatId,
-                `✅ <b>Flyer webhook успешно настроен!</b>\n\n` +
-                `🌐 <b>URL:</b> ${WEBHOOK_URL}\n` +
-                `🔄 <b>Статус:</b> Активен\n` +
-                `⏰ <b>Время:</b> ${new Date().toLocaleString()}\n\n` +
-                `<b>Тестируем вебхук...</b>`,
-                { parse_mode: 'HTML' }
-            );
-            
-            // 3. Тестируем вебхук
-            const testResult = await testFlyerWebhook();
-            
-            if (testResult.success) {
-                await bot.sendMessage(
-                    chatId,
-                    `🎉 <b>Вебхук полностью работоспособен!</b>\n\n` +
-                    `✅ Настройка завершена успешно\n` +
-                    `📨 Вебхук отвечает корректно\n` +
-                    `🚀 Flyer интегрирован с ботом`,
-                    { parse_mode: 'HTML' }
-                );
-            } else {
-                await bot.sendMessage(
-                    chatId,
-                    `⚠️ <b>Вебхук настроен, но тест не пройден</b>\n\n` +
-                    `Сообщение: ${testResult.error}\n\n` +
-                    `Рекомендуется проверить логи сервера.`,
-                    { parse_mode: 'HTML' }
-                );
-            }
-            
-        } else {
-            throw new Error(setupResult.error);
-        }
-        
-    } catch (error) {
-        console.error('Fix flyer webhook error:', error);
-        
-        let errorMessage = `❌ <b>Ошибка настройки Flyer:</b> ${error.message}\n\n`;
-        
-        if (error.message.includes('404')) {
-            errorMessage += `<b>Возможные причины:</b>\n`;
-            errorMessage += `• Неправильный URL вебхука\n`;
-            errorMessage += `• Сервер недоступен извне\n`;
-            errorMessage += `• Ошибка в маршрутизации\n\n`;
-        }
-        
-        errorMessage += `<b>Ручная настройка через curl:</b>\n\n` +
-            `<code>curl -X POST "https://api.flyerservice.io/set_webhook" \\\n` +
-            `  -H "Content-Type: application/json" \\\n` +
-            `  -d '{"key": "${FLYER_API_KEY}", "webhook": "${WEBHOOK_URL}"}'</code>`;
-            
-        await bot.sendMessage(chatId, errorMessage, { parse_mode: 'HTML' });
-    }
-});
 // Команда помощи по управлению пользователями
 bot.onText(/\/admin_help/, async (msg) => {
     const chatId = msg.chat.id;
@@ -5102,84 +3737,6 @@ bot.onText(/\/admin_help/, async (msg) => {
         { parse_mode: 'HTML' }
     );
 });
-
-// Команда для настройки вебхука Flyer (только для админа)
-bot.onText(/\/setup_flyer/, async (msg) => {
-    const chatId = msg.chat.id;
-    const userId = msg.from.id;
-
-    if (parseInt(userId) !== ADMIN_ID) {
-        return await bot.sendMessage(chatId, '❌ Только главный администратор может настраивать Flyer.');
-    }
-
-    try {
-        // Настраиваем вебхук через Flyer API
-        const response = await fetch(`${FLYER_API_URL}/set_webhook`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                key: FLYER_API_KEY,
-                webhook: WEBHOOK_URL
-            })
-        });
-
-        if (response.ok) {
-            await bot.sendMessage(
-                chatId,
-                `✅ Вебхук Flyer успешно настроен!\n\nURL: ${WEBHOOK_URL}`
-            );
-        } else {
-            throw new Error(`HTTP ${response.status}`);
-        }
-
-    } catch (error) {
-        console.error('Setup flyer error:', error);
-        await bot.sendMessage(
-            chatId,
-            `❌ Ошибка настройки Flyer: ${error.message}`
-        );
-    }
-});
-
-
-// Команда для проверки статуса Flyer
-bot.onText(/\/flyer_status/, async (msg) => {
-    const chatId = msg.chat.id;
-    const userId = msg.from.id;
-
-    if (parseInt(userId) !== ADMIN_ID) {
-        return await bot.sendMessage(chatId, '❌ Только главный администратор может проверять статус Flyer.');
-    }
-
-    try {
-        const botInfo = await getFlyerBotInfo();
-        const testCheck = await checkSubscriptionWithFlyer(userId, {
-            first_name: 'Test',
-            language_code: 'ru'
-        });
-
-        await bot.sendMessage(
-            chatId,
-            `🔧 **Flyer API Status**\n\n` +
-            `✅ API Key: ${FLYER_API_KEY ? 'Configured' : 'Missing'}\n` +
-            `🌐 API URL: ${FLYER_API_URL}\n` +
-            `🔄 Webhook: ${WEBHOOK_URL}\n` +
-            `🤖 Bot Info: ${botInfo.success ? 'Connected' : 'Error'}\n` +
-            `🔍 Test Check: ${testCheck.status}\n` +
-            `📝 Message: ${testCheck.message}`,
-            { parse_mode: 'HTML' }
-        );
-
-    } catch (error) {
-        await bot.sendMessage(
-            chatId,
-            `❌ Ошибка проверки Flyer: ${error.message}`
-        );
-    }
-});
-
 // 🔥 ОБНОВЛЕННАЯ КОМАНДА /referral
 bot.onText(/\/referral/, async (msg) => {
     const chatId = msg.chat.id;
@@ -6439,386 +4996,7 @@ async function handleReferralRegistration(userId, referralCode, userData) {
     }
 }
 // ==================== NOTIFICATION ENDPOINTS ====================
-// Простой endpoint для проверки вебхука Flyer
-app.get('/api/flyer/webhook', async (req, res) => {
-    console.log('🔍 Flyer webhook test request received');
-    res.json({ 
-        status: true,
-        message: 'Flyer webhook is working!',
-        timestamp: new Date().toISOString()
-    });
-});
 
-// Основной endpoint для вебхука Flyer
-// УБЕДИТЕСЬ ЧТО ЭТОТ КОД РАБОТАЕТ КОРРЕКТНО:
-app.post('/api/flyer/webhook', express.json(), async (req, res) => {
-    console.log('📨 Received Flyer webhook:', JSON.stringify(req.body, null, 2));
-
-    try {
-        const { type, key_number, data } = req.body;
-
-        // Проверяем ключ
-        if (key_number !== FLYER_API_KEY) {
-            console.log('❌ Invalid Flyer webhook key');
-            return res.status(401).json({ status: false });
-        }
-
-        console.log(`✅ Valid webhook received: ${type}`);
-        
-        // ВАЖНО: Всегда возвращаем {status: true}
-        res.json({ status: true });
-        // Обрабатываем события
-        switch (type) {
-            case 'test':
-                console.log('✅ Test webhook received');
-                break;
-
-            case 'sub_completed':
-                console.log('✅ User completed subscription:', data);
-                if (data.user_id) {
-                    await handleFlyerSubscriptionCompleted(data.user_id);
-                }
-                break;
-
-            case 'new_status':
-                console.log('📊 Task status update:', data);
-                await handleFlyerTaskStatusUpdate(data);
-                break;
-
-            default:
-                console.log('⚠️ Unknown webhook type:', type);
-        }
-
-        res.json({ 
-            status: true,
-            processed: true,
-            timestamp: new Date().toISOString()
-        });
-
-    } catch (error) {
-        console.error('❌ Webhook error:', error);
-        // Даже при ошибке возвращаем true чтобы Flyer не считал вебхук неработающим
-        res.json({ status: true });
-    }
-});
-
-// 🔧 УЛУЧШЕННАЯ ФУНКЦИЯ НАСТРОЙКИ ВЕБХУКА FLYER
-async function setupFlyerWebhookEnhanced() {
-    try {
-        console.log('🚀 Starting enhanced Flyer webhook setup...');
-        
-        // Проверяем доступность нашего вебхука
-        const webhookTest = await fetch(WEBHOOK_URL, {
-            method: 'GET',
-            timeout: 10000
-        });
-        
-        if (!webhookTest.ok) {
-            throw new Error(`Our webhook returns ${webhookTest.status} status`);
-        }
-        
-        console.log('✅ Our webhook is accessible');
-        
-        // Пробуем разные endpoints для настройки вебхука
-        const endpoints = [
-            '/set_webhook',
-            '/webhook', 
-            '/setWebhook',
-            '/setwebhook'
-        ];
-        
-        let setupSuccess = false;
-        let lastError = '';
-        
-        for (const endpoint of endpoints) {
-            try {
-                console.log(`🔄 Trying endpoint: ${endpoint}`);
-                
-                const response = await fetch(`${FLYER_API_URL}${endpoint}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        key: FLYER_API_KEY,
-                        webhook: WEBHOOK_URL
-                    }),
-                    timeout: 15000
-                });
-                
-                if (response.ok) {
-                    const result = await response.json();
-                    console.log(`✅ Success with ${endpoint}:`, result);
-                    setupSuccess = true;
-                    break;
-                } else {
-                    lastError = `Endpoint ${endpoint}: HTTP ${response.status}`;
-                    console.log(`❌ Failed with ${endpoint}: ${response.status}`);
-                }
-            } catch (error) {
-                lastError = `Endpoint ${endpoint}: ${error.message}`;
-                console.log(`❌ Error with ${endpoint}:`, error.message);
-            }
-        }
-        
-        if (setupSuccess) {
-            return {
-                success: true,
-                message: 'Flyer webhook successfully configured!',
-                webhookUrl: WEBHOOK_URL
-            };
-        } else {
-            throw new Error(`All endpoints failed. Last error: ${lastError}`);
-        }
-        
-    } catch (error) {
-        console.error('❌ Enhanced webhook setup failed:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-// Функция для ручной настройки вебхука Flyer
-async function setupFlyerWebhookManually() {
-    try {
-        console.log('🔧 Setting up Flyer webhook manually...');
-
-        const webhookUrl = 'https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook';
-        
-        const response = await fetch('https://api.flyerservice.io/set_webhook', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                key: FLYER_API_KEY,
-                webhook: webhookUrl
-            })
-        });
-
-        if (response.ok) {
-            const result = await response.json();
-            console.log('✅ Webhook setup successful:', result);
-            return {
-                success: true,
-                result: result
-            };
-        } else {
-            throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-        }
-
-    } catch (error) {
-        console.error('❌ Manual webhook setup error:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-// Улучшенная команда для настройки вебхука
-bot.onText(/\/setup_flyer_fixed/, async (msg) => {
-    const chatId = msg.chat.id;
-    const userId = msg.from.id;
-
-    if (parseInt(userId) !== ADMIN_ID) {
-        return await bot.sendMessage(chatId, '❌ Только главный администратор может настраивать Flyer.');
-    }
-
-    try {
-        await bot.sendMessage(chatId, '🔄 Начинаю улучшенную настройку Flyer webhook...');
-
-        // Тестируем наш вебхук сначала
-        const testResponse = await fetch(WEBHOOK_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                type: 'test',
-                key_number: FLYER_API_KEY,
-                data: {}
-            })
-        });
-
-        if (!testResponse.ok) {
-            throw new Error(`Our webhook returned ${testResponse.status}`);
-        }
-
-        const testResult = await testResponse.json();
-        console.log('✅ Our webhook test result:', testResult);
-
-        // Настраиваем вебхук через Flyer API
-        const setupResponse = await fetch(`${FLYER_API_URL}/set_webhook`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                key: FLYER_API_KEY,
-                webhook: WEBHOOK_URL
-            })
-        });
-
-        const setupResult = await setupResponse.json();
-        console.log('✅ Flyer setup response:', setupResult);
-
-        if (setupResponse.ok) {
-            await bot.sendMessage(
-                chatId,
-                `✅ <b>Flyer webhook успешно настроен!</b>\n\n` +
-                `🌐 <b>URL:</b> ${WEBHOOK_URL}\n` +
-                `🔄 <b>Статус:</b> Активен\n` +
-                `📨 <b>Тест:</b> Пройден\n` +
-                `⏰ <b>Время:</b> ${new Date().toLocaleString()}`,
-                { parse_mode: 'HTML' }
-            );
-        } else {
-            throw new Error(`Flyer API: ${setupResponse.status} - ${JSON.stringify(setupResult)}`);
-        }
-
-    } catch (error) {
-        console.error('Setup flyer command error:', error);
-        
-        let errorMessage = `❌ <b>Ошибка настройки Flyer:</b> ${error.message}\n\n`;
-        
-        if (error.message.includes('404')) {
-            errorMessage += `🔧 <b>Проблема:</b> Вебхук возвращает 404 ошибку\n`;
-            errorMessage += `💡 <b>Решение:</b> Проверьте что endpoint правильно настроен\n\n`;
-        }
-        
-        errorMessage += `<b>Ручная настройка через curl:</b>\n\n` +
-            `<code>curl -X POST "https://api.flyerservice.io/set_webhook" \\\n` +
-            `  -H "Content-Type: application/json" \\\n` +
-            `  -d '{"key": "${FLYER_API_KEY}", "webhook": "${WEBHOOK_URL}"}'</code>`;
-
-        await bot.sendMessage(chatId, errorMessage, { parse_mode: 'HTML' });
-    }
-});
-// Команда для ручной настройки
-bot.onText(/\/setup_flyer_manual/, async (msg) => {
-    const chatId = msg.chat.id;
-    const userId = msg.from.id;
-
-    if (parseInt(userId) !== ADMIN_ID) {
-        return await bot.sendMessage(chatId, '❌ Только главный администратор может настраивать Flyer.');
-    }
-
-    try {
-        await bot.sendMessage(chatId, '🔄 Начинаю ручную настройку Flyer webhook...');
-
-        const result = await setupFlyerWebhookManually();
-
-        if (result.success) {
-            await bot.sendMessage(
-                chatId,
-                `✅ <b>Flyer webhook успешно настроен!</b>\n\n` +
-                `🌐 URL: https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook\n` +
-                `🔄 Статус: подключено`,
-                { parse_mode: 'HTML' }
-            );
-        } else {
-            throw new Error(result.error);
-        }
-
-    } catch (error) {
-        console.error('Manual setup command error:', error);
-        await bot.sendMessage(
-            chatId,
-            `❌ <b>Ошибка настройки Flyer:</b> ${error.message}\n\n` +
-            `<b>Попробуйте выполнить вручную:</b>\n\n` +
-            `<code>curl -X POST https://api.flyerservice.io/set_webhook \\\n  -H "Content-Type: application/json" \\\n  -d '{"key": "${FLYER_API_KEY}", "webhook": "https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook"}'</code>`,
-            { parse_mode: 'HTML' }
-        );
-    }
-});
-// Команда для проверки статуса вебхука
-bot.onText(/\/webhook_status/, async (msg) => {
-    const chatId = msg.chat.id;
-    const userId = msg.from.id;
-
-    if (parseInt(userId) !== ADMIN_ID) {
-        return await bot.sendMessage(chatId, '❌ Только главный администратор может проверять статус вебхука.');
-    }
-
-    try {
-        // Проверяем доступность нашего вебхука
-        const testResponse = await fetch('https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook', {
-            method: 'GET'
-        });
-
-        let webhookStatus = '❌ Не отвечает';
-        if (testResponse.ok) {
-            webhookStatus = '✅ Работает';
-        }
-
-        await bot.sendMessage(
-            chatId,
-            `🔧 <b>Статус вебхука</b>\n\n` +
-            `🌐 <b>URL:</b> https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook\n` +
-            `📡 <b>Статус:</b> ${webhookStatus}\n` +
-            `🔑 <b>API Key:</b> ${FLYER_API_KEY ? 'Настроен' : 'Отсутствует'}\n\n` +
-            `<b>Для настройки используйте:</b>\n` +
-            `<code>/setup_flyer_manual</code>`,
-            { parse_mode: 'HTML' }
-        );
-
-    } catch (error) {
-        await bot.sendMessage(
-            chatId,
-            `❌ Ошибка проверки статуса: ${error.message}`
-        );
-    }
-});
-// 🧪 ФУНКЦИЯ ТЕСТИРОВАНИЯ ВЕБХУКА
-async function testFlyerWebhook() {
-    try {
-        console.log('🧪 Testing Flyer webhook...');
-        
-        const testPayload = {
-            type: 'test',
-            key_number: FLYER_API_KEY,
-            data: {
-                test: true,
-                user_id: ADMIN_ID,
-                timestamp: new Date().toISOString()
-            }
-        };
-        
-        const response = await fetch(WEBHOOK_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(testPayload),
-            timeout: 10000
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-        
-        const result = await response.json();
-        
-        if (result.status !== true) {
-            throw new Error('Webhook returned false status');
-        }
-        
-        console.log('✅ Webhook test successful:', result);
-        
-        return {
-            success: true,
-            response: result
-        };
-        
-    } catch (error) {
-        console.error('❌ Webhook test failed:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
 // Отправка уведомлений всем пользователям (только для главного админа)
 app.post('/api/admin/send-notification', async (req, res) => {
     const { adminId, message } = req.body;
@@ -7202,80 +5380,8 @@ app.post('/api/user/tasks/start-with-hide', async (req, res) => {
     }
 });
 
-// Добавьте проверку перед изменением баланса
-app.post('/api/admin/balance/update', async (req, res) => {
-    const { adminId, targetUserId, amount } = req.body;
-    
-    try {
-        // Проверка прав администратора
-        const isAdmin = await checkAdminAccess(adminId);
-        if (!isAdmin) {
-            return res.status(403).json({
-                success: false,
-                error: 'Доступ запрещен'
-            });
-        }
 
-        // Проверка существования пользователя
-        const userCheck = await pool.query(
-            'SELECT user_id FROM user_profiles WHERE user_id = $1',
-            [targetUserId]
-        );
-        
-        if (userCheck.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'Пользователь не найден'
-            });
-        }
 
-        // Обновление баланса
-        await pool.query(
-            'UPDATE user_profiles SET balance = COALESCE(balance, 0) + $1 WHERE user_id = $2',
-            [amount, targetUserId]
-        );
-
-        res.json({
-            success: true,
-            message: `Баланс пользователя ${targetUserId} обновлен на ${amount}⭐`
-        });
-        
-    } catch (error) {
-        console.error('Balance update error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Ошибка базы данных: ' + error.message
-        });
-    }
-});
-
-// Функция для проверки прав главного администратора
-async function checkMainAdminAccess(userId) {
-    try {
-        // Главный админ имеет ID 8036875641
-        if (parseInt(userId) === ADMIN_ID) {
-            return true;
-        }
-        
-        // Проверяем дополнительные права в базе данных
-        const result = await pool.query(`
-            SELECT up.is_admin, ap.can_admins 
-            FROM user_profiles up
-            LEFT JOIN admin_permissions ap ON up.user_id = ap.admin_id
-            WHERE up.user_id = $1
-        `, [userId]);
-        
-        if (result.rows.length > 0) {
-            const user = result.rows[0];
-            return user.is_admin === true && user.can_admins === true;
-        }
-        
-        return false;
-    } catch (error) {
-        console.error('Main admin access check error:', error);
-        return false;
-    }
-}
 // Функция для автоматической проверки задания через LinkGoldMoney
 async function checkTaskWithLinkGold(userId, taskData, screenshotUrl = null) {
     try {
@@ -7337,158 +5443,151 @@ async function checkTaskWithLinkGold(userId, taskData, screenshotUrl = null) {
         };
     }
 }
-// 🔧 ИСПРАВЛЕННЫЙ ENDPOINT ДЛЯ ОТПРАВКИ СКРИНШОТА
+// Обновленный endpoint для отправки задания на проверку с интеграцией LinkGoldMoney
 app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'), async (req, res) => {
-    console.log('📨 Received screenshot submission:', {
-        userTaskId: req.params.userTaskId,
-        userId: req.body.userId,
-        file: req.file ? {
-            originalname: req.file.originalname,
-            size: req.file.size,
-            mimetype: req.file.mimetype,
-            filename: req.file.filename,
-            path: req.file.path
-        } : 'NO FILE RECEIVED'
-    });
-
     const userTaskId = req.params.userTaskId;
-    const userId = req.body.userId;
-    
-    // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Проверка наличия файла
-    if (!req.file) {
-        console.error('❌ No file received in request');
-        return res.status(400).json({
-            success: false,
-            error: 'Файл не был получен сервером. Пожалуйста, попробуйте еще раз.'
-        });
-    }
+    const { userId } = req.body;
     
     if (!userId) {
-        // Удаляем загруженный файл при ошибке
-        if (req.file) {
-            try {
-                fs.unlinkSync(req.file.path);
-            } catch (deleteError) {
-                console.error('Error deleting uploaded file:', deleteError);
-            }
-        }
         return res.status(400).json({
             success: false,
             error: 'Missing user ID'
         });
     }
     
-    // 🔥 ИСПРАВЛЕНИЕ: Используем правильный путь к файлу
+    if (!req.file) {
+        return res.status(400).json({
+            success: false,
+            error: 'No screenshot uploaded'
+        });
+    }
+    
     const screenshotUrl = `/uploads/${req.file.filename}`;
-    console.log('📁 Screenshot URL:', screenshotUrl);
-    console.log('📁 File path:', req.file.path);
     
     const client = await pool.connect();
     
     try {
         await client.query('BEGIN');
 
-        // 1. Проверяем существование задания и права пользователя
+        // Получаем информацию о задании
         const taskInfo = await client.query(`
-            SELECT ut.user_id, ut.task_id, ut.status, 
-                   u.first_name, u.last_name, u.username, 
-                   t.title, t.price, t.description, t.people_required
+            SELECT ut.user_id, ut.task_id, u.first_name, u.last_name, u.username, t.title, t.price, t.description
             FROM user_tasks ut 
             JOIN user_profiles u ON ut.user_id = u.user_id 
             JOIN tasks t ON ut.task_id = t.id 
-            WHERE ut.id = $1 AND ut.user_id = $2
-        `, [userTaskId, userId]);
+            WHERE ut.id = $1
+        `, [userTaskId]);
         
         if (taskInfo.rows.length === 0) {
             await client.query('ROLLBACK');
-            // Удаляем загруженный файл
-            try {
-                fs.unlinkSync(req.file.path);
-            } catch (deleteError) {
-                console.error('Error deleting uploaded file:', deleteError);
-            }
             return res.status(404).json({
                 success: false,
-                error: 'Task not found or access denied'
+                error: 'Task not found'
             });
         }
         
         const taskData = taskInfo.rows[0];
-        
-        // Проверяем, что задание в активном статусе
-        if (taskData.status !== 'active') {
-            await client.query('ROLLBACK');
-            // Удаляем загруженный файл
-            try {
-                fs.unlinkSync(req.file.path);
-            } catch (deleteError) {
-                console.error('Error deleting uploaded file:', deleteError);
-            }
-            return res.status(400).json({
-                success: false,
-                error: 'Task is not in active status'
-            });
-        }
-        
         const userName = `${taskData.first_name} ${taskData.last_name}`;
 
-        // 2. Обновляем user_task
+        // 🔄 АВТОМАТИЧЕСКАЯ ПРОВЕРКА ЧЕРЕЗ LINKGOLDMONEY
+        console.log('🔄 Starting automatic verification with LinkGoldMoney...');
+        const verificationResult = await checkTaskWithLinkGold(userId, taskData, screenshotUrl);
+
+        let status = 'pending_review';
+        let verificationStatus = 'pending';
+        
+        // Если автоматическая проверка успешна и задание одобрено
+        if (verificationResult.success && verificationResult.approved) {
+            status = 'completed';
+            verificationStatus = 'approved';
+            
+            console.log('✅ Task auto-approved by LinkGoldMoney');
+        }
+
+        // Обновляем user_task
         await client.query(`
             UPDATE user_tasks 
-            SET status = 'pending_review', 
-                screenshot_url = $1, 
-                submitted_at = CURRENT_TIMESTAMP 
-            WHERE id = $2 AND user_id = $3
-        `, [screenshotUrl, userTaskId, userId]);
+            SET status = $1, screenshot_url = $2, submitted_at = CURRENT_TIMESTAMP 
+            WHERE id = $3 AND user_id = $4
+        `, [status, screenshotUrl, userTaskId, userId]);
         
-        // 3. Создаем запись верификации
-        const verificationResult = await client.query(`
+        // Создаем запись верификации
+        const verificationResultDb = await client.query(`
             INSERT INTO task_verifications 
-            (user_task_id, user_id, task_id, user_name, user_username, task_title, task_price, screenshot_url, status) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
+            (user_task_id, user_id, task_id, user_name, user_username, task_title, task_price, screenshot_url, status, auto_verified) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING *
         `, [
             userTaskId, 
-            userId, 
+            taskData.user_id, 
             taskData.task_id, 
             userName, 
             taskData.username, 
             taskData.title, 
             taskData.price, 
-            screenshotUrl
+            screenshotUrl,
+            verificationStatus,
+            verificationResult.success // Помечаем как автоматически проверенное
         ]);
+
+        // Если задание автоматически одобрено, начисляем средства
+        if (status === 'completed') {
+            await client.query(`
+                UPDATE user_profiles 
+                SET balance = COALESCE(balance, 0) + $1,
+                    tasks_completed = COALESCE(tasks_completed, 0) + 1
+                WHERE user_id = $2
+            `, [taskData.price, userId]);
+
+            // Обновляем счетчик выполненных заданий
+            await client.query(`
+                UPDATE tasks 
+                SET completed_count = COALESCE(completed_count, 0) + 1 
+                WHERE id = $1
+            `, [taskData.task_id]);
+
+            // Проверяем, не достигнут ли лимит выполнений
+            const taskUpdate = await client.query(`
+                SELECT people_required, completed_count 
+                FROM tasks 
+                WHERE id = $1
+            `, [taskData.task_id]);
+
+            if (taskUpdate.rows.length > 0) {
+                const task = taskUpdate.rows[0];
+                if (task.completed_count >= task.people_required) {
+                    await client.query(`
+                        UPDATE tasks 
+                        SET status = 'completed' 
+                        WHERE id = $1
+                    `, [taskData.task_id]);
+                }
+            }
+
+            // Отправляем уведомление пользователю
+            await sendTaskNotification(userId, taskData.title, 'approved', 
+                'Задание автоматически одобрено системой проверки!');
+        }
 
         await client.query('COMMIT');
 
-        console.log('✅ Task submitted successfully:', {
-            verificationId: verificationResult.rows[0].id,
-            userTaskId: userTaskId,
-            userId: userId,
-            screenshotUrl: screenshotUrl
-        });
-        
-        res.json({
+        const response = {
             success: true,
-            message: 'Задание отправлено на проверку! Ожидайте решения администратора.',
-            verificationId: verificationResult.rows[0].id,
-            userTaskId: userTaskId,
-            screenshotUrl: screenshotUrl
-        });
+            message: verificationResult.success && verificationResult.approved 
+                ? 'Задание автоматически одобрено! Средства зачислены на ваш счет.' 
+                : 'Задание отправлено на проверку. Ожидайте решения администратора.',
+            verificationId: verificationResultDb.rows[0].id,
+            autoVerified: verificationResult.success && verificationResult.approved,
+            verificationResult: verificationResult
+        };
+
+        console.log('✅ Task submission completed:', response);
+        
+        res.json(response);
         
     } catch (error) {
         await client.query('ROLLBACK');
-        console.error('❌ Submit task error:', error);
-        
-        // Удаляем загруженный файл при ошибке
-        if (req.file) {
-            try {
-                fs.unlinkSync(req.file.path);
-                console.log('✅ Deleted uploaded file after error');
-            } catch (deleteError) {
-                console.error('Error deleting uploaded file:', deleteError);
-            }
-        }
-        
+        console.error('Submit task error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
@@ -7498,383 +5597,6 @@ app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'),
     }
 });
 
-// Диагностика multer
-app.post('/api/debug/upload-test', upload.single('screenshot'), (req, res) => {
-    console.log('🔍 Upload debug:', {
-        body: req.body,
-        file: req.file,
-        headers: req.headers
-    });
-    
-    if (!req.file) {
-        return res.json({
-            success: false,
-            error: 'No file received',
-            received: req.body
-        });
-    }
-    
-    res.json({
-        success: true,
-        file: {
-            originalname: req.file.originalname,
-            filename: req.file.filename,
-            size: req.file.size,
-            mimetype: req.file.mimetype,
-            path: req.file.path
-        }
-    });
-});
-// ==================== FLYER API SETUP FUNCTIONS ====================
-
-// Улучшенная функция настройки вебхука Flyer
-async function setupFlyerWebhook() {
-    try {
-        console.log('🔧 Setting up Flyer webhook...');
-
-        // Проверяем корректность URL вебхука
-        const webhookUrl = WEBHOOK_URL.replace('//api', '/api'); // Исправляем двойной слеш
-        console.log('🌐 Webhook URL:', webhookUrl);
-
-        // Метод 1: Попробуем через /set_webhook
-        try {
-            console.log('🔄 Trying /set_webhook endpoint...');
-            const response1 = await fetch(`${FLYER_API_URL}/set_webhook`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    key: FLYER_API_KEY,
-                    webhook: webhookUrl
-                }),
-                timeout: 10000
-            });
-
-            if (response1.ok) {
-                const result = await response1.json();
-                console.log('✅ Webhook setup via /set_webhook:', result);
-                return {
-                    success: true,
-                    method: 'set_webhook',
-                    result: result
-                };
-            }
-        } catch (error) {
-            console.log('⚠️ /set_webhook failed:', error.message);
-        }
-
-        // Метод 2: Попробуем через /webhook
-        try {
-            console.log('🔄 Trying /webhook endpoint...');
-            const response2 = await fetch(`${FLYER_API_URL}/webhook`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    key: FLYER_API_KEY,
-                    url: webhookUrl
-                }),
-                timeout: 10000
-            });
-
-            if (response2.ok) {
-                const result = await response2.json();
-                console.log('✅ Webhook setup via /webhook:', result);
-                return {
-                    success: true,
-                    method: 'webhook',
-                    result: result
-                };
-            }
-        } catch (error) {
-            console.log('⚠️ /webhook failed:', error.message);
-        }
-
-        // Метод 3: Попробуем через /setWebhook (camelCase)
-        try {
-            console.log('🔄 Trying /setWebhook endpoint...');
-            const response3 = await fetch(`${FLYER_API_URL}/setWebhook`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    key: FLYER_API_KEY,
-                    webhook: webhookUrl
-                }),
-                timeout: 10000
-            });
-
-            if (response3.ok) {
-                const result = await response3.json();
-                console.log('✅ Webhook setup via /setWebhook:', result);
-                return {
-                    success: true,
-                    method: 'setWebhook',
-                    result: result
-                };
-            }
-        } catch (error) {
-            console.log('⚠️ /setWebhook failed:', error.message);
-        }
-
-        throw new Error('All webhook setup methods failed');
-
-    } catch (error) {
-        console.error('❌ Flyer webhook setup error:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-// Функция для проверки статуса вебхука
-async function checkFlyerWebhookStatus() {
-    try {
-        console.log('🔍 Checking Flyer webhook status...');
-
-        const response = await fetch(`${FLYER_API_URL}/get_me`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                key: FLYER_API_KEY
-            }),
-            timeout: 10000
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        console.log('✅ Flyer webhook status:', result);
-
-        return {
-            success: true,
-            webhook: result.webhook,
-            status: result.status,
-            rawResponse: result
-        };
-
-    } catch (error) {
-        console.error('❌ Flyer webhook status check error:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-// Команда для принудительной настройки Flyer
-bot.onText(/\/setup_flyer_force/, async (msg) => {
-    const chatId = msg.chat.id;
-    const userId = msg.from.id;
-
-    if (parseInt(userId) !== ADMIN_ID) {
-        return await bot.sendMessage(chatId, '❌ Только главный администратор может настраивать Flyer.');
-    }
-
-    try {
-        await bot.sendMessage(chatId, '🔄 Начинаю настройку Flyer webhook...');
-
-        // Проверяем текущий статус
-        const status = await checkFlyerWebhookStatus();
-        
-        let message = `🔧 <b>Настройка Flyer Webhook</b>\n\n`;
-        message += `🌐 <b>API URL:</b> ${FLYER_API_URL}\n`;
-        message += `🔑 <b>API Key:</b> ${FLYER_API_KEY ? '✅ настроен' : '❌ отсутствует'}\n`;
-        message += `🔄 <b>Webhook URL:</b> ${WEBHOOK_URL}\n\n`;
-
-        if (status.success) {
-            message += `📊 <b>Текущий статус:</b>\n`;
-            message += `• Webhook: ${status.webhook || 'не настроен'}\n`;
-            message += `• Статус: ${status.status || 'неизвестен'}\n\n`;
-        }
-
-        await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
-
-        // Пытаемся настроить вебхук
-        const setupResult = await setupFlyerWebhook();
-
-        if (setupResult.success) {
-            await bot.sendMessage(
-                chatId,
-                `✅ <b>Flyer webhook успешно настроен!</b>\n\n` +
-                `📝 Метод: ${setupResult.method}\n` +
-                `🌐 URL: ${WEBHOOK_URL}\n` +
-                `🔄 Статус: подключено`,
-                { parse_mode: 'HTML' }
-            );
-        } else {
-            throw new Error(setupResult.error);
-        }
-
-    } catch (error) {
-        console.error('Setup flyer command error:', error);
-        await bot.sendMessage(
-            chatId,
-            `❌ <b>Ошибка настройки Flyer:</b> ${error.message}\n\n` +
-            `<b>Проверьте:</b>\n` +
-            `• Корректность API ключа\n` +
-            `• Доступность Flyer API\n` +
-            `• URL вебхука: ${WEBHOOK_URL}\n\n` +
-            `<b>Ручная настройка:</b>\n` +
-            `Отправьте POST запрос на ${FLYER_API_URL}/set_webhook\n` +
-            `с телом: {"key": "${FLYER_API_KEY}", "webhook": "${WEBHOOK_URL}"}`,
-            { parse_mode: 'HTML' }
-        );
-    }
-});
-
-
-// Функция для проверки статуса Flyer
-async function checkFlyerStatus() {
-    try {
-        console.log('🔍 Checking Flyer status...');
-
-        const response = await fetch(`${FLYER_API_URL}/get_me`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                key: FLYER_API_KEY
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-
-        const result = await response.json();
-        
-        return {
-            success: true,
-            status: 'connected',
-            botInfo: result,
-            apiKey: FLYER_API_KEY ? 'configured' : 'missing',
-            apiUrl: FLYER_API_URL,
-            webhookUrl: WEBHOOK_URL,
-            lastChecked: new Date().toISOString()
-        };
-
-    } catch (error) {
-        console.error('Flyer status check error:', error);
-        return {
-            success: false,
-            status: 'error',
-            error: error.message,
-            apiKey: FLYER_API_KEY ? 'configured' : 'missing',
-            apiUrl: FLYER_API_URL,
-            webhookUrl: WEBHOOK_URL,
-            lastChecked: new Date().toISOString()
-        };
-    }
-}
-
-// Команда для проверки статуса Flyer
-bot.onText(/\/flyer_status/, async (msg) => {
-    const chatId = msg.chat.id;
-    const userId = msg.from.id;
-
-    if (parseInt(userId) !== ADMIN_ID) {
-        return await bot.sendMessage(chatId, '❌ Только главный администратор может проверять статус Flyer.');
-    }
-
-    try {
-        const status = await checkFlyerStatus();
-
-        if (status.success) {
-            await bot.sendMessage(
-                chatId,
-                `🔧 **Flyer API Status**\n\n` +
-                `✅ Status: ${status.status}\n` +
-                `🔑 API Key: ${status.apiKey}\n` +
-                `🌐 API URL: ${status.apiUrl}\n` +
-                `🔄 Webhook: ${status.webhookUrl}\n` +
-                `🤖 Bot Info: ${status.botInfo ? 'Available' : 'N/A'}\n` +
-                `📅 Last Check: ${new Date(status.lastChecked).toLocaleString()}`,
-                { parse_mode: 'HTML' }
-            );
-        } else {
-            await bot.sendMessage(
-                chatId,
-                `❌ **Flyer API Status**\n\n` +
-                `🚫 Status: ${status.status}\n` +
-                `🔑 API Key: ${status.apiKey}\n` +
-                `🌐 API URL: ${status.apiUrl}\n` +
-                `🔄 Webhook: ${status.webhookUrl}\n` +
-                `💥 Error: ${status.error}\n` +
-                `📅 Last Check: ${new Date(status.lastChecked).toLocaleString()}`,
-                { parse_mode: 'HTML' }
-            );
-        }
-
-    } catch (error) {
-        await bot.sendMessage(
-            chatId,
-            `❌ Ошибка проверки Flyer: ${error.message}`
-        );
-    }
-});
-
-// Endpoint для проверки статуса Flyer через API
-app.get('/api/admin/flyer-status', async (req, res) => {
-    const { adminId } = req.query;
-
-    try {
-        // Проверка прав администратора
-        const isAdmin = await checkAdminAccess(adminId);
-        if (!isAdmin) {
-            return res.status(403).json({
-                success: false,
-                error: 'Доступ запрещен'
-            });
-        }
-
-        const status = await checkFlyerStatus();
-        res.json(status);
-
-    } catch (error) {
-        console.error('Flyer status API error:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-
-// Автоматическая настройка вебхука при запуске сервера
-async function initializeFlyer() {
-    try {
-        console.log('🚀 Initializing Flyer integration...');
-        
-        const status = await checkFlyerStatus();
-        if (status.success) {
-            console.log('✅ Flyer integration ready');
-            
-            // Автоматически настраиваем вебхук при запуске
-            const setupResult = await setupFlyerWebhook();
-            if (setupResult.success) {
-                console.log('✅ Flyer webhook configured automatically');
-            } else {
-                console.log('⚠️ Flyer webhook auto-configuration failed:', setupResult.error);
-            }
-        } else {
-            console.log('❌ Flyer integration failed:', status.error);
-        }
-    } catch (error) {
-        console.error('❌ Flyer initialization error:', error);
-    }
-}
-
-// Вызов инициализации Flyer при запуске сервера
-initializeFlyer();
 // Endpoint для ручного вызова проверки через LinkGoldMoney
 app.post('/api/admin/task-verifications/:verificationId/check-with-linkgold', async (req, res) => {
     const verificationId = req.params.verificationId;
@@ -8736,477 +6458,6 @@ app.post('/api/referral-links/track-click', async (req, res) => {
         });
     }
 });
-// ==================== SUBGRAM API INTEGRATION ====================
-
-const SUBGRAM_API_KEY = '849e4d1d215c57172c535e7a6fbedab62294721a38a36d3e3da158b3aedf34b';
-const SUBGRAM_API_URL = 'https://api.subgram.org';
-
-// Основная функция для получения спонсоров
-async function getSubGramSponsors(userData) {
-    try {
-        console.log('🎯 Requesting SubGram sponsors for user:', userData.user_id);
-
-        const requestBody = {
-            chat_id: userData.chat_id || userData.user_id,
-            user_id: userData.user_id,
-            first_name: userData.first_name,
-            username: userData.username,
-            language_code: userData.language_code || 'ru',
-            is_premium: userData.is_premium || false,
-            action: 'subscribe',
-            max_sponsors: 3
-        };
-
-        // Добавляем опциональные параметры если они есть
-        if (userData.gender) requestBody.gender = userData.gender;
-        if (userData.age) requestBody.age = userData.age;
-        if (userData.exclude_resource_ids) requestBody.exclude_resource_ids = userData.exclude_resource_ids;
-        if (userData.exclude_ads_ids) requestBody.exclude_ads_ids = userData.exclude_ads_ids;
-
-        const response = await fetch(`${SUBGRAM_API_URL}/get-sponsors`, {
-            method: 'POST',
-            headers: {
-                'Auth': SUBGRAM_API_KEY,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        console.log('✅ SubGram API response:', result);
-
-        return result;
-
-    } catch (error) {
-        console.error('❌ SubGram API error:', error);
-        return {
-            status: 'error',
-            message: 'Failed to get sponsors',
-            error: error.message
-        };
-    }
-}
-
-// Функция для проверки подписок пользователя
-async function checkUserSubscriptions(userId, links = []) {
-    try {
-        console.log('🔍 Checking user subscriptions:', userId);
-
-        const requestBody = {
-            user_id: userId
-        };
-
-        if (links.length > 0) {
-            requestBody.links = links;
-        }
-
-        const response = await fetch(`${SUBGRAM_API_URL}/get-user-subscriptions`, {
-            method: 'POST',
-            headers: {
-                'Auth': SUBGRAM_API_KEY,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        return result;
-
-    } catch (error) {
-        console.error('❌ Check subscriptions error:', error);
-        return {
-            status: 'error',
-            message: 'Failed to check subscriptions'
-        };
-    }
-}
-
-// Функция для управления ботами в SubGram
-async function manageSubGramBot(action, botData = {}) {
-    try {
-        console.log('🤖 Managing SubGram bot:', action);
-
-        const requestBody = {
-            action: action,
-            ...botData
-        };
-
-        const response = await fetch(`${SUBGRAM_API_URL}/bots`, {
-            method: 'POST',
-            headers: {
-                'Auth': SUBGRAM_API_KEY,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        return result;
-
-    } catch (error) {
-        console.error('❌ Manage bot error:', error);
-        return {
-            status: 'error',
-            message: 'Failed to manage bot'
-        };
-    }
-}
-
-// Middleware для проверки подписки через SubGram
-async function checkSubscriptionWithSubGram(userId, userData) {
-    try {
-        console.log('🔐 Checking subscription with SubGram for user:', userId);
-
-        // Получаем спонсоров для пользователя
-        const sponsorsResult = await getSubGramSponsors({
-            user_id: userId,
-            chat_id: userId,
-            first_name: userData.first_name,
-            username: userData.username,
-            language_code: 'ru',
-            is_premium: false
-        });
-
-        // Обрабатываем разные статусы ответа
-        switch (sponsorsResult.status) {
-            case 'ok':
-                // Пользователь подписан на все или нет подходящих спонсоров
-                console.log('✅ User passed subscription check');
-                return {
-                    required: false,
-                    status: 'subscribed'
-                };
-
-            case 'warning':
-                // Требуется подписка
-                console.log('📢 User needs to subscribe to sponsors');
-                return {
-                    required: true,
-                    status: 'requires_subscription',
-                    sponsors: sponsorsResult.sponsors || [],
-                    message: 'Требуется подписка на спонсоров'
-                };
-
-            case 'register':
-                // Требуется регистрация через WebApp
-                console.log('📝 User needs registration');
-                return {
-                    required: true,
-                    status: 'requires_registration',
-                    registration_url: sponsorsResult.additional?.registration_url,
-                    message: 'Требуется дополнительная информация'
-                };
-
-            case 'gender':
-            case 'age':
-                // Требуется указать пол/возраст
-                console.log('👤 User needs to provide demographic info');
-                return {
-                    required: true,
-                    status: `requires_${sponsorsResult.status}`,
-                    message: `Требуется указать ${sponsorsResult.status === 'gender' ? 'пол' : 'возраст'}`
-                };
-
-            default:
-                // В случае ошибки разрешаем доступ
-                console.log('⚠️ SubGram check failed, allowing access');
-                return {
-                    required: false,
-                    status: 'error',
-                    message: 'Ошибка проверки подписки'
-                };
-        }
-
-    } catch (error) {
-        console.error('❌ Subscription check error:', error);
-        // В случае ошибки разрешаем доступ
-        return {
-            required: false,
-            status: 'error',
-            message: error.message
-        };
-    }
-}
-
-// Функция для создания кнопок подписки
-function createSubscriptionButtons(sponsors) {
-    const buttons = [];
-    
-    // Добавляем кнопки для каждого спонсора
-    sponsors.forEach(sponsor => {
-        if (sponsor.available_now && sponsor.status === 'unsubscribed') {
-            buttons.push([
-                {
-                    text: sponsor.button_text || 'Подписаться',
-                    url: sponsor.link
-                }
-            ]);
-        }
-    });
-
-    // Добавляем кнопку проверки подписки
-    buttons.push([
-        {
-            text: '✅ Я подписался',
-            callback_data: 'check_subgram_subscription'
-        }
-    ]);
-
-    return buttons;
-}
-
-
-
-// Функция для показа требований подписки
-async function showSubscriptionRequired(chatId, sponsors, userId) {
-    const messageText = `
-📢 <b>ДЛЯ ДОСТУПА К LINKGOLD НЕОБХОДИМО ПОДПИСАТЬСЯ</b>
-
-✨ <b>Подпишитесь на наши спонсорские каналы чтобы получить доступ к боту:</b>
-
-🔸 Подписка бесплатна
-🔸 Отписка возможна через 3 дня
-🔸 Доступ к боту сразу после подписки
-
-👇 <b>Выберите каналы для подписки:</b>
-    `.trim();
-
-    const buttons = createSubscriptionButtons(sponsors);
-
-    await bot.sendMessage(chatId, messageText, {
-        parse_mode: 'HTML',
-        reply_markup: {
-            inline_keyboard: buttons
-        }
-    });
-
-    // Сохраняем информацию о спонсорах для пользователя
-    await saveUserSponsors(userId, sponsors);
-}
-
-// Функция для показа требований регистрации
-async function showRegistrationRequired(chatId, registrationUrl) {
-    const messageText = `
-📝 <b>ТРЕБУЕТСЯ ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ</b>
-
-Для персонализации контента и предложений, пожалуйста, укажите дополнительную информацию о себе.
-
-Это займет всего 1 минуту!
-    `.trim();
-
-    await bot.sendMessage(chatId, messageText, {
-        parse_mode: 'HTML',
-        reply_markup: {
-            inline_keyboard: [
-                [
-                    {
-                        text: '✅ Заполнить анкету',
-                        web_app: { url: registrationUrl }
-                    }
-                ],
-                [
-                    {
-                        text: '🔄 Проверить снова',
-                        callback_data: 'check_subgram_subscription'
-                    }
-                ]
-            ]
-        }
-    });
-}
-
-// Сохранение спонсоров пользователя
-async function saveUserSponsors(userId, sponsors) {
-    try {
-        // Здесь можно сохранить информацию о спонсорах в базу данных
-        // для последующей проверки подписки
-        console.log('💾 Saving user sponsors:', { userId, sponsorsCount: sponsors.length });
-        
-        // Временное решение - можно добавить в user_profiles или отдельную таблицу
-        await pool.query(`
-            INSERT INTO user_subgram_data (user_id, sponsors_data, last_check) 
-            VALUES ($1, $2, CURRENT_TIMESTAMP)
-            ON CONFLICT (user_id) 
-            DO UPDATE SET sponsors_data = $2, last_check = CURRENT_TIMESTAMP
-        `, [userId, JSON.stringify(sponsors)]);
-
-    } catch (error) {
-        console.error('❌ Save sponsors error:', error);
-    }
-}
-
-// Обработчик проверки подписки
-bot.on('callback_query', async (callbackQuery) => {
-    const message = callbackQuery.message;
-    const chatId = message.chat.id;
-    const userId = callbackQuery.from.id;
-    const data = callbackQuery.data;
-
-    if (data === 'check_subgram_subscription') {
-        await handleSubscriptionCheck(chatId, userId, callbackQuery);
-    }
-});
-
-// Обработчик проверки подписки
-async function handleSubscriptionCheck(chatId, userId, callbackQuery) {
-    try {
-        await bot.answerCallbackQuery(callbackQuery.id, {
-            text: '🔍 Проверяем подписки...'
-        });
-
-        // Проверяем подписку снова
-        const subscriptionCheck = await checkSubscriptionWithSubGram(userId, {
-            first_name: callbackQuery.from.first_name,
-            username: callbackQuery.from.username
-        });
-
-        if (subscriptionCheck.required) {
-            // Подписка все еще требуется
-            await bot.sendMessage(chatId, '❌ Вы еще не подписались на все необходимые каналы. Пожалуйста, завершите подписку.');
-        } else {
-            // Подписка выполнена
-            await bot.deleteMessage(chatId, message.message_id);
-            await bot.sendMessage(chatId, '✅ Отлично! Проверка подписки пройдена. Теперь вы можете пользоваться ботом!');
-
-            // Продолжаем регистрацию
-            await processUserRegistration(chatId, callbackQuery.from, null);
-        }
-
-    } catch (error) {
-        console.error('❌ Subscription check handler error:', error);
-        await bot.answerCallbackQuery(callbackQuery.id, {
-            text: '❌ Ошибка проверки подписки'
-        });
-    }
-}
-
-async function processUserRegistration(chatId, user, referralCode) {
-    try {
-        console.log('👤 Processing user registration:', user.id);
-        
-        // Ваш существующий код регистрации пользователя
-        // Перенесите сюда основную логику из обработчика /start
-        
-        const userData = {
-            id: user.id,
-            firstName: user.first_name || 'Пользователь',
-            lastName: user.last_name || '',
-            username: user.username || `user_${user.id}`
-        };
-        
-        // ... остальная логика регистрации
-        
-    } catch (error) {
-        console.error('❌ User registration error:', error);
-        throw error;
-    }
-}
-
-// Endpoint для админ-панели SubGram
-app.get('/api/admin/subgram-status', async (req, res) => {
-    const { adminId } = req.query;
-
-    try {
-        // Проверка прав администратора
-        const isAdmin = await checkAdminAccess(adminId);
-        if (!isAdmin) {
-            return res.status(403).json({
-                success: false,
-                error: 'Доступ запрещен'
-            });
-        }
-
-        // Получаем информацию о боте в SubGram
-        const botInfo = await manageSubGramBot('info', {
-            bot_id: await getBotSubGramId() // Нужно получить ID бота в SubGram
-        });
-
-        // Получаем статистику
-        const testResult = await getSubGramSponsors({
-            user_id: adminId,
-            chat_id: adminId,
-            first_name: 'Test',
-            username: 'test_admin'
-        });
-
-        res.json({
-            success: true,
-            subgram: {
-                api_key_configured: !!SUBGRAM_API_KEY,
-                bot_status: botInfo.status,
-                test_request: testResult.status,
-                last_checked: new Date().toISOString()
-            },
-            botInfo: botInfo,
-            testResult: testResult
-        });
-
-    } catch (error) {
-        console.error('SubGram status error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'SubGram check failed: ' + error.message
-        });
-    }
-});
-
-// Функция для получения ID бота в SubGram
-async function getBotSubGramId() {
-    // Здесь можно сохранить ID бота при регистрации
-    // Пока используем дефолтное значение или получаем из базы
-    return await pool.query('SELECT subgram_bot_id FROM bot_settings LIMIT 1')
-        .then(result => result.rows[0]?.subgram_bot_id || 'default_bot_id');
-}
-
-// Создаем таблицу для данных SubGram при инициализации
-async function createSubGramTables() {
-    try {
-        console.log('🔧 Creating SubGram tables...');
-
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS user_subgram_data (
-                user_id BIGINT PRIMARY KEY,
-                sponsors_data JSONB,
-                last_check TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS bot_settings (
-                id SERIAL PRIMARY KEY,
-                subgram_bot_id TEXT,
-                subgram_api_key TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        console.log('✅ SubGram tables created');
-    } catch (error) {
-        console.error('❌ Error creating SubGram tables:', error);
-    }
-}
-
-// Добавьте вызов в функцию инициализации
-async function initializeServer() {
-    await initDatabase();
-    await createSubGramTables(); // Добавьте эту строку
-    await createSampleTasks();
-    
-    console.log('✅ Server initialization complete with SubGram integration');
-}
 // 🔥 ENDPOINT ДЛЯ МГНОВЕННОЙ ПРОВЕРКИ РЕФЕРАЛЬНЫХ НАЧИСЛЕНИЙ
 app.get('/api/user/:userId/instant-referral-stats', async (req, res) => {
     const userId = req.params.userId;
@@ -9351,316 +6602,6 @@ app.get('/api/user/:userId/instant-referral-stats', async (req, res) => {
         });
     }
 });
-
-// Улучшенный обработчик вебхука Flyer
-app.post('/api/flyer/webhook', express.json(), async (req, res) => {
-    console.log('📨 Received Flyer webhook:', JSON.stringify(req.body, null, 2));
-
-    try {
-        const { type, data, key_number, signature } = req.body;
-
-        // Проверяем ключ
-        if (key_number !== FLYER_API_KEY) {
-            console.log('❌ Invalid Flyer webhook key:', key_number);
-            return res.status(401).json({ 
-                status: false,
-                error: 'Invalid API key'
-            });
-        }
-
-        console.log(`✅ Valid Flyer webhook received, type: ${type}`);
-
-        // Обрабатываем события
-        switch (type) {
-            case 'test':
-                console.log('✅ Test webhook received');
-                break;
-
-            case 'sub_completed':
-                console.log('✅ User completed subscription:', data);
-                if (data.user_id) {
-                    await handleFlyerSubscriptionCompleted(data.user_id);
-                }
-                break;
-
-            case 'new_status':
-                console.log('📊 Task status update:', data);
-                await handleFlyerTaskStatusUpdate(data);
-                break;
-
-            case 'check':
-                console.log('🔍 Check webhook:', data);
-                break;
-
-            default:
-                console.log('⚠️ Unknown webhook type:', type);
-        }
-
-        res.json({ 
-            status: true,
-            processed: true,
-            timestamp: new Date().toISOString()
-        });
-
-    } catch (error) {
-        console.error('❌ Flyer webhook processing error:', error);
-        res.status(500).json({ 
-            status: false,
-            error: error.message
-        });
-    }
-});
-
-// 🚀 АВТОМАТИЧЕСКАЯ ИНИЦИАЛИЗАЦИЯ FLYER ПРИ ЗАПУСКЕ
-async function initializeFlyerIntegration() {
-    try {
-        console.log('🚀 Initializing Flyer integration...');
-        
-        if (!FLYER_API_KEY) {
-            console.log('❌ Flyer API key not configured');
-            return;
-        }
-        
-        // Проверяем текущий статус
-        const status = await checkFlyerStatus();
-        console.log('📊 Current Flyer status:', status.status);
-        
-        // Автоматически настраиваем вебхук
-        console.log('🔄 Auto-configuring Flyer webhook...');
-        const setupResult = await setupFlyerWebhookEnhanced();
-        
-        if (setupResult.success) {
-            console.log('✅ Flyer webhook configured automatically');
-            
-            // Тестируем вебхук
-            const testResult = await testFlyerWebhook();
-            if (testResult.success) {
-                console.log('🎉 Flyer integration fully operational!');
-            } else {
-                console.log('⚠️ Flyer webhook configured but test failed:', testResult.error);
-            }
-        } else {
-            console.log('❌ Flyer webhook auto-configuration failed:', setupResult.error);
-            console.log('💡 Use /fix_flyer_webhook command to set up manually');
-        }
-        
-    } catch (error) {
-        console.error('❌ Flyer initialization error:', error);
-    }
-}
-// Endpoint для проверки статуса Flyer
-app.get('/api/admin/flyer-status-detailed', async (req, res) => {
-    const { adminId } = req.query;
-
-    try {
-        // Проверка прав администратора
-        const isAdmin = await checkAdminAccess(adminId);
-        if (!isAdmin) {
-            return res.status(403).json({
-                success: false,
-                error: 'Доступ запрещен'
-            });
-        }
-
-        console.log('🔧 Testing Flyer API connection...');
-
-        // Тестируем все endpoints
-        const [botInfo, webhookStatus, testSubscription] = await Promise.allSettled([
-            getFlyerBotInfo(),
-            checkFlyerWebhookStatus(),
-            checkSubscriptionWithFlyer(adminId, { 
-                first_name: 'Test', 
-                username: 'test_admin',
-                language_code: 'ru' 
-            })
-        ]);
-
-        const results = {
-            get_me: botInfo.status === 'fulfilled' ? botInfo.value : { error: botInfo.reason },
-            webhook_status: webhookStatus.status === 'fulfilled' ? webhookStatus.value : { error: webhookStatus.reason },
-            check: testSubscription.status === 'fulfilled' ? testSubscription.value : { error: testSubscription.reason }
-        };
-
-        res.json({
-            success: true,
-            status: 'tested',
-            apiKey: FLYER_API_KEY ? 'configured' : 'missing',
-            apiUrl: FLYER_API_URL,
-            webhookUrl: WEBHOOK_URL,
-            lastChecked: new Date().toISOString(),
-            endpoints: results,
-            summary: {
-                api: botInfo.status === 'fulfilled' && botInfo.value.success ? '✅' : '❌',
-                webhook: webhookStatus.status === 'fulfilled' && webhookStatus.value.success ? '✅' : '❌',
-                subscription: testSubscription.status === 'fulfilled' ? '✅' : '❌'
-            },
-            manualSetup: {
-                url: `${FLYER_API_URL}/set_webhook`,
-                method: 'POST',
-                body: {
-                    key: FLYER_API_KEY,
-                    webhook: WEBHOOK_URL
-                }
-            }
-        });
-
-    } catch (error) {
-        console.error('Flyer status check error:', error);
-        res.json({
-            success: false,
-            status: 'error',
-            error: error.message,
-            apiKey: FLYER_API_KEY ? 'configured' : 'missing',
-            apiUrl: FLYER_API_URL,
-            webhookUrl: WEBHOOK_URL,
-            lastChecked: new Date().toISOString()
-        });
-    }
-});
-
-
-// Убедитесь что этот middleware стоит ПЕРВЫМ для вебхука
-app.post('/api/flyer/webhook', express.json({ limit: '10mb' }), async (req, res) => {
-    console.log('📨 Received Flyer webhook:', JSON.stringify(req.body, null, 2));
-
-    try {
-        const { type, key_number, data } = req.body;
-
-        // Логируем полученные данные для отладки
-        console.log('🔍 Webhook details:', {
-            type,
-            key_number: key_number ? 'provided' : 'missing',
-            data_keys: data ? Object.keys(data) : 'no data'
-        });
-
-        // Проверяем ключ (если предоставлен)
-        if (key_number && key_number !== FLYER_API_KEY) {
-            console.log('❌ Invalid Flyer webhook key:', key_number);
-            return res.status(401).json({ 
-                status: false,
-                error: 'Invalid API key'
-            });
-        }
-
-        console.log(`✅ Valid Flyer webhook received, type: ${type}`);
-
-        // Обрабатываем события согласно документации Flyer
-        switch (type) {
-            case 'test':
-                console.log('✅ Test webhook received - everything works!');
-                // Для тестового вебхука просто возвращаем успех
-                break;
-
-            case 'sub_completed':
-                console.log('✅ User completed subscription:', data);
-                if (data && data.user_id) {
-                    await handleFlyerSubscriptionCompleted(data.user_id);
-                }
-                break;
-
-            case 'new_status':
-                console.log('📊 Task status update:', data);
-                if (data) {
-                    await handleFlyerTaskStatusUpdate(data);
-                }
-                break;
-
-            default:
-                console.log('⚠️ Unknown webhook type:', type);
-                // Для неизвестных типов все равно возвращаем успех
-        }
-
-        // ВАЖНО: Всегда возвращаем {status: true} согласно документации
-        res.json({ 
-            status: true,
-            processed: true,
-            timestamp: new Date().toISOString(),
-            type: type
-        });
-
-    } catch (error) {
-        console.error('❌ Flyer webhook processing error:', error);
-        // Даже при ошибке возвращаем {status: true} чтобы Flyer не считал вебхук неработающим
-        res.json({ 
-            status: true,
-            error: error.message,
-            timestamp: new Date().toISOString()
-        });
-    }
-});
-
-// Улучшенная функция обработки завершения подписки
-async function handleFlyerSubscriptionCompleted(userId) {
-    try {
-        console.log(`🎉 Processing subscription completion for user: ${userId}`);
-
-        // Помечаем пользователя как прошедшего проверку подписки
-        await pool.query(`
-            UPDATE user_profiles 
-            SET has_subscribed = true,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = $1
-        `, [userId]);
-
-        console.log(`✅ User ${userId} subscription marked as completed`);
-
-        // Отправляем сообщение пользователю
-        if (bot) {
-            try {
-                await bot.sendMessage(
-                    userId,
-                    '✅ **Подписка подтверждена!**\n\n' +
-                    'Благодарим за подписку! Теперь вы можете пользоваться всеми функциями бота! 🎉',
-                    { parse_mode: 'HTML' }
-                );
-                console.log(`✅ Notification sent to user ${userId}`);
-            } catch (botError) {
-                console.error('❌ Failed to send notification:', botError.message);
-            }
-        }
-
-    } catch (error) {
-        console.error('❌ Handle subscription completed error:', error);
-    }
-}
-// Улучшенная функция обработки статуса задания
-async function handleFlyerTaskStatusUpdate(data) {
-    try {
-        const { status, user_id, signature, link } = data;
-        
-        console.log(`🔄 Processing task status update:`, {
-            user_id,
-            signature,
-            status,
-            link
-        });
-
-        // Обновляем статус задания в базе данных
-        const result = await pool.query(`
-            UPDATE flyer_tasks 
-            SET status = $1, 
-                completed_at = CASE WHEN $1 = 'completed' THEN CURRENT_TIMESTAMP ELSE NULL END,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = $2 AND task_signature = $3
-            RETURNING *
-        `, [status, user_id, signature]);
-
-        if (result.rows.length > 0) {
-            console.log(`✅ Flyer task status updated: ${user_id} - ${signature} - ${status}`);
-        } else {
-            console.log(`⚠️ Flyer task not found: ${user_id} - ${signature}`);
-        }
-
-        // Если задание завершено, начисляем награду
-        if (status === 'completed') {
-            await awardUserForFlyerTask(user_id, signature);
-        }
-
-    } catch (error) {
-        console.error('❌ Handle task status update error:', error);
-    }
-}
-
 // 🔧 БЫСТРЫЙ ENDPOINT ДЛЯ ПРОВЕРКИ ТОЛЬКО БАЛАНСА
 app.get('/api/user/:userId/quick-balance', async (req, res) => {
     const userId = req.params.userId;
@@ -9955,56 +6896,7 @@ app.post('/api/admin/links/settings', async (req, res) => {
         });
     }
 });
-// Простой GET endpoint для проверки доступности вебхука
-app.get('/api/flyer/webhook', async (req, res) => {
-    console.log('🔍 Flyer webhook test request received');
-    res.json({ 
-        status: true,
-        message: 'Flyer webhook endpoint is working!',
-        url: WEBHOOK_URL,
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development'
-    });
-});
 
-// Endpoint для ручного тестирования вебхука
-app.post('/api/flyer/webhook/test', async (req, res) => {
-    try {
-        const testPayload = {
-            type: 'test',
-            key_number: FLYER_API_KEY,
-            data: {
-                test: true,
-                timestamp: new Date().toISOString()
-            }
-        };
-
-        // Имитируем запрос от Flyer
-        const response = await fetch(WEBHOOK_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(testPayload)
-        });
-
-        const result = await response.json();
-
-        res.json({
-            success: response.ok,
-            status: response.status,
-            response: result,
-            test_payload: testPayload
-        });
-
-    } catch (error) {
-        console.error('Test webhook error:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
 
 // Экспорт данных пользователей
 app.get('/api/admin/users-export', async (req, res) => {
@@ -14165,10 +11057,7 @@ app.listen(PORT, '0.0.0.0', async () => {
     
     // Инициализируем базу данных с заданиями
     await initializeWithTasks();
-
     
-    // Инициализируем Flyer интеграцию
-    await initializeFlyerIntegration();
     // Принудительно исправляем структуру таблиц
     try {
         await fixWithdrawalTable();
