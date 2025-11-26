@@ -10,7 +10,7 @@ let currentUser = null;
 const app = express();
 const PORT = process.env.PORT || 3000;
 // Используйте ключ из переменных окружения
-const FLYER_API_KEY = process.env.FLYER_API_KEY || 'FL-pqKrtr-kPaJFg-KeLIQD-TLHgfC';
+const FLYER_API_KEY = process.env.FLYER_APL_KEY || 'FL-pqKrtr-kPaJFg-KeLIQD-TLHgfC';
 const FLYER_API_URL = 'https://api.flyerservice.io';
 // Исправьте URL вебхука - уберите двойной слеш
 // Исправьте этот код в начале файла:
@@ -8874,7 +8874,56 @@ async function checkUserSubscriptions(userId, links = []) {
         };
     }
 }
-
+// ДОБАВЬТЕ ЭТОТ ENDPOINT
+app.get('/api/flyer/debug-setup', async (req, res) => {
+  try {
+    console.log('🔧 Debug Flyer setup...');
+    
+    // 1. Проверяем переменные
+    const envCheck = {
+      FLYER_APL_KEY: process.env.FLYER_APL_KEY ? '✅' : '❌',
+      FLYER_API_KEY: process.env.FLYER_API_KEY ? '✅' : '❌',
+      APP_URL: process.env.APP_URL || '❌'
+    };
+    
+    // 2. Проверяем доступность нашего вебхука
+    const webhookTest = await fetch(WEBHOOK_URL);
+    const webhookStatus = webhookTest.ok ? '✅ Доступен' : `❌ Ошибка ${webhookTest.status}`;
+    
+    // 3. Пробуем настроить вебхук
+    let setupResult = 'Не выполнено';
+    try {
+      const response = await fetch('https://api.flyerservice.io/set_webhook', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          key: FLYER_API_KEY,
+          webhook: WEBHOOK_URL
+        })
+      });
+      setupResult = response.ok ? '✅ Успешно' : `❌ Ошибка ${response.status}`;
+    } catch (error) {
+      setupResult = `❌ ${error.message}`;
+    }
+    
+    res.json({
+      success: true,
+      environment: envCheck,
+      webhook: {
+        url: WEBHOOK_URL,
+        status: webhookStatus
+      },
+      setup: setupResult,
+      used_api_key: FLYER_API_KEY ? '✅ Используется' : '❌ Отсутствует'
+    });
+    
+  } catch (error) {
+    res.json({
+      success: false,
+      error: error.message
+    });
+  }
+});
 // Функция для управления ботами в SubGram
 async function manageSubGramBot(action, botData = {}) {
     try {
@@ -9013,7 +9062,50 @@ function createSubscriptionButtons(sponsors) {
     return buttons;
 }
 
+// ДОБАВЬТЕ В server.js
+app.get('/api/flyer/debug', async (req, res) => {
+  try {
+    const testPayload = {
+      key: FLYER_API_KEY,
+      user_id: ADMIN_ID,
+      language_code: 'ru'
+    };
 
+    // Тест подключения к Flyer API
+    const response = await fetch(`${FLYER_API_URL}/check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(testPayload)
+    });
+
+    res.json({
+      success: true,
+      flyer_api: {
+        status: response.status,
+        ok: response.ok,
+        key: FLYER_API_KEY ? 'configured' : 'missing',
+        url: FLYER_API_URL
+      },
+      webhook: {
+        url: WEBHOOK_URL,
+        accessible: true
+      },
+      environment: {
+        FLYER_APL_KEY: process.env.FLYER_APL_KEY ? 'set' : 'missing',
+        APP_URL: process.env.APP_URL
+      }
+    });
+  } catch (error) {
+    res.json({
+      success: false,
+      error: error.message,
+      flyer_api: {
+        key: FLYER_API_KEY ? 'configured' : 'missing',
+        url: FLYER_API_URL
+      }
+    });
+  }
+});
 
 // Функция для показа требований подписки
 async function showSubscriptionRequired(chatId, sponsors, userId) {
@@ -14135,7 +14227,17 @@ async function initializeServer() {
     
     console.log('✅ Server initialization complete');
 }
-
+// ДОБАВЬТЕ В server.js ПЕРЕД app.listen
+app.get('/api/debug/env', (req, res) => {
+  res.json({
+    FLYER_APL_KEY: process.env.FLYER_APL_KEY ? '✅ настроен' : '❌ отсутствует',
+    FLYER_API_KEY: process.env.FLYER_API_KEY ? '✅ настроен' : '❌ отсутствует', 
+    APP_URL: process.env.APP_URL || '❌ не настроен',
+    BOT_TOKEN: process.env.BOT_TOKEN ? '✅ настроен' : '❌ отсутствует',
+    DATABASE_URL: process.env.DATABASE_URL ? '✅ настроен' : '❌ отсутствует',
+    NODE_ENV: process.env.NODE_ENV || 'development'
+  });
+});
 // Замените текущий app.listen на этот:
 app.listen(PORT, '0.0.0.0', async () => {
     console.log(`🚀 Server running on port ${PORT}`);
