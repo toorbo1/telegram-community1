@@ -8761,6 +8761,87 @@ function showTaskConfirmation(userTaskId, taskName) {
         showNotification('Ошибка: модальное окно не найдено', 'error');
     }
 }
+async function submitScreenshot() {
+    const fileInput = document.getElementById('screenshot-file');
+    const submitBtn = document.getElementById('submit-screenshot-btn');
+    
+    if (!fileInput.files[0]) {
+        showNotification('Выберите файл скриншота', 'error');
+        return;
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append('screenshot', fileInput.files[0]);
+        formData.append('userId', currentUser.id);
+
+        // 🔥 ИСПРАВЛЕНИЕ: используем правильный endpoint
+        const response = await fetch(`${API_BASE_URL}/api/user/tasks/${currentUserTaskId}/submit-auto`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showNotification('Скриншот отправлен на проверку!', 'success');
+            closeModal('screenshot-modal');
+            loadUserTasks();
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error submitting screenshot:', error);
+        showNotification('Ошибка отправки скриншота', 'error');
+    } finally {
+        // 🔥 ВАЖНО: Всегда восстанавливаем кнопку
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Отправить на проверку';
+        }
+    }
+}
+
+// Функция для диагностики проблемы отправки
+async function debugScreenshotSubmission() {
+    console.log('🔍 Debug screenshot submission:');
+    console.log('- currentUserTaskId:', currentUserTaskId);
+    console.log('- currentUser.id:', currentUser?.id);
+    console.log('- API_BASE_URL:', API_BASE_URL);
+    
+    const fileInput = document.getElementById('screenshot-file');
+    console.log('- File selected:', fileInput?.files[0]);
+    
+    // Проверяем доступность endpoint'а
+    try {
+        const testResponse = await fetch(`${API_BASE_URL}/api/health`);
+        console.log('- Server health:', testResponse.status);
+    } catch (error) {
+        console.error('- Server unavailable:', error);
+    }
+}
+
+// Временно добавьте кнопку для диагностики
+function addScreenshotDebugButton() {
+    const debugBtn = document.createElement('button');
+    debugBtn.textContent = '🐛 Debug Screenshot';
+    debugBtn.style.position = 'fixed';
+    debugBtn.style.bottom = '100px';
+    debugBtn.style.right = '10px';
+    debugBtn.style.zIndex = '10000';
+    debugBtn.style.padding = '10px';
+    debugBtn.style.background = 'red';
+    debugBtn.style.color = 'white';
+    debugBtn.style.border = 'none';
+    debugBtn.style.borderRadius = '5px';
+    debugBtn.style.fontSize = '12px';
+    debugBtn.onclick = debugScreenshotSubmission;
+    document.body.appendChild(debugBtn);
+}
+
+// Добавьте вызов после загрузки DOM
+setTimeout(addScreenshotDebugButton, 3000);
+
         // Функции для системы проверки заданий
 function showScreenshotUpload() {
     closeModal('confirmation-modal');
