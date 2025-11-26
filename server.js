@@ -12113,7 +12113,141 @@ app.get('/api/admin/cancelled-withdrawals', async (req, res) => {
         });
     }
 });
+// 🔧 ENDPOINT ДЛЯ ОТПРАВКИ СКРИНШОТА НА ПРОВЕРКУ
+app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'), async (req, res) => {
+    console.log('📸 Received screenshot submission request');
+    
+    try {
+        const { userTaskId } = req.params;
+        const { userId } = req.body;
+        
+        console.log('📋 Submission data:', {
+            userTaskId,
+            userId,
+            hasFile: !!req.file,
+            fileInfo: req.file ? {
+                originalname: req.file.originalname,
+                size: req.file.size,
+                mimetype: req.file.mimetype
+            } : 'No file'
+        });
 
+        // Валидация входных данных
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                error: 'User ID обязателен'
+            });
+        }
+
+        if (!userTaskId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Task ID обязателен'
+            });
+        }
+
+        // Проверяем существование задания пользователя
+        const userTaskResult = await pool.query(
+            `SELECT ut.*, t.title, t.price 
+             FROM user_tasks ut 
+             JOIN tasks t ON ut.task_id = t.id 
+             WHERE ut.id = $1 AND ut.user_id = $2`,
+            [userTaskId, userId]
+        );
+
+        if (userTaskResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Задание не найдено или не принадлежит пользователю'
+            });
+        }
+
+        const userTask = userTaskResult.rows[0];
+        
+        // Проверяем статус задания
+        if (userTask.status !== 'active') {
+            return res.status(400).json({
+                success: false,
+                error: 'Задание уже завершено или отменено'
+            });
+        }
+
+        // Проверяем файл
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                error: 'Скриншот обязателен для проверки'
+            });
+        }
+
+        // Валидация файла
+        if (!req.file.mimetype.startsWith('image/')) {
+            return res.status(400).json({
+                success: false,
+                error: 'Файл должен быть изображением'
+            });
+        }
+
+        if (req.file.size > 10 * 1024 * 1024) {
+            return res.status(400).json({
+                success: false,
+                error: 'Размер файла не должен превышать 10MB'
+            });
+        }
+
+        // Создаем запись проверки
+        const screenshotUrl = `/uploads/${req.file.filename}`;
+        
+        const verificationResult = await pool.query(
+            `INSERT INTO task_verifications 
+             (user_task_id, user_id, task_id, screenshot_url, status, submitted_at) 
+             VALUES ($1, $2, $3, $4, 'pending', NOW()) 
+             RETURNING *`,
+            [userTaskId, userId, userTask.task_id, screenshotUrl]
+        );
+
+        // Обновляем статус задания пользователя
+        await pool.query(
+            `UPDATE user_tasks SET status = 'pending' WHERE id = $1`,
+            [userTaskId]
+        );
+
+        console.log('✅ Screenshot submitted successfully:', {
+            verificationId: verificationResult.rows[0].id,
+            userTaskId,
+            screenshotUrl
+        });
+
+        res.json({
+            success: true,
+            message: 'Скриншот успешно отправлен на проверку администратору',
+            verification: verificationResult.rows[0]
+        });
+
+    } catch (error) {
+        console.error('❌ Error submitting screenshot:', error);
+        
+        // Удаляем загруженный файл при ошибке
+        if (req.file) {
+            try {
+                const fs = require('fs');
+                const path = require('path');
+                const filePath = path.join(__dirname, 'uploads', req.file.filename);
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                }
+            } catch (fileError) {
+                console.error('Error deleting uploaded file:', fileError);
+            }
+        }
+        
+        res.status(500).json({
+            success: false,
+            error: 'Внутренняя ошибка сервера: ' + error.message
+        });
+    }
+});
 // Получение списка промокодов
 app.get('/api/admin/promocodes/list', async (req, res) => {
     const { adminId } = req.query;
