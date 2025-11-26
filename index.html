@@ -2758,7 +2758,11 @@ body {
         
         <div class="confirmation-buttons">
             <button class="confirmation-btn confirmation-cancel" onclick="closeModal('screenshot-modal')">Отмена</button>
-            <button class="confirmation-btn confirmation-yes" onclick="submitScreenshot()" id="submit-screenshot-btn" disabled>Отправить на проверку</button>
+            <form id="submit-task-form" enctype="multipart/form-data">
+    <input type="file" id="screenshot-file" accept="image/*" required>
+    <input type="hidden" id="user-task-id" value="">
+    <button type="submit">Отправить на проверку</button>
+</form>
         </div>
     </div>
 </div>
@@ -10518,7 +10522,34 @@ setInterval(() => {
         loadTaskVerifications();
     }
 }, 30000);
-
+// Правильная отправка формы с файлом
+document.getElementById('submit-task-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData();
+    formData.append('screenshot', document.getElementById('screenshot-file').files[0]);
+    formData.append('userId', currentUser.id);
+    
+    const userTaskId = document.getElementById('user-task-id').value;
+    
+    try {
+        const response = await fetch(`/api/user/tasks/${userTaskId}/submit-auto`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Задание отправлено на проверку!');
+        } else {
+            alert('Ошибка: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Submit error:', error);
+        alert('Ошибка отправки задания');
+    }
+});
 // Принудительное обновление при открытии секции
 function showAdminVerificationSection() {
     showAdminSection('verification');
