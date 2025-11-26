@@ -395,6 +395,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static('.'));
 
+// 🔧 ИСПРАВЛЕННАЯ КОНФИГУРАЦИЯ MULTER
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         const uploadsDir = path.join(__dirname, 'uploads');
@@ -425,6 +426,14 @@ const upload = multer({
         }
     }
 });
+
+// 🔧 ОБСЛУЖИВАНИЕ СТАТИЧЕСКИХ ФАЙЛОВ
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+    maxAge: '1d', // Кэширование на 1 день
+    setHeaders: function (res, path) {
+        res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    }
+}));
 
 // Функция для отправки уведомления пользователю
 async function sendTaskNotification(userId, taskTitle, status, adminComment = '') {
@@ -7328,10 +7337,10 @@ async function checkTaskWithLinkGold(userId, taskData, screenshotUrl = null) {
         };
     }
 }
-// Правильная версия endpoint для отправки скриншота
+// 🔧 ИСПРАВЛЕННЫЙ ENDPOINT ДЛЯ ОТПРАВКИ СКРИНШОТА
 app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'), async (req, res) => {
     const userTaskId = req.params.userTaskId;
-    const userId = req.body.userId; // Получаем userId из тела запроса
+    const userId = req.body.userId;
     
     console.log('🚀 Submit task with screenshot request:', { userTaskId, userId });
     
@@ -7349,7 +7358,8 @@ app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'),
         });
     }
     
-    const screenshotUrl = `/uploads/${req.file.filename}`;
+    // 🔥 ИСПРАВЛЕНИЕ: Используем абсолютный URL для production
+    const screenshotUrl = `${APP_URL}/uploads/${req.file.filename}`;
     
     const client = await pool.connect();
     
@@ -7419,14 +7429,16 @@ app.post('/api/user/tasks/:userTaskId/submit-auto', upload.single('screenshot'),
         console.log('✅ Task submitted successfully:', {
             verificationId: verificationResult.rows[0].id,
             userTaskId: userTaskId,
-            userId: userId
+            userId: userId,
+            screenshotUrl: screenshotUrl // Логируем полный URL
         });
         
         res.json({
             success: true,
             message: 'Задание отправлено на проверку! Ожидайте решения администратора.',
             verificationId: verificationResult.rows[0].id,
-            userTaskId: userTaskId
+            userTaskId: userTaskId,
+            screenshotUrl: screenshotUrl
         });
         
     } catch (error) {
