@@ -8927,7 +8927,7 @@ app.get('/api/flyer/debug-setup', async (req, res) => {
 // Функция для управления ботами в SubGram
 async function manageSubGramBot(action, botData = {}) {
     try {
-        console.log('🤖 Managing SubGram bot:', action);
+        console.log('🤖  Managing SubGram bot:', action);
 
         const requestBody = {
             action: action,
