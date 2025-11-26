@@ -3060,7 +3060,38 @@ async function checkPendingConfirmations() {
         console.error('Error checking pending confirmations:', error);
     }
 }
-
+// 🔥 ОБРАБОТЧИК ВЫБОРА ФАЙЛА С ПРЕВЬЮ
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('screenshot-file');
+    const preview = document.getElementById('screenshot-preview');
+    const fileName = document.getElementById('file-name');
+    const submitBtn = document.getElementById('submit-screenshot-btn');
+    
+    if (fileInput && preview && fileName && submitBtn) {
+        fileInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                // Показываем имя файла
+                fileName.textContent = `Выбран файл: ${file.name}`;
+                
+                // Показываем превью
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+                
+                // Активируем кнопку отправки
+                submitBtn.disabled = false;
+            } else {
+                preview.style.display = 'none';
+                fileName.textContent = '';
+                submitBtn.disabled = true;
+            }
+        });
+    }
+});
 // Проверяем при загрузке приложения
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(checkPendingConfirmations, 3000);
@@ -9480,6 +9511,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setupSingleSubmission();
 });
 
+// ✅ ИСПРАВЛЕННАЯ ФУНКЦИЯ ОТПРАВКИ СКРИНШОТА
 async function submitScreenshot() {
     const fileInput = document.getElementById('screenshot-file');
     const submitBtn = document.getElementById('submit-screenshot-btn');
@@ -9496,8 +9528,23 @@ async function submitScreenshot() {
         return;
     }
 
-    if (!currentUser || !currentUserTaskId) {
-        showNotification('Ошибка: данные пользователя не найдены', 'error');
+    // 🔥 ИСПРАВЛЕНИЕ: Получаем текущий taskId из глобальной переменной или из DOM
+    let taskId = window.currentUserTaskId;
+    
+    // Если глобальная переменная не определена, пытаемся получить из данных модального окна
+    if (!taskId) {
+        const taskModal = document.getElementById('task-modal-url');
+        if (taskModal) {
+            const taskData = taskModal.getAttribute('data-task-id');
+            if (taskData) {
+                taskId = taskData;
+            }
+        }
+    }
+
+    if (!currentUser || !taskId) {
+        console.error('❌ Missing data:', { currentUser, taskId });
+        showNotification('Ошибка: данные задания не найдены. Попробуйте начать задание заново.', 'error');
         return;
     }
 
@@ -9512,12 +9559,16 @@ async function submitScreenshot() {
             submitBtn.textContent = '⏳ Отправляем...';
         }
 
-        const response = await fetch(`${API_BASE_URL}/api/user/tasks/${currentUserTaskId}/submit`, {
+        console.log('📤 Отправка скриншота для задания:', taskId);
+        
+        // 🔥 ИСПРАВЛЕНИЕ: Используем правильный endpoint
+        const response = await fetch(`${API_BASE_URL}/api/user/tasks/${taskId}/submit`, {
             method: 'POST',
             body: formData
         });
 
         const result = await response.json();
+        console.log('📨 Ответ сервера:', result);
 
         if (result.success) {
             showNotification('Скриншот отправлен на проверку!', 'success');
@@ -9541,6 +9592,75 @@ async function submitScreenshot() {
             submitBtn.disabled = false;
             submitBtn.textContent = 'Отправить на проверку';
         }
+    }
+}
+
+// 🔥 ДОБАВЬТЕ ЭТУ ФУНКЦИЮ ДЛЯ УСТАНОВКИ ID ЗАДАНИЯ
+function setCurrentUserTaskId(taskId) {
+    window.currentUserTaskId = taskId;
+    console.log('✅ Установлен currentUserTaskId:', taskId);
+    
+    // Также сохраняем в data-атрибут модального окна для надежности
+    const taskModal = document.getElementById('task-modal-url');
+    if (taskModal) {
+        taskModal.setAttribute('data-task-id', taskId);
+    }
+}
+
+// 🔥 ОБНОВИТЕ ФУНКЦИЮ НАЧАЛА ЗАДАНИЯ
+async function startTask(taskId) {
+    if (!currentUser) {
+        showNotification('Сначала войдите в систему', 'error');
+        return;
+    }
+
+    try {
+        console.log('🚀 Начинаем задание:', taskId);
+        
+        const result = await makeRequest('/api/user/tasks/start', {
+            method: 'POST',
+            body: JSON.stringify({
+                userId: currentUser.id,
+                taskId: taskId
+            })
+        });
+
+        if (result.success) {
+            showNotification('Задание начато!', 'success');
+            
+            // 🔥 УСТАНАВЛИВАЕМ ID ЗАДАНИЯ ДЛЯ БУДУЩЕЙ ОТПРАВКИ СКРИНШОТА
+            setCurrentUserTaskId(result.userTaskId || taskId);
+            
+            // Открываем модальное окно с инструкцией
+            openTaskModal(taskId);
+            
+        } else {
+            showNotification('Ошибка: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Start task error:', error);
+        showNotification('Ошибка начала задания', 'error');
+    }
+}
+// 🔥 ФУНКЦИЯ ОТКРЫТИЯ МОДАЛЬНОГО ОКНА СКРИНШОТА
+function openScreenshotModal() {
+    const modal = document.getElementById('screenshot-modal');
+    if (modal) {
+        modal.style.display = 'block';
+        
+        // Сбрасываем превью и файл
+        const fileInput = document.getElementById('screenshot-file');
+        const preview = document.getElementById('screenshot-preview');
+        const fileName = document.getElementById('file-name');
+        const submitBtn = document.getElementById('submit-screenshot-btn');
+        
+        if (fileInput) fileInput.value = '';
+        if (preview) {
+            preview.src = '';
+            preview.style.display = 'none';
+        }
+        if (fileName) fileName.textContent = '';
+        if (submitBtn) submitBtn.disabled = true;
     }
 }
 // 🗑️ ФУНКЦИЯ ДЛЯ УДАЛЕНИЯ ПРОВЕРКИ
