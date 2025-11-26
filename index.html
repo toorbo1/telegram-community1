@@ -8733,6 +8733,7 @@ function showTaskConfirmation(userTaskId, taskName) {
     }
     
     currentUserTaskId = numericTaskId;
+    console.log('✅ currentUserTaskId установлен:', currentUserTaskId);
     
     // Обновляем модальное окно
     const taskNameElement = document.getElementById('confirmation-task-name');
@@ -8798,6 +8799,9 @@ function showScreenshotUpload() {
         }
 
 async function submitScreenshot() {
+    const fileInput = document.getElementById('screenshot-file');
+    const submitBtn = document.getElementById('submit-screenshot-btn');
+    
     // Проверяем что currentUserTaskId установлен
     if (!currentUserTaskId) {
         console.error('❌ currentUserTaskId не установлен');
@@ -8805,11 +8809,14 @@ async function submitScreenshot() {
         return;
     }
 
-    const fileInput = document.getElementById('screenshot-file');
     if (!fileInput.files[0]) {
         showNotification('Выберите файл скриншота', 'error');
         return;
     }
+
+    // Блокируем кнопку на время отправки
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Отправляем...';
 
     try {
         const formData = new FormData();
@@ -8841,6 +8848,11 @@ async function submitScreenshot() {
     } catch (error) {
         console.error('Error submitting screenshot:', error);
         showNotification('Ошибка отправки скриншота: ' + error.message, 'error');
+    } finally {
+        // Всегда восстанавливаем кнопку
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Отправить на проверку';
+        updateSubmitButtonState();
     }
 }
 
@@ -10730,6 +10742,73 @@ setInterval(cleanupOldFiles, 24 * 60 * 60 * 1000);
 
 // Запускаем при старте сервера
 cleanupOldFiles();
+
+// Функция для обновления состояния кнопки отправки
+function updateSubmitButtonState() {
+    const fileInput = document.getElementById('screenshot-file');
+    const submitBtn = document.getElementById('submit-screenshot-btn');
+    const file = fileInput.files[0];
+    
+    if (file && currentUserTaskId) {
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+        submitBtn.style.cursor = 'pointer';
+    } else {
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.5';
+        submitBtn.style.cursor = 'not-allowed';
+    }
+}
+
+// Обновите обработчик изменения файла
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('screenshot-file');
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('file-name').textContent = file.name;
+                
+                // Показать превью
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('screenshot-preview');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    
+                    // Разблокировать кнопку отправки
+                    updateSubmitButtonState();
+                };
+                reader.readAsDataURL(file);
+            } else {
+                // Сбросить состояние если файл не выбран
+                updateSubmitButtonState();
+            }
+        });
+    }
+});
+
+// Также обновите функцию showScreenshotUpload
+function showScreenshotUpload() {
+    if (!currentUserTaskId) {
+        showNotification('Ошибка: задание не выбрано', 'error');
+        return;
+    }
+    
+    closeModal('confirmation-modal');
+    closeModal('cancel-confirmation-modal');
+    
+    // Сброс формы
+    document.getElementById('screenshot-file').value = '';
+    document.getElementById('screenshot-preview').style.display = 'none';
+    document.getElementById('file-name').textContent = '';
+    
+    // Сбросить состояние кнопки
+    updateSubmitButtonState();
+    
+    document.getElementById('screenshot-modal').classList.add('active');
+}
+
 // Обновите функцию отправки сообщения в чат
 async function sendMessageToAdmin() {
     if (!currentUser || !currentChatId) {
