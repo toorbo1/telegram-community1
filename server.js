@@ -17,7 +17,25 @@ const FLYER_API_URL = 'https://api.flyerservice.io';
 // ЗАМЕНИТЕ НА ЭТОТ КОД:
 const WEBHOOK_URL = 'https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook';
 
+// Глобальные переменные для отладки
+console.log('🔧 Debug info:', {
+    API_BASE_URL: API_BASE_URL,
+    currentUser: currentUser ? {
+        id: currentUser.id,
+        name: currentUser.first_name
+    } : 'null',
+    currentUserTaskId: currentUserTaskId
+});
 
+// Функция для проверки состояния
+function debugScreenshotUpload() {
+    console.log('🔍 Debug screenshot upload:', {
+        fileInput: document.getElementById('screenshot-file'),
+        submitBtn: document.getElementById('submit-screenshot-btn'),
+        currentUserTaskId: currentUserTaskId,
+        currentUser: currentUser
+    });
+}
 
 const LINKGOLDMONEY_API_KEY = 'FL-pqKrtr-kPaJFg-KeLIQD-TLHgfC';
 const LINKGOLDMONEY_API_URL = 'https://telegram-community1-production-0bc1.up.railway.app/';
@@ -11413,19 +11431,10 @@ async function addAutoVerificationColumn() {
 addAutoVerificationColumn();
 // Submit task for verification (WITH FILE UPLOAD)
 app.post('/api/user/tasks/:userTaskId/submit', upload.single('screenshot'), async (req, res) => {
-    // Перенаправляем на новый endpoint с автоматической проверкой
     const { userTaskId } = req.params;
     const { userId } = req.body;
     
-    // Вызываем endpoint с автоматической проверкой
-    const newReq = { ...req, params: { userTaskId }, body: { userId } };
-    const newRes = {
-        json: (data) => res.json(data),
-        status: (code) => ({ json: (data) => res.status(code).json(data) })
-    };
-    
-    await exports.submitTaskAuto(newReq, newRes);
-
+    console.log('📨 Submit task request:', { userTaskId, userId });
     
     if (!userId) {
         return res.status(400).json({
@@ -11444,6 +11453,23 @@ app.post('/api/user/tasks/:userTaskId/submit', upload.single('screenshot'), asyn
     const screenshotUrl = `/uploads/${req.file.filename}`;
     
     try {
+        // Проверяем существование задания
+        const taskCheck = await pool.query(`
+            SELECT ut.*, t.title, t.price 
+            FROM user_tasks ut 
+            JOIN tasks t ON ut.task_id = t.id 
+            WHERE ut.id = $1 AND ut.user_id = $2 AND ut.status = 'active'
+        `, [userTaskId, userId]);
+        
+        if (taskCheck.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Задание не найдено или уже завершено'
+            });
+        }
+        
+        const task = taskCheck.rows[0];
+        
         // Update user_task
         await pool.query(`
             UPDATE user_tasks 
@@ -11451,40 +11477,39 @@ app.post('/api/user/tasks/:userTaskId/submit', upload.single('screenshot'), asyn
             WHERE id = $2 AND user_id = $3
         `, [screenshotUrl, userTaskId, userId]);
         
-        // Get task info for verification
-        const taskInfo = await pool.query(`
-            SELECT ut.user_id, ut.task_id, u.first_name, u.last_name, u.username, t.title, t.price 
-            FROM user_tasks ut 
-            JOIN user_profiles u ON ut.user_id = u.user_id 
-            JOIN tasks t ON ut.task_id = t.id 
-            WHERE ut.id = $1
-        `, [userTaskId]);
-        
-        if (taskInfo.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'Task not found'
-            });
-        }
-        
-        const taskData = taskInfo.rows[0];
-        const userName = `${taskData.first_name} ${taskData.last_name}`;
-        
         // Create verification record
         const verificationResult = await pool.query(`
             INSERT INTO task_verifications 
             (user_task_id, user_id, task_id, user_name, user_username, task_title, task_price, screenshot_url) 
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING *
-        `, [userTaskId, taskData.user_id, taskData.task_id, userName, taskData.username, taskData.title, taskData.price, screenshotUrl]);
+        `, [
+            userTaskId, 
+            userId, 
+            task.task_id, 
+            currentUser.first_name, 
+            currentUser.username, 
+            task.title, 
+            task.price, 
+            screenshotUrl
+        ]);
+        
+        console.log('✅ Task submitted for verification:', verificationResult.rows[0].id);
         
         res.json({
             success: true,
             message: 'Task submitted for review',
             verificationId: verificationResult.rows[0].id
         });
+        
     } catch (error) {
-        console.error('Submit task error:', error);
+        console.error('❌ Submit task error:', error);
+        
+        // Удаляем загруженный файл в случае ошибки
+        if (req.file) {
+            fs.unlinkSync(req.file.path);
+        }
+        
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
