@@ -5047,6 +5047,212 @@ bot.onText(/\/force_setup_flyer/, async (msg) => {
         await bot.sendMessage(chatId, errorMessage, { parse_mode: 'HTML' });
     }
 });
+// 🧪 КОМАНДА ДЛЯ ТЕСТИРОВАНИЯ FLYER API
+bot.onText(/\/test_flyer_api/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+
+    if (parseInt(userId) !== ADMIN_ID) {
+        return await bot.sendMessage(chatId, '❌ Только главный администратор может тестировать API.');
+    }
+
+    try {
+        await bot.sendMessage(chatId, '🧪 Тестирую подключение к Flyer API...');
+
+        const endpoints = [
+            '/set_webhook',
+            '/webhook',
+            '/setWebhook', 
+            '/get_me',
+            '/check'
+        ];
+
+        let results = [];
+        
+        for (const endpoint of endpoints) {
+            try {
+                const response = await fetch(`https://api.flyerservice.io${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        key: FLYER_API_KEY
+                    })
+                });
+
+                results.push({
+                    endpoint: endpoint,
+                    status: response.status,
+                    ok: response.ok
+                });
+
+            } catch (error) {
+                results.push({
+                    endpoint: endpoint,
+                    error: error.message
+                });
+            }
+        }
+
+        let message = `🔍 <b>Результаты тестирования Flyer API:</b>\n\n`;
+        
+        results.forEach(result => {
+            if (result.error) {
+                message += `❌ ${result.endpoint}: ${result.error}\n`;
+            } else {
+                message += result.ok ? 
+                    `✅ ${result.endpoint}: HTTP ${result.status}\n` :
+                    `❌ ${result.endpoint}: HTTP ${result.status}\n`;
+            }
+        });
+
+        message += `\n🔑 <b>API Key:</b> ${FLYER_API_KEY ? 'Настроен' : 'Отсутствует'}`;
+
+        await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
+
+    } catch (error) {
+        await bot.sendMessage(chatId, `❌ Ошибка тестирования: ${error.message}`);
+    }
+});
+// 🔄 АЛЬТЕРНАТИВНЫЙ МЕТОД НАСТРОЙКИ WEBHOOK
+bot.onText(/\/setup_flyer_alternative/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+
+    if (parseInt(userId) !== ADMIN_ID) {
+        return await bot.sendMessage(chatId, '❌ Только главный администратор может настраивать Flyer.');
+    }
+
+    try {
+        await bot.sendMessage(chatId, '🔄 Пробую альтернативные методы настройки webhook...');
+
+        // Метод 1: Попробуем через разные endpoints
+        const endpoints = [
+            '/set_webhook',
+            '/webhook', 
+            '/setWebhook',
+            '/bot/set_webhook'
+        ];
+
+        let success = false;
+        let lastError = '';
+
+        for (const endpoint of endpoints) {
+            try {
+                await bot.sendMessage(chatId, `🔄 Пробую endpoint: ${endpoint}`);
+                
+                const response = await fetch(`https://api.flyerservice.io${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        key: FLYER_API_KEY,
+                        webhook: WEBHOOK_URL
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    success = true;
+                    
+                    await bot.sendMessage(
+                        chatId,
+                        `🎉 <b>Успешно через ${endpoint}!</b>\n\n` +
+                        `Ответ: ${JSON.stringify(result)}`,
+                        { parse_mode: 'HTML' }
+                    );
+                    break;
+                } else {
+                    lastError = `${endpoint}: HTTP ${response.status}`;
+                }
+            } catch (error) {
+                lastError = `${endpoint}: ${error.message}`;
+            }
+        }
+
+        if (!success) {
+            // Метод 2: Попробуем получить информацию о боте
+            await bot.sendMessage(chatId, '🔄 Пробую получить информацию о боте...');
+            
+            try {
+                const botInfoResponse = await fetch('https://api.flyerservice.io/get_me', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        key: FLYER_API_KEY
+                    })
+                });
+
+                if (botInfoResponse.ok) {
+                    const botInfo = await botInfoResponse.json();
+                    
+                    await bot.sendMessage(
+                        chatId,
+                        `🤖 <b>Информация о боте:</b>\n\n` +
+                        `Статус: ${JSON.stringify(botInfo)}\n\n` +
+                        `💡 <b>Рекомендация:</b> Обратитесь в поддержку Flyer для настройки webhook.`,
+                        { parse_mode: 'HTML' }
+                    );
+                } else {
+                    throw new Error(`get_me: HTTP ${botInfoResponse.status}`);
+                }
+            } catch (botError) {
+                throw new Error(`Все методы failed. Последняя ошибка: ${lastError}, Bot info: ${botError.message}`);
+            }
+        }
+
+    } catch (error) {
+        await bot.sendMessage(
+            chatId,
+            `❌ <b>Все методы настройки не сработали:</b>\n\n` +
+            `${error.message}\n\n` +
+            `<b>Возможные причины:</b>\n` +
+            `• Неправильный API ключ\n` +
+            `• API временно недоступно\n` +
+            `• Изменились endpoints API\n` +
+            `• Требуется верификация аккаунта\n\n` +
+            `<b>Решение:</b>\n` +
+            `1. Проверьте ключ в @FlyerServiceBot\n` +
+            `2. Обратитесь в поддержку Flyer\n` +
+            `3. Используйте временно встроенную проверку подписки`,
+            { parse_mode: 'HTML' }
+        );
+    }
+});
+// 🎯 ВРЕМЕННОЕ РЕШЕНИЕ - ВСТРОЕННАЯ ПРОВЕРКА ПОДПИСКИ
+bot.onText(/\/use_builtin_check/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+
+    if (parseInt(userId) !== ADMIN_ID) {
+        return await bot.sendMessage(chatId, '❌ Только главный администратор может менять настройки.');
+    }
+
+    try {
+        // Отключаем Flyer проверку временно
+        process.env.USE_FLYER_CHECK = 'false';
+        
+        await bot.sendMessage(
+            chatId,
+            `🔧 <b>Переключено на встроенную проверку подписки!</b>\n\n` +
+            `Теперь бот будет использовать встроенную проверку подписки на канал.\n\n` +
+            `<b>Преимущества:</b>\n` +
+            `• Мгновенная работа\n` +
+            `• Не зависит от внешних API\n` +
+            `• Простая настройка\n\n` +
+            `<b>Чтобы вернуть Flyer:</b>\n` +
+            `<code>/enable_flyer_check</code>`,
+            { parse_mode: 'HTML' }
+        );
+
+    } catch (error) {
+        await bot.sendMessage(chatId, `❌ Ошибка: ${error.message}`);
+    }
+});
 // 🔧 КОМАНДА ДЛЯ ПРИНУДИТЕЛЬНОЙ НАСТРОЙКИ FLYER
 bot.onText(/\/fix_flyer_webhook/, async (msg) => {
     const chatId = msg.chat.id;
