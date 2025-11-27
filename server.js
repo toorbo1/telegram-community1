@@ -426,7 +426,67 @@ const upload = multer({
         }
     }
 });
+// ==================== FLYER WEBHOOK HANDLER ====================
+// Эндпоинт для приема вебхуков от Flyer API
+app.post('/api/flyer/webhook', express.json({ limit: '10mb' }), async (req, res) => {
+    console.log('📨 Received Flyer webhook:', JSON.stringify(req.body, null, 2));
 
+    try {
+        const { type, key_number, data } = req.body;
+
+        // Логируем полученные данные для отладки
+        console.log('🔍 Webhook details:', {
+            type,
+            key_number: key_number ? 'provided' : 'missing',
+            data_keys: data ? Object.keys(data) : 'no data'
+        });
+
+        // Проверяем ключ (если предоставлен)
+        if (key_number && key_number !== FLYER_API_KEY) {
+            console.log('❌ Invalid Flyer webhook key:', key_number);
+            return res.status(401).json({ status: false, error: 'Invalid API key' });
+        }
+
+        console.log(`✅ Valid Flyer webhook received, type: ${type}`);
+
+        // Обрабатываем события согласно документации Flyer
+        switch (type) {
+            case 'test':
+                console.log('✅ Test webhook received - everything works!');
+                // Для тестового вебхука просто возвращаем успех
+                return res.json({ status: true });
+
+            case 'sub_completed':
+                console.log('✅ User completed subscription:', data);
+                if (data && data.user_id) {
+                    // Вызываем функцию, которая обработает завершение подписки
+                    await handleFlyerSubscriptionCompleted(data.user_id);
+                }
+                return res.json({ status: true });
+
+            case 'new_status':
+                console.log('🔄 New task status received:', data);
+                if (data && data.user_id && data.signature) {
+                    // Вызываем функцию, которая обработает обновление статуса задания
+                    await handleFlyerTaskStatusUpdate(data);
+                }
+                return res.json({ status: true });
+
+            default:
+                console.warn(`⚠️ Unknown webhook type: ${type}`);
+                return res.json({ status: true }); // Всегда возвращаем успех, чтобы не блокировать сервис
+        }
+
+    } catch (error) {
+        console.error('❌ Error processing Flyer webhook:', error);
+        // Всегда возвращаем 200 OK, чтобы сервис Flyer не думал, что вебхук недоступен
+        res.status(200).json({ status: false, error: error.message });
+    }
+});
+// Запуск сервера
+app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+});
 // 🔧 ОБСЛУЖИВАНИЕ СТАТИЧЕСКИХ ФАЙЛОВ
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
     maxAge: '1d', // Кэширование на 1 день
@@ -3792,7 +3852,84 @@ async function sendUsersList(chatId, users, searchQuery) {
         }
     );
 }
+// Улучшенная функция обработки завершения подписки
+async function handleFlyerSubscriptionCompleted(userId) {
+    try {
+        console.log(`🎉 Processing subscription completion for user: ${userId}`);
 
+        // Помечаем пользователя как прошедшего проверку подписки в базе данных
+        // Замените pool.query на вашу логику работы с БД
+        await pool.query(`UPDATE user_profiles SET has_subscribed = true, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1`, [userId]);
+        console.log(`✅ User ${userId} subscription marked as completed`);
+
+        // Отправляем сообщение пользователю через Telegram Bot API
+        if (bot) {
+            try {
+                await bot.sendMessage(userId, '✅ **Подписка подтверждена!**\nБлагодарим за подписку!\nТеперь вы можете пользоваться всеми функциями бота! 🎉', { parse_mode: 'HTML' });
+                console.log(`✅ Notification sent to user ${userId}`);
+            } catch (botError) {
+                console.error('❌ Failed to send notification:', botError.message);
+            }
+        }
+
+    } catch (error) {
+        console.error('❌ Handle subscription completed error:', error);
+    }
+}
+
+// Функция обработки обновления статуса задания
+async function handleFlyerTaskStatusUpdate(data) {
+    try {
+        const { status, user_id, signature, link } = data;
+        console.log(`🔄 Processing task status update:`, { user_id, signature, status, link });
+
+        // Обновляем статус задания в базе данных
+        await pool.query(`UPDATE flyer_tasks SET status = $1, completed_at = CASE WHEN $1 = 'completed' THEN CURRENT_TIMESTAMP ELSE NULL END WHERE user_id = $2 AND task_signature = $3`, [status, user_id, signature]);
+
+        // Можно отправить уведомление пользователю, если статус изменился на 'abort'
+        if (status === 'abort' && bot) {
+            await bot.sendMessage(user_id, `⚠️ Вы отписались от канала: ${link}\nЭто может повлиять на ваш доступ к боту.`, { parse_mode: 'HTML' });
+        }
+
+    } catch (error) {
+        console.error('❌ Handle task status update error:', error);
+    }
+}
+// Функция для автоматической настройки вебхука при запуске
+async function setupFlyerWebhook() {
+    try {
+        console.log('🚀 Setting up Flyer webhook...');
+
+        const response = await fetch('https://api.flyerservice.io/set_webhook', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                key: FLYER_API_KEY,
+                webhook: 'https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook'
+            })
+        });
+
+        const result = await response.json();
+        console.log('✅ Flyer setup response:', result);
+
+        if (response.ok) {
+            console.log('✅ Flyer webhook configured successfully!');
+            return { success: true, result };
+        } else {
+            throw new Error(`Flyer API: ${response.status} - ${JSON.stringify(result)}`);
+        }
+
+    } catch (error) {
+        console.error('❌ Flyer webhook setup failed:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Вызов функции при запуске сервера
+initializeServer(); // Предположим, что у вас есть такая функция
+setupFlyerWebhook(); // Вызываем настройку вебхука
 // 🎛️ ПАНЕЛЬ УПРАВЛЕНИЯ ПОЛЬЗОВАТЕЛЕМ
 async function sendUserManagementPanel(chatId, user) {
     const userName = user.first_name + (user.last_name ? ` ${user.last_name}` : '');
@@ -9889,75 +10026,6 @@ app.get('/api/admin/flyer-status-detailed', async (req, res) => {
 });
 
 
-// Убедитесь что этот middleware стоит ПЕРВЫМ для вебхука
-app.post('/api/flyer/webhook', express.json({ limit: '10mb' }), async (req, res) => {
-    console.log('📨 Received Flyer webhook:', JSON.stringify(req.body, null, 2));
-
-    try {
-        const { type, key_number, data } = req.body;
-
-        // Логируем полученные данные для отладки
-        console.log('🔍 Webhook details:', {
-            type,
-            key_number: key_number ? 'provided' : 'missing',
-            data_keys: data ? Object.keys(data) : 'no data'
-        });
-
-        // Проверяем ключ (если предоставлен)
-        if (key_number && key_number !== FLYER_API_KEY) {
-            console.log('❌ Invalid Flyer webhook key:', key_number);
-            return res.status(401).json({ 
-                status: false,
-                error: 'Invalid API key'
-            });
-        }
-
-        console.log(`✅ Valid Flyer webhook received, type: ${type}`);
-
-        // Обрабатываем события согласно документации Flyer
-        switch (type) {
-            case 'test':
-                console.log('✅ Test webhook received - everything works!');
-                // Для тестового вебхука просто возвращаем успех
-                break;
-
-            case 'sub_completed':
-                console.log('✅ User completed subscription:', data);
-                if (data && data.user_id) {
-                    await handleFlyerSubscriptionCompleted(data.user_id);
-                }
-                break;
-
-            case 'new_status':
-                console.log('📊 Task status update:', data);
-                if (data) {
-                    await handleFlyerTaskStatusUpdate(data);
-                }
-                break;
-
-            default:
-                console.log('⚠️ Unknown webhook type:', type);
-                // Для неизвестных типов все равно возвращаем успех
-        }
-
-        // ВАЖНО: Всегда возвращаем {status: true} согласно документации
-        res.json({ 
-            status: true,
-            processed: true,
-            timestamp: new Date().toISOString(),
-            type: type
-        });
-
-    } catch (error) {
-        console.error('❌ Flyer webhook processing error:', error);
-        // Даже при ошибке возвращаем {status: true} чтобы Flyer не считал вебхук неработающим
-        res.json({ 
-            status: true,
-            error: error.message,
-            timestamp: new Date().toISOString()
-        });
-    }
-});
 
 // Улучшенная функция обработки завершения подписки
 async function handleFlyerSubscriptionCompleted(userId) {
