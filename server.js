@@ -491,7 +491,30 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
         res.set('Cross-Origin-Resource-Policy', 'cross-origin');
     }
 }));
+// Убедись, что у тебя есть middleware для JSON
+app.use(express.json({ limit: '10mb' }));
 
+// Flyer webhook endpoint
+app.post('/flyer/webhook', (req, res) => {
+  const payload = req.body;
+
+  console.log('📨 Получен вебхук от Flyer:', payload);
+
+  // Обязательно ответить {"status": true}, иначе Flyer будет считать, что вебхук не работает
+  res.json({ status: true });
+
+  // Обработка событий
+  if (payload.type === 'sub_completed') {
+    const userId = payload.data.user_id;
+    console.log(`✅ Пользователь ${userId} завершил подписку`);
+    // Здесь: разблокировать пользователя, начислить звёзды и т.п.
+  } else if (payload.type === 'new_status' && payload.data.status === 'abort') {
+    console.log(`⚠️ Пользователь ${payload.data.user_id} отписался от задания`);
+    // Здесь: отменить награду, уведомить и т.д.
+  } else if (payload.type === 'test') {
+    console.log('🧪 Тестовый вебхук получен — всё работает!');
+  }
+});
 // Функция для отправки уведомления пользователю
 async function sendTaskNotification(userId, taskTitle, status, adminComment = '') {
     if (!bot) {
