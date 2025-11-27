@@ -483,10 +483,7 @@ app.post('/api/flyer/webhook', express.json({ limit: '10mb' }), async (req, res)
         res.status(200).json({ status: false, error: error.message });
     }
 });
-// Запуск сервера
-app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-});
+
 // 🔧 ОБСЛУЖИВАНИЕ СТАТИЧЕСКИХ ФАЙЛОВ
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
     maxAge: '1d', // Кэширование на 1 день
