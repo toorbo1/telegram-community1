@@ -1,0 +1,12 @@
+-- LinkGold Database Schema
+-- Tables are created automatically by the server
+-- This file is for reference only
+
+-- User profiles table
+-- Tasks table with correct columns
+-- Posts table  
+-- User tasks table
+-- Support chats table
+-- Support messages table
+-- Withdrawal requests table
+-- Task verification table
