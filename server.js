@@ -428,38 +428,29 @@ const upload = multer({
 });
 // ==================== FLYER WEBHOOK HANDLER ====================
 // Эндпоинт для приема вебхуков от Flyer API
+// flyer_webhook.py у вас уже есть. В server.js замените текущий обработчик на этот.
 app.post('/api/flyer/webhook', express.json({ limit: '10mb' }), async (req, res) => {
     console.log('📨 Received Flyer webhook:', JSON.stringify(req.body, null, 2));
 
     try {
         const { type, key_number, data } = req.body;
 
-        // Логируем полученные данные для отладки
-        console.log('🔍 Webhook details:', {
-            type,
-            key_number: key_number ? 'provided' : 'missing',
-            data_keys: data ? Object.keys(data) : 'no data'
-        });
-
-        // Проверяем ключ (если предоставлен)
+        // Проверка ключа (опционально, но для безопасности)
         if (key_number && key_number !== FLYER_API_KEY) {
             console.log('❌ Invalid Flyer webhook key:', key_number);
-            return res.status(401).json({ status: false, error: 'Invalid API key' });
+            // Всегда возвращаем 200, чтобы Flyer не думал, что вебхук сломан
+            return res.status(200).json({ status: false, error: 'Invalid API key' });
         }
 
-        console.log(`✅ Valid Flyer webhook received, type: ${type}`);
-
-        // Обрабатываем события согласно документации Flyer
+        // Обрабатываем события
         switch (type) {
             case 'test':
                 console.log('✅ Test webhook received - everything works!');
-                // Для тестового вебхука просто возвращаем успех
                 return res.json({ status: true });
 
             case 'sub_completed':
                 console.log('✅ User completed subscription:', data);
                 if (data && data.user_id) {
-                    // Вызываем функцию, которая обработает завершение подписки
                     await handleFlyerSubscriptionCompleted(data.user_id);
                 }
                 return res.json({ status: true });
@@ -467,14 +458,13 @@ app.post('/api/flyer/webhook', express.json({ limit: '10mb' }), async (req, res)
             case 'new_status':
                 console.log('🔄 New task status received:', data);
                 if (data && data.user_id && data.signature) {
-                    // Вызываем функцию, которая обработает обновление статуса задания
                     await handleFlyerTaskStatusUpdate(data);
                 }
                 return res.json({ status: true });
 
             default:
                 console.warn(`⚠️ Unknown webhook type: ${type}`);
-                return res.json({ status: true }); // Всегда возвращаем успех, чтобы не блокировать сервис
+                return res.json({ status: true });
         }
 
     } catch (error) {
@@ -666,6 +656,7 @@ app.get('/api/flyer/webhook/test', async (req, res) => {
 async function initDatabase() {
     try {
         console.log('🔄 Initializing simplified database...');
+        
 
         // Таблица реферальных ссылок
         await pool.query(`
