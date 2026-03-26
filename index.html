@@ -12435,7 +12435,7 @@ async function createReferralLink() {
         messageDiv.innerHTML = `<span style="color: var(--error);">Ошибка: ${error.message}</span>`;
         showNotification('❌ Ошибка создания ссылки: ' + error.message, 'error');
     } finally {
-        submitBtn.disabled = false;
+        submitBtn.disabled = false; 
         submitBtn.textContent = '🔗 Создать ссылку';
     }
 }
