@@ -653,10 +653,104 @@ app.get('/api/flyer/webhook/test', async (req, res) => {
     });
 });
 
-async function initDatabase() {
+// Добавьте в начало server.js, после pool инициализации
+
+async function waitForDatabase(maxRetries = 30, delay = 2000) {
+    console.log('⏳ Waiting for database to be ready...');
+    
+    for (let i = 1; i <= maxRetries; i++) {
+        try {
+            // Пробуем выполнить простой запрос
+            await pool.query('SELECT 1');
+            console.log('✅ Database is ready!');
+            return true;
+        } catch (error) {
+            // Код 57P03 означает "база данных запускается"
+            if (error.code === '57P03') {
+                console.log(`⏳ Database starting up... (attempt ${i}/${maxRetries})`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+            }
+            
+            // Другие ошибки
+            console.error(`❌ Database error:`, error.message);
+            if (i === maxRetries) {
+                throw error;
+            }
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+    
+    throw new Error('Database did not become ready after ' + (maxRetries * delay / 1000) + ' seconds');
+}
+
+// Замените существующий код запуска на:
+
+async function startServer() {
     try {
-        console.log('🔄 Initializing simplified database...');
+        console.log('🚀 Starting server...');
         
+        // 1. Ждем готовности базы данных
+        await waitForDatabase(30, 2000);
+        
+        // 2. Инициализируем базу данных
+        await initDatabase();
+        
+        // 3. Инициализируем Flyer (без критических ошибок)
+        try {
+            await initializeFlyerIntegration();
+        } catch (flyerError) {
+            console.warn('⚠️ Flyer integration warning:', flyerError.message);
+        }
+        
+        // 4. Запускаем сервер
+        app.listen(PORT, '0.0.0.0', () => {
+            console.log(`🚀 Server running on port ${PORT}`);
+            console.log(`📊 Health: http://localhost:${PORT}/api/health`);
+            console.log(`🔐 Admin ID: ${ADMIN_ID}`);
+        });
+        
+    } catch (error) {
+        console.error('❌ Failed to start server:', error.message);
+        process.exit(1);
+    }
+}
+
+// Запускаем сервер
+startServer();
+
+
+async function initDatabase() {
+    console.log('🔄 Initializing simplified database...');
+    
+    try {
+        // Сначала проверяем существование таблицы user_profiles
+        const userTableExists = await pool.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = 'user_profiles'
+            )
+        `);
+        
+        if (!userTableExists.rows[0].exists) {
+            console.log('📝 Creating user_profiles table...');
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS user_profiles (
+                    user_id BIGINT PRIMARY KEY,
+                    username TEXT,
+                    first_name TEXT,
+                    last_name TEXT,
+                    photo_url TEXT,
+                    balance REAL DEFAULT 0,
+                    level INTEGER DEFAULT 1,
+                    is_admin BOOLEAN DEFAULT false,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+        }
+        
+        // Создаем остальные таблицы с проверкой существования
+        await createTablesIfNotExist();
 
         // Таблица реферальных ссылок
         await pool.query(`
@@ -1150,6 +1244,151 @@ await addMissingUserColumns();
     }
 }
 
+async function createTablesIfNotExist() {
+    const tables = [
+        {
+            name: 'tasks',
+            query: `
+                CREATE TABLE IF NOT EXISTS tasks (
+                    id SERIAL PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    description TEXT NOT NULL,
+                    price REAL NOT NULL,
+                    created_by BIGINT,
+                    category TEXT DEFAULT 'general',
+                    time_to_complete TEXT DEFAULT '5 минут',
+                    difficulty TEXT DEFAULT 'Легкая',
+                    people_required INTEGER DEFAULT 1,
+                    task_url TEXT,
+                    image_url TEXT,
+                    status TEXT DEFAULT 'active',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `
+        },
+        {
+            name: 'user_tasks',
+            query: `
+                CREATE TABLE IF NOT EXISTS user_tasks (
+                    id SERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL,
+                    task_id INTEGER NOT NULL,
+                    status TEXT DEFAULT 'active',
+                    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    screenshot_url TEXT,
+                    submitted_at TIMESTAMP,
+                    completed_at TIMESTAMP
+                )
+            `
+        },
+        {
+            name: 'posts',
+            query: `
+                CREATE TABLE IF NOT EXISTS posts (
+                    id SERIAL PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    author TEXT NOT NULL,
+                    author_id BIGINT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `
+        },
+        {
+            name: 'support_chats',
+            query: `
+                CREATE TABLE IF NOT EXISTS support_chats (
+                    id SERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL,
+                    user_name TEXT NOT NULL,
+                    user_username TEXT,
+                    last_message TEXT,
+                    last_message_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    is_active BOOLEAN DEFAULT true,
+                    unread_count INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `
+        },
+        {
+            name: 'support_messages',
+            query: `
+                CREATE TABLE IF NOT EXISTS support_messages (
+                    id SERIAL PRIMARY KEY,
+                    chat_id INTEGER NOT NULL,
+                    user_id BIGINT NOT NULL,
+                    user_name TEXT NOT NULL,
+                    user_username TEXT,
+                    message TEXT NOT NULL,
+                    is_admin BOOLEAN DEFAULT false,
+                    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `
+        },
+        {
+            name: 'withdrawal_requests',
+            query: `
+                CREATE TABLE IF NOT EXISTS withdrawal_requests (
+                    id SERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL,
+                    username TEXT,
+                    first_name TEXT,
+                    amount REAL NOT NULL,
+                    status TEXT DEFAULT 'pending',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    completed_at TIMESTAMP,
+                    completed_by BIGINT
+                )
+            `
+        },
+        {
+            name: 'task_verifications',
+            query: `
+                CREATE TABLE IF NOT EXISTS task_verifications (
+                    id SERIAL PRIMARY KEY,
+                    user_task_id INTEGER NOT NULL,
+                    user_id BIGINT NOT NULL,
+                    task_id INTEGER NOT NULL,
+                    user_name TEXT NOT NULL,
+                    user_username TEXT,
+                    task_title TEXT NOT NULL,
+                    task_price REAL NOT NULL,
+                    screenshot_url TEXT NOT NULL,
+                    status TEXT DEFAULT 'pending',
+                    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    reviewed_at TIMESTAMP,
+                    reviewed_by BIGINT,
+                    auto_verified BOOLEAN DEFAULT false
+                )
+            `
+        },
+        {
+            name: 'promocodes',
+            query: `
+                CREATE TABLE IF NOT EXISTS promocodes (
+                    id SERIAL PRIMARY KEY,
+                    code VARCHAR(20) UNIQUE NOT NULL,
+                    reward REAL NOT NULL DEFAULT 0,
+                    max_uses INTEGER NOT NULL DEFAULT 1,
+                    used_count INTEGER DEFAULT 0,
+                    expires_at TIMESTAMP,
+                    is_active BOOLEAN DEFAULT true,
+                    created_by BIGINT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `
+        }
+    ];
+    
+    for (const table of tables) {
+        try {
+            await pool.query(table.query);
+            console.log(`✅ Table ${table.name} verified`);
+        } catch (error) {
+            console.error(`❌ Error creating table ${table.name}:`, error.message);
+        }
+    }
+}
 async function createPromocodesTable() {
     try {
         console.log('🔧 Creating/verifying promocodes table...');
