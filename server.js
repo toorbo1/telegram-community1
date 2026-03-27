@@ -1486,6 +1486,53 @@ app.post('/api/test-withdrawal', async (req, res) => {
 });
 // Инициализируем базу данных при запуске
 initDatabase();
+
+// После создания таблиц, добавьте:
+async function ensureMainAdmin() {
+    try {
+        // Проверяем существование главного админа
+        const adminCheck = await pool.query(
+            'SELECT user_id FROM user_profiles WHERE user_id = $1',
+            [ADMIN_ID]
+        );
+        
+        if (adminCheck.rows.length === 0) {
+            console.log('👑 Creating main admin user...');
+            await pool.query(`
+                INSERT INTO user_profiles (user_id, username, first_name, is_admin, balance) 
+                VALUES ($1, $2, $3, true, 0)
+            `, [ADMIN_ID, 'linkgold_admin', 'Главный']);
+            console.log('✅ Main admin created');
+        } else {
+            // Обновляем права админа
+            await pool.query(
+                'UPDATE user_profiles SET is_admin = true WHERE user_id = $1',
+                [ADMIN_ID]
+            );
+            console.log('✅ Main admin rights verified');
+        }
+        
+        // Добавляем права доступа для главного админа
+        await pool.query(`
+            INSERT INTO admin_permissions (admin_id, can_posts, can_tasks, can_verification, can_support, can_payments, can_admins)
+            VALUES ($1, true, true, true, true, true, true)
+            ON CONFLICT (admin_id) DO UPDATE SET 
+                can_posts = true,
+                can_tasks = true,
+                can_verification = true,
+                can_support = true,
+                can_payments = true,
+                can_admins = true
+        `, [ADMIN_ID]);
+        
+    } catch (error) {
+        console.error('❌ Error ensuring main admin:', error.message);
+    }
+}
+
+// Вызовите эту функцию в initDatabase() после создания таблиц
+await ensureMainAdmin();
+
 // Принудительное создание таблицы withdrawal_requests
 async function createWithdrawalTable() {
     try {
