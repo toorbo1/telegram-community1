@@ -749,7 +749,7 @@ async function initDatabase() {
             `);
         }
         
-        // Создаем остальные таблицы с проверкой существования
+        // Создаем остальные таблицы
         await createTablesIfNotExist();
 
         // Таблица реферальных ссылок
@@ -1237,7 +1237,65 @@ await addMissingUserColumns();
         } catch (error) {
             console.log('⚠️ Promocodes table check:', error.message);
         }
-        
+              // ✅ В КОНЦЕ ФУНКЦИИ ДОБАВЬТЕ ЭТО:
+        async function ensureMainAdmin() {
+            try {
+                console.log('👑 Checking main admin...');
+                
+                // Создаем таблицу admin_permissions если её нет
+                await pool.query(`
+                    CREATE TABLE IF NOT EXISTS admin_permissions (
+                        admin_id BIGINT PRIMARY KEY,
+                        can_posts BOOLEAN DEFAULT true,
+                        can_tasks BOOLEAN DEFAULT true,
+                        can_verification BOOLEAN DEFAULT true,
+                        can_support BOOLEAN DEFAULT true,
+                        can_payments BOOLEAN DEFAULT true,
+                        can_admins BOOLEAN DEFAULT false,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                `);
+                
+                // Проверяем существование главного админа
+                const adminCheck = await pool.query(
+                    'SELECT user_id FROM user_profiles WHERE user_id = $1',
+                    [ADMIN_ID]
+                );
+                
+                if (adminCheck.rows.length === 0) {
+                    console.log('👑 Creating main admin user...');
+                    await pool.query(`
+                        INSERT INTO user_profiles (user_id, username, first_name, is_admin, balance) 
+                        VALUES ($1, $2, $3, true, 0)
+                    `, [ADMIN_ID, 'linkgold_admin', 'Главный']);
+                    console.log('✅ Main admin created');
+                } else {
+                    await pool.query(
+                        'UPDATE user_profiles SET is_admin = true WHERE user_id = $1',
+                        [ADMIN_ID]
+                    );
+                    console.log('✅ Main admin rights verified');
+                }
+                
+                // Добавляем права доступа для главного админа
+                await pool.query(`
+                    INSERT INTO admin_permissions (admin_id, can_posts, can_tasks, can_verification, can_support, can_payments, can_admins)
+                    VALUES ($1, true, true, true, true, true, true)
+                    ON CONFLICT (admin_id) DO UPDATE SET 
+                        can_posts = true,
+                        can_tasks = true,
+                        can_verification = true,
+                        can_support = true,
+                        can_payments = true,
+                        can_admins = true
+                `, [ADMIN_ID]);
+                
+                console.log('✅ Main admin setup complete');
+                
+            } catch (error) {
+                console.error('❌ Error ensuring main admin:', error.message);
+            }
+        }
         console.log('✅ Database initialized successfully');
     } catch (error) {
         console.error('❌ Database initialization error:', error);
