@@ -1725,7 +1725,7 @@ async function checkSubscription(userId) {
     }
 
     try {
-        // ИСПОЛЬЗУЕМ НОВЫЙ КАНАЛ
+        // Используем новый канал
         const chatId = '@trefggfd';
         
         // Проверяем, существует ли канал
@@ -1734,6 +1734,7 @@ async function checkSubscription(userId) {
             console.log(`✅ Channel found: ${chat.title}`);
         } catch (chatError) {
             console.log(`⚠️ Channel ${chatId} not found or bot cannot access it:`, chatError.message);
+            // Если канал не найден, пропускаем проверку
             return true;
         }
         
@@ -1746,6 +1747,8 @@ async function checkSubscription(userId) {
         
     } catch (error) {
         console.error('❌ Subscription check error:', error);
+        // При любой ошибке разрешаем регистрацию
+        console.log('⚠️ Subscription check failed, allowing registration');
         return true;
     }
 }
@@ -1800,7 +1803,6 @@ bot.onText(/\/check_channel/, async (msg) => {
         await bot.sendMessage(chatId, `❌ Ошибка: ${error.message}`);
     }
 });
-
 // Команда для настройки канала
 bot.onText(/\/setup_channel/, async (msg) => {
     const chatId = msg.chat.id;
@@ -1878,7 +1880,7 @@ bot.onText(/\/enable_subscription_check/, async (msg) => {
         await bot.sendMessage(
             chatId,
             `✅ <b>Проверка подписки ВКЛЮЧЕНА!</b>\n\n` +
-            `Пользователи должны подписаться на канал @LinkGoldChannel1.\n\n` +
+            `Пользователи должны подписаться на канал @trefggfd.\n\n` +  // ← ИЗМЕНЕНО
             `<b>Проверить статус канала:</b>\n` +
             `<code>/check_channel</code>`,
             { parse_mode: 'HTML' }
@@ -2004,40 +2006,39 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
             }
         }
 
-        // 🔥 ПРОВЕРКА ПОДПИСКИ НА КАНАЛ
-        const isSubscribed = await checkSubscription(userId);
-        
-        if (!isSubscribed && !global.DISABLE_SUBSCRIPTION_CHECK) {
-            const subscriptionMessage = await bot.sendMessage(
-                chatId,
-                `📢 <b>ДОБРО ПОЖАЛОВАТЬ В LINKGOLD!</b>\n\n` +
-                `🌟 <b>Чтобы начать зарабатывать Telegram Stars, необходимо подписаться на наш официальный канал</b>\n\n` +
-                `📋 <b>ШАГИ ДЛЯ АКТИВАЦИИ:</b>\n` +
-                `1. Нажмите кнопку "📢 ПОДПИСАТЬСЯ НА КАНАЛ" ниже\n` +
-                `2. Подпишитесь на канал @LinkGoldChannel1\n` +
-                `3. Вернитесь в этого бота\n` +
-                `4. Нажмите кнопку "✅ Я ПОДПИСАЛСЯ"\n\n` +
-                `🚀 <b>После подписки вы получите:</b>\n` +
-                `• Доступ к сотням заданий\n` +
-                `• Возможность зарабатывать Telegram Stars\n` +
-                `• Реферальную программу с бонусами\n` +
-                `• Мгновенные выплаты\n\n` +
-                `<i>Подписка занимает всего 10 секунд!</i>`,
-                {
-                    parse_mode: 'HTML',
-                    reply_markup: {
-                        inline_keyboard: [
-                            [{ text: '📢 ПОДПИСАТЬСЯ НА КАНАЛ', url: 'https://t.me/LinkGoldChannel1' }],
-                            [{ text: '✅ Я ПОДПИСАЛСЯ', callback_data: 'check_subscription_start' }]
-                        ]
-                    }
-                }
-            );
-            
-            userSubscriptionMessages[userId] = subscriptionMessage.message_id;
-            return;
-        }
+// 🔥 ПРОВЕРКА ПОДПИСКИ НА КАНАЛ
+const isSubscribed = await checkSubscription(userId);
 
+if (!isSubscribed && !global.DISABLE_SUBSCRIPTION_CHECK) {
+    const subscriptionMessage = await bot.sendMessage(
+        chatId,
+        `📢 <b>ДОБРО ПОЖАЛОВАТЬ В LINKGOLD!</b>\n\n` +
+        `🌟 <b>Чтобы начать зарабатывать Telegram Stars, необходимо подписаться на наш официальный канал</b>\n\n` +
+        `📋 <b>ШАГИ ДЛЯ АКТИВАЦИИ:</b>\n` +
+        `1. Нажмите кнопку "📢 ПОДПИСАТЬСЯ НА КАНАЛ" ниже\n` +
+        `2. Подпишитесь на канал @trefggfd\n` +  // ← ИЗМЕНЕНО
+        `3. Вернитесь в этого бота\n` +
+        `4. Нажмите кнопку "✅ Я ПОДПИСАЛСЯ"\n\n` +
+        `🚀 <b>После подписки вы получите:</b>\n` +
+        `• Доступ к сотням заданий\n` +
+        `• Возможность зарабатывать Telegram Stars\n` +
+        `• Реферальную программу с бонусами\n` +
+        `• Мгновенные выплаты\n\n` +
+        `<i>Подписка занимает всего 10 секунд!</i>`,
+        {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '📢 ПОДПИСАТЬСЯ НА КАНАЛ', url: 'https://t.me/trefggfd' }],  // ← ИЗМЕНЕНО
+                    [{ text: '✅ Я ПОДПИСАЛСЯ', callback_data: 'check_subscription_start' }]
+                ]
+            }
+        }
+    );
+    
+    userSubscriptionMessages[userId] = subscriptionMessage.message_id;
+    return;
+}
         // Удаляем сообщение с требованием подписки если оно было
         if (userSubscriptionMessages[userId]) {
             try {
@@ -2217,7 +2218,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                     reply_markup: {
                         inline_keyboard: [
                             [
-                                { text: '📢 НАШ КАНАЛ', url: 'https://t.me/LinkGoldChannel1' },
+                                { text: '📢 НАШ КАНАЛ', url: 'https://t.me/trefggfd' },  // ← ИЗМЕНЕНО
                                 { text: '💬 ОТЗЫВЫ', url: 'https://t.me/repLinkGold' }
                             ],
                             [
@@ -2240,7 +2241,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                     reply_markup: {
                         inline_keyboard: [
                             [
-                                { text: '📢 НАШ КАНАЛ', url: 'https://t.me/LinkGoldChannel1' },
+                                { text: '📢 НАШ КАНАЛ', url: 'https://t.me/trefggfd' },  // ← ИЗМЕНЕНО,
                                 { text: '💬 ОТЗЫВЫ', url: 'https://t.me/repLinkGold' }
                             ],
                             [
