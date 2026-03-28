@@ -1,4 +1,3 @@
-
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
@@ -14,16 +13,10 @@ const PORT = process.env.PORT || 3000;
 // Используйте ключ из переменных окружения
 const FLYER_API_KEY = process.env.FLYER_APL_KEY || 'FL-pqKrtr-kPaJFg-KeLIQD-TLHgfC';
 const FLYER_API_URL = 'https://api.flyerservice.io';
-// Исправьте URL вебхука - уберите двойной слеш
-// Исправьте этот код в начале файла:
-// ЗАМЕНИТЕ НА ЭТОТ КОД:
 const WEBHOOK_URL = 'https://telegram-community1-production-0bc1.up.railway.app/api/flyer/webhook';
-
-
 
 const LINKGOLDMONEY_API_KEY = 'FL-pqKrtr-kPaJFg-KeLIQD-TLHgfC';
 const LINKGOLDMONEY_API_URL = 'https://telegram-community1-production-0bc1.up.railway.app/';
-// Конфигурация для Railway
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const DATABASE_URL = process.env.DATABASE_URL; 
 const ADMIN_ID = 8036875641;
@@ -43,6 +36,18 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
+
+// ==================== FLYER API INTEGRATION ====================
+// Заглушка для проверки подписки (временно отключаем Flyer)
+async function checkSubscriptionWithFlyer(userId, userData) {
+    console.log('🔄 Flyer check disabled – allowing access');
+    return {
+        required: false,
+        allowAccess: true,
+        status: 'subscribed',
+        message: 'Проверка отключена'
+    };
+}
 // Автоматические ping-запросы каждые 5 минут
 // Автоматические ping-запросы к базе каждые 5 минут
 setInterval(async () => {
