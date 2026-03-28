@@ -1762,30 +1762,29 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
     console.log('🎯 Start command with Flyer integration:', { userId, referralCode });
 
     try {
+        if (!bot) {
+            console.log('❌ Bot not initialized');
+            return;
+        }
+
         await bot.sendChatAction(chatId, 'typing');
 
-        async function checkSubscriptionWithFlyer(userId, userData) {
-    console.log('🔄 Flyer check disabled – allowing access');
-    return {
-        required: false,
-        allowAccess: true,
-        status: 'subscribed',
-        message: 'Проверка отключена'
-    };
-}
+        // Вызываем глобальную функцию проверки
+        const subscriptionCheck = await checkSubscriptionWithFlyer(userId, {
+            first_name: msg.from.first_name,
+            username: msg.from.username,
+            language_code: msg.from.language_code || 'ru'
+        });
 
         console.log('📊 Flyer subscription check result:', subscriptionCheck);
 
-        // Если требуется подписка, показываем спонсоров Flyer
         if (subscriptionCheck.required && !subscriptionCheck.allowAccess) {
             console.log('📢 Subscription required, showing Flyer channels');
             await showFlyerSubscriptionRequired(chatId, userId);
             return;
         }
 
-        // Если подписка не требуется или проверка пройдена, продолжаем обычную регистрацию
         await processUserRegistration(chatId, msg.from, referralCode);
-  
         // Если требуется подписка, показываем спонсоров
         if (subscriptionCheck.required) {
             if (subscriptionCheck.status === 'requires_subscription' && subscriptionCheck.sponsors) {
