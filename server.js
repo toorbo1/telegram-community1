@@ -5207,8 +5207,6 @@ app.get('/api/debug/user-id-columns', async (req, res) => {
         });
     }
 });
-// В server.js добавьте эту функцию:
-// В server.js добавьте эту функцию:
 async function fixUserIdColumns() {
     try {
         console.log('🔧 Fixing user_id columns to BIGINT...');
@@ -5240,7 +5238,7 @@ async function fixUserIdColumns() {
                 
                 if (!tableExists.rows[0].exists) {
                     console.log(`ℹ️ Table ${table} doesn't exist, skipping`);
-                    continue;
+                    continue;  // Пропускаем несуществующие таблицы
                 }
                 
                 // Проверяем колонки с user_id
@@ -14940,90 +14938,6 @@ app.get('/api/debug/env', (req, res) => {
     NODE_ENV: process.env.NODE_ENV || 'development'
   });
 });
-// ДИАГНОСТИКА БАЗЫ ДАННЫХ
-async function fullDatabaseDiagnostic() {
-    console.log('\n🔍 ========== DATABASE DIAGNOSTIC ==========');
-    
-    // 1. Проверяем переменную окружения
-    console.log('1. DATABASE_URL exists:', !!process.env.DATABASE_URL);
-    
-    // 2. Проверяем подключение
-    console.log('2. Testing connection...');
-    try {
-        await pool.query('SELECT 1');
-        console.log('   ✅ Basic connection OK');
-    } catch (error) {
-        console.error('   ❌ Connection failed:', error.message);
-        return false;
-    }
-    
-    // 3. Проверяем существование таблиц
-    console.log('3. Checking tables...');
-    const tables = ['user_profiles', 'tasks', 'user_tasks', 'posts', 
-                    'support_chats', 'support_messages', 'withdrawal_requests',
-                    'task_verifications', 'promocodes'];
-    
-    for (const table of tables) {
-        try {
-            const result = await pool.query(`
-                SELECT EXISTS (
-                    SELECT FROM information_schema.tables 
-                    WHERE table_name = $1
-                )
-            `, [table]);
-            const exists = result.rows[0].exists;
-            console.log(`   ${exists ? '✅' : '❌'} ${table}`);
-        } catch (error) {
-            console.log(`   ⚠️ ${table}: ${error.message}`);
-        }
-    }
-    
-    // 4. Проверяем количество записей в основных таблицах
-    console.log('4. Record counts...');
-    const counts = ['user_profiles', 'tasks', 'posts'];
-    for (const table of counts) {
-        try {
-            const result = await pool.query(`SELECT COUNT(*) FROM ${table}`);
-            console.log(`   ${table}: ${result.rows[0].count} records`);
-        } catch (error) {
-            console.log(`   ${table}: ERROR - ${error.message}`);
-        }
-    }
-    
-    console.log('🔍 ==========================================\n');
-    return true;
-}
-
-// Запускаем диагностику при старте
-fullDatabaseDiagnostic().then(ok => {
-    if (!ok) {
-        console.error('❌ Database diagnostic failed!');
-        process.exit(1);
-    }
-});
-// Замените текущий app.listen на этот:
-app.listen(PORT, '0.0.0.0', async () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📊 Health: http://localhost:${PORT}/api/health`);
-    console.log(`🔐 Admin ID: ${ADMIN_ID}`);
-    
-    // Инициализируем базу данных с заданиями
-    await initializeWithTasks();
-
-    
-    // Инициализируем Flyer интеграцию
-    await initializeFlyerIntegration();
-    // Принудительно исправляем структуру таблиц
-    try {
-        await fixWithdrawalTable();
-        await fixTasksTable();
-        await fixReferralLinksTable(); // Добавьте эту строку
-        console.log('✅ All table structures verified');
-    } catch (error) {
-        console.error('❌ Error fixing table structures:', error);
-    }
-});
-
 
 // ==================== SERVER STARTUP ====================
 
