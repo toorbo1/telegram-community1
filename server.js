@@ -699,13 +699,10 @@ async function initializeDatabaseAndServer() {
         // Создаем тестовые задания если нужно
         await createSampleTasks();
         
-        // Убеждаемся, что главный админ существует
-        await ensureMainAdmin();
+  
         
         console.log('✅ Database initialization complete');
         
-        // Инициализируем Flyer интеграцию
-        await initializeFlyerIntegration();
         
         return true;
     } catch (error) {
@@ -714,77 +711,7 @@ async function initializeDatabaseAndServer() {
     }
 }
 
-// Запускаем сервер только после инициализации базы данных
-// ==================== SERVER STARTUP ====================
 
-// Функция для инициализации базы данных
-async function initializeDatabaseSystem() {
-    console.log('🚀 Starting database initialization...');
-    
-    try {
-        // Инициализируем базу данных
-        await initDatabase();
-        
-        // Исправляем структуру таблиц
-        await fixUserIdColumns();
-        await fixWithdrawalTable();
-        await fixTasksTable();
-        await fixReferralLinksTable();
-        await addBlockedColumn();
-        await addSubscriptionColumn();
-        
-        // Создаем тестовые задания если нужно
-        await createSampleTasks();
-        
-        // Убеждаемся, что главный админ существует
-        await ensureMainAdmin();
-        
-        console.log('✅ Database initialization complete');
-        return true;
-    } catch (error) {
-        console.error('❌ Database initialization error:', error);
-        return false;
-    }
-}
-
-// Функция для инициализации Flyer
-async function initializeFlyerSystem() {
-    try {
-        console.log('🚀 Initializing Flyer integration...');
-        await initializeFlyerIntegration();
-        console.log('✅ Flyer integration complete');
-    } catch (error) {
-        console.error('❌ Flyer initialization error:', error);
-    }
-}
-
-// Запуск сервера
-async function startServer() {
-    console.log('🚀 Starting server...');
-    
-    // 1. Инициализируем базу данных
-    const dbInitialized = await initializeDatabaseSystem();
-    if (!dbInitialized) {
-        console.error('❌ Failed to initialize database, exiting...');
-        process.exit(1);
-    }
-    
-    // 2. Инициализируем Flyer
-    await initializeFlyerSystem();
-    
-    // 3. Запускаем HTTP сервер
-    app.listen(PORT, '0.0.0.0', async () => {
-        console.log(`🚀 Server running on port ${PORT}`);
-        console.log(`📊 Health: http://localhost:${PORT}/api/health`);
-        console.log(`🔐 Admin ID: ${ADMIN_ID}`);
-        
-        // Выполняем диагностику базы данных
-        await fullDatabaseDiagnostic();
-    });
-}
-
-// Запускаем сервер
-startServer();
 
 async function initDatabase() {
     console.log('🔄 Initializing simplified database...');
@@ -1274,6 +1201,7 @@ async function addMissingUserColumns() {
 
 // Вызовите эту функцию в initDatabase()
 await addMissingUserColumns();
+
         // Создаем тестовый пост если нет постов
         const postsCount = await pool.query('SELECT COUNT(*) FROM posts');
         if (parseInt(postsCount.rows[0].count) === 0) {
@@ -9223,7 +9151,6 @@ async function fixReferralLinksTable() {
 // Вызовите эту функцию при инициализации сервера
 async function initializeServer() {
     await initDatabase();
-    await fixReferralLinksTable(); // Добавьте эту строку
     await createSampleTasks();
 }
 // Получение списка ссылок
@@ -9242,7 +9169,6 @@ app.get('/api/admin/links/list', async (req, res) => {
         }
         
         // Сначала проверяем и исправляем таблицу
-        await fixReferralLinksTable();
         
         const result = await pool.query(`
             SELECT rl.*, 
@@ -9289,7 +9215,6 @@ app.post('/api/admin/links/recover', async (req, res) => {
         console.log('🔧 Attempting to recover referral links...');
         
         // 1. Проверяем структуру таблицы
-        await fixReferralLinksTable();
         
         // 2. Проверяем, есть ли ссылки в базе
         const linksCount = await pool.query('SELECT COUNT(*) FROM referral_links WHERE is_active = true');
@@ -15098,3 +15023,75 @@ app.listen(PORT, '0.0.0.0', async () => {
         console.error('❌ Error fixing table structures:', error);
     }
 });
+
+
+// ==================== SERVER STARTUP ====================
+
+// Функция для инициализации базы данных
+async function initializeDatabaseSystem() {
+    console.log('🚀 Starting database initialization...');
+    
+    try {
+        // Инициализируем базу данных
+        await initDatabase();
+        
+        // Исправляем структуру таблиц
+        await fixUserIdColumns();
+        await fixWithdrawalTable();
+        await fixTasksTable();
+        await fixReferralLinksTable();
+        await addBlockedColumn();
+        await addSubscriptionColumn();
+        
+        // Создаем тестовые задания если нужно
+        await createSampleTasks();
+        
+        // Убеждаемся, что главный админ существует
+        await ensureMainAdmin();
+        
+        console.log('✅ Database initialization complete');
+        return true;
+    } catch (error) {
+        console.error('❌ Database initialization error:', error);
+        return false;
+    }
+}
+
+// Функция для инициализации Flyer
+async function initializeFlyerSystem() {
+    try {
+        console.log('🚀 Initializing Flyer integration...');
+        await initializeFlyerIntegration();
+        console.log('✅ Flyer integration complete');
+    } catch (error) {
+        console.error('❌ Flyer initialization error:', error);
+    }
+}
+
+// Запуск сервера
+async function startServer() {
+    console.log('🚀 Starting server...');
+    
+    // 1. Инициализируем базу данных
+    const dbInitialized = await initializeDatabaseSystem();
+    if (!dbInitialized) {
+        console.error('❌ Failed to initialize database, exiting...');
+        process.exit(1);
+    }
+    
+    // 2. Инициализируем Flyer
+    await initializeFlyerSystem();
+    
+    // 3. Запускаем HTTP сервер
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`🚀 Server running on port ${PORT}`);
+        console.log(`📊 Health: http://localhost:${PORT}/api/health`);
+        console.log(`🔐 Admin ID: ${ADMIN_ID}`);
+        
+        // Выполняем диагностику базы данных (без await)
+        fullDatabaseDiagnostic().catch(console.error);
+    });
+}
+
+// Запускаем сервер
+startServer();
