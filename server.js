@@ -711,8 +711,6 @@ async function initializeDatabaseAndServer() {
     }
 }
 
-
-
 async function initDatabase() {
     console.log('🔄 Initializing database with all required tables...');
 
@@ -771,7 +769,7 @@ async function initDatabase() {
         // ==================== 2. АДМИНИСТРАТИВНЫЕ ТАБЛИЦЫ ====================
         console.log('👑 Creating admin tables...');
 
-        // Таблица прав администраторов - создаем ПЕРВОЙ среди зависимых таблиц!
+        // Таблица прав администраторов
         await pool.query(`
             CREATE TABLE IF NOT EXISTS admin_permissions (
                 admin_id BIGINT PRIMARY KEY,
@@ -785,7 +783,7 @@ async function initDatabase() {
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-        console.log('✅ admin_permissions table created');
+        console.log('✅ admin_permissions table verified');
 
         // Таблица действий администратора
         await pool.query(`
@@ -824,18 +822,27 @@ async function initDatabase() {
         console.log('🔗 Creating dependent tables...');
 
         // Добавляем колонки в user_profiles
-        await pool.query(`
-            ALTER TABLE user_profiles 
-            ADD COLUMN IF NOT EXISTS completed_tasks INTEGER DEFAULT 0,
-            ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE,
-            ADD COLUMN IF NOT EXISTS referred_by BIGINT,
-            ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0,
-            ADD COLUMN IF NOT EXISTS referral_earned REAL DEFAULT 0,
-            ADD COLUMN IF NOT EXISTS is_first_login BOOLEAN DEFAULT true,
-            ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT false,
-            ADD COLUMN IF NOT EXISTS has_subscribed BOOLEAN DEFAULT false,
-            ADD COLUMN IF NOT EXISTS last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        `);
+        const userColumnsToAdd = [
+            'completed_tasks INTEGER DEFAULT 0',
+            'referral_code TEXT UNIQUE',
+            'referred_by BIGINT',
+            'referral_count INTEGER DEFAULT 0',
+            'referral_earned REAL DEFAULT 0',
+            'is_first_login BOOLEAN DEFAULT true',
+            'is_blocked BOOLEAN DEFAULT false',
+            'has_subscribed BOOLEAN DEFAULT false',
+            'last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+        ];
+
+        for (const columnDef of userColumnsToAdd) {
+            const columnName = columnDef.split(' ')[0];
+            try {
+                await pool.query(`ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS ${columnDef}`);
+                console.log(`✅ Column ${columnName} added/verified`);
+            } catch (err) {
+                console.log(`ℹ️ Column ${columnName} already exists or error:`, err.message);
+            }
+        }
 
         // Реферальные ссылки
         await pool.query(`
@@ -957,30 +964,110 @@ async function initDatabase() {
             )
         `);
 
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS promocodes (
-                id SERIAL PRIMARY KEY,
-                code VARCHAR(20) UNIQUE NOT NULL,
-                max_uses INTEGER NOT NULL DEFAULT 1,
-                used_count INTEGER DEFAULT 0,
-                reward REAL NOT NULL DEFAULT 0,
-                expires_at TIMESTAMP,
-                is_active BOOLEAN DEFAULT true,
-                created_by BIGINT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        // ==================== 7. ПРОМОКОДЫ - ИСПРАВЛЕННАЯ ВЕРСИЯ ====================
+        console.log('🎫 Creating promocodes tables...');
+        
+        // Проверяем существование таблицы promocodes
+        const promocodesExists = await pool.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = 'promocodes'
             )
         `);
-
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS promocode_activations (
-                id SERIAL PRIMARY KEY,
-                user_id BIGINT NOT NULL,
-                promocode_id INTEGER NOT NULL,
-                activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        
+        if (!promocodesExists.rows[0].exists) {
+            await pool.query(`
+                CREATE TABLE promocodes (
+                    id SERIAL PRIMARY KEY,
+                    code VARCHAR(20) UNIQUE NOT NULL,
+                    max_uses INTEGER NOT NULL DEFAULT 1,
+                    used_count INTEGER DEFAULT 0,
+                    reward REAL NOT NULL DEFAULT 0,
+                    expires_at TIMESTAMP,
+                    is_active BOOLEAN DEFAULT true,
+                    created_by BIGINT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log('✅ promocodes table created');
+        } else {
+            console.log('✅ promocodes table already exists');
+            
+            // Добавляем отсутствующие колонки
+            const promocodeColumns = [
+                {name: 'max_uses', type: 'INTEGER', default: '1'},
+                {name: 'used_count', type: 'INTEGER', default: '0'},
+                {name: 'reward', type: 'REAL', default: '0'},
+                {name: 'expires_at', type: 'TIMESTAMP', default: null},
+                {name: 'is_active', type: 'BOOLEAN', default: 'true'},
+                {name: 'created_by', type: 'BIGINT', default: null},
+                {name: 'created_at', type: 'TIMESTAMP', default: 'CURRENT_TIMESTAMP'}
+            ];
+            
+            for (const col of promocodeColumns) {
+                const colExists = await pool.query(`
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.columns 
+                        WHERE table_name = 'promocodes' AND column_name = $1
+                    )
+                `, [col.name]);
+                
+                if (!colExists.rows[0].exists) {
+                    const defaultVal = col.default ? `DEFAULT ${col.default}` : '';
+                    await pool.query(`ALTER TABLE promocodes ADD COLUMN ${col.name} ${col.type} ${defaultVal}`);
+                    console.log(`✅ Added column ${col.name} to promocodes`);
+                }
+            }
+        }
+        
+        // Проверяем существование таблицы promocode_activations
+        const activationsExists = await pool.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = 'promocode_activations'
             )
         `);
+        
+        if (!activationsExists.rows[0].exists) {
+            await pool.query(`
+                CREATE TABLE promocode_activations (
+                    id SERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL,
+                    promocode_id INTEGER NOT NULL,
+                    activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log('✅ promocode_activations table created');
+        } else {
+            console.log('✅ promocode_activations table already exists');
+            
+            // Добавляем отсутствующие колонки
+            const activationColumns = [
+                {name: 'user_id', type: 'BIGINT', nullable: 'NOT NULL'},
+                {name: 'promocode_id', type: 'INTEGER', nullable: 'NOT NULL'},
+                {name: 'activated_at', type: 'TIMESTAMP', default: 'CURRENT_TIMESTAMP'}
+            ];
+            
+            for (const col of activationColumns) {
+                const colExists = await pool.query(`
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.columns 
+                        WHERE table_name = 'promocode_activations' AND column_name = $1
+                    )
+                `, [col.name]);
+                
+                if (!colExists.rows[0].exists) {
+                    const nullable = col.nullable || '';
+                    const defaultVal = col.default ? `DEFAULT ${col.default}` : '';
+                    await pool.query(`ALTER TABLE promocode_activations ADD COLUMN ${col.name} ${col.type} ${nullable} ${defaultVal}`);
+                    console.log(`✅ Added column ${col.name} to promocode_activations`);
+                }
+            }
+        }
+        
+        console.log('✅ Promocodes tables verified');
 
-        // ==================== 7. ТАБЛИЦЫ ДЛЯ FLYER ====================
+        // ==================== 8. ТАБЛИЦЫ ДЛЯ FLYER ====================
         console.log('🪰 Creating Flyer tables...');
 
         await pool.query(`
@@ -1004,7 +1091,28 @@ async function initDatabase() {
             )
         `);
 
-        // ==================== 8. ГЛАВНЫЙ АДМИНИСТРАТОР ====================
+        // ==================== 9. ТАБЛИЦЫ ДЛЯ SUBGRAM ====================
+        console.log('🤖 Creating SubGram tables...');
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS user_subgram_data (
+                user_id BIGINT PRIMARY KEY,
+                sponsors_data JSONB,
+                last_check TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS bot_settings (
+                id SERIAL PRIMARY KEY,
+                subgram_bot_id TEXT,
+                subgram_api_key TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // ==================== 10. ГЛАВНЫЙ АДМИНИСТРАТОР ====================
         console.log('👑 Ensuring main admin...');
 
         // Создаем главного администратора
@@ -1032,20 +1140,81 @@ async function initDatabase() {
                 updated_at = CURRENT_TIMESTAMP
         `, [ADMIN_ID]);
 
-        // ==================== 9. ДОПОЛНИТЕЛЬНЫЕ ИНДЕКСЫ ====================
+        // ==================== 11. ДОПОЛНИТЕЛЬНЫЕ ИНДЕКСЫ ====================
         console.log('📊 Creating indexes...');
 
-        await pool.query(`CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)`);
-        await pool.query(`CREATE INDEX IF NOT EXISTS idx_user_tasks_status ON user_tasks(user_id, status)`);
-        await pool.query(`CREATE INDEX IF NOT EXISTS idx_withdrawal_requests_status ON withdrawal_requests(status)`);
-        await pool.query(`CREATE INDEX IF NOT EXISTS idx_support_chats_active ON support_chats(is_active)`);
+        const indexes = [
+            'CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)',
+            'CREATE INDEX IF NOT EXISTS idx_tasks_category ON tasks(category)',
+            'CREATE INDEX IF NOT EXISTS idx_user_tasks_status ON user_tasks(user_id, status)',
+            'CREATE INDEX IF NOT EXISTS idx_user_tasks_task ON user_tasks(task_id)',
+            'CREATE INDEX IF NOT EXISTS idx_withdrawal_requests_status ON withdrawal_requests(status)',
+            'CREATE INDEX IF NOT EXISTS idx_withdrawal_requests_user ON withdrawal_requests(user_id)',
+            'CREATE INDEX IF NOT EXISTS idx_support_chats_active ON support_chats(is_active)',
+            'CREATE INDEX IF NOT EXISTS idx_support_chats_user ON support_chats(user_id)',
+            'CREATE INDEX IF NOT EXISTS idx_support_messages_chat ON support_messages(chat_id)',
+            'CREATE INDEX IF NOT EXISTS idx_task_verifications_status ON task_verifications(status)',
+            'CREATE INDEX IF NOT EXISTS idx_task_verifications_user ON task_verifications(user_id)',
+            'CREATE INDEX IF NOT EXISTS idx_promocodes_code ON promocodes(code)',
+            'CREATE INDEX IF NOT EXISTS idx_promocodes_active ON promocodes(is_active)',
+            'CREATE INDEX IF NOT EXISTS idx_promocode_activations_user ON promocode_activations(user_id)',
+            'CREATE INDEX IF NOT EXISTS idx_promocode_activations_promo ON promocode_activations(promocode_id)',
+            'CREATE INDEX IF NOT EXISTS idx_referral_links_code ON referral_links(code)',
+            'CREATE INDEX IF NOT EXISTS idx_referral_links_created ON referral_links(created_by)',
+            'CREATE INDEX IF NOT EXISTS idx_flyer_tasks_user ON flyer_tasks(user_id)',
+            'CREATE INDEX IF NOT EXISTS idx_flyer_tasks_status ON flyer_tasks(status)'
+        ];
+
+        for (const index of indexes) {
+            try {
+                await pool.query(index);
+                console.log(`✅ Index created: ${index.split('ON')[1]?.trim() || index.split(' ')[2]}`);
+            } catch (err) {
+                console.log(`ℹ️ Index already exists or error:`, err.message);
+            }
+        }
+
+        // ==================== 12. ДОПОЛНИТЕЛЬНЫЕ ПРОВЕРКИ ====================
+        console.log('🔧 Running additional checks...');
+
+        // Проверяем и добавляем колонку auto_verified в task_verifications
+        await pool.query(`
+            ALTER TABLE task_verifications 
+            ADD COLUMN IF NOT EXISTS auto_verified BOOLEAN DEFAULT false
+        `);
+
+        // Проверяем и добавляем колонку completed_count в tasks
+        await pool.query(`
+            ALTER TABLE tasks 
+            ADD COLUMN IF NOT EXISTS completed_count INTEGER DEFAULT 0
+        `);
+
+        // Проверяем и добавляем колонку image_url в tasks
+        await pool.query(`
+            ALTER TABLE tasks 
+            ADD COLUMN IF NOT EXISTS image_url TEXT
+        `);
+
+        // Проверяем и добавляем колонку is_blocked в user_profiles
+        await pool.query(`
+            ALTER TABLE user_profiles 
+            ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT false
+        `);
+
+        // Проверяем и добавляем колонку has_subscribed в user_profiles
+        await pool.query(`
+            ALTER TABLE user_profiles 
+            ADD COLUMN IF NOT EXISTS has_subscribed BOOLEAN DEFAULT false
+        `);
 
         console.log('✅ Database initialized successfully!');
+        
     } catch (error) {
         console.error('❌ Database initialization error:', error);
         throw error;
     }
 }
+
 
 async function createTablesIfNotExist() {
     const tables = [
