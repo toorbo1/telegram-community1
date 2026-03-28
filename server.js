@@ -473,7 +473,10 @@ app.post('/api/flyer/webhook', express.json({ limit: '10mb' }), async (req, res)
         res.status(200).json({ status: false, error: error.message });
     }
 });
-
+app.get('/api/flyer/webhook', (req, res) => {
+    console.log('📨 GET request to webhook endpoint');
+    res.json({ status: true, message: 'Webhook endpoint is ready' });
+});
 // 🔧 ОБСЛУЖИВАНИЕ СТАТИЧЕСКИХ ФАЙЛОВ
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
     maxAge: '1d', // Кэширование на 1 день
@@ -14891,7 +14894,6 @@ async function initializeDatabaseSystem() {
     }
 }
 
-// Функция для инициализации Flyer
 async function initializeFlyerSystem() {
     try {
         console.log('🚀 Initializing Flyer integration...');
@@ -14899,6 +14901,7 @@ async function initializeFlyerSystem() {
         console.log('✅ Flyer integration complete');
     } catch (error) {
         console.error('❌ Flyer initialization error:', error);
+        // Не прерываем запуск сервера, просто логируем
     }
 }
 
@@ -14922,8 +14925,6 @@ async function startServer() {
         console.log(`📊 Health: http://localhost:${PORT}/api/health`);
         console.log(`🔐 Admin ID: ${ADMIN_ID}`);
         
-        // Выполняем диагностику базы данных (без await)
-        fullDatabaseDiagnostic().catch(console.error);
     });
 }
 
