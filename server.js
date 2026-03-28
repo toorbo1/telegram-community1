@@ -7,6 +7,8 @@ const multer = require('multer');
 const fs = require('fs');
 const TelegramBot = require('node-telegram-bot-api');
 let currentUser = null;
+// Глобальная переменная для хранения сообщений о подписке
+const userSubscriptionMessages = {};
 const app = express();
 const PORT = process.env.PORT || 3000;
 // Используйте ключ из переменных окружения
@@ -340,30 +342,24 @@ async function showFlyerSubscriptionRequired(chatId, userId) {
     }
 }
 
-// Обработчик проверки подписки Flyer
 async function handleFlyerSubscriptionCheck(chatId, userId, callbackQuery) {
     try {
         await bot.answerCallbackQuery(callbackQuery.id, {
             text: '🔍 Проверяем подписки...'
         });
 
-        async function checkSubscriptionWithFlyer(userId, userData) {
-    console.log('🔄 Flyer check disabled – allowing access');
-    return {
-        required: false,
-        allowAccess: true,
-        status: 'subscribed',
-        message: 'Проверка отключена'
-    };
-}
+        // Получаем актуальную проверку подписки
+        const subscriptionCheck = await checkSubscriptionWithFlyer(userId, {
+            first_name: callbackQuery.from.first_name,
+            username: callbackQuery.from.username,
+            language_code: callbackQuery.from.language_code || 'ru'
+        });
 
         if (subscriptionCheck.required && !subscriptionCheck.allowAccess) {
-            // Подписка все еще требуется
             await bot.sendMessage(chatId, 
                 '❌ Вы еще не подписались на все необходимые каналы. Пожалуйста, завершите подписку.'
             );
         } else {
-            // Подписка выполнена или ошибка (разрешаем доступ)
             try {
                 await bot.deleteMessage(chatId, callbackQuery.message.message_id);
             } catch (deleteError) {
@@ -375,7 +371,6 @@ async function handleFlyerSubscriptionCheck(chatId, userId, callbackQuery) {
                 '✅ Отлично! Проверка подписки пройдена. Теперь вы можете пользоваться ботом!'
             );
 
-            // Продолжаем регистрацию
             await processUserRegistration(chatId, callbackQuery.from, null);
         }
 
@@ -1743,7 +1738,6 @@ async function checkSubscription(userId) {
         
         return true;
     }}
-// Обновленная функция обработки команды /start с Flyer
 bot.onText(/\/start(.+)?/, async (msg, match) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
@@ -1759,7 +1753,7 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
 
         await bot.sendChatAction(chatId, 'typing');
 
-        // Вызываем глобальную функцию проверки
+        // Проверка подписки через Flyer (глобальная функция)
         const subscriptionCheck = await checkSubscriptionWithFlyer(userId, {
             first_name: msg.from.first_name,
             username: msg.from.username,
@@ -1774,22 +1768,12 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
             return;
         }
 
+        // --- ТОЛЬКО ОДИН ВЫЗОВ РЕГИСТРАЦИИ ---
         await processUserRegistration(chatId, msg.from, referralCode);
 
+        // --- ДАЛЬШЕ ИДЁТ ОСТАЛЬНАЯ ЛОГИКА (реферальные бонусы, проверка канала, приветствие) ---
+        // (весь код, который был ниже, кроме повторного вызова processUserRegistration и лишнего блока if (subscriptionCheck.required))
 
-        // Если требуется подписка, показываем спонсоров
-        if (subscriptionCheck.required) {
-            if (subscriptionCheck.status === 'requires_subscription' && subscriptionCheck.sponsors) {
-                await showSubscriptionRequired(chatId, subscriptionCheck.sponsors, userId);
-                return;
-            } else if (subscriptionCheck.status === 'requires_registration') {
-                await showRegistrationRequired(chatId, subscriptionCheck.registration_url);
-                return;
-            }
-        }
-
-
-        
         // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: проверяем повторные переходы по рефке
         if (referralCode && referralCode.startsWith('ref_')) {
             const existingUser = await pool.query(
@@ -1805,38 +1789,33 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
                     `ℹ️ <b>Вы уже зарегистрированы в боте!</b>\n\n` +
                     `Реферальные бонусы начисляются только при первой регистрации по реферальной ссылке.\n\n` +
                     `Используйте команды:\n` +
-                    
                     `/referral - ваша реферальная ссылка\n` +
                     `📋 - просмотр заданий`,
                     { parse_mode: 'HTML' }
                 );
-                
-                // 🔥 ВАЖНО: завершаем обработку для повторных переходов
                 return;
             }
         }
-        
+
         // 🔥 МГНОВЕННОЕ НАЧИСЛЕНИЕ ПРИ ПЕРЕХОДЕ ПО ССЫЛКЕ
         let referralBonusApplied = false;
         let referrerId = null;
         let referrerName = '';
-                // 🔧 ВЫЗЫВАЕМ ИСПРАВЛЕННУЮ ФУНКЦИЮ РЕФЕРАЛЬНОЙ РЕГИСТРАЦИИ
-// 🔧 ВЫЗЫВАЕМ ИСПРАВЛЕННУЮ ФУНКЦИЮ РЕФЕРАЛЬНОЙ РЕГИСТРАЦИИ
-if (referralCode && referralCode.startsWith('ref_')) {
-    const referralResult = await handleReferralRegistration(userId, referralCode, {
-        firstName: msg.from.first_name,
-        username: msg.from.username
-    });
-    
-    if (referralResult.referredBy) {
-        console.log(`✅ Referral registration processed for ${userId}`);
-    }
-}
-        
+
+        if (referralCode && referralCode.startsWith('ref_')) {
+            const referralResult = await handleReferralRegistration(userId, referralCode, {
+                firstName: msg.from.first_name,
+                username: msg.from.username
+            });
+            
+            if (referralResult.referredBy) {
+                console.log(`✅ Referral registration processed for ${userId}`);
+            }
+        }
+
         if (referralCode && referralCode.startsWith('ref_')) {
             const cleanReferralCode = referralCode.replace('ref_', '');
             
-            // НАХОДИМ ПРИГЛАСИВШЕГО
             const referrerResult = await pool.query(
                 'SELECT user_id, first_name, username FROM user_profiles WHERE referral_code = $1',
                 [cleanReferralCode]
@@ -1848,7 +1827,6 @@ if (referralCode && referralCode.startsWith('ref_')) {
                 
                 console.log(`🎯 Мгновенное начисление за переход по ссылке от: ${referrerId}`);
                 
-                // 🔥 МГНОВЕННО НАЧИСЛЯЕМ 1 ЗВЕЗДУ ПРИГЛАСИВШЕМУ ЗА ПЕРЕХОД
                 await pool.query(`
                     UPDATE user_profiles 
                     SET balance = COALESCE(balance, 0) + 1,
@@ -1858,7 +1836,6 @@ if (referralCode && referralCode.startsWith('ref_')) {
                 
                 referralBonusApplied = true;
                 
-                // 🔥 ОТПРАВЛЯЕМ МГНОВЕННОЕ УВЕДОМЛЕНИЕ ПРИГЛАСИВШЕМУ
                 try {
                     await bot.sendMessage(
                         referrerId,
@@ -1900,18 +1877,8 @@ if (referralCode && referralCode.startsWith('ref_')) {
                     parse_mode: 'HTML',
                     reply_markup: {
                         inline_keyboard: [
-                            [
-                                {
-                                    text: '📢 ПОДПИСАТЬСЯ НА КАНАЛ',
-                                    url: 'https://t.me/LinkGoldChannel1'
-                                }
-                            ],
-                            [
-                                {
-                                    text: '✅ Я ПОДПИСАЛСЯ',
-                                    callback_data: 'check_subscription_start'
-                                }
-                            ]
+                            [{ text: '📢 ПОДПИСАТЬСЯ НА КАНАЛ', url: 'https://t.me/LinkGoldChannel1' }],
+                            [{ text: '✅ Я ПОДПИСАЛСЯ', callback_data: 'check_subscription_start' }]
                         ]
                     }
                 }
@@ -1938,19 +1905,15 @@ if (referralCode && referralCode.startsWith('ref_')) {
             username: msg.from.username || `user_${userId}`
         };
         
-        let referredBy = referrerId; // Используем найденного ранее реферера
+        let referredBy = referrerId;
         let referralBonusGiven = false;
-        
-        // Генерируем реферальный код для пользователя
         const userReferralCode = `ref_${userId}`;
         
-        // 🔥 ИСПРАВЛЕННОЕ СОХРАНЕНИЕ ПОЛЬЗОВАТЕЛЯ
         const client = await pool.connect();
         
         try {
             await client.query('BEGIN');
             
-            // Проверяем, существует ли пользователь
             const existingUser = await client.query(
                 'SELECT user_id, is_first_login, referred_by FROM user_profiles WHERE user_id = $1',
                 [userId]
@@ -1959,7 +1922,6 @@ if (referralCode && referralCode.startsWith('ref_')) {
             let isNewUser = false;
             
             if (existingUser.rows.length === 0) {
-                // НОВЫЙ ПОЛЬЗОВАТЕЛЬ - создаем запись
                 console.log('👤 Создаем нового пользователя');
                 await client.query(`
                     INSERT INTO user_profiles 
@@ -1975,7 +1937,6 @@ if (referralCode && referralCode.startsWith('ref_')) {
                 ]);
                 isNewUser = true;
             } else {
-                // СУЩЕСТВУЮЩИЙ ПОЛЬЗОВАТЕЛЬ - обновляем данные
                 console.log('👤 Обновляем существующего пользователя');
                 await client.query(`
                     UPDATE user_profiles 
@@ -1993,11 +1954,9 @@ if (referralCode && referralCode.startsWith('ref_')) {
                 ]);
             }
             
-            // 🔥 НОВАЯ СИСТЕМА БОНУСОВ - НАЧИСЛЕНИЕ ОБОИМ ПОЛЬЗОВАТЕЛЯМ ПРИ РЕГИСТРАЦИИ
             if (isNewUser && referredBy) {
                 console.log(`🎁 Начисляем реферальные бонусы по новой системе за регистрацию`);
                 
-                // 1. Пригласивший получает ДОПОЛНИТЕЛЬНЫЕ 2 звезды за регистрацию
                 await client.query(`
                     UPDATE user_profiles 
                     SET balance = COALESCE(balance, 0) + 2,
@@ -2006,16 +1965,12 @@ if (referralCode && referralCode.startsWith('ref_')) {
                     WHERE user_id = $1
                 `, [referredBy]);
                 
-                // 2. Приглашённый УЖЕ получил 1 звезду при создании (см. INSERT выше)
-                
                 referralBonusGiven = true;
                 
                 console.log(`✅ Реферальные бонусы за регистрацию: пригласивший ${referredBy} получил 2⭐, новый пользователь ${userId} получил 1⭐`);
                 
-                // 🔥 ОТПРАВЛЯЕМ УВЕДОМЛЕНИЯ ОБОИМ ПОЛЬЗОВАТЕЛЯМ О РЕГИСТРАЦИИ
                 if (bot) {
                     try {
-                        // Уведомление пригласившему о РЕГИСТРАЦИИ
                         await bot.sendMessage(
                             referredBy,
                             `🎉 <b>НОВЫЙ РЕФЕРАЛ ЗАРЕГИСТРИРОВАЛСЯ!</b>\n\n` +
@@ -2026,7 +1981,6 @@ if (referralCode && referralCode.startsWith('ref_')) {
                             { parse_mode: 'HTML' }
                         );
                         
-                        // Уведомление новому пользователю
                         await bot.sendMessage(
                             userId,
                             `🎁 <b>РЕФЕРАЛЬНЫЙ БОНУС!</b>\n\n` +
@@ -2035,10 +1989,10 @@ if (referralCode && referralCode.startsWith('ref_')) {
                             `👥 <b>Приглашайте друзей и получайте бонусы за каждого!</b>`,
                             { parse_mode: 'HTML' }
                         );
-                            // После успешной регистрации отправляем сообщения в чат
-    if (referredBy) {
-        await sendReferralBonusNotification(userId, referredBy, 1, 2);
-    }
+                        
+                        if (referredBy) {
+                            await sendReferralBonusNotification(userId, referredBy, 1, 2);
+                        }
                     } catch (botError) {
                         console.log('Не удалось отправить уведомление:', botError.message);
                     }
@@ -2055,7 +2009,6 @@ if (referralCode && referralCode.startsWith('ref_')) {
             client.release();
         }
         
-        // Получаем обновленные данные пользователя
         const updatedUser = await pool.query(
             'SELECT balance, referral_earned, referral_count FROM user_profiles WHERE user_id = $1',
             [userId]
@@ -2064,7 +2017,6 @@ if (referralCode && referralCode.startsWith('ref_')) {
         const finalUserProfile = updatedUser.rows[0];
         const userBalance = finalUserProfile ? finalUserProfile.balance : (isNewUser ? 1 : 0);
         
-        // 🔥 ФОРМИРУЕМ ПРИВЕТСТВЕННОЕ СООБЩЕНИЕ С ИНФОРМАЦИЕЙ О ВСЕХ БОНУСАХ
         let welcomeMessage = `🌟 <b>ДОБРО ПОЖАЛОВАТЬ В LINKGOLD, ${userData.firstName.toUpperCase()}!</b>\n\n`;
 
         if (referralBonusApplied && referralBonusGiven) {
@@ -2103,7 +2055,6 @@ if (referralCode && referralCode.startsWith('ref_')) {
 
         welcomeMessage += `✨ <b>Приглашайте друзей и увеличивайте доход!</b>`;
 
-        // Отправляем приветственное сообщение
         try {
             const photoPath = './Airbrush-IMAGE-ENHANCER-1763128623415-1763128623415.png';
             
@@ -2116,26 +2067,14 @@ if (referralCode && referralCode.startsWith('ref_')) {
                     reply_markup: {
                         inline_keyboard: [
                             [
-                                {
-                                    text: '📢 НАШ КАНАЛ',
-                                    url: 'https://t.me/LinkGoldChannel1'
-                                },
-                                {
-                                    text: '💬 ОТЗЫВЫ',
-                                    url: 'https://t.me/repLinkGold'
-                                }
+                                { text: '📢 НАШ КАНАЛ', url: 'https://t.me/LinkGoldChannel1' },
+                                { text: '💬 ОТЗЫВЫ', url: 'https://t.me/repLinkGold' }
                             ],
                             [
-                                {
-                                    text: '👥 ПРИГЛАСИТЬ ДРУЗЕЙ',
-                                    url: `https://t.me/share/url?url=https://t.me/LinkGoldMoney_bot?start=${userReferralCode}&text=🚀 Присоединяйся к LinkGold и начинай зарабатывать Telegram Stars! Получи 1⭐ за регистрацию и доступ к лучшим заданиям! 💫`
-                                }
+                                { text: '👥 ПРИГЛАСИТЬ ДРУЗЕЙ', url: `https://t.me/share/url?url=https://t.me/LinkGoldMoney_bot?start=${userReferralCode}&text=🚀 Присоединяйся к LinkGold и начинай зарабатывать Telegram Stars! Получи 1⭐ за регистрацию и доступ к лучшим заданиям! 💫` }
                             ],
                             [
-                                {
-                                    text: '📚 ГАЙДЫ ПО ЗАДАНИЯМ',
-                                    url: 'https://t.me/LinkGoldGuide'
-                                }
+                                { text: '📚 ГАЙДЫ ПО ЗАДАНИЯМ', url: 'https://t.me/LinkGoldGuide' }
                             ]
                         ]
                     }
@@ -2151,26 +2090,14 @@ if (referralCode && referralCode.startsWith('ref_')) {
                     reply_markup: {
                         inline_keyboard: [
                             [
-                                {
-                                    text: '📢 НАШ КАНАЛ',
-                                    url: 'https://t.me/LinkGoldChannel1'
-                                },
-                                {
-                                    text: '💬 ОТЗЫВЫ',
-                                    url: 'https://t.me/repLinkGold'
-                                }
+                                { text: '📢 НАШ КАНАЛ', url: 'https://t.me/LinkGoldChannel1' },
+                                { text: '💬 ОТЗЫВЫ', url: 'https://t.me/repLinkGold' }
                             ],
                             [
-                                {
-                                    text: '👥 ПРИГЛАСИТЬ ДРУЗЕЙ',
-                                    url: `https://t.me/share/url?url=https://t.me/LinkGoldMoney_bot?start=${userReferralCode}&text=🚀 Присоединяйся к LinkGold и начинай зарабатывать Telegram Stars! Получи 1⭐ за регистрацию и доступ к лучшим заданиям! 💫`
-                                }
+                                { text: '👥 ПРИГЛАСИТЬ ДРУЗЕЙ', url: `https://t.me/share/url?url=https://t.me/LinkGoldMoney_bot?start=${userReferralCode}&text=🚀 Присоединяйся к LinkGold и начинай зарабатывать Telegram Stars! Получи 1⭐ за регистрацию и доступ к лучшим заданиям! 💫` }
                             ],
                             [
-                                {
-                                    text: '📚 ГАЙДЫ ПО ЗАДАНИЯМ',
-                                    url: 'https://t.me/LinkGoldGuide'
-                                }
+                                { text: '📚 ГАЙДЫ ПО ЗАДАНИЯМ', url: 'https://t.me/LinkGoldGuide' }
                             ]
                         ]
                     }
@@ -2189,16 +2116,9 @@ if (referralCode && referralCode.startsWith('ref_')) {
         
     } catch (error) {
         console.error('❌ Start command error:', error);
-        await bot.sendMessage(
-            chatId, 
-            ''
-        );
+        await bot.sendMessage(chatId, '❌ Произошла ошибка. Попробуйте позже.');
     }
 });
-
-// Добавьте глобальную переменную для хранения сообщений о подписке
-const userSubscriptionMessages = {};
-
 // Добавьте обработчик callback-запросов для Flyer
 bot.on('callback_query', async (callbackQuery) => {
     const message = callbackQuery.message;
@@ -9948,7 +9868,7 @@ async function processUserRegistration(chatId, user, referralCode) {
         };
         
         // ... остальная логика регистрации
-        
+        console.log('processUserRegistration called', { chatId, user, referralCode });
     } catch (error) {
         console.error('❌ User registration error:', error);
         throw error;
