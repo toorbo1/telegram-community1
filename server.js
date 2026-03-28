@@ -55,66 +55,66 @@ setInterval(async () => {
 
 
 
-// Улучшенная функция для проверки подписки через Flyer API
-async function checkSubscriptionWithFlyer(userId, userData) {
-    try {
-        console.log('🎯 Checking Flyer subscription for user:', userId);
+// // Улучшенная функция для проверки подписки через Flyer API
+// async function checkSubscriptionWithFlyer(userId, userData) {
+//     try {
+//         console.log('🎯 Checking Flyer subscription for user:', userId);
 
-        const requestBody = {
-            key: FLYER_API_KEY,
-            user_id: userId,
-            language_code: userData.language_code || 'ru'
-        };
+//         const requestBody = {
+//             key: FLYER_API_KEY,
+//             user_id: userId,
+//             language_code: userData.language_code || 'ru'
+//         };
 
-        console.log('📤 Sending to Flyer API:', {
-            url: `${FLYER_API_URL}/check`,
-            body: requestBody
-        });
+//         console.log('📤 Sending to Flyer API:', {
+//             url: `${FLYER_API_URL}/check`,
+//             body: requestBody
+//         });
 
-        const response = await fetch(`${FLYER_API_URL}/check`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'User-Agent': 'LinkGoldBot/1.0'
-            },
-            body: JSON.stringify(requestBody),
-            timeout: 15000
-        });
+//         const response = await fetch(`${FLYER_API_URL}/check`, {
+//             method: 'POST',
+//             headers: {
+//                 'Content-Type': 'application/json',
+//                 'User-Agent': 'LinkGoldBot/1.0'
+//             },
+//             body: JSON.stringify(requestBody),
+//             timeout: 15000
+//         });
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+//         if (!response.ok) {
+//             throw new Error(`HTTP error! status: ${response.status}`);
+//         }
 
-        const result = await response.json();
-        console.log('✅ Flyer API response:', result);
+//         const result = await response.json();
+//         console.log('✅ Flyer API response:', result);
 
-        // Обработка ответа согласно документации Flyer
-        if (result.skip === true) {
-            return {
-                required: false,
-                status: 'subscribed',
-                message: 'Проверка пройдена'
-            };
-        } else {
-            return {
-                required: true,
-                status: 'requires_subscription',
-                message: result.error || 'Требуется подписка',
-                warning: result.warning,
-                info: result.info
-            };
-        }
+//         // Обработка ответа согласно документации Flyer
+//         if (result.skip === true) {
+//             return {
+//                 required: false,
+//                 status: 'subscribed',
+//                 message: 'Проверка пройдена'
+//             };
+//         } else {
+//             return {
+//                 required: true,
+//                 status: 'requires_subscription',
+//                 message: result.error || 'Требуется подписка',
+//                 warning: result.warning,
+//                 info: result.info
+//             };
+//         }
 
-    } catch (error) {
-        console.error('❌ Flyer API error:', error);
-        return {
-            required: false,
-            status: 'error',
-            message: 'Ошибка проверки подписки',
-            error: error.message
-        };
-    }
-}
+//     } catch (error) {
+//         console.error('❌ Flyer API error:', error);
+//         return {
+//             required: false,
+//             status: 'error',
+//             message: 'Ошибка проверки подписки',
+//             error: error.message
+//         };
+//     }
+// }
 
 
 // Улучшенная функция для получения заданий через Flyer API
