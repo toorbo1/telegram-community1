@@ -2237,7 +2237,7 @@ if (!isSubscribed && !global.DISABLE_SUBSCRIPTION_CHECK) {
                 chatId,
                 welcomeMessage,
                 {
-                    parse_mode: 'HTML',
+                    parse_mode: 'HTML', 
                     reply_markup: {
                         inline_keyboard: [
                             [
