@@ -52,16 +52,6 @@ setInterval(async () => {
     }
 }, 5 * 60 * 1000); // 5 минут
 // ==================== FLYER API INTEGRATION ====================
-async function checkSubscriptionWithFlyer(userId, userData) {
-    console.log('🔄 Flyer check disabled – allowing access');
-    return {
-        required: false,
-        allowAccess: true,
-        status: 'subscribed',
-        message: 'Проверка отключена'
-    };
-}
-
 
 // // Улучшенная функция для проверки подписки через Flyer API
 // async function checkSubscriptionWithFlyer(userId, userData) {
@@ -1785,6 +1775,8 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
         }
 
         await processUserRegistration(chatId, msg.from, referralCode);
+
+
         // Если требуется подписка, показываем спонсоров
         if (subscriptionCheck.required) {
             if (subscriptionCheck.status === 'requires_subscription' && subscriptionCheck.sponsors) {
@@ -1796,8 +1788,6 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
             }
         }
 
-        // Если подписка не требуется или проверка пройдена, продолжаем обычную регистрацию
-        await processUserRegistration(chatId, msg.from, referralCode);
 
         
         // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: проверяем повторные переходы по рефке
