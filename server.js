@@ -714,195 +714,11 @@ async function initializeDatabaseAndServer() {
 
 
 async function initDatabase() {
-    console.log('🔄 Initializing simplified database...');
-    
+    console.log('🔄 Initializing database with all required tables...');
+
     try {
-        // Сначала проверяем существование таблицы user_profiles
-        const userTableExists = await pool.query(`
-            SELECT EXISTS (
-                SELECT FROM information_schema.tables 
-                WHERE table_name = 'user_profiles'
-            )
-        `);
-        
-        if (!userTableExists.rows[0].exists) {
-            console.log('📝 Creating user_profiles table...');
-            await pool.query(`
-                CREATE TABLE IF NOT EXISTS user_profiles (
-                    user_id BIGINT PRIMARY KEY,
-                    username TEXT,
-                    first_name TEXT,
-                    last_name TEXT,
-                    photo_url TEXT,
-                    balance REAL DEFAULT 0,
-                    level INTEGER DEFAULT 1,
-                    is_admin BOOLEAN DEFAULT false,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            `);
-        }
-        
-        // Создаем остальные таблицы
-        await createTablesIfNotExist();
-
-        // Таблица реферальных ссылок
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS referral_links (
-                id SERIAL PRIMARY KEY,
-                code VARCHAR(20) UNIQUE NOT NULL,
-                name TEXT NOT NULL,
-                description TEXT,
-                created_by BIGINT NOT NULL,
-                referral_url TEXT NOT NULL,
-                total_clicks INTEGER DEFAULT 0,
-                unique_clicks INTEGER DEFAULT 0,
-                conversions INTEGER DEFAULT 0,
-                is_active BOOLEAN DEFAULT true,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        
-        // Таблица кликов по ссылкам
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS referral_link_clicks (
-                id SERIAL PRIMARY KEY,
-                link_id INTEGER NOT NULL,
-                user_id BIGINT,
-                ip_address TEXT,
-                user_agent TEXT,
-                clicked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        
-        // Таблица активаций реферальных ссылок
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS referral_activations (
-                id SERIAL PRIMARY KEY,
-                link_id INTEGER NOT NULL,
-                user_id BIGINT NOT NULL,
-                activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                reward_amount REAL DEFAULT 0
-            )
-        `);
-        
-        console.log('✅ Referral tables initialized');
-        // 🔥 КОНЕЦ ДОБАВЛЕННОГО КОДА
-        
-        // Остальной ваш существующий код initDatabase()...
-        await pool.query(`
-            ALTER TABLE user_profiles 
-            ADD COLUMN IF NOT EXISTS completed_tasks INTEGER DEFAULT 0
-        `);
-
-        // Добавляем колонку completed_tasks если ее нет
-        await pool.query(`
-            ALTER TABLE user_profiles 
-            ADD COLUMN IF NOT EXISTS completed_tasks INTEGER DEFAULT 0
-        `);
-await pool.query(`
-CREATE TABLE IF NOT EXISTS referral_links (
-    id SERIAL PRIMARY KEY,
-    code VARCHAR(20) UNIQUE NOT NULL,
-    name TEXT NOT NULL,
-    description TEXT,
-    created_by BIGINT NOT NULL,
-    referral_url TEXT NOT NULL,
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (created_by) REFERENCES user_profiles(user_id)
-)
-`);
-        // Таблица реферальных ссылок
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS referral_links (
-                id SERIAL PRIMARY KEY,
-                code VARCHAR(20) UNIQUE NOT NULL,
-                name TEXT NOT NULL,
-                description TEXT,
-                created_by BIGINT NOT NULL,
-                referral_url TEXT NOT NULL,
-                total_clicks INTEGER DEFAULT 0,
-                unique_clicks INTEGER DEFAULT 0,
-                conversions INTEGER DEFAULT 0,
-                is_active BOOLEAN DEFAULT true,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (created_by) REFERENCES user_profiles(user_id)
-            )
-        `);
-        
-        // Таблица кликов по ссылкам
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS referral_link_clicks (
-                id SERIAL PRIMARY KEY,
-                link_id INTEGER NOT NULL,
-                user_id BIGINT,
-                ip_address TEXT,
-                user_agent TEXT,
-                clicked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (link_id) REFERENCES referral_links(id)
-            )
-        `);
-        
-        // Таблица активаций реферальных ссылок
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS referral_activations (
-                id SERIAL PRIMARY KEY,
-                link_id INTEGER NOT NULL,
-                user_id BIGINT NOT NULL,
-                activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                reward_amount REAL DEFAULT 0,
-                FOREIGN KEY (link_id) REFERENCES referral_links(id),
-                FOREIGN KEY (user_id) REFERENCES user_profiles(user_id)
-            )
-        `);
-        
-await pool.query(`CREATE TABLE IF NOT EXISTS referral_link_clicks (
-    id SERIAL PRIMARY KEY,
-    link_id INTEGER NOT NULL,
-    user_id BIGINT,
-    ip_address TEXT,
-    user_agent TEXT,
-    clicked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (link_id) REFERENCES referral_links(id))
-`);
-// Таблица активаций реферальных ссылок
-await pool.query(`
-    CREATE TABLE IF NOT EXISTS referral_activations (
-        id SERIAL PRIMARY KEY,
-        link_id INTEGER NOT NULL,
-        user_id BIGINT NOT NULL,
-        activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        reward_amount REAL DEFAULT 0,
-        FOREIGN KEY (link_id) REFERENCES referral_links(id),
-        FOREIGN KEY (user_id) REFERENCES user_profiles(user_id)
-    )
-`);
-
-// Таблица настроек админ-панели
-await pool.query(`
-    CREATE TABLE IF NOT EXISTS admin_settings (
-        id INTEGER PRIMARY KEY DEFAULT 1,
-        allow_admins_links BOOLEAN DEFAULT false,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-`);
-
-// Добавьте колонку для прав создания ссылок
-await pool.query(`
-    ALTER TABLE admin_permissions 
-    ADD COLUMN IF NOT EXISTS can_create_links BOOLEAN DEFAULT false
-`);
-        // Таблица для лога уведомлений
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS admin_notifications (
-                id SERIAL PRIMARY KEY,
-                admin_id BIGINT NOT NULL,
-                message TEXT NOT NULL,
-                sent_count INTEGER DEFAULT 0,
-                failed_count INTEGER DEFAULT 0,
-                sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
+        // ==================== 1. БАЗОВЫЕ ТАБЛИЦЫ (БЕЗ ЗАВИСИМОСТЕЙ) ====================
+        console.log('📝 Creating core tables...');
 
         // Таблица пользователей
         await pool.query(`
@@ -919,24 +735,14 @@ await pool.query(`
             )
         `);
 
-        // Добавляем реферальные поля
-        await pool.query(`
-            ALTER TABLE user_profiles 
-            ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE,
-            ADD COLUMN IF NOT EXISTS referred_by BIGINT,
-            ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0,
-            ADD COLUMN IF NOT EXISTS referral_earned REAL DEFAULT 0,
-            ADD COLUMN IF NOT EXISTS is_first_login BOOLEAN DEFAULT true
-        `);
-
-        // Таблица заданий - ОБНОВЛЕННАЯ ВЕРСИЯ С image_url
+        // Таблица задач
         await pool.query(`
             CREATE TABLE IF NOT EXISTS tasks (
                 id SERIAL PRIMARY KEY,
                 title TEXT NOT NULL,
                 description TEXT NOT NULL,
                 price REAL NOT NULL,
-                created_by BIGINT NOT NULL,
+                created_by BIGINT,
                 category TEXT DEFAULT 'general',
                 time_to_complete TEXT DEFAULT '5 минут',
                 difficulty TEXT DEFAULT 'Легкая',
@@ -945,9 +751,238 @@ await pool.query(`
                 task_url TEXT,
                 image_url TEXT,
                 status TEXT DEFAULT 'active',
+                completed_count INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
+
+        // Таблица постов
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS posts (
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                content TEXT NOT NULL,
+                author TEXT NOT NULL,
+                author_id BIGINT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // ==================== 2. АДМИНИСТРАТИВНЫЕ ТАБЛИЦЫ ====================
+        console.log('👑 Creating admin tables...');
+
+        // Таблица прав администраторов - создаем ПЕРВОЙ среди зависимых таблиц!
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS admin_permissions (
+                admin_id BIGINT PRIMARY KEY,
+                can_posts BOOLEAN DEFAULT true,
+                can_tasks BOOLEAN DEFAULT true,
+                can_verification BOOLEAN DEFAULT true,
+                can_support BOOLEAN DEFAULT true,
+                can_payments BOOLEAN DEFAULT true,
+                can_admins BOOLEAN DEFAULT false,
+                can_create_links BOOLEAN DEFAULT false,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        console.log('✅ admin_permissions table created');
+
+        // Таблица действий администратора
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS admin_actions (
+                id SERIAL PRIMARY KEY,
+                admin_id BIGINT NOT NULL,
+                action_type TEXT NOT NULL,
+                target_id INTEGER,
+                description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Таблица уведомлений администратора
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS admin_notifications (
+                id SERIAL PRIMARY KEY,
+                admin_id BIGINT NOT NULL,
+                message TEXT NOT NULL,
+                sent_count INTEGER DEFAULT 0,
+                failed_count INTEGER DEFAULT 0,
+                sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Таблица настроек администратора
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS admin_settings (
+                id INTEGER PRIMARY KEY DEFAULT 1,
+                allow_admins_links BOOLEAN DEFAULT false,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // ==================== 3. ТАБЛИЦЫ, ЗАВИСЯЩИЕ ОТ user_profiles ====================
+        console.log('🔗 Creating dependent tables...');
+
+        // Добавляем колонки в user_profiles
+        await pool.query(`
+            ALTER TABLE user_profiles 
+            ADD COLUMN IF NOT EXISTS completed_tasks INTEGER DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE,
+            ADD COLUMN IF NOT EXISTS referred_by BIGINT,
+            ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS referral_earned REAL DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS is_first_login BOOLEAN DEFAULT true,
+            ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT false,
+            ADD COLUMN IF NOT EXISTS has_subscribed BOOLEAN DEFAULT false,
+            ADD COLUMN IF NOT EXISTS last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        `);
+
+        // Реферальные ссылки
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS referral_links (
+                id SERIAL PRIMARY KEY,
+                code VARCHAR(20) UNIQUE NOT NULL,
+                name TEXT NOT NULL,
+                description TEXT,
+                created_by BIGINT NOT NULL,
+                referral_url TEXT NOT NULL,
+                total_clicks INTEGER DEFAULT 0,
+                unique_clicks INTEGER DEFAULT 0,
+                conversions INTEGER DEFAULT 0,
+                is_active BOOLEAN DEFAULT true,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS referral_link_clicks (
+                id SERIAL PRIMARY KEY,
+                link_id INTEGER NOT NULL,
+                user_id BIGINT,
+                ip_address TEXT,
+                user_agent TEXT,
+                clicked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS referral_activations (
+                id SERIAL PRIMARY KEY,
+                link_id INTEGER NOT NULL,
+                user_id BIGINT NOT NULL,
+                activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                reward_amount REAL DEFAULT 0
+            )
+        `);
+
+        // ==================== 4. ТАБЛИЦЫ ДЛЯ ЗАДАНИЙ ПОЛЬЗОВАТЕЛЯ ====================
+        console.log('📋 Creating user tasks tables...');
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS user_tasks (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                task_id INTEGER NOT NULL,
+                status TEXT DEFAULT 'active',
+                started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                screenshot_url TEXT,
+                submitted_at TIMESTAMP,
+                completed_at TIMESTAMP
+            )
+        `);
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS task_verifications (
+                id SERIAL PRIMARY KEY,
+                user_task_id INTEGER NOT NULL,
+                user_id BIGINT NOT NULL,
+                task_id INTEGER NOT NULL,
+                user_name TEXT NOT NULL,
+                user_username TEXT,
+                task_title TEXT NOT NULL,
+                task_price REAL NOT NULL,
+                screenshot_url TEXT NOT NULL,
+                status TEXT DEFAULT 'pending',
+                submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                reviewed_at TIMESTAMP,
+                reviewed_by BIGINT,
+                auto_verified BOOLEAN DEFAULT false
+            )
+        `);
+
+        // ==================== 5. ТАБЛИЦЫ ПОДДЕРЖКИ ====================
+        console.log('💬 Creating support tables...');
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS support_chats (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                user_name TEXT NOT NULL,
+                user_username TEXT,
+                last_message TEXT,
+                last_message_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                is_active BOOLEAN DEFAULT true,
+                unread_count INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS support_messages (
+                id SERIAL PRIMARY KEY,
+                chat_id INTEGER NOT NULL,
+                user_id BIGINT NOT NULL,
+                user_name TEXT NOT NULL,
+                user_username TEXT,
+                message TEXT NOT NULL,
+                is_admin BOOLEAN DEFAULT false,
+                sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // ==================== 6. ФИНАНСОВЫЕ ТАБЛИЦЫ ====================
+        console.log('💰 Creating financial tables...');
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS withdrawal_requests (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                username TEXT,
+                first_name TEXT,
+                amount REAL NOT NULL,
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP,
+                completed_by BIGINT
+            )
+        `);
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS promocodes (
+                id SERIAL PRIMARY KEY,
+                code VARCHAR(20) UNIQUE NOT NULL,
+                max_uses INTEGER NOT NULL DEFAULT 1,
+                used_count INTEGER DEFAULT 0,
+                reward REAL NOT NULL DEFAULT 0,
+                expires_at TIMESTAMP,
+                is_active BOOLEAN DEFAULT true,
+                created_by BIGINT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS promocode_activations (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                promocode_id INTEGER NOT NULL,
+                activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // ==================== 7. ТАБЛИЦЫ ДЛЯ FLYER ====================
+        console.log('🪰 Creating Flyer tables...');
+
         await pool.query(`
             CREATE TABLE IF NOT EXISTS user_flyer_data (
                 user_id BIGINT PRIMARY KEY,
@@ -969,330 +1004,46 @@ await pool.query(`
             )
         `);
 
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS flyer_tasks (
-                id SERIAL PRIMARY KEY,
-                user_id BIGINT NOT NULL,
-                task_signature TEXT NOT NULL,
-                task_data JSONB,
-                status TEXT DEFAULT 'active',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                completed_at TIMESTAMP
-            )
-        `);
+        // ==================== 8. ГЛАВНЫЙ АДМИНИСТРАТОР ====================
+        console.log('👑 Ensuring main admin...');
 
-        console.log('✅ Flyer tables initialized');
-        // Гарантируем, что колонка image_url существует
-        await pool.query(`
-            ALTER TABLE tasks 
-            ADD COLUMN IF NOT EXISTS image_url TEXT
-        `);
-
-        // Таблица запросов на вывод
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS withdrawal_requests (
-                id SERIAL PRIMARY KEY,
-                user_id BIGINT NOT NULL,
-                username TEXT,
-                first_name TEXT,
-                amount REAL NOT NULL,
-                status TEXT DEFAULT 'pending',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                completed_at TIMESTAMP,
-                completed_by BIGINT
-            )
-        `);
-
-        // Таблица постов
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS posts (
-                id SERIAL PRIMARY KEY,
-                title TEXT NOT NULL,
-                content TEXT NOT NULL,
-                author TEXT NOT NULL,
-                author_id BIGINT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        // Таблица чатов поддержки
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS support_chats (
-                id SERIAL PRIMARY KEY,
-                user_id BIGINT NOT NULL,
-                user_name TEXT NOT NULL,
-                user_username TEXT,
-                last_message TEXT,
-                last_message_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                is_active BOOLEAN DEFAULT true,
-                unread_count INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        // Таблица заданий пользователей
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS user_tasks (
-                id SERIAL PRIMARY KEY,
-                user_id BIGINT NOT NULL,
-                task_id INTEGER NOT NULL,
-                status TEXT DEFAULT 'active',
-                started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                screenshot_url TEXT,
-                submitted_at TIMESTAMP,
-                completed_at TIMESTAMP
-            )
-        `);
- await pool.query(`
-            ALTER TABLE task_verifications 
-            ADD COLUMN IF NOT EXISTS auto_verified BOOLEAN DEFAULT false
-        `);
-        // Вызовите эту функцию при инициализации
-addAutoVerificationColumn();
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS admin_actions (
-                id SERIAL PRIMARY KEY,
-                admin_id BIGINT NOT NULL,
-                action_type TEXT NOT NULL,
-                target_id INTEGER,
-                description TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        // Таблица проверки заданий
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS task_verifications (
-                id SERIAL PRIMARY KEY,
-                user_task_id INTEGER NOT NULL,
-                user_id BIGINT NOT NULL,
-                task_id INTEGER NOT NULL,
-                user_name TEXT NOT NULL,
-                user_username TEXT,
-                task_title TEXT NOT NULL,
-                task_price REAL NOT NULL,
-                screenshot_url TEXT NOT NULL,
-                status TEXT DEFAULT 'pending',
-                submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                reviewed_at TIMESTAMP,
-                reviewed_by BIGINT
-            )
-        `);
-
-        // В initDatabase() добавьте:
-        await createPromocodesTable();
-
-        // Таблица сообщений
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS support_messages (
-                id SERIAL PRIMARY KEY,
-                chat_id INTEGER NOT NULL,
-                user_id BIGINT NOT NULL,
-                user_name TEXT NOT NULL,
-                user_username TEXT,
-                message TEXT NOT NULL,
-                is_admin BOOLEAN DEFAULT false,
-                sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        // Таблица прав доступа администраторов
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS admin_permissions (
-                admin_id BIGINT PRIMARY KEY,
-                can_posts BOOLEAN DEFAULT true,
-                can_tasks BOOLEAN DEFAULT true,
-                can_verification BOOLEAN DEFAULT true,
-                can_support BOOLEAN DEFAULT true,
-                can_payments BOOLEAN DEFAULT true,
-                can_admins BOOLEAN DEFAULT false,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (admin_id) REFERENCES user_profiles(user_id)
-            )
-        `);
-
-        // Добавляем недостающие колонки
-        await pool.query(`
-            ALTER TABLE support_chats 
-            ADD COLUMN IF NOT EXISTS user_username TEXT,
-            ADD COLUMN IF NOT EXISTS unread_count INTEGER DEFAULT 0
-        `);
-        
-        await pool.query(`
-            ALTER TABLE tasks 
-            ADD COLUMN IF NOT EXISTS created_by BIGINT,
-            ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'general',
-            ADD COLUMN IF NOT EXISTS time_to_complete TEXT DEFAULT '5 минут',
-            ADD COLUMN IF NOT EXISTS difficulty TEXT DEFAULT 'Легкая',
-            ADD COLUMN IF NOT EXISTS people_required INTEGER DEFAULT 1,
-            ADD COLUMN IF NOT EXISTS repost_time TEXT DEFAULT '1 день',
-            ADD COLUMN IF NOT EXISTS task_url TEXT
-        `);
-
-        // Добавляем колонку user_username в task_verifications если ее нет
-        await pool.query(`
-            ALTER TABLE task_verifications 
-            ADD COLUMN IF NOT EXISTS user_username TEXT
-        `);
-
-        // Добавляем колонку user_username в support_messages если ее нет
-        await pool.query(`
-            ALTER TABLE support_messages 
-            ADD COLUMN IF NOT EXISTS user_username TEXT
-        `);
-
-        // Гарантируем существование главного админа
+        // Создаем главного администратора
         await pool.query(`
             INSERT INTO user_profiles 
-            (user_id, username, first_name, last_name, is_admin) 
-            VALUES ($1, $2, $3, $4, $5)
+            (user_id, username, first_name, last_name, is_admin, balance) 
+            VALUES ($1, $2, $3, $4, true, 0)
             ON CONFLICT (user_id) 
+            DO UPDATE SET is_admin = true
+        `, [ADMIN_ID, 'linkgold_admin', 'Главный', 'Администратор']);
+
+        // Добавляем права для главного администратора
+        await pool.query(`
+            INSERT INTO admin_permissions (admin_id, can_posts, can_tasks, can_verification, can_support, can_payments, can_admins, can_create_links)
+            VALUES ($1, true, true, true, true, true, true, true)
+            ON CONFLICT (admin_id) 
             DO UPDATE SET 
-                is_admin = true,
+                can_posts = true,
+                can_tasks = true,
+                can_verification = true,
+                can_support = true,
+                can_payments = true,
+                can_admins = true,
+                can_create_links = true,
                 updated_at = CURRENT_TIMESTAMP
-        `, [ADMIN_ID, 'linkgold_admin', 'Главный', 'Администратор', true]);
+        `, [ADMIN_ID]);
 
-        // Создаем тестовые задания если их нет
-        const tasksCount = await pool.query('SELECT COUNT(*) FROM tasks WHERE status = $1', ['active']);
-        if (parseInt(tasksCount.rows[0].count) === 0) {
-            console.log('📝 Создаем тестовые задания...');
-            await pool.query(`
-                INSERT INTO tasks (title, description, price, created_by, category) 
-                VALUES 
-                ('Подписаться на канал', 'Подпишитесь на наш Telegram канал и оставайтесь подписанным минимум 3 дня', 50, $1, 'subscribe'),
-                ('Посмотреть видео', 'Посмотрите видео до конца и поставьте лайк', 30, $1, 'view'),
-                ('Сделать репост', 'Сделайте репост записи в своем канале', 70, $1, 'repost'),
-                ('Оставить комментарий', 'Напишите содержательный комментарий под постом', 40, $1, 'comment'),
-                ('Вступить в группу', 'Вступите в нашу Telegram группу', 60, $1, 'social')
-            `, [ADMIN_ID]);
-            console.log('✅ Тестовые задания созданы');
-        }
-// В функции initDatabase() добавьте:
-async function addMissingUserColumns() {
-    try {
-        console.log('🔧 Adding missing columns to user_profiles...');
-        
-        const columnsToAdd = [
-            'is_blocked BOOLEAN DEFAULT false',
-            'tasks_completed INTEGER DEFAULT 0',
-            'last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
-        ];
-        
-        for (const columnDef of columnsToAdd) {
-            const columnName = columnDef.split(' ')[0];
-            try {
-                await pool.query(`
-                    ALTER TABLE user_profiles 
-                    ADD COLUMN IF NOT EXISTS ${columnDef}
-                `);
-                console.log(`✅ Added column: ${columnName}`);
-            } catch (error) {
-                console.log(`ℹ️ Column ${columnName} already exists:`, error.message);
-            }
-        }
-        
+        // ==================== 9. ДОПОЛНИТЕЛЬНЫЕ ИНДЕКСЫ ====================
+        console.log('📊 Creating indexes...');
 
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_user_tasks_status ON user_tasks(user_id, status)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_withdrawal_requests_status ON withdrawal_requests(status)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_support_chats_active ON support_chats(is_active)`);
 
-
-        console.log('✅ User table structure verified');
-    } catch (error) {
-        console.error('❌ Error adding user columns:', error);
-    }
-}
-
-// Вызовите эту функцию в initDatabase()
-await addMissingUserColumns();
-
-        // Создаем тестовый пост если нет постов
-        const postsCount = await pool.query('SELECT COUNT(*) FROM posts');
-        if (parseInt(postsCount.rows[0].count) === 0) {
-            await pool.query(`
-                INSERT INTO posts (title, content, author, author_id) 
-                VALUES ('Добро пожаловать!', 'Начните зарабатывать выполняя простые задания!', 'Администратор', $1)
-            `, [ADMIN_ID]);
-        }
-
-        // ВРЕМЕННОЕ РЕШЕНИЕ - проверяем таблицу промокодов
-        try {
-            console.log('🔧 Checking promocodes table...');
-            await pool.query(`
-                CREATE TABLE IF NOT EXISTS promocodes (
-                    id SERIAL PRIMARY KEY,
-                    code VARCHAR(20) UNIQUE NOT NULL,
-                    reward REAL NOT NULL DEFAULT 0,
-                    max_uses INTEGER NOT NULL DEFAULT 1,
-                    used_count INTEGER DEFAULT 0,
-                    expires_at TIMESTAMP,
-                    is_active BOOLEAN DEFAULT true,
-                    created_by BIGINT NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            `);
-            console.log('✅ Promocodes table verified');
-        } catch (error) {
-            console.log('⚠️ Promocodes table check:', error.message);
-        }
-              // ✅ В КОНЦЕ ФУНКЦИИ ДОБАВЬТЕ ЭТО:
-        async function ensureMainAdmin() {
-            try {
-                console.log('👑 Checking main admin...');
-                
-                // Создаем таблицу admin_permissions если её нет
-                await pool.query(`
-                    CREATE TABLE IF NOT EXISTS admin_permissions (
-                        admin_id BIGINT PRIMARY KEY,
-                        can_posts BOOLEAN DEFAULT true,
-                        can_tasks BOOLEAN DEFAULT true,
-                        can_verification BOOLEAN DEFAULT true,
-                        can_support BOOLEAN DEFAULT true,
-                        can_payments BOOLEAN DEFAULT true,
-                        can_admins BOOLEAN DEFAULT false,
-                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    )
-                `);
-                
-                // Проверяем существование главного админа
-                const adminCheck = await pool.query(
-                    'SELECT user_id FROM user_profiles WHERE user_id = $1',
-                    [ADMIN_ID]
-                );
-                
-                if (adminCheck.rows.length === 0) {
-                    console.log('👑 Creating main admin user...');
-                    await pool.query(`
-                        INSERT INTO user_profiles (user_id, username, first_name, is_admin, balance) 
-                        VALUES ($1, $2, $3, true, 0)
-                    `, [ADMIN_ID, 'linkgold_admin', 'Главный']);
-                    console.log('✅ Main admin created');
-                } else {
-                    await pool.query(
-                        'UPDATE user_profiles SET is_admin = true WHERE user_id = $1',
-                        [ADMIN_ID]
-                    );
-                    console.log('✅ Main admin rights verified');
-                }
-                
-                // Добавляем права доступа для главного админа
-                await pool.query(`
-                    INSERT INTO admin_permissions (admin_id, can_posts, can_tasks, can_verification, can_support, can_payments, can_admins)
-                    VALUES ($1, true, true, true, true, true, true)
-                    ON CONFLICT (admin_id) DO UPDATE SET 
-                        can_posts = true,
-                        can_tasks = true,
-                        can_verification = true,
-                        can_support = true,
-                        can_payments = true,
-                        can_admins = true
-                `, [ADMIN_ID]);
-                
-                console.log('✅ Main admin setup complete');
-                
-            } catch (error) {
-                console.error('❌ Error ensuring main admin:', error.message);
-            }
-        }
-        console.log('✅ Database initialized successfully');
+        console.log('✅ Database initialized successfully!');
     } catch (error) {
         console.error('❌ Database initialization error:', error);
+        throw error;
     }
 }
 
