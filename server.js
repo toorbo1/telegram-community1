@@ -2207,30 +2207,30 @@ if (!isSubscribed && !global.DISABLE_SUBSCRIPTION_CHECK) {
         welcomeMessage += `✨ <b>Приглашайте друзей и увеличивайте доход!</b>`;
 
         try {
-            // ВМЕСТО БЛОКА С ОТПРАВКОЙ ФОТО, ВСТАВЬТЕ ЭТО:
-
-// Отправляем приветственное сообщение (только текст)
-await bot.sendMessage(
-    chatId,
-    welcomeMessage,
-    {
-        parse_mode: 'HTML',
-        reply_markup: {
-            inline_keyboard: [
-                [
-                    { text: '📢 НАШ КАНАЛ', url: 'https://t.me/trefggfd' },
-                    { text: '💬 ОТЗЫВЫ', url: 'https://t.me/repLinkGold' }
-                ],
-                [
-                    { text: '👥 ПРИГЛАСИТЬ ДРУЗЕЙ', url: `https://t.me/share/url?url=https://t.me/LinkGoldMoney_bot?start=${userReferralCode}&text=🚀 Присоединяйся к LinkGold и начинай зарабатывать Telegram Stars! Получи 1⭐ за регистрацию и доступ к лучшим заданиям! 💫` }
-                ],
-                [
-                    { text: '📚 ГАЙДЫ ПО ЗАДАНИЯМ', url: 'https://t.me/LinkGoldGuide' }
-                ]
-            ]
-        }
-    }
-);
+            const photoPath = './Airbrush-IMAGE-ENHANCER-1763128623415-1763128623415.png';
+            
+            await bot.sendPhoto(
+                chatId,
+                photoPath,
+                {
+                    caption: welcomeMessage,
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                { text: '📢 НАШ КАНАЛ', url: 'https://t.me/trefggfd' },  // ← ИЗМЕНЕНО
+                                { text: '💬 ОТЗЫВЫ', url: 'https://t.me/repLinkGold' }
+                            ],
+                            [
+                                { text: '👥 ПРИГЛАСИТЬ ДРУЗЕЙ', url: `https://t.me/share/url?url=https://t.me/LinkGoldMoney_bot?start=${userReferralCode}&text=🚀 Присоединяйся к LinkGold и начинай зарабатывать Telegram Stars! Получи 1⭐ за регистрацию и доступ к лучшим заданиям! 💫` }
+                            ],
+                            [
+                                { text: '📚 ГАЙДЫ ПО ЗАДАНИЯМ', url: 'https://t.me/LinkGoldGuide' }
+                            ]
+                        ]
+                    }
+                }
+            );
         } catch (photoError) {
             console.log('Не удалось отправить фото, отправляем текстовое сообщение:', photoError.message);
             await bot.sendMessage(
