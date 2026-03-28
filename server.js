@@ -52,7 +52,15 @@ setInterval(async () => {
     }
 }, 5 * 60 * 1000); // 5 минут
 // ==================== FLYER API INTEGRATION ====================
-
+async function checkSubscriptionWithFlyer(userId, userData) {
+    console.log('🔄 Flyer check disabled – allowing access');
+    return {
+        required: false,
+        allowAccess: true,
+        status: 'subscribed',
+        message: 'Проверка отключена'
+    };
+}
 
 
 // // Улучшенная функция для проверки подписки через Flyer API
@@ -349,12 +357,15 @@ async function handleFlyerSubscriptionCheck(chatId, userId, callbackQuery) {
             text: '🔍 Проверяем подписки...'
         });
 
-        // Проверяем подписку снова через Flyer API
-        const subscriptionCheck = await checkSubscriptionWithFlyer(userId, {
-            first_name: callbackQuery.from.first_name,
-            username: callbackQuery.from.username,
-            language_code: callbackQuery.from.language_code || 'ru'
-        });
+        async function checkSubscriptionWithFlyer(userId, userData) {
+    console.log('🔄 Flyer check disabled – allowing access');
+    return {
+        required: false,
+        allowAccess: true,
+        status: 'subscribed',
+        message: 'Проверка отключена'
+    };
+}
 
         if (subscriptionCheck.required && !subscriptionCheck.allowAccess) {
             // Подписка все еще требуется
@@ -1753,12 +1764,15 @@ bot.onText(/\/start(.+)?/, async (msg, match) => {
     try {
         await bot.sendChatAction(chatId, 'typing');
 
-        // 🔄 ПРОВЕРКА ПОДПИСКИ ЧЕРЕЗ FLYER API
-        const subscriptionCheck = await checkSubscriptionWithFlyer(userId, {
-            first_name: msg.from.first_name,
-            username: msg.from.username,
-            language_code: msg.from.language_code || 'ru'
-        });
+        async function checkSubscriptionWithFlyer(userId, userData) {
+    console.log('🔄 Flyer check disabled – allowing access');
+    return {
+        required: false,
+        allowAccess: true,
+        status: 'subscribed',
+        message: 'Проверка отключена'
+    };
+}
 
         console.log('📊 Flyer subscription check result:', subscriptionCheck);
 
@@ -2227,11 +2241,14 @@ app.get('/api/admin/flyer-status', async (req, res) => {
         // Тестируем все endpoints Flyer API
         const [botInfo, testSubscription, testTasks] = await Promise.allSettled([
             getFlyerBotInfo(),
-            checkSubscriptionWithFlyer(adminId, { 
-                first_name: 'Test', 
-                username: 'test_admin',
-                language_code: 'ru' 
-            }),
+            async function checkSubscriptionWithFlyer(userId, userData) {
+    console.log('🔄 Flyer check disabled – allowing access');
+    return {
+        required: false,
+        allowAccess: true,
+        status: 'subscribed',
+        message: 'Проверка отключена'
+    }},
             getFlyerTasks(adminId, { 
                 first_name: 'Test', 
                 username: 'test_admin',
@@ -5896,10 +5913,15 @@ bot.onText(/\/flyer_status/, async (msg) => {
 
     try {
         const botInfo = await getFlyerBotInfo();
-        const testCheck = await checkSubscriptionWithFlyer(userId, {
-            first_name: 'Test',
-            language_code: 'ru'
-        });
+        async function checkSubscriptionWithFlyer(userId, userData) {
+    console.log('🔄 Flyer check disabled – allowing access');
+    return {
+        required: false,
+        allowAccess: true,
+        status: 'subscribed',
+        message: 'Проверка отключена'
+    };
+}
 
         await bot.sendMessage(
             chatId,
