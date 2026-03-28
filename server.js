@@ -684,34 +684,65 @@ async function waitForDatabase(maxRetries = 30, delay = 2000) {
     throw new Error('Database did not become ready after ' + (maxRetries * delay / 1000) + ' seconds');
 }
 
-// Замените существующий код запуска на:
+// ... (весь остальной код до этой части остается без изменений)
 
-async function startServer() {
+// Функция для создания таблиц и инициализации
+async function initializeDatabaseAndServer() {
     try {
-        console.log('🚀 Starting server...');
+        console.log('🚀 Starting database initialization...');
         
-        // 1. Ждем готовности базы данных
-        await waitForDatabase(30, 2000);
-        
-        // 2. Инициализируем базу данных
+        // Инициализируем базу данных
         await initDatabase();
         
-        // 3. Инициализируем Flyer (без критических ошибок)
-        try {
-            await initializeFlyerIntegration();
-        } catch (flyerError) {
-            console.warn('⚠️ Flyer integration warning:', flyerError.message);
+        // Исправляем структуру таблиц
+        await fixUserIdColumns();
+        await fixWithdrawalTable();
+        await fixTasksTable();
+        await fixReferralLinksTable();
+        await addBlockedColumn();
+        await addSubscriptionColumn();
+        
+        // Создаем тестовые задания если нужно
+        await createSampleTasks();
+        
+        // Убеждаемся, что главный админ существует
+        await ensureMainAdmin();
+        
+        console.log('✅ Database initialization complete');
+        
+        // Инициализируем Flyer интеграцию
+        await initializeFlyerIntegration();
+        
+        return true;
+    } catch (error) {
+        console.error('❌ Database initialization error:', error);
+        return false;
+    }
+}
+
+// Запускаем сервер только после инициализации базы данных
+async function startServer() {
+    try {
+        // Инициализируем базу данных
+        const dbInitialized = await initializeDatabaseAndServer();
+        
+        if (!dbInitialized) {
+            console.error('❌ Failed to initialize database, exiting...');
+            process.exit(1);
         }
         
-        // 4. Запускаем сервер
-        app.listen(PORT, '0.0.0.0', () => {
+        // Запускаем HTTP сервер
+        app.listen(PORT, '0.0.0.0', async () => {
             console.log(`🚀 Server running on port ${PORT}`);
             console.log(`📊 Health: http://localhost:${PORT}/api/health`);
             console.log(`🔐 Admin ID: ${ADMIN_ID}`);
+            
+            // Выполняем полную диагностику базы данных
+            await fullDatabaseDiagnostic();
         });
         
     } catch (error) {
-        console.error('❌ Failed to start server:', error.message);
+        console.error('❌ Failed to start server:', error);
         process.exit(1);
     }
 }
