@@ -1718,7 +1718,6 @@ async function fixWithdrawalTable() {
 // Вызовите эту функцию при инициализации сервера
 fixWithdrawalTable();
 
-// Замените существующую функцию checkSubscription на эту
 async function checkSubscription(userId) {
     if (!bot) {
         console.log('⚠️ Bot not initialized, skipping subscription check');
@@ -1726,16 +1725,15 @@ async function checkSubscription(userId) {
     }
 
     try {
-        // Проверяем, существует ли канал
-        const chatId = '@LinkGoldChannel1';
+        // ИСПОЛЬЗУЕМ НОВЫЙ КАНАЛ
+        const chatId = '@trefggfd';
         
-        // Сначала проверяем, может ли бот получить информацию о канале
+        // Проверяем, существует ли канал
         try {
             const chat = await bot.getChat(chatId);
             console.log(`✅ Channel found: ${chat.title}`);
         } catch (chatError) {
             console.log(`⚠️ Channel ${chatId} not found or bot cannot access it:`, chatError.message);
-            // Если канал не найден, пропускаем проверку подписки
             return true;
         }
         
@@ -1748,13 +1746,9 @@ async function checkSubscription(userId) {
         
     } catch (error) {
         console.error('❌ Subscription check error:', error);
-        
-        // При любой ошибке разрешаем регистрацию, чтобы не блокировать пользователей
-        console.log('⚠️ Subscription check failed, allowing registration');
         return true;
     }
 }
-// Команда для проверки статуса канала (только для админа)
 bot.onText(/\/check_channel/, async (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
@@ -1764,9 +1758,8 @@ bot.onText(/\/check_channel/, async (msg) => {
     }
     
     try {
-        const channelId = '@LinkGoldChannel1';
+        const channelId = '@trefggfd';  // ← ИЗМЕНЕНО
         
-        // Проверяем доступность канала
         let channelInfo = null;
         try {
             channelInfo = await bot.getChat(channelId);
@@ -1784,10 +1777,9 @@ bot.onText(/\/check_channel/, async (msg) => {
         } else {
             message += `❌ <b>Статус:</b> Канал не найден или бот не имеет доступа\n\n`;
             message += `<b>Решение:</b>\n`;
-            message += `1. Создайте канал @LinkGoldChannel1\n`;
-            message += `2. Добавьте бота @LinkGoldMoney_bot в канал как администратора\n`;
-            message += `3. Дайте боту права на чтение сообщений\n`;
-            message += `4. Используйте /setup_channel для проверки\n\n`;
+            message += `1. Добавьте бота @LinkGoldMoney_bot в канал как администратора\n`;
+            message += `2. Дайте боту права на чтение сообщений\n`;
+            message += `3. Выполните /check_channel снова\n\n`;
         }
         
         // Проверяем пользователя
@@ -1821,13 +1813,11 @@ bot.onText(/\/setup_channel/, async (msg) => {
     const instructions = `
 🔧 <b>Настройка канала для проверки подписки</b>
 
-<b>Шаг 1: Создайте канал</b>
-1. В Telegram нажмите "Создать канал"
-2. Название: LinkGold
-3. Ссылка: @LinkGoldChannel1
+<b>Шаг 1: Канал создан</b>
+✅ Канал: @trefggfd
 
 <b>Шаг 2: Добавьте бота в канал</b>
-1. Откройте канал
+1. Откройте канал @trefggfd
 2. Нажмите на название канала
 3. Выберите "Управление каналом"
 4. "Администраторы" → "Добавить администратора"
@@ -1838,14 +1828,12 @@ bot.onText(/\/setup_channel/, async (msg) => {
 После настройки выполните:
 <code>/check_channel</code>
 
-<b>Альтернатива: Отключить проверку подписки</b>
-Если канал не нужен, используйте:
-<code>/disable_subscription_check</code>
+<b>Тест бота:</b>
+Выполните /start чтобы проверить работу
     `.trim();
     
     await bot.sendMessage(chatId, instructions, { parse_mode: 'HTML' });
 });
-
 // Команда для отключения проверки подписки
 bot.onText(/\/disable_subscription_check/, async (msg) => {
     const chatId = msg.chat.id;
