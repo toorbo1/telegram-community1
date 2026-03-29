@@ -15377,14 +15377,6 @@ function createTaskCard(task, category, index) {
             ${escapeHtml(task.description.length > 100 ? task.description.substring(0, 100) + '...' : task.description)}
         </div>
         
-        ${peopleRequired > 1 && category === 'new' ? `
-            <div class="task-progress">
-                <div class="task-progress-bar" style="width: ${Math.min(100, (completedCount / peopleRequired) * 100)}%"></div>
-            </div>
-            <div class="task-progress-text">
-                Выполнено: ${completedCount}/${peopleRequired}
-            </div>
-        ` : ''}
         
         <div class="task-footer">
             <div class="task-time">
@@ -15506,14 +15498,7 @@ function createTaskCardWithImage(task, category, index) {
             ${escapeHtml(task.description.length > 100 ? task.description.substring(0, 100) + '...' : task.description)}
         </div>
         
-        ${peopleRequired > 1 && category === 'new' ? `
-            <div class="task-progress">
-                <div class="task-progress-bar" style="width: ${Math.min(100, (completedCount / peopleRequired) * 100)}%"></div>
-            </div>
-            <div class="task-progress-text">
-                Выполнено: ${completedCount}/${peopleRequired}
-            </div>
-        ` : ''}
+       
         
         <div class="task-footer">
             <div class="task-time">
