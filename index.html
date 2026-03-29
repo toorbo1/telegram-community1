@@ -1721,12 +1721,7 @@ body {
     <div class="position-number" id="user-rank-simple" style="font-size: 32px; font-weight: 800; color: var(--gold); text-align: center; margin: 15px 0;">
         Загрузка...
     </div>
-    <div class="check-position-text" style="text-align: center; font-size: 14px;">
-        в общем рейтинге исполнителей
-    </div>
-    <div class="check-position-text" style="text-align: center; font-size: 14px;">
-        топ 1 становяться за наибольшее количество выполненных заданий
-    </div>
+    
 </div></div>
 
 
@@ -1886,10 +1881,8 @@ body {
     <div class="referral-code">
         <div class="referral-label">Ваша реферальная ссылка</div>
         <input type="text" id="referral-link" readonly style="width: 100%; padding: 8px; margin: 8px 0; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); text-align: center;">
-        <button class="copy-btn" onclick="copyReferralLink()">📋 Копировать ссылку</button>
-        <div style="font-size: 12px; color: var(--success); margin-top: 5px;">
-            🔥 При копировании мгновенно начисляется 1⭐ за переход!
-        </div>
+        <button class="copy-btn" onclick="copyReferralLink()">Копировать</button>
+        
     </div>
     
     <div class="referral-stats">
@@ -1904,16 +1897,11 @@ body {
         
     </div>
     
-    <div class="referral-info">
-        <strong>🎯 Мгновенная система бонусов:</strong><br>
-        • <strong>За регистрацию друга:</strong> <span style="color: var(--gold); font-weight: 800;">2 звезды</span><br>
-        • <strong>Друг получает:</strong> <span style="color: var(--gold); font-weight: 800;">1 звезду</span><br>
-        • Без ограничений по количеству приглашений
-    </div>
+    
     
     <!-- Кнопка для просмотра детальной статистики -->
     <button class="btn btn-primary" onclick="showDetailedReferrals()" style="margin-top: 15px; width: 100%;">
-        📊 Детальная статистика рефералов
+        📊 Рефералы
     </button>
 </div>
         <!-- В секции профиля после реферальной системы -->
@@ -1921,7 +1909,7 @@ body {
     <div class="referral-title">🎫 Активация промокода</div>
     
     <div class="referral-code">
-        <div class="referral-label">Введите промокод для получения бонуса</div>
+        
         <input type="text" id="promocode-input" 
                style="width: 100%; padding: 12px; margin: 8px 0; background: var(--bg-primary); 
                       border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); 
@@ -6284,29 +6272,14 @@ function updateReferralSystem() {
     if (refEarned) refEarned.textContent = `${currentUser.referral_earned || 0} ⭐`;
     if (refClicks) refClicks.textContent = currentUser.referral_clicks || 0;
     
-    // 🔥 ОБНОВЛЯЕМ ТЕКСТ С НОВЫМИ УСЛОВИЯМИ
-    const referralInfo = document.querySelector('.referral-info');
-    if (referralInfo) {
-        referralInfo.innerHTML = `
-            <strong>🎯 Мгновенная система бонусов:</strong><br>
-            • <strong>За переход по ссылке:</strong> <span style="color: var(--gold); font-weight: 800;">1 звезда</span><br>
-            • <strong>За регистрацию друга:</strong> <span style="color: var(--gold); font-weight: 800;">2 звезды</span><br>
-            • <strong>Друг получает:</strong> <span style="color: var(--gold); font-weight: 800;">1 звезду</span><br>
-            • Бонусы начисляются сразу после регистрации<br>
-            • Без ограничений по количеству приглашений<br><br>
-            
-            <strong>📊 Ваша статистика:</strong><br>
-            • Приглашено друзей: <strong>${currentUser.referral_count || 0}</strong><br>
-            • Заработано с рефералов: <strong>${currentUser.referral_earned || 0} ⭐</strong>
-        `;
-    }
+   
 }
 function showDetailedReferrals() {
     const modalHTML = `
         <div class="modal active" id="detailed-referrals-modal">
             <div class="modal-content" style="max-width: 500px;">
                 <div class="modal-header">
-                    <div class="modal-title">📊 Детальная статистика рефералов</div>
+                    <div class="modal-title">📊 Рефералы</div>
                     <button class="modal-close" onclick="closeModal('detailed-referrals-modal')">×</button>
                 </div>
                 <div class="modal-body">
@@ -6316,15 +6289,15 @@ function showDetailedReferrals() {
                             <strong>${currentUser.referral_count || 0} человек</strong>
                         </div>
                         <div class="stat-row">
-                            <span>Заработано с рефералов:</span>
+                            <span>Заработано:</span>
                             <strong style="color: var(--gold);">${currentUser.referral_earned || 0} ⭐</strong>
                         </div>
                         <div class="stat-row">
-                            <span>Бонус за приглашение:</span>
+                            <span>Бонус:</span>
                             <strong style="color: var(--success);">+2 ⭐ вам</strong>
                         </div>
                         <div class="stat-row">
-                            <span>Бонус новому пользователю:</span>
+                            <span>Бонус:</span>
                             <strong style="color: var(--success);">+1 ⭐ ему</strong>
                         </div>
                     </div>
