@@ -556,13 +556,14 @@ body {
 }
 
 .logo-text {
-    font-size: 24px;
+    font-size: 27px;
     font-weight: 800;
     background: var(--gold-gradient);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
     letter-spacing: -0.5px;
+    color: blue;
 }
 
 .logo-icon {
