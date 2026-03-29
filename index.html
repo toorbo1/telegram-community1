@@ -11975,9 +11975,9 @@ function displayWithdrawHistory(operations) {
     container.innerHTML = '';
     
     if (!operations || operations.length === 0) {
-        container.innerHTML = `
+        container.innerHTML = `<div style="font-size: 48px; margin-bottom: 16px;">💫</div>
             <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
-                <div style="font-size: 48px; margin-bottom: 16px;">💫</div>
+                
                 <div>Нет операций по выводу</div>
                 <div style="font-size: 12px; margin-top: 8px;">
                     Минимальная сумма для вывода: 50 ⭐
