@@ -5834,20 +5834,7 @@ function clearFilters() {
     loadTasks();
 }
 
-// 🔧 ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ ОТОБРАЖАЕМОГО ИМЕНИ КАТЕГОРИИ
-function getCategoryDisplayName(category) {
-    const categoryMap = {
-        'all': 'Все',
-        'social': 'Соцсети',
-        'subscribe': 'Подписки',
-        'view': 'Просмотры',
-        'comment': 'Комментарии',
-        'repost': 'Репосты',
-        'other': 'Другое'
-    };
-    
-    return categoryMap[category] || category;
-}
+
 
 // 🔧 ОБНОВЛЕННАЯ ИНИЦИАЛИЗАЦИЯ ПОИСКА
 function initializeSearch() {
@@ -7871,19 +7858,7 @@ function emergencyMobileFix() {
 // Добавляем кнопку при загрузке
 setTimeout(addMobileFixButton, 2000);
 // 🔧 ФУНКЦИЯ ФОРМАТИРОВАНИЯ КАТЕГОРИИ
-function formatCategory(category) {
-    const categoryMap = {
-        'social': '👥 Соцсети ',
-        'subscribe': '📱 Подписки', 
-        'view': '👀 Просмотры',
-        'comment': '💬 Комментарии',
-        'repost': '🔄 Репосты',
-        'general': '📋 Общее',
-        'other': '🎯 Другое'
-    };
-    
-    return categoryMap[category] || category;
-}
+
 
 async function initializeApp() {
     console.log('🎮 Initializing LinkGold app...');
