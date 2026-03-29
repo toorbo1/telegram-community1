@@ -1815,7 +1815,14 @@ body {
             <input type="text" class="search-input" id="task-search" placeholder="Поиск заданий...">
         </div>
         
-
+        <div class="filters-container fade-in">
+    <button class="filter-btn active" data-filter="all" onclick="filterTasks('all')">Все</button>
+    <button class="filter-btn" data-filter="social" onclick="filterTasks('social')">Соцсети</button>
+    <button class="filter-btn" data-filter="subscribe" onclick="filterTasks('subscribe')">Подписки</button>
+    <button class="filter-btn" data-filter="view" onclick="filterTasks('view')">Просмотры</button>
+    <button class="filter-btn" data-filter="comment" onclick="filterTasks('comment')">Комментарии</button>
+    <button class="filter-btn" data-filter="repost" onclick="filterTasks('repost')">Репосты</button>
+</div>
 
         
           <!-- Новые задания -->
@@ -2230,7 +2237,17 @@ body {
                 <label>Цена (в звездах) *</label>
                 <input type="number" class="admin-input" id="admin-task-price" placeholder="50">
             </div>
-            
+            <div class="form-group" style="flex: 1;">
+                <label>Категория</label>
+                <select class="admin-input" id="admin-task-category">
+                    <option value="subscribe">📱 Подписки</option>
+                    <option value="view">👀 Просмотры</option>
+                    <option value="comment">💬 Комментарии</option>
+                    <option value="repost">🔄 Репосты</option>
+                    <option value="social">👥 Соцсети</option>
+                    <option value="other">📋 Другое</option>
+                </select>
+            </div>
         </div>
         
         <div class="form-row">
@@ -5834,7 +5851,20 @@ function clearFilters() {
     loadTasks();
 }
 
-
+// 🔧 ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ ОТОБРАЖАЕМОГО ИМЕНИ КАТЕГОРИИ
+function getCategoryDisplayName(category) {
+    const categoryMap = {
+        'all': 'Все',
+        'social': 'Соцсети',
+        'subscribe': 'Подписки',
+        'view': 'Просмотры',
+        'comment': 'Комментарии',
+        'repost': 'Репосты',
+        'other': 'Другое'
+    };
+    
+    return categoryMap[category] || category;
+}
 
 // 🔧 ОБНОВЛЕННАЯ ИНИЦИАЛИЗАЦИЯ ПОИСКА
 function initializeSearch() {
@@ -7858,7 +7888,19 @@ function emergencyMobileFix() {
 // Добавляем кнопку при загрузке
 setTimeout(addMobileFixButton, 2000);
 // 🔧 ФУНКЦИЯ ФОРМАТИРОВАНИЯ КАТЕГОРИИ
-
+function formatCategory(category) {
+    const categoryMap = {
+        'social': '👥 Соцсети ',
+        'subscribe': '📱 Подписки', 
+        'view': '👀 Просмотры',
+        'comment': '💬 Комментарии',
+        'repost': '🔄 Репосты',
+        'general': '📋 Общее',
+        'other': '🎯 Другое'
+    };
+    
+    return categoryMap[category] || category;
+}
 
 async function initializeApp() {
     console.log('🎮 Initializing LinkGold app...');
