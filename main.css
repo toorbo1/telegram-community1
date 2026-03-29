@@ -561,7 +561,7 @@ body {
     background: var(--gold-gradient);
     -webkit-background-clip: text;
     background-clip: text;
-    color: transparent;
+    
     letter-spacing: -0.5px;
     color: blue;
 }
