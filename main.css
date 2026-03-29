@@ -561,9 +561,9 @@ body {
     background: var(--gold-gradient);
     -webkit-background-clip: text;
     background-clip: text;
-    
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
     letter-spacing: -0.5px;
-    color: blue;
+    color: rgb(71, 71, 255);
 }
 
 .logo-icon {
