@@ -4380,17 +4380,7 @@ function createAdminTaskElement(task) {
                 ${isCompleted ? '✅ Завершено' : '🟢 Активно'}
             </span>
         </div>
-        
-        <!-- Прогресс выполнения -->
-        <div style="margin: 10px 0;">
-            <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
-                <span>Выполнено: ${completedCount}/${peopleRequired}</span>
-                <span>${Math.round(progressPercentage)}%</span>
-            </div>
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: ${progressPercentage}%; background: ${isCompleted ? 'var(--success)' : 'var(--accent)'};"></div>
-            </div>
-        </div>
+       
         
         <!-- Статистика по заданиям -->
         <div style="display: flex; gap: 15px; font-size: 11px; color: var(--text-secondary);">
