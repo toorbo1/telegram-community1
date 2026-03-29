@@ -556,7 +556,7 @@ body {
 }
 
 .logo-text {
-    font-size: 27px;
+    font-size: 31px;
     font-weight: 800;
     background: var(--gold-gradient);
     -webkit-background-clip: text;
