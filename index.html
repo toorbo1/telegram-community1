@@ -7044,16 +7044,7 @@ function createNewTaskHTML(task) {
         
         <div class="task-description">${escapeHtml(shortDescription)}</div>
         
-        <!-- 🔥 ПРОГРЕСС-БАР ВЫПОЛНЕНИЯ ЗАДАНИЯ -->
-        <div class="task-progress-container" style="margin: 10px 0;">
-            <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">
-                <span>Выполнено: ${completedCount}/${peopleRequired}</span>
-                <span>${Math.round(progressPercentage)}%</span>
-            </div>
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: ${progressPercentage}%"></div>
-            </div>
-        </div>
+    
         
         <div class="task-footer">
             <div class="task-time">${task.time_to_complete || '5-10 минут'}</div>
